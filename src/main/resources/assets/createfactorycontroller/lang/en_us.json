@@ -1,0 +1,13 @@
+{
+  "itemGroup.createfactorycontroller": "Example Mod Tab",
+  "block.createfactorycontroller.example_block": "Example Block",
+  "item.createfactorycontroller.example_item": "Example Item",
+
+  "createfactorycontroller.configuration.title": "Create Factory Controller Configs",
+  "createfactorycontroller.configuration.section.createfactorycontroller.common.toml": "Create Factory Controller Configs",
+  "createfactorycontroller.configuration.section.createfactorycontroller.common.toml.title": "Create Factory Controller Configs",
+  "createfactorycontroller.configuration.items": "Item List",
+  "createfactorycontroller.configuration.logDirtBlock": "Log Dirt Block",
+  "createfactorycontroller.configuration.magicNumberIntroduction": "Magic Number Text",
+  "createfactorycontroller.configuration.magicNumber": "Magic Number"
+}
