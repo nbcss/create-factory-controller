@@ -27,6 +27,11 @@ sourceSets.main.resources {
 }
 
 repositories {
+    mavenCentral()
+    maven {
+        name = "NeoForged"
+        url = "https://maven.neoforged.net/releases"
+    }
     maven {
         name = "Create Maven"
         url = "https://maven.createmod.net"
@@ -34,6 +39,10 @@ repositories {
     maven {
         name = "Registrate"
         url = "https://maven.ithundxr.dev/snapshots"
+    }
+    maven {
+        name = "Deployer Maven"
+        url = "https://maven.liukrast.net"
     }
 }
 
@@ -128,6 +137,10 @@ dependencies {
     // Create mod (compile + dev runtime; Flywheel/Registrate/Ponder come in transitively)
     compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
     localRuntime "com.simibubi.create:create-1.21.1:${create_version}"
+
+    // Deployer (hard dependency — custom gauge registry)
+    compileOnly "net.liukrast:deployer-1.21.1:${deployer_version}"
+    localRuntime "net.liukrast:deployer-1.21.1:${deployer_version}"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

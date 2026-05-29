@@ -1,5 +1,7 @@
 {
-  "itemGroup.createfactorycontroller": "Example Mod Tab",
+  "itemGroup.createfactorycontroller": "Create Factory Controller",
+  "block.createfactorycontroller.factory_controller": "Factory Controller",
+  "factory_controller.no_network_selected": "No network selected — place a tuned gauge first",
   "block.createfactorycontroller.example_block": "Example Block",
   "item.createfactorycontroller.example_item": "Example Item",
 
