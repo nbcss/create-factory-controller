@@ -130,6 +130,7 @@ neoForge {
 // a dependency that will be present for runtime testing but that is
 // "optional", meaning it will not be pulled by dependents of this mod.
 configurations {
+    localRuntime
     runtimeClasspath.extendsFrom localRuntime
 }
 
@@ -138,9 +139,15 @@ dependencies {
     compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
     localRuntime "com.simibubi.create:create-1.21.1:${create_version}"
 
-    // Deployer (hard dependency — custom gauge registry)
-    compileOnly "net.liukrast:deployer-1.21.1:${deployer_version}"
-    localRuntime "net.liukrast:deployer-1.21.1:${deployer_version}"
+    // Deployer (hard dependency — custom gauge registry).
+    // Consume as a plain jar (transitive = false): Deployer's published runtimeElements variant
+    // declares a messy dependency graph (create:slim — which has no NeoForge 1.21.1 artifact —
+    // plus curse.maven:* and mezz.jei optional compat from unconfigured repos). IntelliJ's
+    // variant-aware source-set importer chokes on that graph and silently drops ALL module
+    // dependency wiring (every external import goes red). Its real transitives (Create, Registrate,
+    // Ponder, Flywheel) already come from the explicit Create dependency above.
+    compileOnly("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
+    localRuntime("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

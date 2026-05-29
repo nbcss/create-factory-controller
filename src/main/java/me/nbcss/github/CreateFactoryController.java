@@ -1,6 +1,7 @@
 package me.nbcss.github;
 
 import com.mojang.logging.LogUtils;
+import com.simibubi.create.AllCreativeModeTabs;
 import me.nbcss.github.content.factorycontroller.*;
 import me.nbcss.github.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
@@ -16,6 +17,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -64,9 +66,15 @@ public class CreateFactoryController {
         MENU_TYPES.register(modEventBus);
 
         modEventBus.addListener(this::registerPayloads);
+        modEventBus.addListener(this::addCreativeTabContents);
 
         if (FMLEnvironment.dist == Dist.CLIENT)
             modEventBus.addListener(this::registerScreens);
+    }
+
+    private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey())
+            event.accept(FACTORY_CONTROLLER_ITEM);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

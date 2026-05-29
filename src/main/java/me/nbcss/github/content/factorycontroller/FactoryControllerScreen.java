@@ -54,6 +54,22 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
     @Override
     protected void init() {
         super.init();
+        // Amount input for the configure overlay. Positioned next to the "Amount:" label
+        // (overlay origin is leftPos+30, topPos+40). Hidden until a gauge is selected.
+        amountBox = new EditBox(font, leftPos + 30 + 72, topPos + 40 + 17, 60, 14, Component.literal("Amount"));
+        amountBox.setMaxLength(9);
+        amountBox.setFilter(s -> s.matches("\\d*"));
+        amountBox.setValue("1");
+        amountBox.setVisible(false);
+        addRenderableWidget(amountBox);
+    }
+
+    private void closeConfigureOverlay() {
+        selectedCell = null;
+        if (amountBox != null) {
+            amountBox.setVisible(false);
+            amountBox.setFocused(false);
+        }
     }
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -205,7 +221,7 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         gfx.renderOutline(ox, oy, ow, oh, 0xFF888888);
 
         VirtualPanelBehaviour gauge = findGauge(selectedCell);
-        if (gauge == null) { selectedCell = null; return; }
+        if (gauge == null) { closeConfigureOverlay(); return; }
 
         gfx.drawString(font, "Configure Panel", ox + 4, oy + 4, 0xFFFFFFFF, false);
 
@@ -250,7 +266,9 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         // Connection draw mode
         if (connectFromCell != null) {
             if (!connectFromCell.equals(pos) && findGauge(pos) != null) {
-                PacketDistributor.sendToServer(new DrawConnectionPacket(menu.controllerPos, connectFromCell, pos, 1));
+                VirtualPanelBehaviour source = findGauge(connectFromCell);
+                int connAmount = source != null ? source.amount : 1;
+                PacketDistributor.sendToServer(new DrawConnectionPacket(menu.controllerPos, connectFromCell, pos, connAmount));
             }
             connectFromCell = null;
             return;
@@ -267,6 +285,12 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
             // Open configure overlay
             selectedCell = pos;
             ghostFilter = gauge.filter.copy();
+            if (amountBox != null) {
+                amountBox.setValue(String.valueOf(gauge.amount));
+                amountBox.setVisible(true);
+                setFocused(amountBox);
+                amountBox.setFocused(true);
+            }
         }
     }
 
@@ -297,6 +321,12 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         int oy = topPos + 40;
         int ow = 160, oh = 100;
 
+        // Amount input box (takes precedence so clicks focus it)
+        if (amountBox != null && amountBox.isVisible() && amountBox.mouseClicked(mouseX, mouseY, button)) {
+            setFocused(amountBox);
+            return true;
+        }
+
         // Click on filter slot
         if (mouseX >= ox + 4 && mouseX < ox + 22 && mouseY >= oy + 18 && mouseY < oy + 36) {
             ItemStack carried = minecraft.player.containerMenu.getCarried();
@@ -314,7 +344,7 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
                     menu.controllerPos, selectedCell.col(), selectedCell.row(),
                     ghostFilter == null ? ItemStack.EMPTY : ghostFilter, amt));
             }
-            selectedCell = null;
+            closeConfigureOverlay();
             return true;
         }
 
@@ -322,20 +352,21 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         if (mouseX >= ox + ow - 54 && mouseX < ox + ow - 4 && mouseY >= oy + oh - 16 && mouseY < oy + oh - 4) {
             PacketDistributor.sendToServer(new RemoveGaugePacket(
                 menu.controllerPos, selectedCell.col(), selectedCell.row()));
-            selectedCell = null;
+            closeConfigureOverlay();
             return true;
         }
 
         // Connect button
         if (mouseX >= ox + 60 && mouseX < ox + 110 && mouseY >= oy + oh - 16 && mouseY < oy + oh - 4) {
-            connectFromCell = selectedCell;
-            selectedCell = null;
+            VirtualPanelPosition from = selectedCell;
+            closeConfigureOverlay();
+            connectFromCell = from;
             return true;
         }
 
         // Close overlay by clicking outside
         if (mouseX < ox || mouseX > ox + ow || mouseY < oy || mouseY > oy + oh) {
-            selectedCell = null;
+            closeConfigureOverlay();
             return false;
         }
 
@@ -367,12 +398,22 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // While typing in the amount box, let it (and the widget system) consume input first
+        // so e.g. the "R" arrow-bend shortcut doesn't fire while editing.
+        if (amountBox != null && amountBox.isVisible() && amountBox.isFocused()) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                closeConfigureOverlay();
+                return true;
+            }
+            if (super.keyPressed(keyCode, scanCode, modifiers)) return true;
+            if (amountBox.canConsumeInput()) return true;
+        }
         if (keyCode == GLFW.GLFW_KEY_R && hoveredCell != null && findGauge(hoveredCell) != null) {
             PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredCell));
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && selectedCell != null) {
-            selectedCell = null;
+            closeConfigureOverlay();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);

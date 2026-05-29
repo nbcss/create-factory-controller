@@ -124,7 +124,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void drawConnection(VirtualPanelPosition from, VirtualPanelPosition to, int amount) {
         if (!gauges.containsKey(from) || !gauges.containsKey(to)) return;
         if (from.equals(to)) return;
-        gauges.get(to).addConnection(from);
+        gauges.get(to).addConnection(from, amount);
     }
 
     public void removeConnection(VirtualPanelPosition from, VirtualPanelPosition to) {

@@ -68,7 +68,9 @@ public class VirtualPanelBehaviour {
         this.position = position;
         this.networkId = networkId;
         this.gaugeItemId = gaugeItemId;
-        this.restockerPromises = new RequestPromiseQueue(controller::setChanged);
+        // controller is null on the client (menu snapshot); avoid binding a method ref to null.
+        Runnable onChanged = controller == null ? () -> {} : controller::setChanged;
+        this.restockerPromises = new RequestPromiseQueue(onChanged);
     }
 
     // ── Tick ───────────────────────────────────────────────────────────────
@@ -144,7 +146,7 @@ public class VirtualPanelBehaviour {
 
     // ── Connection management ──────────────────────────────────────────────
 
-    public void addConnection(VirtualPanelPosition fromPos) {
+    public void addConnection(VirtualPanelPosition fromPos, int amount) {
         if (targetedBy.containsKey(fromPos)) return;
         if (targetedBy.size() >= 9) return;
 
@@ -152,7 +154,7 @@ public class VirtualPanelBehaviour {
         if (source == null) return;
 
         source.targeting.add(position);
-        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, 1));
+        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, Math.max(1, amount)));
         controller.setChanged();
         controller.sendData();
     }
