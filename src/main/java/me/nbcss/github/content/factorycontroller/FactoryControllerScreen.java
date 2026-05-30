@@ -1,12 +1,12 @@
 package me.nbcss.github.content.factorycontroller;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.platform.Window;
+import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import me.nbcss.github.content.factorycontroller.packet.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -18,28 +18,43 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
 
-public class FactoryControllerScreen extends AbstractContainerScreen<FactoryControllerMenu> {
+public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
 
-    // Layout constants
-    private static final int BOARD_X = 7;
-    private static final int BOARD_Y = 28;
-    private static final int CELL_W = 54;
-    private static final int CELL_H = 54;
-    private static final int COLS_VISIBLE = 5;
-    private static final int ROWS_VISIBLE = 4;
-    private static final int BOARD_W = COLS_VISIBLE * CELL_W;
-    private static final int BOARD_H = ROWS_VISIBLE * CELL_H;
-    private static final int GUI_W = BOARD_X * 2 + BOARD_W + 18; // +18 for scrollbar
-    private static final int GUI_H = BOARD_Y + BOARD_H + 6 + 90; // board + gap + inventory
+    // GUI sprites — textures/gui/sprites/factory_controller/*.png + .mcmeta (type: tile)
+    // blitSprite(loc, x, y, w, h) tiles the sprite to fill any destination size natively.
+    private static final ResourceLocation TITLE_BG = ResourceLocation.fromNamespaceAndPath(
+            "createfactorycontroller", "factory_controller/title_bg");
+    private static final ResourceLocation BODY_BG = ResourceLocation.fromNamespaceAndPath(
+            "createfactorycontroller", "factory_controller/body_bg");
+    // Pixel height of the gold title bar (matches the source atlas gold section: 18 px)
+    private static final int TITLE_BAR_H = 18;
 
-    // Scroll state
-    private int scrollCol = 0;
-    private int scrollRow = 0;
+    // Responsive sizing — all in GUI-scaled pixels.
+    private static final int SIDE_MARGIN = 160;      // blank space at the left AND right of the image
+    private static final int VERTICAL_MARGIN = 15;   // blank space at the top AND bottom of the image
+    private static final int MIN_IMAGE_W = 176 + 18; // image never narrower than this
+    private static final int MIN_IMAGE_H = 200;      // image never shorter than this
 
     // Interaction state
-    @Nullable private VirtualPanelPosition hoveredCell = null;
-    @Nullable private VirtualPanelPosition selectedCell = null; // configure overlay target
+    @Nullable private VirtualPanelPosition hoveredComponent = null;
+    @Nullable private VirtualPanelPosition selectedComponent = null; // configure overlay target
     @Nullable private VirtualPanelPosition connectFromCell = null; // connection draw mode
+
+    // GUI-only client-side network selection (not synced; sent with AttachComponentPacket)
+    @Nullable private UUID selectedNetwork = null;
+
+    // Inventory panel state — all in menu-relative coords (relative to leftPos/topPos).
+    // Computed in init() from scaledH so the hotbar bottom is always 50px from screen bottom.
+    private static final int INV_BOTTOM_MARGIN = 50;  // px from screen bottom to hotbar bottom edge
+    private static final int HOTBAR_H = 18;           // one slot row
+    private static final int MAIN_INV_H = 54;         // 3 rows × 18px
+    private static final int INV_GAP = 4;             // gap between main inv and hotbar
+    private static final int SLOT_ROW_W = 162;        // 9 slots × 18px
+    private static final int EXPAND_BTN_SIZE = 12;    // square expand/collapse button
+    private int invOriginX;   // left edge of the slot grid, menu-relative
+    private int invHotbarY;   // top edge of the hotbar row, menu-relative
+    private boolean inventoryExpanded = false;
+    @Nullable private Button expandButton = null;
 
     // Configure overlay widgets
     @Nullable private EditBox amountBox = null;
@@ -47,25 +62,79 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
 
     public FactoryControllerScreen(FactoryControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageWidth = GUI_W;
-        this.imageHeight = GUI_H;
     }
 
     @Override
     protected void init() {
-        super.init();
-        // Amount input for the configure overlay. Positioned next to the "Amount:" label
-        // (overlay origin is leftPos+30, topPos+40). Hidden until a gauge is selected.
+        // Work entirely in GUI-scaled pixels — the same units gfx.fill / leftPos / mouse use.
+        // getGuiScaledWidth/Height already fold in the GUI Scale option, so this adapts to any
+        // scale automatically (higher scale => fewer scaled px => image hits its minimum sooner).
+        Window window = Minecraft.getInstance().getWindow();
+        int scaledW = window.getGuiScaledWidth();
+        int scaledH = window.getGuiScaledHeight();
+
+        // Image = screen minus the fixed side margins, but never below the minimum.
+        int imageW = Math.max(MIN_IMAGE_W, scaledW - 2 * SIDE_MARGIN);
+        int imageH = Math.max(MIN_IMAGE_H, scaledH - 2 * VERTICAL_MARGIN);
+
+        // setWindowSize sets imageWidth/imageHeight; AbstractContainerScreen.init() then centers
+        // via leftPos = (scaledW - imageWidth) / 2. Centering is automatic, so the offset is 0
+        // (a non-zero offset would shift the window AWAY from center).
+        setWindowSize(imageW, imageH);
+        setWindowOffset(0, 0);
+        super.init();   // sets leftPos / topPos
+
+        // ── Inventory slot layout ──────────────────────────────────────────
+        // Hotbar bottom = scaledH - INV_BOTTOM_MARGIN (screen coords).
+        // Convert to menu-relative (relative to topPos) for slot positioning.
+        invHotbarY  = scaledH - INV_BOTTOM_MARGIN - HOTBAR_H - topPos;
+        invOriginX  = (imageWidth - SLOT_ROW_W) / 2;
+        menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
+
+        // ── Expand/collapse button ─────────────────────────────────────────
+        expandButton = Button.builder(Component.literal("+"), btn -> toggleInventory())
+                .pos(expandButtonX(), expandButtonY())
+                .size(EXPAND_BTN_SIZE, EXPAND_BTN_SIZE)
+                .build();
+        addRenderableWidget(expandButton);
+
+        // ── Configure overlay amount input ─────────────────────────────────
         amountBox = new EditBox(font, leftPos + 30 + 72, topPos + 40 + 17, 60, 14, Component.literal("Amount"));
         amountBox.setMaxLength(9);
         amountBox.setFilter(s -> s.matches("\\d*"));
         amountBox.setValue("1");
         amountBox.setVisible(false);
-        addRenderableWidget(amountBox);
+        // addWidget instead of addRenderableWidget: we render it manually in renderForeground
+        // so it appears on top of the configure overlay background rather than behind it.
+        addWidget(amountBox);
+
+        // Default the GUI network selection to the first known network.
+        if (selectedNetwork == null && !menu.knownNetworks.isEmpty())
+            selectedNetwork = menu.knownNetworks.iterator().next();
+    }
+
+    /** Screen-coord x of the expand button (right of the slot grid). */
+    private int expandButtonX() {
+        return leftPos + invOriginX + SLOT_ROW_W + 2;
+    }
+
+    /** Screen-coord y of the expand button (top of the currently visible inventory area). */
+    private int expandButtonY() {
+        int topOfInv = invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0);
+        return topPos + topOfInv - EXPAND_BTN_SIZE;
+    }
+
+    private void toggleInventory() {
+        inventoryExpanded = !inventoryExpanded;
+        menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
+        if (expandButton != null) {
+            expandButton.setPosition(expandButtonX(), expandButtonY());
+            expandButton.setMessage(Component.literal(inventoryExpanded ? "-" : "+"));
+        }
     }
 
     private void closeConfigureOverlay() {
-        selectedCell = null;
+        selectedComponent = null;
         if (amountBox != null) {
             amountBox.setVisible(false);
             amountBox.setFocused(false);
@@ -78,138 +147,49 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         int x = leftPos;
         int y = topPos;
+        // blitSprite tiles the 2×2 sprites to fill any destination size (declared in .mcmeta).
+        gfx.blitSprite(TITLE_BG, x, y, imageWidth, TITLE_BAR_H);
+        gfx.blitSprite(BODY_BG, x, y + TITLE_BAR_H, imageWidth, imageHeight - TITLE_BAR_H);
 
-        // Background panel
-        gfx.fill(x, y, x + imageWidth, y + imageHeight - 90, 0xFF2D2D2D);
-        gfx.fill(x, y + imageHeight - 90, x + imageWidth, y + imageHeight, 0xFF1E1E1E);
-        gfx.renderOutline(x, y, imageWidth, imageHeight - 90, 0xFF555555);
+        // Inventory backgrounds (texture placeholder — replaced by proper texture later)
+        renderInventoryBackground(gfx);
+        // Configure overlay rendered in renderForeground so it layers above the board.
+    }
 
-        // Network selector
-        renderNetworkSelector(gfx, x + BOARD_X, y + 6, mouseX, mouseY);
+    @Override
+    protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        int titleX = leftPos + (imageWidth - font.width(title)) / 2;
+        int titleY = topPos + 6;
+        graphics.drawString(font, title, titleX, titleY, 0xC8C8C8, false);
 
-        // Board grid
-        int boardX = x + BOARD_X;
-        int boardY = y + BOARD_Y;
-        for (int col = 0; col < COLS_VISIBLE; col++) {
-            for (int row = 0; row < ROWS_VISIBLE; row++) {
-                int cellX = boardX + col * CELL_W;
-                int cellY = boardY + row * CELL_H;
-                renderCell(gfx, cellX, cellY, col + scrollCol, row + scrollRow, mouseX, mouseY);
-            }
-        }
-
-        // Connection arrows
-        renderConnections(gfx, boardX, boardY);
-
-        // Configure overlay
-        if (selectedCell != null) renderConfigureOverlay(gfx, x, y, mouseX, mouseY);
+        super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        updateHoveredCell(mouseX, mouseY);
         super.render(gfx, mouseX, mouseY, partialTick);
         renderTooltip(gfx, mouseX, mouseY);
     }
 
-    private void renderNetworkSelector(GuiGraphics gfx, int x, int y, int mouseX, int mouseY) {
-        int w = BOARD_W;
-        gfx.fill(x, y, x + w, y + 16, 0xFF3A3A3A);
-        gfx.renderOutline(x, y, w, 16, 0xFF666666);
+    /**
+     * Draws placeholder backgrounds for the inventory area.
+     * Hotbar is always drawn; main inventory only when expanded.
+     * Replaced by proper textures once artwork is ready.
+     */
+    private void renderInventoryBackground(GuiGraphics gfx) {
+        int slotX = leftPos + invOriginX;
+        int hotbarTop = topPos + invHotbarY;
 
-        String label;
-        if (menu.selectedNetwork == null || menu.knownNetworks.isEmpty()) {
-            label = "No network selected";
-        } else {
-            label = menu.selectedNetwork.toString().substring(0, 8) + "...";
+        // Hotbar background (always visible)
+        gfx.fill(slotX - 1, hotbarTop - 1, slotX + SLOT_ROW_W + 1, hotbarTop + HOTBAR_H + 1, 0xFF444444);
+        gfx.renderOutline(slotX - 1, hotbarTop - 1, SLOT_ROW_W + 2, HOTBAR_H + 2, 0xFF888888);
+
+        if (inventoryExpanded) {
+            // Main inventory background (3 rows, with gap above hotbar)
+            int mainTop = hotbarTop - INV_GAP - MAIN_INV_H;
+            gfx.fill(slotX - 1, mainTop - 1, slotX + SLOT_ROW_W + 1, mainTop + MAIN_INV_H + 1, 0xFF444444);
+            gfx.renderOutline(slotX - 1, mainTop - 1, SLOT_ROW_W + 2, MAIN_INV_H + 2, 0xFF888888);
         }
-
-        gfx.drawString(font, "< " + label + " >", x + 4, y + 4, 0xFFAAAAAA, false);
-    }
-
-    private void renderCell(GuiGraphics gfx, int cellX, int cellY, int col, int row, int mouseX, int mouseY) {
-        VirtualPanelPosition pos = new VirtualPanelPosition(col, row);
-        VirtualPanelBehaviour gauge = findGauge(pos);
-
-        boolean hovered = hoveredCell != null && hoveredCell.equals(pos);
-        int border = hovered ? 0xFF888888 : 0xFF444444;
-        gfx.fill(cellX, cellY, cellX + CELL_W, cellY + CELL_H, 0xFF1A1A1A);
-        gfx.renderOutline(cellX, cellY, CELL_W, CELL_H, border);
-
-        if (gauge == null) {
-            // Empty cell — show hint if carrying a valid gauge
-            ItemStack carried = minecraft.player.containerMenu.getCarried();
-            if (hovered && GaugeHelper.isValidGauge(carried)) {
-                gfx.drawString(font, "+", cellX + CELL_W / 2 - 3, cellY + CELL_H / 2 - 4, 0xFF55FF55, false);
-            }
-            return;
-        }
-
-        // Gauge item icon (top-left)
-        ItemStack gaugeStack = new ItemStack(BuiltInRegistries.ITEM.get(gauge.gaugeItemId));
-        gfx.renderFakeItem(gaugeStack, cellX + 2, cellY + 2);
-
-        // Filter item icon (centered)
-        if (!gauge.filter.isEmpty()) {
-            gfx.renderFakeItem(gauge.filter, cellX + CELL_W / 2 - 8, cellY + CELL_H / 2 - 10);
-            // Item name
-            String name = gauge.filter.getHoverName().getString();
-            if (name.length() > 7) name = name.substring(0, 6) + "..";
-            gfx.drawString(font, name, cellX + 2, cellY + CELL_H - 22, 0xFFCCCCCC, false);
-        }
-
-        // Amount
-        gfx.drawString(font, String.valueOf(gauge.amount), cellX + 2, cellY + CELL_H - 12, 0xFF888888, false);
-
-        // Status symbol
-        String status;
-        int statusColor;
-        if (gauge.satisfied) {
-            status = "✔"; statusColor = 0xFF55FF55;
-        } else if (gauge.promisedSatisfied) {
-            status = "↑"; statusColor = 0xFFFFFF55;
-        } else {
-            status = "▪"; statusColor = 0xFF888888;
-        }
-        gfx.drawString(font, status, cellX + CELL_W - 10, cellY + 2, statusColor, false);
-
-        // Network badge
-        String networkBadge = getNetworkBadge(gauge.networkId);
-        gfx.drawString(font, networkBadge, cellX + CELL_W - 10, cellY + CELL_H - 12, 0xFFAAAAAA, false);
-
-        // Stock bar
-        if (!gauge.filter.isEmpty() && gauge.amount > 0) {
-            int barW = CELL_W - 4;
-            int level = gauge.getLevelInStorage();
-            int filled = (int) Math.min(barW, (long) barW * level / gauge.amount);
-            gfx.fill(cellX + 2, cellY + CELL_H - 4, cellX + 2 + barW, cellY + CELL_H - 2, 0xFF333333);
-            int barColor = gauge.satisfied ? 0xFF44BB44 : 0xFFBB4444;
-            if (filled > 0)
-                gfx.fill(cellX + 2, cellY + CELL_H - 4, cellX + 2 + filled, cellY + CELL_H - 2, barColor);
-        }
-    }
-
-    private void renderConnections(GuiGraphics gfx, int boardX, int boardY) {
-        for (VirtualPanelBehaviour gauge : menu.gauges) {
-            for (VirtualPanelConnection conn : gauge.targetedBy.values()) {
-                VirtualPanelPosition from = conn.from;
-                VirtualPanelPosition to = gauge.position;
-
-                int[] fromScreen = cellCenter(boardX, boardY, from);
-                int[] toScreen = cellCenter(boardX, boardY, to);
-
-                if (fromScreen == null || toScreen == null) continue;
-
-                int color = conn.success ? 0xFF44BB44 : 0xFF886644;
-                drawArrow(gfx, fromScreen[0], fromScreen[1], toScreen[0], toScreen[1], color);
-            }
-        }
-    }
-
-    private void drawArrow(GuiGraphics gfx, int x1, int y1, int x2, int y2, int color) {
-        // Simple line via horizontal + vertical segments
-        gfx.fill(Math.min(x1, x2), y1 - 1, Math.max(x1, x2) + 1, y1 + 1, color);
-        gfx.fill(x2 - 1, Math.min(y1, y2), x2 + 1, Math.max(y1, y2) + 1, color);
     }
 
     private void renderConfigureOverlay(GuiGraphics gfx, int baseX, int baseY, int mouseX, int mouseY) {
@@ -220,7 +200,7 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         gfx.fill(ox, oy, ox + ow, oy + oh, 0xFF3A3A3A);
         gfx.renderOutline(ox, oy, ow, oh, 0xFF888888);
 
-        VirtualPanelBehaviour gauge = findGauge(selectedCell);
+        VirtualPanelBehaviour gauge = findGauge(selectedComponent);
         if (gauge == null) { closeConfigureOverlay(); return; }
 
         gfx.drawString(font, "Configure Panel", ox + 4, oy + 4, 0xFFFFFFFF, false);
@@ -244,31 +224,15 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Network selector arrows
-        if (handleNetworkSelectorClick((int) mouseX, (int) mouseY, button)) return true;
-
-        // Configure overlay buttons
-        if (selectedCell != null) {
-            if (handleConfigureOverlayClick((int) mouseX, (int) mouseY, button)) return true;
-        }
-
-        // Board cell click
-        VirtualPanelPosition clicked = cellAt((int) mouseX, (int) mouseY);
-        if (clicked != null && button == 0) {
-            handleBoardCellClick(clicked);
-            return true;
-        }
-
+        //TODO
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     private void handleBoardCellClick(VirtualPanelPosition pos) {
-        // Connection draw mode
         if (connectFromCell != null) {
             if (!connectFromCell.equals(pos) && findGauge(pos) != null) {
                 VirtualPanelBehaviour source = findGauge(connectFromCell);
-                int connAmount = source != null ? source.amount : 1;
-                PacketDistributor.sendToServer(new DrawConnectionPacket(menu.controllerPos, connectFromCell, pos, connAmount));
+                PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, connectFromCell, pos));
             }
             connectFromCell = null;
             return;
@@ -278,12 +242,13 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         if (gauge == null) {
             // Empty cell — place if carrying valid gauge
             ItemStack carried = minecraft.player.containerMenu.getCarried();
+
             if (GaugeHelper.isValidGauge(carried)) {
-                PacketDistributor.sendToServer(new AttachGaugePacket(menu.controllerPos, pos.col(), pos.row()));
+                PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, pos.col(), pos.row(), selectedNetwork));
             }
         } else {
             // Open configure overlay
-            selectedCell = pos;
+            selectedComponent = pos;
             ghostFilter = gauge.filter.copy();
             if (amountBox != null) {
                 amountBox.setValue(String.valueOf(gauge.amount));
@@ -294,26 +259,12 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         }
     }
 
-    private boolean handleNetworkSelectorClick(int mouseX, int mouseY, int button) {
-        if (menu.knownNetworks.isEmpty()) return false;
-        int nx = leftPos + BOARD_X;
-        int ny = topPos + 6;
-        if (mouseX >= nx && mouseX < nx + BOARD_W && mouseY >= ny && mouseY < ny + 16) {
-            if (button == 0) cycleNetwork(1);
-            else if (button == 1) cycleNetwork(-1);
-            return true;
-        }
-        return false;
-    }
-
     private void cycleNetwork(int dir) {
         if (menu.knownNetworks.isEmpty()) return;
         List<UUID> list = new ArrayList<>(menu.knownNetworks);
-        int idx = menu.selectedNetwork == null ? 0 : list.indexOf(menu.selectedNetwork);
+        int idx = selectedNetwork == null ? 0 : list.indexOf(selectedNetwork);
         idx = (idx + dir + list.size()) % list.size();
-        UUID next = list.get(idx);
-        menu.selectedNetwork = next;
-        PacketDistributor.sendToServer(new SelectNetworkPacket(menu.controllerPos, next));
+        selectedNetwork = list.get(idx);
     }
 
     private boolean handleConfigureOverlayClick(int mouseX, int mouseY, int button) {
@@ -337,11 +288,11 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         // Confirm button area (bottom of overlay)
         if (mouseX >= ox + 4 && mouseX < ox + 54 && mouseY >= oy + oh - 16 && mouseY < oy + oh - 4) {
             // Confirm
-            VirtualPanelBehaviour gauge = findGauge(selectedCell);
+            VirtualPanelBehaviour gauge = findGauge(selectedComponent);
             if (gauge != null) {
                 int amt = parseAmount();
                 PacketDistributor.sendToServer(new ConfigureGaugePacket(
-                    menu.controllerPos, selectedCell.col(), selectedCell.row(),
+                    menu.controllerPos, selectedComponent.col(), selectedComponent.row(),
                     ghostFilter == null ? ItemStack.EMPTY : ghostFilter, amt));
             }
             closeConfigureOverlay();
@@ -350,15 +301,15 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
 
         // Remove button
         if (mouseX >= ox + ow - 54 && mouseX < ox + ow - 4 && mouseY >= oy + oh - 16 && mouseY < oy + oh - 4) {
-            PacketDistributor.sendToServer(new RemoveGaugePacket(
-                menu.controllerPos, selectedCell.col(), selectedCell.row()));
+            PacketDistributor.sendToServer(new RemoveComponentPacket(
+                menu.controllerPos, selectedComponent.col(), selectedComponent.row()));
             closeConfigureOverlay();
             return true;
         }
 
         // Connect button
         if (mouseX >= ox + 60 && mouseX < ox + 110 && mouseY >= oy + oh - 16 && mouseY < oy + oh - 4) {
-            VirtualPanelPosition from = selectedCell;
+            VirtualPanelPosition from = selectedComponent;
             closeConfigureOverlay();
             connectFromCell = from;
             return true;
@@ -375,23 +326,21 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        // Network selector scroll
-        int nx = leftPos + BOARD_X;
-        int ny = topPos + 6;
-        if (mouseX >= nx && mouseX < nx + BOARD_W && mouseY >= ny && mouseY < ny + 16) {
-            cycleNetwork(scrollY > 0 ? -1 : 1);
-            return true;
-        }
+        //Network Selector
+        //TODO
 
-        // Board scroll
-        int bx = leftPos + BOARD_X;
-        int by = topPos + BOARD_Y;
-        if (mouseX >= bx && mouseX < bx + BOARD_W && mouseY >= by && mouseY < by + BOARD_H) {
-            scrollRow = Math.max(0, scrollRow + (int) -scrollY);
-            return true;
-        }
+        //Board
+        //TODO
 
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    /** Called by SyncPanelStatePacket after menu.gauges/knownNetworks are refreshed. */
+    public void onPanelSync() {
+        if (selectedNetwork != null && !menu.knownNetworks.contains(selectedNetwork))
+            selectedNetwork = null;
+        if (selectedNetwork == null && !menu.knownNetworks.isEmpty())
+            selectedNetwork = menu.knownNetworks.iterator().next();
     }
 
     // ── Keyboard ───────────────────────────────────────────────────────────
@@ -408,11 +357,11 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
             if (super.keyPressed(keyCode, scanCode, modifiers)) return true;
             if (amountBox.canConsumeInput()) return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_R && hoveredCell != null && findGauge(hoveredCell) != null) {
-            PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredCell));
+        if (keyCode == GLFW.GLFW_KEY_R && hoveredComponent != null && findGauge(hoveredComponent) != null) {
+            PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredComponent));
             return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && selectedCell != null) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && selectedComponent != null) {
             closeConfigureOverlay();
             return true;
         }
@@ -420,31 +369,6 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
-
-    private void updateHoveredCell(int mouseX, int mouseY) {
-        hoveredCell = cellAt(mouseX, mouseY);
-    }
-
-    @Nullable
-    private VirtualPanelPosition cellAt(int mouseX, int mouseY) {
-        int bx = leftPos + BOARD_X;
-        int by = topPos + BOARD_Y;
-        if (mouseX < bx || mouseX >= bx + BOARD_W || mouseY < by || mouseY >= by + BOARD_H) return null;
-        int col = (mouseX - bx) / CELL_W + scrollCol;
-        int row = (mouseY - by) / CELL_H + scrollRow;
-        return new VirtualPanelPosition(col, row);
-    }
-
-    @Nullable
-    private int[] cellCenter(int boardX, int boardY, VirtualPanelPosition pos) {
-        int screenCol = pos.col() - scrollCol;
-        int screenRow = pos.row() - scrollRow;
-        if (screenCol < 0 || screenCol >= COLS_VISIBLE || screenRow < 0 || screenRow >= ROWS_VISIBLE) return null;
-        return new int[]{
-            boardX + screenCol * CELL_W + CELL_W / 2,
-            boardY + screenRow * CELL_H + CELL_H / 2
-        };
-    }
 
     @Nullable
     private VirtualPanelBehaviour findGauge(VirtualPanelPosition pos) {
@@ -467,19 +391,5 @@ public class FactoryControllerScreen extends AbstractContainerScreen<FactoryCont
         if (amountBox == null) return 1;
         try { return Math.max(1, Integer.parseInt(amountBox.getValue())); }
         catch (NumberFormatException e) { return 1; }
-    }
-
-    @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawString(font, title, 7, 14, 0xFFFFFFFF, false);
-        // Render overlay buttons text if overlay is open
-        if (selectedCell != null) {
-            int ox = 30;
-            int oy = 40;
-            int oh = 100;
-            gfx.drawString(font, "[OK]", ox + 4, oy + oh - 14, 0xFF55FF55, false);
-            gfx.drawString(font, "[Link]", ox + 60, oy + oh - 14, 0xFF5599FF, false);
-            gfx.drawString(font, "[Remove]", imageWidth - 30 - 54, oy + oh - 14, 0xFFFF5555, false);
-        }
     }
 }

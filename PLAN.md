@@ -51,7 +51,8 @@ Note: the client stock bar still calls `getLevelInStorage()` live; it is crash-s
 - [x] `VirtualPanelConnection` (from, amount, arrowBendMode, success) + NBT
 - [x] `VirtualPanelPosition` record(col, row) + NBT
 - [x] `GaugeHelper` + `compat/DeployerGaugeHelper` — `DeployerRegistries.PANEL.containsKey` check
-- [x] 7 play-to-server packets, all registered in `registerPayloads` and handled
+- [x] 6 play-to-server packets, all registered in `registerPayloads` and handled
+      (network selection is client-only — no `SelectNetworkPacket`)
 - [x] `FactoryControllerMenu` — server + client constructors, `writeExtraData`, player slots
 - [x] `FactoryControllerScreen` — board render, network selector, configure overlay, connection
       draw mode, arrow rendering, keyboard handler
@@ -228,10 +229,12 @@ rotation in the blockstate already exists (and is fixed by BUG-3).
 - **Gauge validation:** `GaugeHelper.isValidGauge` → `DeployerGaugeHelper` →
   `DeployerRegistries.PANEL.containsKey(itemId)`. Any registered panel item is accepted; no
   hardcoded list. Tuning is not required.
-- **Network assignment (`attachGauge`):** a tuned gauge (`LogisticallyLinkedBlockItem.isTuned`)
-  contributes its `networkFromStack` UUID to `knownNetworks` and becomes `selectedNetwork`. An
-  untuned gauge inherits `selectedNetwork`, or is rejected with a red action-bar message if none is
-  selected. Removed gauges refund an **untuned** item (no UUID).
+- **Network assignment (`attachComponent`):** a tuned gauge (`LogisticallyLinkedBlockItem.isTuned`)
+  contributes its `networkFromStack` UUID to `knownNetworks`. An untuned gauge uses the selected
+  network, which is a **client-only GUI choice** sent on `AttachComponentPacket` (the server no
+  longer tracks a `selectedNetwork`). The server validates the supplied network is in
+  `knownNetworks`, else rejects with a red action-bar message. Removed gauges refund an
+  **untuned** item (no UUID).
 - **Connection direction:** `targetedBy` on the *destination* stores incoming
   `VirtualPanelConnection`s keyed by source position; `targeting` on the *source* stores outgoing
   destination positions. `addConnection` / `removeConnection` / `disconnectAll` keep both sides in
@@ -259,6 +262,6 @@ rotation in the blockstate already exists (and is fixed by BUG-3).
 | `VirtualPanelPosition.java` | (col, row) record + NBT |
 | `GaugeHelper.java` | Thin wrapper over `DeployerGaugeHelper` |
 | `compat/DeployerGaugeHelper.java` | `DeployerRegistries.PANEL` membership check |
-| `packet/*.java` | 7 play-to-server packets (`RemoveConnectionPacket` unused by UI — GAP-2) |
+| `packet/*.java` | 6 play-to-server packets (`RemoveConnectionPacket` unused by UI — GAP-2) |
 | `FactoryControllerMenu.java` | Snapshot sync + `writeExtraData`; client ctor NPE risk (BUG-2) |
 | `FactoryControllerScreen.java` | Client UI; `amountBox` uninitialized (BUG-4) |

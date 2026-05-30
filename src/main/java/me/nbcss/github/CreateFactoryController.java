@@ -11,7 +11,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -79,13 +78,13 @@ public class CreateFactoryController {
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(MODID);
-        registrar.playToServer(AttachGaugePacket.TYPE, AttachGaugePacket.STREAM_CODEC, AttachGaugePacket::handle);
-        registrar.playToServer(RemoveGaugePacket.TYPE, RemoveGaugePacket.STREAM_CODEC, RemoveGaugePacket::handle);
+        registrar.playToServer(AttachComponentPacket.TYPE, AttachComponentPacket.STREAM_CODEC, AttachComponentPacket::handle);
+        registrar.playToServer(RemoveComponentPacket.TYPE, RemoveComponentPacket.STREAM_CODEC, RemoveComponentPacket::handle);
         registrar.playToServer(ConfigureGaugePacket.TYPE, ConfigureGaugePacket.STREAM_CODEC, ConfigureGaugePacket::handle);
-        registrar.playToServer(DrawConnectionPacket.TYPE, DrawConnectionPacket.STREAM_CODEC, DrawConnectionPacket::handle);
+        registrar.playToServer(AddConnectionPacket.TYPE, AddConnectionPacket.STREAM_CODEC, AddConnectionPacket::handle);
         registrar.playToServer(RemoveConnectionPacket.TYPE, RemoveConnectionPacket.STREAM_CODEC, RemoveConnectionPacket::handle);
         registrar.playToServer(CycleArrowBendPacket.TYPE, CycleArrowBendPacket.STREAM_CODEC, CycleArrowBendPacket::handle);
-        registrar.playToServer(SelectNetworkPacket.TYPE, SelectNetworkPacket.STREAM_CODEC, SelectNetworkPacket::handle);
+        registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
     }
 
     private void registerScreens(RegisterMenuScreensEvent event) {

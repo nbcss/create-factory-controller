@@ -146,7 +146,7 @@ public class VirtualPanelBehaviour {
 
     // ── Connection management ──────────────────────────────────────────────
 
-    public void addConnection(VirtualPanelPosition fromPos, int amount) {
+    public void addConnection(VirtualPanelPosition fromPos) {
         if (targetedBy.containsKey(fromPos)) return;
         if (targetedBy.size() >= 9) return;
 
@@ -154,7 +154,7 @@ public class VirtualPanelBehaviour {
         if (source == null) return;
 
         source.targeting.add(position);
-        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, Math.max(1, amount)));
+        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, 1));
         controller.setChanged();
         controller.sendData();
     }

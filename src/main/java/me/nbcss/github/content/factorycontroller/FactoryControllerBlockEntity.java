@@ -3,7 +3,7 @@ package me.nbcss.github.content.factorycontroller;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
-import me.nbcss.github.content.factorycontroller.packet.*;
+import me.nbcss.github.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -11,10 +11,11 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -23,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +34,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     public final Map<VirtualPanelPosition, VirtualPanelBehaviour> gauges = new LinkedHashMap<>();
     public final Set<UUID> knownNetworks = new LinkedHashSet<>();
-    @Nullable public UUID selectedNetwork = null;
 
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
@@ -58,7 +59,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Gauge attach ───────────────────────────────────────────────────────
 
-    public void attachGauge(int col, int row, Player player) {
+    public void attachComponent(int col, int row, Player player, @Nullable UUID selectedNetwork) {
         ItemStack carried = player.containerMenu.getCarried();
         if (!GaugeHelper.isValidGauge(carried)) return;
 
@@ -70,9 +71,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
             if (networkId == null) return;
             knownNetworks.add(networkId);
-            selectedNetwork = networkId;
         } else {
-            if (selectedNetwork == null) {
+            // Selection is a client-side GUI choice; validate it against networks this
+            // controller actually knows (populated by previously attached tuned gauges).
+            if (selectedNetwork == null || !knownNetworks.contains(selectedNetwork)) {
                 player.displayClientMessage(
                     Component.translatable("factory_controller.no_network_selected")
                         .withStyle(ChatFormatting.RED), true);
@@ -92,7 +94,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Gauge remove ───────────────────────────────────────────────────────
 
-    public void removeGauge(int col, int row, Player player) {
+    public void removeComponent(int col, int row, Player player) {
         VirtualPanelPosition pos = new VirtualPanelPosition(col, row);
         VirtualPanelBehaviour behaviour = gauges.remove(pos);
         if (behaviour == null) return;
@@ -121,10 +123,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Connections ────────────────────────────────────────────────────────
 
-    public void drawConnection(VirtualPanelPosition from, VirtualPanelPosition to, int amount) {
+    public void addConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
         if (!gauges.containsKey(from) || !gauges.containsKey(to)) return;
         if (from.equals(to)) return;
-        gauges.get(to).addConnection(from, amount);
+        gauges.get(to).addConnection(from);
     }
 
     public void removeConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
@@ -139,12 +141,26 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         behaviour.cycleArrowBend();
     }
 
-    // ── Network selection ──────────────────────────────────────────────────
+    // ── Live menu sync ─────────────────────────────────────────────────────
 
-    public void selectNetwork(UUID next) {
-        if (!knownNetworks.contains(next)) return;
-        selectedNetwork = next;
-        sendData();
+    @Override
+    public void sendData() {
+        super.sendData();
+        syncMenuToPlayers();
+    }
+
+    private void syncMenuToPlayers() {
+        if (level == null || level.isClientSide()) return;
+        ServerLevel serverLevel = (ServerLevel) level;
+        List<CompoundTag> tags = new ArrayList<>();
+        for (VirtualPanelBehaviour b : gauges.values())
+            tags.add(b.toNBT(serverLevel.registryAccess()));
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, new ArrayList<>(knownNetworks));
+        for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
+            if (player.containerMenu instanceof FactoryControllerMenu menu
+                    && menu.controllerPos.equals(getBlockPos()))
+                PacketDistributor.sendToPlayer(player, packet);
+        }
     }
 
     // ── MenuProvider ───────────────────────────────────────────────────────
@@ -178,9 +194,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             networkList.add(entry);
         }
         tag.put("KnownNetworks", networkList);
-
-        if (selectedNetwork != null)
-            tag.putUUID("SelectedNetwork", selectedNetwork);
     }
 
     @Override
@@ -198,8 +211,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         ListTag networkList = tag.getList("KnownNetworks", Tag.TAG_COMPOUND);
         for (int i = 0; i < networkList.size(); i++)
             knownNetworks.add(networkList.getCompound(i).getUUID("Id"));
-
-        selectedNetwork = tag.hasUUID("SelectedNetwork") ? tag.getUUID("SelectedNetwork") : null;
     }
 
     @Override
