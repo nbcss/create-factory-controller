@@ -2,16 +2,16 @@ package io.github.nbcss.content.factorycontroller;
 
 import net.minecraft.nbt.CompoundTag;
 
-public record VirtualPanelPosition(int col, int row) {
+public record VirtualPanelPosition(int x, int y) {
 
     public CompoundTag toNBT() {
         CompoundTag tag = new CompoundTag();
-        tag.putInt("Col", col);
-        tag.putInt("Row", row);
+        tag.putInt("X", x);
+        tag.putInt("Y", y);
         return tag;
     }
 
     public static VirtualPanelPosition fromNBT(CompoundTag tag) {
-        return new VirtualPanelPosition(tag.getInt("Col"), tag.getInt("Row"));
+        return new VirtualPanelPosition(tag.getInt("X"), tag.getInt("Y"));
     }
 }

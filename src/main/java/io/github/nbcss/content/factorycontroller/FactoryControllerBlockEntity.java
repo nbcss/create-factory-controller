@@ -60,11 +60,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Gauge attach ───────────────────────────────────────────────────────
 
-    public void attachComponent(int col, int row, Player player, @Nullable UUID selectedNetwork) {
+    public void attachComponent(VirtualPanelPosition pos, Player player, @Nullable UUID selectedNetwork) {
         ItemStack carried = player.containerMenu.getCarried();
         if (!GaugeHelper.isValidGauge(carried)) return;
 
-        VirtualPanelPosition pos = new VirtualPanelPosition(col, row);
         if (gauges.containsKey(pos)) return;
 
         UUID networkId;
@@ -95,8 +94,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Gauge remove ───────────────────────────────────────────────────────
 
-    public void removeComponent(int col, int row, Player player) {
-        VirtualPanelPosition pos = new VirtualPanelPosition(col, row);
+    public void removeComponent(VirtualPanelPosition pos, Player player) {
         VirtualPanelBehaviour behaviour = gauges.remove(pos);
         if (behaviour == null) return;
 
@@ -113,8 +111,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Configure panel ────────────────────────────────────────────────────
 
-    public void configureGauge(int col, int row, ItemStack filter, int amount) {
-        VirtualPanelBehaviour behaviour = gauges.get(new VirtualPanelPosition(col, row));
+    public void configureGauge(VirtualPanelPosition pos, ItemStack filter, int amount) {
+        VirtualPanelBehaviour behaviour = gauges.get(pos);
         if (behaviour == null) return;
         behaviour.filter = filter.copy();
         behaviour.amount = Math.max(1, amount);

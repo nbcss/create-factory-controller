@@ -2,6 +2,7 @@ package io.github.nbcss.content.factorycontroller.packet;
 
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -10,16 +11,22 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-public record RemoveComponentPacket(BlockPos pos, int col, int row) implements CustomPacketPayload {
+public record RemoveComponentPacket(BlockPos pos, VirtualPanelPosition panelPos) implements CustomPacketPayload {
 
     public static final Type<RemoveComponentPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "remove_component"));
 
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+        StreamCodec.composite(
+            ByteBufCodecs.INT, VirtualPanelPosition::x,
+            ByteBufCodecs.INT, VirtualPanelPosition::y,
+            VirtualPanelPosition::new
+        );
+
     public static final StreamCodec<RegistryFriendlyByteBuf, RemoveComponentPacket> STREAM_CODEC =
         StreamCodec.composite(
             BlockPos.STREAM_CODEC, RemoveComponentPacket::pos,
-            ByteBufCodecs.INT, RemoveComponentPacket::col,
-            ByteBufCodecs.INT, RemoveComponentPacket::row,
+            POS_CODEC, RemoveComponentPacket::panelPos,
             RemoveComponentPacket::new
         );
 
@@ -30,7 +37,7 @@ public record RemoveComponentPacket(BlockPos pos, int col, int row) implements C
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.removeComponent(packet.col(), packet.row(), player);
+            be.removeComponent(packet.panelPos(), player);
         });
     }
 }

@@ -19,8 +19,8 @@ public record AddConnectionPacket(BlockPos pos, VirtualPanelPosition from, Virtu
 
     private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::col,
-            ByteBufCodecs.INT, VirtualPanelPosition::row,
+            ByteBufCodecs.INT, VirtualPanelPosition::x,
+            ByteBufCodecs.INT, VirtualPanelPosition::y,
             VirtualPanelPosition::new
         );
 
