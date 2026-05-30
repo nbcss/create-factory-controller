@@ -14,6 +14,9 @@ out/
 
 .run/
 
+### Claude ###
+.claude
+
 ### Eclipse ###
 .apt_generated
 .classpath
