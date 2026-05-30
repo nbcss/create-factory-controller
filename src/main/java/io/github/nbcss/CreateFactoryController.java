@@ -5,7 +5,7 @@ import com.simibubi.create.AllCreativeModeTabs;
 import io.github.nbcss.content.factorycontroller.FactoryControllerBlock;
 import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.FactoryControllerScreen;
+import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
 import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;

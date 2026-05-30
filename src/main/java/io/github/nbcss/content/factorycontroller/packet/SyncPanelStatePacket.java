@@ -2,7 +2,7 @@ package io.github.nbcss.content.factorycontroller.packet;
 
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.FactoryControllerScreen;
+import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
 import io.github.nbcss.content.factorycontroller.VirtualPanelBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;

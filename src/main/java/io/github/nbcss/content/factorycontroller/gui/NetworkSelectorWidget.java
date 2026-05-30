@@ -1,4 +1,4 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.gui;
 
 import com.simibubi.create.AllBlocks;
 import net.minecraft.client.gui.GuiGraphics;
