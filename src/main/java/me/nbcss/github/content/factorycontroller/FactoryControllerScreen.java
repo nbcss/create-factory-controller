@@ -7,27 +7,18 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
 
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
-
-    // GUI sprites — textures/gui/sprites/factory_controller/*.png + .mcmeta (type: tile)
-    // blitSprite(loc, x, y, w, h) tiles the sprite to fill any destination size natively.
-    private static final ResourceLocation TITLE_BG = ResourceLocation.fromNamespaceAndPath(
-            "createfactorycontroller", "factory_controller/title_bg");
-    private static final ResourceLocation BODY_BG = ResourceLocation.fromNamespaceAndPath(
-            "createfactorycontroller", "factory_controller/body_bg");
-    // Pixel height of the gold title bar (matches the source atlas gold section: 18 px)
-    private static final int TITLE_BAR_H = 18;
 
     // Responsive sizing — all in GUI-scaled pixels.
     private static final int SIDE_MARGIN = 160;      // blank space at the left AND right of the image
@@ -60,6 +51,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private EditBox amountBox = null;
     @Nullable private ItemStack ghostFilter = ItemStack.EMPTY;
 
+    private static final ResourceLocation SPRITE_FRAME = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
+
     public FactoryControllerScreen(FactoryControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
     }
@@ -77,9 +70,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int imageW = Math.max(MIN_IMAGE_W, scaledW - 2 * SIDE_MARGIN);
         int imageH = Math.max(MIN_IMAGE_H, scaledH - 2 * VERTICAL_MARGIN);
 
-        // setWindowSize sets imageWidth/imageHeight; AbstractContainerScreen.init() then centers
-        // via leftPos = (scaledW - imageWidth) / 2. Centering is automatic, so the offset is 0
-        // (a non-zero offset would shift the window AWAY from center).
         setWindowSize(imageW, imageH);
         setWindowOffset(0, 0);
         super.init();   // sets leftPos / topPos
@@ -144,15 +134,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // ── Render ─────────────────────────────────────────────────────────────
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        int x = leftPos;
-        int y = topPos;
-        // blitSprite tiles the 2×2 sprites to fill any destination size (declared in .mcmeta).
-        gfx.blitSprite(TITLE_BG, x, y, imageWidth, TITLE_BAR_H);
-        gfx.blitSprite(BODY_BG, x, y + TITLE_BAR_H, imageWidth, imageHeight - TITLE_BAR_H);
+    protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        int x0 = leftPos, y0 = topPos;
+        int x1 = leftPos + imageWidth, y1 = topPos + imageHeight;
+        // enable scissor
+
+        // render background
+
+        // render connection & gauge
+
+        // disable scissor
+
+        // render boundary
+
+        graphics.blitSprite(SPRITE_FRAME, x0, y0, imageWidth, imageHeight);
 
         // Inventory backgrounds (texture placeholder — replaced by proper texture later)
-        renderInventoryBackground(gfx);
+        renderInventoryBackground(graphics);
         // Configure overlay rendered in renderForeground so it layers above the board.
     }
 
