@@ -17,7 +17,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
 
     // Synced data (populated server-side, read client-side)
     public final List<VirtualPanelBehaviour> gauges = new ArrayList<>();
-    public final Set<UUID> knownNetworks = new LinkedHashSet<>();
+    public final List<UUID> knownNetworks = new ArrayList<>();
     public final BlockPos controllerPos;
 
     // Server-side: reference to the actual BE
@@ -142,6 +142,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         slot.setByPlayer(stack);
         slot.onTake(player, stack);
         return original;
+    }
+
+    public List<VirtualPanelBehaviour> getComponentsInCanvas(int minX, int minY, int maxX, int maxY) {
+        return gauges; //FIXME stub, calculate via input range only
     }
 
     // ── Data serialization for menu open ──────────────────────────────────

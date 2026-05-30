@@ -1,25 +1,40 @@
+# Create Factory Controller
 
-Installation information
-=======
+A [Create](https://github.com/Creators-of-Create/Create) addon for Minecraft 1.21.1 (NeoForge) that adds a **Factory Controller** block — a virtual panel that lets you place and monitor multiple Create factory gauges on a single block, connected through a logistics network.
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## Features
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+- **Factory Controller block** — a horizontal-directional block that opens a GUI for managing a virtual 2D panel of gauges
+- **Virtual gauge panel** — place any gauge item registered in Deployer's panel registry onto any `(x, y)` slot; each gauge tracks its own logistics network, filter, and amount threshold
+- **Connection graph** — draw directed connections between gauges on the panel, with cycling arrow-bend styles
+- **Live status** — each gauge computes and syncs `satisfied`, `promisedSatisfied`, and `waitingForNetwork` states to the client
+- **Restocker support** — configurable recipe address, output amount, and promise-clearing interval per gauge
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+## Dependencies
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+| Dependency | Version |
+|---|---|
+| Minecraft | 1.21.1 |
+| NeoForge | 21.1.231 |
+| Create | 6.0.11-292 |
+| Deployer | 0.1.2 |
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+## Building
+
+Requires Java 21.
+
+```bash
+./gradlew build
+```
+
+Output jar is placed in `build/libs/`.
+
+To run a dev client:
+
+```bash
+./gradlew runClient
+```
+
+## License
+
+All Rights Reserved

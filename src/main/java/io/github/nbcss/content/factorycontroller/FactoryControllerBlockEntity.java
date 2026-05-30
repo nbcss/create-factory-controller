@@ -36,15 +36,22 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public final Map<VirtualPanelPosition, VirtualPanelBehaviour> gauges = new LinkedHashMap<>();
     public final Set<UUID> knownNetworks = new LinkedHashSet<>();
 
+    // TODO: remove — dummy networks for UI testing
+    private static final UUID DUMMY_NET_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID DUMMY_NET_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID DUMMY_NET_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
+
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
         super(CreateFactoryController.FACTORY_CONTROLLER_BE.get(), pos, state);
         setLazyTickRate(20);
+        knownNetworks.addAll(List.of(DUMMY_NET_1, DUMMY_NET_2, DUMMY_NET_3));
     }
 
     public FactoryControllerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         setLazyTickRate(20);
+        knownNetworks.addAll(List.of(DUMMY_NET_1, DUMMY_NET_2, DUMMY_NET_3));
     }
 
     @Override
@@ -210,6 +217,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         ListTag networkList = tag.getList("KnownNetworks", Tag.TAG_COMPOUND);
         for (int i = 0; i < networkList.size(); i++)
             knownNetworks.add(networkList.getCompound(i).getUUID("Id"));
+
+        // TODO: remove — dummy networks for UI testing
+        knownNetworks.addAll(List.of(DUMMY_NET_1, DUMMY_NET_2, DUMMY_NET_3));
     }
 
     @Override
