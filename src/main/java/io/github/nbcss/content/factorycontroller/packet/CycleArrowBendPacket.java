@@ -1,8 +1,8 @@
-package me.nbcss.github.content.factorycontroller.packet;
+package io.github.nbcss.content.factorycontroller.packet;
 
-import me.nbcss.github.CreateFactoryController;
-import me.nbcss.github.content.factorycontroller.FactoryControllerBlockEntity;
-import me.nbcss.github.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;

@@ -1,8 +1,8 @@
-package me.nbcss.github.content.factorycontroller.packet;
+package io.github.nbcss.content.factorycontroller.packet;
 
-import me.nbcss.github.CreateFactoryController;
-import me.nbcss.github.content.factorycontroller.FactoryControllerBlockEntity;
-import me.nbcss.github.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -11,11 +11,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-public record RemoveConnectionPacket(BlockPos pos, VirtualPanelPosition from, VirtualPanelPosition to)
+public record AddConnectionPacket(BlockPos pos, VirtualPanelPosition from, VirtualPanelPosition to)
     implements CustomPacketPayload {
 
-    public static final Type<RemoveConnectionPacket> TYPE =
-        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "remove_connection"));
+    public static final Type<AddConnectionPacket> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "add_connection"));
 
     private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
         StreamCodec.composite(
@@ -24,22 +24,22 @@ public record RemoveConnectionPacket(BlockPos pos, VirtualPanelPosition from, Vi
             VirtualPanelPosition::new
         );
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, RemoveConnectionPacket> STREAM_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, AddConnectionPacket> STREAM_CODEC =
         StreamCodec.composite(
-            BlockPos.STREAM_CODEC, RemoveConnectionPacket::pos,
-            POS_CODEC, RemoveConnectionPacket::from,
-            POS_CODEC, RemoveConnectionPacket::to,
-            RemoveConnectionPacket::new
+            BlockPos.STREAM_CODEC, AddConnectionPacket::pos,
+            POS_CODEC, AddConnectionPacket::from,
+            POS_CODEC, AddConnectionPacket::to,
+            AddConnectionPacket::new
         );
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
-    public static void handle(RemoveConnectionPacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
+    public static void handle(AddConnectionPacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.removeConnection(packet.from(), packet.to());
+            be.addConnection(packet.from(), packet.to());
         });
     }
 }

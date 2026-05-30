@@ -1,4 +1,4 @@
-package me.nbcss.github.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller;
 
 import net.minecraft.nbt.CompoundTag;
 

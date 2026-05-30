@@ -1,9 +1,12 @@
-package me.nbcss.github;
+package io.github.nbcss;
 
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.AllCreativeModeTabs;
-import me.nbcss.github.content.factorycontroller.*;
-import me.nbcss.github.content.factorycontroller.packet.*;
+import io.github.nbcss.content.factorycontroller.FactoryControllerBlock;
+import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
+import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
+import io.github.nbcss.content.factorycontroller.FactoryControllerScreen;
+import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.Block;

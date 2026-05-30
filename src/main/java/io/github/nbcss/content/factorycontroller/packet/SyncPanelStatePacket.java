@@ -1,9 +1,9 @@
-package me.nbcss.github.content.factorycontroller.packet;
+package io.github.nbcss.content.factorycontroller.packet;
 
-import me.nbcss.github.CreateFactoryController;
-import me.nbcss.github.content.factorycontroller.FactoryControllerMenu;
-import me.nbcss.github.content.factorycontroller.FactoryControllerScreen;
-import me.nbcss.github.content.factorycontroller.VirtualPanelBehaviour;
+import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
+import io.github.nbcss.content.factorycontroller.FactoryControllerScreen;
+import io.github.nbcss.content.factorycontroller.VirtualPanelBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;

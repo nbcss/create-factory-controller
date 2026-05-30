@@ -1,6 +1,6 @@
-package me.nbcss.github.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller;
 
-import me.nbcss.github.CreateFactoryController;
+import io.github.nbcss.CreateFactoryController;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;

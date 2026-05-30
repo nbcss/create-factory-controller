@@ -1,7 +1,8 @@
-package me.nbcss.github.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller;
 
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.foundation.block.IBE;
+import io.github.nbcss.CreateFactoryController;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -59,6 +60,6 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock implement
 
     @Override
     public BlockEntityType<? extends FactoryControllerBlockEntity> getBlockEntityType() {
-        return me.nbcss.github.CreateFactoryController.FACTORY_CONTROLLER_BE.get();
+        return CreateFactoryController.FACTORY_CONTROLLER_BE.get();
     }
 }

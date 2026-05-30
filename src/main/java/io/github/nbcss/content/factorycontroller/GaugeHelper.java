@@ -1,6 +1,6 @@
-package me.nbcss.github.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller;
 
-import me.nbcss.github.content.factorycontroller.compat.DeployerGaugeHelper;
+import io.github.nbcss.content.factorycontroller.compat.DeployerGaugeHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;

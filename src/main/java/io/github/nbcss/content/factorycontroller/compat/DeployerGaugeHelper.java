@@ -1,4 +1,4 @@
-package me.nbcss.github.content.factorycontroller.compat;
+package io.github.nbcss.content.factorycontroller.compat;
 
 import net.liukrast.deployer.lib.registry.DeployerRegistries;
 import net.minecraft.core.registries.BuiltInRegistries;

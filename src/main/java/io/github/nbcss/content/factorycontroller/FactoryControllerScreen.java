@@ -1,8 +1,8 @@
-package me.nbcss.github.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller;
 
 import com.mojang.blaze3d.platform.Window;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import me.nbcss.github.content.factorycontroller.packet.*;
+import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;

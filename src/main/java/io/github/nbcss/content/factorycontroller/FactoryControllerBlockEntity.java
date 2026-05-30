@@ -1,9 +1,10 @@
-package me.nbcss.github.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller;
 
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
-import me.nbcss.github.content.factorycontroller.packet.SyncPanelStatePacket;
+import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -37,7 +38,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
-        super(me.nbcss.github.CreateFactoryController.FACTORY_CONTROLLER_BE.get(), pos, state);
+        super(CreateFactoryController.FACTORY_CONTROLLER_BE.get(), pos, state);
         setLazyTickRate(20);
     }
 

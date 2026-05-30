@@ -1,4 +1,4 @@
-package me.nbcss.github;
+package io.github.nbcss;
 
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
