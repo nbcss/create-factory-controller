@@ -2,9 +2,7 @@ package io.github.nbcss;
 
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.AllCreativeModeTabs;
-import io.github.nbcss.content.factorycontroller.FactoryControllerBlock;
-import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
-import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
+import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
 import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
@@ -18,6 +16,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -70,8 +69,10 @@ public class CreateFactoryController {
         modEventBus.addListener(this::registerPayloads);
         modEventBus.addListener(this::addCreativeTabContents);
 
-        if (FMLEnvironment.dist == Dist.CLIENT)
+        if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
+            modEventBus.addListener(this::registerShaders);
+        }
     }
 
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
@@ -92,5 +93,9 @@ public class CreateFactoryController {
 
     private void registerScreens(RegisterMenuScreensEvent event) {
         event.register(FACTORY_CONTROLLER_MENU.get(), FactoryControllerScreen::new);
+    }
+
+    private void registerShaders(RegisterShadersEvent event) {
+        TiledSpriteRenderer.registerShaders(event);
     }
 }
