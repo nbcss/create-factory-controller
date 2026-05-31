@@ -150,7 +150,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
         // Canvas background
-        graphics.fill(x0, y0, x1, y1, 0xFF999999);
+
+        // Connection arrows — drawn under the components so gauge icons sit on top of line ends.
+        VirtualConnectionRenderer.renderConnections(graphics, menu, centerX, centerY, viewX, viewY, zoomFactor);
 
         // Visible components
         List<VirtualComponentBehaviour> components = menu.getComponentsInCanvas(

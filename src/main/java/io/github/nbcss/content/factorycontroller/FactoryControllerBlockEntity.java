@@ -89,6 +89,16 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         components.put(pos, behaviour);
         carried.shrink(1);
 
+        // TEST: auto-connect the new gauge to any one existing component, so the connection
+        // rendering can be exercised without a wiring UI yet. Flow is new → existing, so the
+        // arrowhead lands on the existing (destination) gauge.
+        for (VirtualPanelPosition existing : components.keySet()) {
+            if (!existing.equals(pos)) {
+                behaviour.addConnection(existing);
+                break;
+            }
+        }
+
         setChanged();
         sendData();
     }
