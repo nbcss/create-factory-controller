@@ -1,6 +1,6 @@
 package io.github.nbcss.content.factorycontroller.gui;
 
-import io.github.nbcss.content.factorycontroller.VirtualPanelBehaviour;
+import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -15,16 +15,16 @@ public class VirtualGaugeWidget extends AbstractWidget {
 
     private static final int CELL = 16;
 
-    private final VirtualPanelBehaviour behaviour;
+    private final VirtualGaugeBehaviour behaviour;
     private boolean gaugeHovered;
     private boolean gaugeSelected;
 
-    public VirtualGaugeWidget(VirtualPanelBehaviour behaviour) {
+    public VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
         super(0, 0, CELL, CELL, Component.empty());
         this.behaviour = behaviour;
     }
 
-    public VirtualPanelBehaviour getBehaviour() {
+    public VirtualGaugeBehaviour getBehaviour() {
         return behaviour;
     }
 
@@ -33,8 +33,8 @@ public class VirtualGaugeWidget extends AbstractWidget {
      * Must be called before {@link #isMouseOver} or {@link #renderOnCanvas}.
      */
     public void applyTransform(int centerX, int centerY, double viewX, double viewY, double zoom) {
-        setX((int)(centerX + (behaviour.position.x() * CELL - viewX) * zoom));
-        setY((int)(centerY + (behaviour.position.y() * CELL - viewY) * zoom));
+        setX((int)(centerX + (behaviour.position().x() * CELL - viewX) * zoom));
+        setY((int)(centerY + (behaviour.position().y() * CELL - viewY) * zoom));
         int sw = (int) Math.ceil(CELL * zoom);
         width  = sw;
         height = sw;
@@ -60,7 +60,7 @@ public class VirtualGaugeWidget extends AbstractWidget {
         int sx = getX(), sy = getY(), sw = width;
 
         // Slot background
-        gfx.fill(sx, sy, sx + sw, sy + sw, 0xFF404040);
+        gfx.fill(sx, sy, sx + sw, sy + sw, 0xFF111111);
 
         // Selection / hover outline
         if (gaugeSelected) {
@@ -69,10 +69,15 @@ public class VirtualGaugeWidget extends AbstractWidget {
             gfx.renderOutline(sx - 1, sy - 1, sw + 2, sw + 2, 0xFFFFFFFF);
         }
 
-        // Gauge item icon (16×16 centered in the cell)
-        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(behaviour.gaugeItemId));
+        // Gauge item icon — base size is 16; scale the pose so it fills the (zoomed) cell.
+        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(behaviour.getItemId()));
         if (!stack.isEmpty()) {
-            gfx.renderItem(stack, sx + (sw - 16) / 2, sy + (sw - 16) / 2);
+            float scale = sw / 16.0f;
+            gfx.pose().pushPose();
+            gfx.pose().translate(sx, sy, 0);
+            gfx.pose().scale(scale, scale, 1);
+            gfx.renderItem(stack, 0, 0);
+            gfx.pose().popPose();
         }
 
         // Status dot (3×3, bottom-right corner)

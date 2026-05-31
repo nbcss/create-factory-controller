@@ -5,29 +5,28 @@ import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
 import com.simibubi.create.content.logistics.packagerLink.RequestPromiseQueue;
 import com.simibubi.create.infrastructure.config.AllConfigs;
+import io.github.nbcss.CreateFactoryController;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.*;
+import java.util.UUID;
 
-public class VirtualPanelBehaviour {
+public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
+
+    /** Component-type discriminator for this kind. */
+    public static final ResourceLocation TYPE_ID =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge");
 
     // Identity
-    public final VirtualPanelPosition position;
-    public final ResourceLocation gaugeItemId;
     public final UUID networkId;
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
     public int amount = 1;
     public boolean upTo = true;
-
-    // Connection graph
-    public Map<VirtualPanelPosition, VirtualPanelConnection> targetedBy = new HashMap<>();
-    public Set<VirtualPanelPosition> targeting = new HashSet<>();
 
     // Computed status (server-side, synced to client)
     public boolean satisfied = false;
@@ -45,22 +44,23 @@ public class VirtualPanelBehaviour {
     public int promiseClearingInterval = -1;
     public RequestPromiseQueue restockerPromises;
 
-    // Back-reference to owner
-    private final FactoryControllerBlockEntity controller;
-
-    public VirtualPanelBehaviour(FactoryControllerBlockEntity controller, VirtualPanelPosition position,
-                                  UUID networkId, ResourceLocation gaugeItemId) {
-        this.controller = controller;
-        this.position = position;
+    public VirtualGaugeBehaviour(FactoryControllerBlockEntity controller, VirtualPanelPosition position,
+                                 UUID networkId, ResourceLocation gaugeItemId) {
+        super(controller, position, gaugeItemId);
         this.networkId = networkId;
-        this.gaugeItemId = gaugeItemId;
         // controller is null on the client (menu snapshot); avoid binding a method ref to null.
         Runnable onChanged = controller == null ? () -> {} : controller::setChanged;
         this.restockerPromises = new RequestPromiseQueue(onChanged);
     }
 
+    @Override
+    public ResourceLocation getTypeId() {
+        return TYPE_ID;
+    }
+
     // ── Tick ───────────────────────────────────────────────────────────────
 
+    @Override
     public void tick() {
         tickStorageMonitor();
         if (timer > 0) timer--;
@@ -130,68 +130,6 @@ public class VirtualPanelBehaviour {
         return Create.LOGISTICS.getUnloadedLinkCount(networkId);
     }
 
-    // ── Connection management ──────────────────────────────────────────────
-
-    public void addConnection(VirtualPanelPosition fromPos) {
-        if (targetedBy.containsKey(fromPos)) return;
-        if (targetedBy.size() >= 9) return;
-
-        VirtualPanelBehaviour source = controller.gauges.get(fromPos);
-        if (source == null) return;
-
-        source.targeting.add(position);
-        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, 1));
-        controller.setChanged();
-        controller.sendData();
-    }
-
-    public void disconnectAll() {
-        for (VirtualPanelConnection conn : targetedBy.values()) {
-            VirtualPanelBehaviour source = controller.gauges.get(conn.from);
-            if (source != null) {
-                source.targeting.remove(position);
-                controller.sendData();
-            }
-        }
-        for (VirtualPanelPosition targetPos : targeting) {
-            VirtualPanelBehaviour target = controller.gauges.get(targetPos);
-            if (target != null) {
-                target.targetedBy.remove(position);
-                controller.sendData();
-            }
-        }
-        targetedBy.clear();
-        targeting.clear();
-    }
-
-    public void removeConnection(VirtualPanelPosition fromPos) {
-        VirtualPanelConnection conn = targetedBy.remove(fromPos);
-        if (conn == null) return;
-        VirtualPanelBehaviour source = controller.gauges.get(fromPos);
-        if (source != null) source.targeting.remove(position);
-        controller.setChanged();
-        controller.sendData();
-    }
-
-    // ── Arrow bend cycling ─────────────────────────────────────────────────
-
-    public void cycleArrowBend() {
-        int sharedMode = -1;
-        for (VirtualPanelPosition targetPos : targeting) {
-            VirtualPanelBehaviour target = controller.gauges.get(targetPos);
-            if (target == null) continue;
-            VirtualPanelConnection conn = target.targetedBy.get(position);
-            if (conn == null) continue;
-            if (sharedMode == -1)
-                sharedMode = (conn.arrowBendMode + 1) % 4;
-            conn.arrowBendMode = sharedMode;
-        }
-        if (sharedMode != -1) {
-            controller.setChanged();
-            controller.sendData();
-        }
-    }
-
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private int getConfigRequestIntervalInTicks() {
@@ -206,10 +144,12 @@ public class VirtualPanelBehaviour {
 
     // ── NBT ────────────────────────────────────────────────────────────────
 
+    @Override
     public CompoundTag toNBT(net.minecraft.core.HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
+        tag.putString("Type", getTypeId().toString());
         tag.put("Pos", position.toNBT());
-        tag.putString("GaugeItem", gaugeItemId.toString());
+        tag.putString("GaugeItem", itemId.toString());
         tag.putUUID("Network", networkId);
 
         tag.put("Filter", filter.saveOptional(registries));
@@ -240,14 +180,14 @@ public class VirtualPanelBehaviour {
         return tag;
     }
 
-    public static VirtualPanelBehaviour fromNBT(FactoryControllerBlockEntity controller,
-                                                  CompoundTag tag,
-                                                  net.minecraft.core.HolderLookup.Provider registries) {
+    public static VirtualGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
+                                                CompoundTag tag,
+                                                net.minecraft.core.HolderLookup.Provider registries) {
         VirtualPanelPosition pos = VirtualPanelPosition.fromNBT(tag.getCompound("Pos"));
         ResourceLocation gaugeItemId = ResourceLocation.parse(tag.getString("GaugeItem"));
         UUID networkId = tag.getUUID("Network");
 
-        VirtualPanelBehaviour b = new VirtualPanelBehaviour(controller, pos, networkId, gaugeItemId);
+        VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItemId);
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         b.amount = tag.getInt("Amount");
         b.upTo = tag.getBoolean("UpTo");

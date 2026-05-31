@@ -1,9 +1,10 @@
 package io.github.nbcss.content.factorycontroller.packet;
 
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.ComponentRegistry;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
-import io.github.nbcss.content.factorycontroller.VirtualPanelBehaviour;
+import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -96,9 +97,11 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
             FactoryControllerMenu menu = screen.getMenu();
             if (!menu.controllerPos.equals(packet.pos())) return;
 
-            menu.gauges.clear();
-            for (CompoundTag tag : packet.gaugeTags())
-                menu.gauges.add(VirtualPanelBehaviour.fromNBT(null, tag, mc.level.registryAccess()));
+            menu.components.clear();
+            for (CompoundTag tag : packet.gaugeTags()) {
+                VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, tag, mc.level.registryAccess());
+                if (b != null) menu.components.add(b);
+            }
             menu.knownNetworks.clear();
             menu.knownNetworks.addAll(packet.networks());
 

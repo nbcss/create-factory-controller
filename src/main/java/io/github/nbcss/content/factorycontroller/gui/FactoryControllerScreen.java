@@ -3,14 +3,19 @@ package io.github.nbcss.content.factorycontroller.gui;
 import com.mojang.blaze3d.platform.Window;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.VirtualPanelBehaviour;
+import io.github.nbcss.content.factorycontroller.ComponentRegistry;
+import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
+import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -94,7 +99,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .pos(expandButtonX(), expandButtonY())
                 .size(EXPAND_BTN_SIZE, EXPAND_BTN_SIZE)
                 .build();
-        addRenderableWidget(expandButton);
+        // Event-only: rendered manually in renderBg at the inventory panel's elevated z.
+        addWidget(expandButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 4;
         int selectorY = topPos + CANVAS_TOP_PADDING + 4;
@@ -121,7 +127,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .pos(expandButtonX(), expandButtonY())
                 .size(EXPAND_BTN_SIZE, EXPAND_BTN_SIZE)
                 .build();
-        addRenderableWidget(expandButton);
+        addWidget(expandButton);
     }
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -146,28 +152,24 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int maxY = (int) Math.ceil(viewY + (y1 - centerY) / zoomFactor);
 
         // Hovered cell
-        if (isInCanvasArea(mouseX, mouseY)) {
-            int hoverX = (int) Math.floor((viewX + (mouseX - centerX) / zoomFactor) / CANVAS_COMPONENT_SIZE);
-            int hoverY = (int) Math.floor((viewY + (mouseY - centerY) / zoomFactor) / CANVAS_COMPONENT_SIZE);
-            hoveredPosition = new VirtualPanelPosition(hoverX, hoverY);
-        } else {
-            hoveredPosition = null;
-        }
+        hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
         // Canvas background
         graphics.fill(x0, y0, x1, y1, 0xFF999999);
 
-        // Visible gauges
-        List<VirtualPanelBehaviour> components = menu.getComponentsInCanvas(
+        // Visible components
+        List<VirtualComponentBehaviour> components = menu.getComponentsInCanvas(
                 Math.floorDiv(minX, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(minY, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE)
         );
-        for (VirtualPanelBehaviour b : components) {
-            VirtualGaugeWidget gauge = new VirtualGaugeWidget(b);
-            boolean hovered  = b.position.equals(hoveredPosition) && findGauge(hoveredPosition) != null;
-            boolean selected = b.position.equals(selectedComponent);
+        for (VirtualComponentBehaviour b : components) {
+            // Only gauges have a canvas widget for now; other component kinds render later.
+            if (!(b instanceof VirtualGaugeBehaviour gaugeBehaviour)) continue;
+            VirtualGaugeWidget gauge = new VirtualGaugeWidget(gaugeBehaviour);
+            boolean hovered  = b.position().equals(hoveredPosition) && findGauge(hoveredPosition) != null;
+            boolean selected = b.position().equals(selectedComponent);
             gauge.renderOnCanvas(graphics, centerX, centerY, viewX, viewY, zoomFactor,
                                  hovered, selected, mouseX, mouseY, partialTick);
         }
@@ -185,7 +187,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
 
+        // Inventory panel + its expand button, lifted above canvas gauge icons (z=150).
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 200);
         renderInventoryBackground(graphics);
+        if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
+        graphics.pose().popPose();
     }
 
     @Override
@@ -202,6 +209,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         renderTooltip(gfx, mouseX, mouseY);
     }
 
+    /** Caller is responsible for any z-translation (see renderBg). */
     private void renderInventoryBackground(GuiGraphics gfx) {
         int texX    = leftPos + invOriginX - INV_TEX_SLOT_LEFT;
         int hotbarY = topPos + invHotbarY;
@@ -230,14 +238,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
-            for (VirtualPanelBehaviour b : menu.gauges) {
-                VirtualGaugeWidget gauge = new VirtualGaugeWidget(b);
-                gauge.applyTransform(centerX, centerY, viewX, viewY, zoomFactor);
-                if (gauge.isMouseOver(mouseX, mouseY)) {
-                    selectedComponent = b.position;
-                    return true;
-                }
+
+            VirtualPanelPosition cell = at(mouseX, mouseY, centerX, centerY);
+
+            // Clicking an existing gauge selects it.
+            if (findGauge(cell) != null) {
+                selectedComponent = cell;
+                return true;
             }
+
+            // Empty cell — attach the carried gauge if valid.
+            ItemStack carried = menu.getCarried();
+            if (ComponentRegistry.containsItem(carried)) {
+                PacketDistributor.sendToServer(new AttachComponentPacket(
+                        menu.controllerPos, cell, networkSelector.getSelectedNetwork()));
+                return true;
+            }
+
             selectedComponent = null;
             return true;
         }
@@ -286,6 +303,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    /** Maps a screen position to the canvas cell it falls into. */
+    private VirtualPanelPosition at(double posX, double posY, int centerX, int centerY) {
+        int cellX = (int) Math.floor((viewX + (posX - centerX) / zoomFactor) / CANVAS_COMPONENT_SIZE);
+        int cellY = (int) Math.floor((viewY + (posY - centerY) / zoomFactor) / CANVAS_COMPONENT_SIZE);
+        return new VirtualPanelPosition(cellX, cellY);
+    }
+
     private boolean isInCanvasArea(double x, double y) {
         int x0 = leftPos + CANVAS_SIDE_PADDING;
         int y0 = topPos + CANVAS_TOP_PADDING;
@@ -316,10 +340,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     @Nullable
-    private VirtualPanelBehaviour findGauge(VirtualPanelPosition pos) {
+    private VirtualComponentBehaviour findGauge(VirtualPanelPosition pos) {
         if (pos == null) return null;
-        for (VirtualPanelBehaviour b : menu.gauges)
-            if (b.position.equals(pos)) return b;
+        for (VirtualComponentBehaviour b : menu.components)
+            if (b.position().equals(pos)) return b;
         return null;
     }
 }

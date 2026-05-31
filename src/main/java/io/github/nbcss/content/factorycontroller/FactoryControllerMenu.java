@@ -9,6 +9,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -16,7 +17,7 @@ import java.util.*;
 public class FactoryControllerMenu extends AbstractContainerMenu {
 
     // Synced data (populated server-side, read client-side)
-    public final List<VirtualPanelBehaviour> gauges = new ArrayList<>();
+    public final List<VirtualComponentBehaviour> components = new ArrayList<>();
     public final List<UUID> knownNetworks = new ArrayList<>();
     public final BlockPos controllerPos;
 
@@ -36,8 +37,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         this.cachedPlayerInventory = playerInventory;
 
         // Snapshot data from BE for client sync
-        this.gauges.addAll(be.gauges.values());
-        this.knownNetworks.addAll(be.knownNetworks);
+        this.components.addAll(be.components.values());
+        this.knownNetworks.addAll(be.networks);
 
         addPlayerInventorySlots(OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -49,11 +50,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         this.controllerPos = buf.readBlockPos();
         this.cachedPlayerInventory = playerInventory;
 
-        int gaugeCount = buf.readVarInt();
-        for (int i = 0; i < gaugeCount; i++) {
+        int componentCount = buf.readVarInt();
+        for (int i = 0; i < componentCount; i++) {
             CompoundTagHelper helper = new CompoundTagHelper(buf);
-            VirtualPanelBehaviour b = VirtualPanelBehaviour.fromNBT(null, helper.tag(), playerInventory.player.level().registryAccess());
-            gauges.add(b);
+            VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, helper.tag(), playerInventory.player.level().registryAccess());
+            if (b != null) components.add(b);
         }
 
         int networkCount = buf.readVarInt();
@@ -98,7 +99,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean stillValid(@NotNull Player player) {
         if (blockEntity == null) return true;
         return blockEntity.getLevel() != null &&
                player.distanceToSqr(blockEntity.getBlockPos().getX() + 0.5,
@@ -107,7 +108,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public ItemStack quickMoveStack(Player player, int index) {
+    public @NotNull ItemStack quickMoveStack(@NotNull Player player, int index) {
         if (invSlotsStart < 0) return ItemStack.EMPTY;
 
         Slot slot = slots.get(index);
@@ -144,8 +145,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         return original;
     }
 
-    public List<VirtualPanelBehaviour> getComponentsInCanvas(int minX, int minY, int maxX, int maxY) {
-        return gauges; //FIXME stub, calculate via input range only
+    public List<VirtualComponentBehaviour> getComponentsInCanvas(int minX, int minY, int maxX, int maxY) {
+        return components; //FIXME stub, calculate via input range only
     }
 
     // ── Data serialization for menu open ──────────────────────────────────
@@ -154,14 +155,14 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     public static void writeExtraData(FactoryControllerBlockEntity be, RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(be.getBlockPos());
 
-        buf.writeVarInt(be.gauges.size());
-        for (VirtualPanelBehaviour b : be.gauges.values()) {
+        buf.writeVarInt(be.components.size());
+        for (VirtualComponentBehaviour b : be.components.values()) {
             net.minecraft.nbt.CompoundTag tag = b.toNBT(be.getLevel().registryAccess());
             writeCompoundTag(buf, tag);
         }
 
-        buf.writeVarInt(be.knownNetworks.size());
-        for (UUID id : be.knownNetworks) {
+        buf.writeVarInt(be.networks.size());
+        for (UUID id : be.networks) {
             buf.writeLong(id.getMostSignificantBits());
             buf.writeLong(id.getLeastSignificantBits());
         }

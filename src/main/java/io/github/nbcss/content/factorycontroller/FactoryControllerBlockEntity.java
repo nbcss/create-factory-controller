@@ -33,25 +33,18 @@ import java.util.*;
 
 public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider {
 
-    public final Map<VirtualPanelPosition, VirtualPanelBehaviour> gauges = new LinkedHashMap<>();
-    public final Set<UUID> knownNetworks = new LinkedHashSet<>();
-
-    // TODO: remove — dummy networks for UI testing
-    private static final UUID DUMMY_NET_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final UUID DUMMY_NET_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
-    private static final UUID DUMMY_NET_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    public final Map<VirtualPanelPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
+    public final Set<UUID> networks = new LinkedHashSet<>();
 
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
         super(CreateFactoryController.FACTORY_CONTROLLER_BE.get(), pos, state);
         setLazyTickRate(20);
-        knownNetworks.addAll(List.of(DUMMY_NET_1, DUMMY_NET_2, DUMMY_NET_3));
     }
 
     public FactoryControllerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         setLazyTickRate(20);
-        knownNetworks.addAll(List.of(DUMMY_NET_1, DUMMY_NET_2, DUMMY_NET_3));
     }
 
     @Override
@@ -61,27 +54,29 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
-        for (VirtualPanelBehaviour gauge : gauges.values())
-            gauge.tick();
+        for (VirtualComponentBehaviour component : components.values())
+            component.tick();
     }
 
     // ── Gauge attach ───────────────────────────────────────────────────────
 
     public void attachComponent(VirtualPanelPosition pos, Player player, @Nullable UUID selectedNetwork) {
         ItemStack carried = player.containerMenu.getCarried();
-        if (!GaugeHelper.isValidGauge(carried)) return;
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(carried.getItem());
 
-        if (gauges.containsKey(pos)) return;
+        if (!ComponentRegistry.contains(itemId)) return;
+
+        if (components.containsKey(pos)) return;
 
         UUID networkId;
         if (LogisticallyLinkedBlockItem.isTuned(carried)) {
             networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
             if (networkId == null) return;
-            knownNetworks.add(networkId);
+            networks.add(networkId);
         } else {
             // Selection is a client-side GUI choice; validate it against networks this
             // controller actually knows (populated by previously attached tuned gauges).
-            if (selectedNetwork == null || !knownNetworks.contains(selectedNetwork)) {
+            if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
                 player.displayClientMessage(
                     Component.translatable("factory_controller.no_network_selected")
                         .withStyle(ChatFormatting.RED), true);
@@ -90,25 +85,24 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             networkId = selectedNetwork;
         }
 
-        ResourceLocation gaugeItemId = GaugeHelper.getGaugeItemId(carried);
-        VirtualPanelBehaviour behaviour = new VirtualPanelBehaviour(this, pos, networkId, gaugeItemId);
-        gauges.put(pos, behaviour);
+        VirtualGaugeBehaviour behaviour = new VirtualGaugeBehaviour(this, pos, networkId, itemId);
+        components.put(pos, behaviour);
         carried.shrink(1);
 
         setChanged();
         sendData();
     }
 
-    // ── Gauge remove ───────────────────────────────────────────────────────
+    // ── Component remove ───────────────────────────────────────────────────────
 
     public void removeComponent(VirtualPanelPosition pos, Player player) {
-        VirtualPanelBehaviour behaviour = gauges.remove(pos);
+        VirtualComponentBehaviour behaviour = components.remove(pos);
         if (behaviour == null) return;
 
         behaviour.disconnectAll();
 
-        // Return an untuned gauge item (no UUID written)
-        ItemStack refund = new ItemStack(BuiltInRegistries.ITEM.get(behaviour.gaugeItemId));
+        // Return a component item
+        ItemStack refund = new ItemStack(BuiltInRegistries.ITEM.get(behaviour.getItemId()));
         if (!player.getInventory().add(refund))
             player.drop(refund, false);
 
@@ -119,10 +113,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     // ── Configure panel ────────────────────────────────────────────────────
 
     public void configureGauge(VirtualPanelPosition pos, ItemStack filter, int amount) {
-        VirtualPanelBehaviour behaviour = gauges.get(pos);
-        if (behaviour == null) return;
-        behaviour.filter = filter.copy();
-        behaviour.amount = Math.max(1, amount);
+        if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
+        gauge.filter = filter.copy();
+        gauge.amount = Math.max(1, amount);
         setChanged();
         sendData();
     }
@@ -130,19 +123,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     // ── Connections ────────────────────────────────────────────────────────
 
     public void addConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
-        if (!gauges.containsKey(from) || !gauges.containsKey(to)) return;
+        if (!components.containsKey(from) || !components.containsKey(to)) return;
         if (from.equals(to)) return;
-        gauges.get(to).addConnection(from);
+        components.get(to).addConnection(from);
     }
 
     public void removeConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
-        VirtualPanelBehaviour target = gauges.get(to);
+        VirtualComponentBehaviour target = components.get(to);
         if (target == null) return;
         target.removeConnection(from);
     }
 
     public void cycleArrowBend(VirtualPanelPosition pos) {
-        VirtualPanelBehaviour behaviour = gauges.get(pos);
+        VirtualComponentBehaviour behaviour = components.get(pos);
         if (behaviour == null) return;
         behaviour.cycleArrowBend();
     }
@@ -159,9 +152,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (level == null || level.isClientSide()) return;
         ServerLevel serverLevel = (ServerLevel) level;
         List<CompoundTag> tags = new ArrayList<>();
-        for (VirtualPanelBehaviour b : gauges.values())
+        for (VirtualComponentBehaviour b : components.values())
             tags.add(b.toNBT(serverLevel.registryAccess()));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, new ArrayList<>(knownNetworks));
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, new ArrayList<>(networks));
         for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
             if (player.containerMenu instanceof FactoryControllerMenu menu
                     && menu.controllerPos.equals(getBlockPos()))
@@ -189,37 +182,34 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         super.write(tag, registries, clientPacket);
 
         ListTag gaugeList = new ListTag();
-        for (VirtualPanelBehaviour b : gauges.values())
+        for (VirtualComponentBehaviour b : components.values())
             gaugeList.add(b.toNBT(registries));
-        tag.put("Gauges", gaugeList);
+        tag.put("Components", gaugeList);
 
         ListTag networkList = new ListTag();
-        for (UUID id : knownNetworks) {
+        for (UUID id : networks) {
             CompoundTag entry = new CompoundTag();
             entry.putUUID("Id", id);
             networkList.add(entry);
         }
-        tag.put("KnownNetworks", networkList);
+        tag.put("Networks", networkList);
     }
 
     @Override
     protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.read(tag, registries, clientPacket);
 
-        gauges.clear();
-        ListTag gaugeList = tag.getList("Gauges", Tag.TAG_COMPOUND);
-        for (int i = 0; i < gaugeList.size(); i++) {
-            VirtualPanelBehaviour b = VirtualPanelBehaviour.fromNBT(this, gaugeList.getCompound(i), registries);
-            gauges.put(b.position, b);
+        components.clear();
+        ListTag componentList = tag.getList("Components", Tag.TAG_COMPOUND);
+        for (int i = 0; i < componentList.size(); i++) {
+            VirtualComponentBehaviour b = ComponentRegistry.fromNBT(this, componentList.getCompound(i), registries);
+            if (b != null) components.put(b.position(), b);
         }
 
-        knownNetworks.clear();
-        ListTag networkList = tag.getList("KnownNetworks", Tag.TAG_COMPOUND);
+        networks.clear();
+        ListTag networkList = tag.getList("Networks", Tag.TAG_COMPOUND);
         for (int i = 0; i < networkList.size(); i++)
-            knownNetworks.add(networkList.getCompound(i).getUUID("Id"));
-
-        // TODO: remove — dummy networks for UI testing
-        knownNetworks.addAll(List.of(DUMMY_NET_1, DUMMY_NET_2, DUMMY_NET_3));
+            networks.add(networkList.getCompound(i).getUUID("Id"));
     }
 
     @Override
