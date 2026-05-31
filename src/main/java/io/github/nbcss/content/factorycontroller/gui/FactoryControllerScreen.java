@@ -51,7 +51,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private Button expandButton = null;
 
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
-    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("create", "textures/block/cardboard_block_side.png");
+    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("create", "textures/block/cardboard_block_top.png");
 
     // player_inventory.png layout (176×108, matching Create's convention)
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
@@ -151,9 +151,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Hovered cell
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
-        // Canvas background
-        TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(16, 16))
-                .render(graphics, x0, y0, x1 - x0, y1 - y0);
+        // Canvas background — one tile per component cell (CANVAS_COMPONENT_SIZE world px).
+        // We render the tiled quad in canvas-world space and let the pose map it to the screen
+        // (translate to centre, scale by zoom, translate by the pan), so the tiles follow zoom and
+        // viewX/Y. The shader tiles by mod(UV0, tileSize) and the pose only transforms geometry,
+        // not UV0, so UV0 stays in world units → one tile = one 16-px cell. The quad is snapped to
+        // cell boundaries so the grid stays locked to the world (not the screen) while panning.
+        int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
+        int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
+        int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+        int bgEndY   = Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+        graphics.pose().pushPose();
+        graphics.pose().translate(centerX, centerY, 0);
+        graphics.pose().scale((float) zoomFactor, (float) zoomFactor, 1);
+        graphics.pose().translate((float) -viewX, (float) -viewY, 0);
+        TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
+                .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
+        graphics.pose().popPose();
 
         // Connection arrows — drawn under the components so gauge icons sit on top of line ends.
         VirtualConnectionRenderer.renderConnections(graphics, menu, centerX, centerY, viewX, viewY, zoomFactor);
