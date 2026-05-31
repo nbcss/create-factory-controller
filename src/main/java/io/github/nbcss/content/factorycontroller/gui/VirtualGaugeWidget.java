@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -17,6 +18,10 @@ import net.neoforged.api.distmarker.OnlyIn;
 public class VirtualGaugeWidget extends AbstractWidget {
 
     private static final int CELL = 16;
+
+    /** Status indicator light, drawn top-right within the cell and tinted by gauge state. */
+    private static final ResourceLocation INDICATOR =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/gauge_indicator");
 
     private final VirtualGaugeBehaviour behaviour;
 
@@ -49,12 +54,14 @@ public class VirtualGaugeWidget extends AbstractWidget {
 
         gfx.blitSprite(behaviour.getTexture().withSuffix("/front"), x0, y0, CELL, CELL);
 
-        // Status dot (3×3, bottom-right corner).
-        int dotColor = behaviour.waitingForNetwork ? 0xFFFFAA00
-                     : behaviour.satisfied         ? 0xFF55FF55
-                     : behaviour.promisedSatisfied ? 0xFFAAAAFF
-                     : 0xFFFF5555;
-        gfx.fill(x0 + CELL - 4, y0 + CELL - 4, x0 + CELL - 1, y0 + CELL - 1, dotColor);
+        // Indicator light — the gauge_indicator sprite, top-right within the cell, tinted by state.
+        int color = behaviour.waitingForNetwork ? 0xFFFFAA00
+                  : behaviour.satisfied         ? 0xFF55FF55
+                  : behaviour.promisedSatisfied ? 0xFFAAAAFF
+                  : 0xFFFF5555;
+        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
+        gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
+        gfx.setColor(1f, 1f, 1f, 1f);
 
         // Selection / hover outline, on top so the highlight is always visible.
         if (selected) {
