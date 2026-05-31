@@ -1,12 +1,9 @@
 package io.github.nbcss.content.factorycontroller.gui;
 
 import com.mojang.blaze3d.platform.Window;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.ComponentRegistry;
-import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
-import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
-import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -25,12 +22,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // Responsive sizing — all in GUI-scaled pixels.
     private static final int SIDE_MARGIN = 160;
-    private static final int VERTICAL_MARGIN = 15;
+    private static final int VERTICAL_MARGIN = 10;
     private static final int MIN_IMAGE_W = 195;      // matches vanilla creative inventory width
     private static final int MIN_IMAGE_H = 200;
-    private static final int CANVAS_SIDE_PADDING = 6;
-    private static final int CANVAS_TOP_PADDING = 18;
-    private static final int CANVAS_BOTTOM_PADDING = 6;
+    private static final int CANVAS_SIDE_PADDING = 9;
+    private static final int CANVAS_TOP_PADDING = 16;
+    private static final int CANVAS_BOTTOM_PADDING = 9;
     private static final int CANVAS_COMPONENT_SIZE = 16;
 
     // Canvas view state
@@ -41,7 +38,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private double zoomFactor = 1.0;
 
     // Inventory panel state — all in menu-relative coords (relative to leftPos/topPos).
-    private static final int INV_BOTTOM_MARGIN = 30;
+    private static final int INV_BOTTOM_MARGIN = 28;
     private static final int HOTBAR_H = 18;
     private static final int MAIN_INV_H = 54;
     private static final int INV_GAP = 4;
@@ -52,7 +49,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private boolean inventoryExpanded = false;
     @Nullable private Button expandButton = null;
 
-    private static final ResourceLocation SPRITE_FRAME = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
+    private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
 
     // player_inventory.png layout (176×108, matching Create's convention)
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
@@ -134,8 +131,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF333333);
-
         int x0 = leftPos + CANVAS_SIDE_PADDING;
         int y0 = topPos + CANVAS_TOP_PADDING;
         int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
@@ -185,6 +180,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         graphics.disableScissor();
 
+        // Frame
+        RenderSystem.enableBlend();
+        TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
+
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
 
         // Inventory panel + its expand button, lifted above canvas gauge icons (z=150).
@@ -198,8 +197,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int titleX = leftPos + (imageWidth - font.width(title)) / 2;
-        int titleY = topPos + 6;
-        graphics.drawString(font, title, titleX, titleY, 0xC8C8C8, false);
+        int titleY = topPos + 4;
+        graphics.drawString(font, title, titleX, titleY, 0x582424, false);
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
 
