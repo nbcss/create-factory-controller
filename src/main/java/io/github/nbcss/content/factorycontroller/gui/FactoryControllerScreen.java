@@ -8,6 +8,7 @@ import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
@@ -50,6 +51,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private Button expandButton = null;
 
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
+    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("create", "textures/block/cardboard_block_side.png");
 
     // player_inventory.png layout (176×108, matching Create's convention)
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
@@ -150,6 +152,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
         // Canvas background
+        TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(16, 16))
+                .render(graphics, x0, y0, x1 - x0, y1 - y0);
 
         // Connection arrows — drawn under the components so gauge icons sit on top of line ends.
         VirtualConnectionRenderer.renderConnections(graphics, menu, centerX, centerY, viewX, viewY, zoomFactor);
@@ -185,6 +189,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Frame
         RenderSystem.enableBlend();
         TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
+        RenderSystem.disableBlend();
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
 

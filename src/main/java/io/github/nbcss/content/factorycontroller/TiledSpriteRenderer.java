@@ -6,7 +6,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.GuiSpriteManager;
 import net.minecraft.client.renderer.ShaderInstance;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -52,17 +51,30 @@ public abstract class TiledSpriteRenderer {
         var sprite = spriteManager.getSprite(spriteLocation);
         var spriteScaling = spriteManager.getSpriteScaling(sprite);
         return switch (spriteScaling.type()) {
-            case TILE -> new TiledSpriteRenderer.Tile(sprite, (GuiSpriteScaling.Tile) spriteScaling);
-            case NINE_SLICE -> new TiledSpriteRenderer.NineSlice(sprite, (GuiSpriteScaling.NineSlice) spriteScaling);
+            case TILE -> new Tile(
+                    sprite.atlasLocation(), sprite.getX(), sprite.getY(), (GuiSpriteScaling.Tile) spriteScaling);
+            case NINE_SLICE -> new NineSlice(
+                    sprite.atlasLocation(), sprite.getX(), sprite.getY(), (GuiSpriteScaling.NineSlice) spriteScaling);
+            default -> throw new UnsupportedOperationException("Only sprites of type tile and nine_slice are supported");
+        };
+    }
+
+    public static TiledSpriteRenderer create(ResourceLocation atlasLocation, int uOffset, int vOffset, GuiSpriteScaling spriteScaling) {
+        return switch (spriteScaling.type()) {
+            case TILE -> new Tile(atlasLocation, uOffset, vOffset, (GuiSpriteScaling.Tile) spriteScaling);
+            case NINE_SLICE -> new NineSlice(atlasLocation, uOffset, vOffset, (GuiSpriteScaling.NineSlice) spriteScaling);
             default -> throw new UnsupportedOperationException("Only sprites of type tile and nine_slice are supported");
         };
     }
 
 
-    protected final TextureAtlasSprite sprite;
+    protected final ResourceLocation atlasLocation;
+    protected final int uOffset, vOffset; // Offset of sprite in the atlas
 
-    protected TiledSpriteRenderer(TextureAtlasSprite sprite) {
-        this.sprite = sprite;
+    protected TiledSpriteRenderer(ResourceLocation atlasLocation, int uOffset, int vOffset) {
+        this.atlasLocation = atlasLocation;
+        this.uOffset = uOffset;
+        this.vOffset = vOffset;
     }
 
     public void render(@NotNull GuiGraphics graphics, int x, int y, int width, int height) {
@@ -96,20 +108,20 @@ public abstract class TiledSpriteRenderer {
 
         protected final GuiSpriteScaling.Tile spriteScaling;
 
-        protected Tile(TextureAtlasSprite sprite, GuiSpriteScaling.Tile spriteScaling) {
-            super(sprite);
+        protected Tile(ResourceLocation atlasLocation, int uOffset, int vOffset, GuiSpriteScaling.Tile spriteScaling) {
+            super(atlasLocation, uOffset, vOffset);
             this.spriteScaling = spriteScaling;
         }
 
         @Override
         public void render(@NotNull GuiGraphics graphics, int x, int y, int blitOffset, int width, int height) {
-            RenderSystem.setShaderTexture(0, sprite.atlasLocation());
+            RenderSystem.setShaderTexture(0, atlasLocation);
             RenderSystem.setShader(TiledSpriteRenderer::getShader);
             Matrix4f pose = graphics.pose().last().pose();
             BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, VERTEX_FORMAT);
             buildQuad(bufferBuilder, pose, blitOffset,
                     x, y, x + width, y + height,
-                    sprite.getX(), sprite.getY(), sprite.getX() + spriteScaling.width(), sprite.getY() + spriteScaling.height());
+                    uOffset, vOffset, uOffset + spriteScaling.width(), vOffset + spriteScaling.height());
             BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());
         }
     }
@@ -118,14 +130,14 @@ public abstract class TiledSpriteRenderer {
 
         protected final GuiSpriteScaling.NineSlice spriteScaling;
 
-        protected NineSlice(TextureAtlasSprite sprite, GuiSpriteScaling.NineSlice spriteScaling) {
-            super(sprite);
+        protected NineSlice(ResourceLocation atlasLocation, int uOffset, int vOffset, GuiSpriteScaling.NineSlice spriteScaling) {
+            super(atlasLocation, uOffset, vOffset);
             this.spriteScaling = spriteScaling;
         }
 
         @Override
         public void render(@NotNull GuiGraphics graphics, int x, int y, int blitOffset, int width, int height) {
-            RenderSystem.setShaderTexture(0, sprite.atlasLocation());
+            RenderSystem.setShaderTexture(0, atlasLocation);
             RenderSystem.setShader(TiledSpriteRenderer::getShader);
             Matrix4f pose = graphics.pose().last().pose();
             BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, VERTEX_FORMAT);
@@ -135,12 +147,12 @@ public abstract class TiledSpriteRenderer {
             int[] xs = {x, x + border.left(), x + width - border.right(), x + width};
             int[] ys = {y, y + border.top(), y + height - border.bottom(), y + height};
             int[] us = {
-                    sprite.getX(), sprite.getX() + border.left(),
-                    sprite.getX() + spriteScaling.width() - border.right(), sprite.getX() + spriteScaling.width()
+                    uOffset, uOffset + border.left(),
+                    uOffset + spriteScaling.width() - border.right(), uOffset + spriteScaling.width()
             };
             int[] vs = {
-                    sprite.getY(), sprite.getY() + border.top(),
-                    sprite.getY() + spriteScaling.height() - border.bottom(), sprite.getY() + spriteScaling.height()
+                    vOffset, vOffset + border.top(),
+                    vOffset + spriteScaling.height() - border.bottom(), vOffset + spriteScaling.height()
             };
 
              for (int i = 0; i < 9; i++) {
