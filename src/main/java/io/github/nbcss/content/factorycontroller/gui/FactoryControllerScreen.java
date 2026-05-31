@@ -90,7 +90,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         super.init();
 
         invHotbarY = scaledH - INV_BOTTOM_MARGIN - HOTBAR_H - topPos;
-        invOriginX = (imageWidth - SLOT_ROW_W) / 2 + 2;
+        invOriginX = (imageWidth - SLOT_ROW_W) / 2 + 1;
         menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
 
         if (expandButton != null) removeWidget(expandButton);
