@@ -20,6 +20,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public static final ResourceLocation TYPE_ID =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge");
 
+    /** GUI-sprite folder holding this gauge's {@code back}/{@code front} body textures. */
+    public static final ResourceLocation TEXTURE =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/factory_gauge");
+
     // Identity
     public final UUID networkId;
 
@@ -56,6 +60,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     @Override
     public ResourceLocation getTypeId() {
         return TYPE_ID;
+    }
+
+    @Override
+    public ResourceLocation getTexture() {
+        return TEXTURE;
     }
 
     // ── Tick ───────────────────────────────────────────────────────────────

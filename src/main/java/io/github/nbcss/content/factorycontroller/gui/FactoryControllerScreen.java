@@ -17,6 +17,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
@@ -151,52 +152,61 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Hovered cell
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
-        // Canvas background — one tile per component cell (CANVAS_COMPONENT_SIZE world px).
-        // We render the tiled quad in canvas-world space and let the pose map it to the screen
-        // (translate to centre, scale by zoom, translate by the pan), so the tiles follow zoom and
-        // viewX/Y. The shader tiles by mod(UV0, tileSize) and the pose only transforms geometry,
-        // not UV0, so UV0 stays in world units → one tile = one 16-px cell. The quad is snapped to
-        // cell boundaries so the grid stays locked to the world (not the screen) while panning.
-        int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
-        int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
-        int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-        int bgEndY   = Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+        // Everything inside the canvas is drawn in canvas-world coordinates under a single pose
+        // that maps world → screen (translate to centre, scale by zoom, translate by the pan). The
+        // pose handles all positioning/scaling, so the render code below works in plain world px.
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, centerY, 0);
         graphics.pose().scale((float) zoomFactor, (float) zoomFactor, 1);
         graphics.pose().translate((float) -viewX, (float) -viewY, 0);
+
+        // Background — one tile per component cell. Snapped to cell boundaries so the grid stays
+        // world-locked while panning (the shader tiles by mod(UV0, tileSize); UV0 is in world px).
+        int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
+        int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
+        int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+        int bgEndY   = Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
         TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
-        graphics.pose().popPose();
 
-        // Connection arrows — drawn under the components so gauge icons sit on top of line ends.
-        VirtualConnectionRenderer.renderConnections(graphics, menu, centerX, centerY, viewX, viewY, zoomFactor);
-
-        // Visible components
+        // Visible components → gauge widgets, rendered in layers so connection arrowheads sit
+        // between each gauge's back and front sprites: gauge backs → connections → gauge fronts.
         List<VirtualComponentBehaviour> components = menu.getComponentsInCanvas(
                 Math.floorDiv(minX, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(minY, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE)
         );
+        List<VirtualGaugeWidget> gauges = new ArrayList<>();
         for (VirtualComponentBehaviour b : components) {
             // Only gauges have a canvas widget for now; other component kinds render later.
-            if (!(b instanceof VirtualGaugeBehaviour gaugeBehaviour)) continue;
-            VirtualGaugeWidget gauge = new VirtualGaugeWidget(gaugeBehaviour);
-            boolean hovered  = b.position().equals(hoveredPosition) && findGauge(hoveredPosition) != null;
-            boolean selected = b.position().equals(selectedComponent);
-            gauge.renderOnCanvas(graphics, centerX, centerY, viewX, viewY, zoomFactor,
-                                 hovered, selected, mouseX, mouseY, partialTick);
+            if (b instanceof VirtualGaugeBehaviour gaugeBehaviour)
+                gauges.add(new VirtualGaugeWidget(gaugeBehaviour));
         }
 
-        // Hovered empty cell highlight
-        if (hoveredPosition != null && findGauge(hoveredPosition) == null) {
-            int hx0 = (int)(centerX + (hoveredPosition.x() * CANVAS_COMPONENT_SIZE - viewX) * zoomFactor);
-            int hy0 = (int)(centerY + (hoveredPosition.y() * CANVAS_COMPONENT_SIZE - viewY) * zoomFactor);
-            int hx1 = (int)(centerX + ((hoveredPosition.x() + 1) * CANVAS_COMPONENT_SIZE - viewX) * zoomFactor);
-            int hy1 = (int)(centerY + ((hoveredPosition.y() + 1) * CANVAS_COMPONENT_SIZE - viewY) * zoomFactor);
-            graphics.fill(hx0, hy0, hx1, hy1, 0x6666CCFF);
+        // Back layer
+        for (VirtualGaugeWidget gauge : gauges)
+            gauge.renderBack(graphics);
+
+        // Connection arrows — above the gauge backs, below the gauge fronts.
+        VirtualConnectionRenderer.renderConnections(graphics, menu);
+
+        // Front layer (with hover/selection highlight)
+        for (VirtualGaugeWidget gauge : gauges) {
+            VirtualPanelPosition pos = gauge.getBehaviour().position();
+            boolean hovered  = pos.equals(hoveredPosition) && findGauge(hoveredPosition) != null;
+            boolean selected = pos.equals(selectedComponent);
+            gauge.renderFront(graphics, hovered, selected);
         }
+
+        // Hovered empty cell highlight (world coords)
+        if (hoveredPosition != null && findGauge(hoveredPosition) == null) {
+            int hx0 = hoveredPosition.x() * CANVAS_COMPONENT_SIZE;
+            int hy0 = hoveredPosition.y() * CANVAS_COMPONENT_SIZE;
+            graphics.fill(hx0, hy0, hx0 + CANVAS_COMPONENT_SIZE, hy0 + CANVAS_COMPONENT_SIZE, 0x6666CCFF);
+        }
+
+        graphics.pose().popPose();
 
         graphics.disableScissor();
 

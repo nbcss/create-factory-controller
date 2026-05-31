@@ -35,6 +35,13 @@ public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
     /** Discriminator used to dispatch NBT deserialization (see {@link ComponentRegistry}). */
     ResourceLocation getTypeId();
 
+    /**
+     * GUI-sprite folder for this component's body. The canvas widget renders {@code {folder}/back}
+     * first and {@code {folder}/front} last (16×16 sprites stretched to the cell), sandwiching any
+     * content between them. Custom gauges return their own folder to supply their own look.
+     */
+    ResourceLocation getTexture();
+
     // ── Lifecycle ───────────────────────────────────────────────────────────
 
     /** Server tick. No-op on the client snapshot. */
