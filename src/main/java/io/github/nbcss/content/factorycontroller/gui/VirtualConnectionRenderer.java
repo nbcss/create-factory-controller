@@ -9,7 +9,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Draws connection arrows between virtual components on the canvas, reusing Create's own
@@ -31,8 +33,10 @@ public final class VirtualConnectionRenderer {
     private static final ResourceLocation TEX =
             ResourceLocation.fromNamespaceAndPath("create", "textures/block/factory_panel_connections.png");
     private static final int TEX_SIZE = 16;
-    /** How far (px, scaled by zoom) the arrowhead tip penetrates into the destination cell. */
-    private static final float TIP_INSET = 0f;
+    /** Connection line width (world px); the sprite line strip is 4px wide. */
+    private static final int THICKNESS = 4;
+    /** Arrowhead length along its pointing axis (world px). */
+    private static final int ARROW_LEN = 2;
 
     // Atlas sub-rects {u, v, w, h}. Create's connection models apply rotation:180 to every face,
     // which we can't replicate with a plain blit — so each strip's raw pixels point OPPOSITE its
@@ -52,10 +56,12 @@ public final class VirtualConnectionRenderer {
      * components are drawn, so the gauge icons sit on top of the line ends.
      */
     public static void renderConnections(GuiGraphics gfx, FactoryControllerMenu menu) {
+        Set<VirtualPanelPosition> occupied = new HashSet<>();
+        for (VirtualComponentBehaviour c : menu.components) occupied.add(c.position());
         for (VirtualComponentBehaviour target : menu.components) {
             VirtualPanelPosition toPos = target.position();
             for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : target.targetedBy().entrySet()) {
-                drawConnection(gfx, e.getKey(), toPos, e.getValue());
+                drawConnection(gfx, e.getKey(), toPos, e.getValue(), occupied);
             }
         }
     }
@@ -63,68 +69,120 @@ public final class VirtualConnectionRenderer {
     /** Draws one grid-following connection. Flow is {@code from → to}; the arrowhead enters {@code to}. */
     private static void drawConnection(GuiGraphics gfx,
                                        VirtualPanelPosition from, VirtualPanelPosition to,
-                                       VirtualPanelConnection conn) {
+                                       VirtualPanelConnection conn,
+                                       Set<VirtualPanelPosition> occupied) {
         if (from.equals(to)) return;
 
-        // World coordinates — the canvas pose maps these to the screen. Destination = arrow end;
-        // source = plain end (the line may start under the source's gauge sprite).
-        float ax = cellCenter(to.x());
-        float ay = cellCenter(to.y());
-        float px = cellCenter(from.x());
-        float py = cellCenter(from.y());
-
-        float half = CELL * 0.5f;
-        int thickness = 4;          // world px (sprite line is 4px wide)
-        int arrowLen = 2;           // world px
-        float inset = TIP_INSET;    // world px the head reaches into the dest cell
-
-        boolean sameCol = from.x() == to.x();
-        boolean sameRow = from.y() == to.y();
-        boolean horizontalFirst = conn.arrowBendMode < 0 || conn.arrowBendMode % 2 == 0;
-
-        // Route from the plain end (source) through a corner into the arrow end (destination). The
-        // final segment runs along one axis into `to`; that axis decides the arrow direction.
-        float cornerX, cornerY;
-        boolean approachVertical;
-        if (sameRow) {
-            cornerX = px; cornerY = ay; approachVertical = false;
-        } else if (sameCol) {
-            cornerX = ax; cornerY = py; approachVertical = true;
-        } else if (horizontalFirst) {     // travel along X first, then vertically into `from`
-            cornerX = ax; cornerY = py; approachVertical = true;
-        } else {                          // travel along Y first, then horizontally into `from`
-            cornerX = px; cornerY = ay; approachVertical = false;
+        // Resolve the bend mode. Auto (-1) mirrors Create: try the four modes in order and use the
+        // first whose path runs through no other component cell; if all are blocked, fall to V→H.
+        int mode;
+        if (conn.arrowBendMode < 0) {
+            mode = 0;
+            for (int m = 0; m < 4; m++) {
+                if (pathClear(buildCellPath(from, to, m), occupied, from, to)) { mode = m; break; }
+            }
+        } else {
+            mode = conn.arrowBendMode % 4;
         }
+
+        int[][] cells = buildCellPath(from, to, mode);
 
         // Tint encodes state; the sprite is grayscale.
         if (conn.success) gfx.setColor(0.27f, 0.87f, 0.33f, 1f);
         else gfx.setColor(0.88f, 0.88f, 0.88f, 1f);
 
-        // Draw the full flat path as continuous line strips, then stamp the arrowhead INSIDE the
-        // destination cell pointing toward its interior. The line stops `inset` px inside the edge
-        // (`base`), and the arrowhead extends a further `arrowLen` into the cell from there — so the
-        // head renders over the destination gauge rather than in the gap before it.
-        if (approachVertical) {
-            boolean destAbove = ay < cornerY;               // dest is above the corner
-            float edge = ay + (destAbove ? half : -half);   // `to` edge the line enters through
-            float base = edge + (destAbove ? -inset : inset);       // line end, just inside the cell
-            float arrowTop = destAbove ? base - arrowLen : base;    // head reaches into the interior
-            hLine(gfx, px, cornerX, cornerY, thickness);    // source → corner (horizontal)
-            vLine(gfx, cornerX, cornerY, base, thickness);  // corner → base (vertical, full path)
-            blit(gfx, destAbove ? ARROW_N : ARROW_S,
-                    Math.round(ax) - thickness / 2, Math.round(arrowTop), thickness, arrowLen);
-        } else {
-            boolean destLeft = ax < cornerX;                // dest is left of the corner
-            float edge = ax + (destLeft ? half : -half);
-            float base = edge + (destLeft ? -inset : inset);
-            float arrowLeft = destLeft ? base - arrowLen : base;
-            vLine(gfx, cornerX, py, cornerY, thickness);    // source → corner (vertical)
-            hLine(gfx, cornerX, base, cornerY, thickness);  // corner → base (horizontal, full path)
-            blit(gfx, destLeft ? ARROW_W : ARROW_E,
-                    Math.round(arrowLeft), Math.round(ay) - thickness / 2, arrowLen, thickness);
-        }
+        // World-pixel waypoints (cell centres). The canvas pose maps them to the screen.
+        float[][] pts = new float[cells.length][2];
+        for (int i = 0; i < cells.length; i++)
+            pts[i] = new float[] { cellCenter(cells[i][0]), cellCenter(cells[i][1]) };
+
+        // All segments except the final approach are plain line strips (corners overlap, no gaps).
+        for (int i = 0; i < pts.length - 2; i++)
+            segment(gfx, pts[i], pts[i + 1]);
+
+        // Final approach into `to`: line to just inside the edge, then the arrowhead inside the cell.
+        float[] corner = pts[pts.length - 2];
+        drawApproach(gfx, corner[0], corner[1], cellCenter(to.x()), cellCenter(to.y()));
 
         gfx.setColor(1f, 1f, 1f, 1f);
+    }
+
+    /**
+     * Grid-following cell waypoints from source to target for a bend mode (Create's order):
+     * <ul><li>0 — V→H (vertical-first L)</li>
+     *     <li>1 — H→V (horizontal-first L)</li>
+     *     <li>2 — H→V→H staircase (falls back to H→V if it can't fit)</li>
+     *     <li>3 — V→H→V staircase (falls back to V→H if it can't fit)</li></ul>
+     * A staircase needs a cell strictly between source and target on its stepping axis ({@code |d|>=2}).
+     */
+    private static int[][] buildCellPath(VirtualPanelPosition from, VirtualPanelPosition to, int mode) {
+        int fx = from.x(), fy = from.y(), tx = to.x(), ty = to.y();
+        if (fx == tx || fy == ty)                                   // aligned → straight run
+            return new int[][] {{fx, fy}, {tx, ty}};
+
+        int dx = tx - fx, dy = ty - fy;
+        switch (mode) {
+            case 1:                                                 // H→V
+                return new int[][] {{fx, fy}, {tx, fy}, {tx, ty}};
+            case 2:                                                 // H→V→H
+                if (Math.abs(dx) >= 2) {
+                    int mx = fx + dx / 2;                           // bend column (a cell centre)
+                    return new int[][] {{fx, fy}, {mx, fy}, {mx, ty}, {tx, ty}};
+                }
+                return new int[][] {{fx, fy}, {tx, fy}, {tx, ty}};  // fall back to H→V
+            case 3:                                                 // V→H→V
+                if (Math.abs(dy) >= 2) {
+                    int my = fy + dy / 2;                           // bend row (a cell centre)
+                    return new int[][] {{fx, fy}, {fx, my}, {tx, my}, {tx, ty}};
+                }
+                return new int[][] {{fx, fy}, {fx, ty}, {tx, ty}};  // fall back to V→H
+            default:                                                // 0: V→H
+                return new int[][] {{fx, fy}, {fx, ty}, {tx, ty}};
+        }
+    }
+
+    /** True if the cell-space polyline passes through no occupied cell other than its endpoints. */
+    private static boolean pathClear(int[][] cells, Set<VirtualPanelPosition> occupied,
+                                     VirtualPanelPosition from, VirtualPanelPosition to) {
+        for (int i = 0; i < cells.length - 1; i++) {
+            int ax = cells[i][0], ay = cells[i][1], bx = cells[i + 1][0], by = cells[i + 1][1];
+            int stepX = Integer.signum(bx - ax), stepY = Integer.signum(by - ay);
+            int cx = ax, cy = ay;
+            while (true) {
+                VirtualPanelPosition p = new VirtualPanelPosition(cx, cy);
+                if (!p.equals(from) && !p.equals(to) && occupied.contains(p)) return false;
+                if (cx == bx && cy == by) break;
+                cx += stepX; cy += stepY;
+            }
+        }
+        return true;
+    }
+
+    /** Draws one axis-aligned segment between two waypoints. */
+    private static void segment(GuiGraphics gfx, float[] a, float[] b) {
+        if (a[1] == b[1]) hLine(gfx, a[0], b[0], a[1], THICKNESS);
+        else              vLine(gfx, a[0], a[1], b[1], THICKNESS);
+    }
+
+    /** Final segment from {@code corner} into the destination {@code (tx,ty)} + the arrowhead. */
+    private static void drawApproach(GuiGraphics gfx, float cornerX, float cornerY, float tx, float ty) {
+        float half = CELL * 0.5f;
+        boolean approachVertical = Math.abs(cornerX - tx) < 0.5f; // x unchanged ⇒ moving vertically
+        if (approachVertical) {
+            boolean destAbove = ty < cornerY;
+            float edge = ty + (destAbove ? half : -half);          // `to` edge the line enters through
+            float arrowTop = destAbove ? edge - ARROW_LEN : edge;
+            vLine(gfx, cornerX, cornerY, edge, THICKNESS);
+            blit(gfx, destAbove ? ARROW_N : ARROW_S,
+                    Math.round(tx) - THICKNESS / 2, Math.round(arrowTop), THICKNESS, ARROW_LEN);
+        } else {
+            boolean destLeft = tx < cornerX;
+            float edge = tx + (destLeft ? half : -half);
+            float arrowLeft = destLeft ? edge - ARROW_LEN : edge;
+            hLine(gfx, cornerX, edge, cornerY, THICKNESS);
+            blit(gfx, destLeft ? ARROW_W : ARROW_E,
+                    Math.round(arrowLeft), Math.round(ty) - THICKNESS / 2, ARROW_LEN, THICKNESS);
+        }
     }
 
     /** Vertical line strip at world-x {@code x}, between world-y {@code y0} and {@code y1}. */

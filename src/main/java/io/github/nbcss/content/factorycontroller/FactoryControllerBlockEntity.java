@@ -87,7 +87,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         VirtualGaugeBehaviour behaviour = new VirtualGaugeBehaviour(this, pos, networkId, itemId);
         components.put(pos, behaviour);
-        carried.shrink(1);
+
+        if (!player.isCreative())
+            carried.shrink(1);
 
         // TEST: auto-connect the new gauge to any one existing component, so the connection
         // rendering can be exercised without a wiring UI yet. Flow is new → existing, so the
@@ -125,7 +127,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void configureGauge(VirtualPanelPosition pos, ItemStack filter, int amount) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         gauge.filter = filter.copy();
-        gauge.amount = Math.max(1, amount);
+        gauge.count = Math.max(0, amount);
         setChanged();
         sendData();
     }

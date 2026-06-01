@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
+import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -366,6 +367,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // R cycles the bend mode of the hovered gauge's outgoing connection paths — mirrors
+        // Create's short-interact: all outgoing connections advance to the same (mode + 1) % 4.
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_R
+                && hoveredPosition != null && findGauge(hoveredPosition) != null) {
+            PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredPosition));
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 

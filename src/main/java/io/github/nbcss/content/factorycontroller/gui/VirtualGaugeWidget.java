@@ -1,5 +1,6 @@
 package io.github.nbcss.content.factorycontroller.gui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -54,14 +55,15 @@ public class VirtualGaugeWidget extends AbstractWidget {
 
         gfx.blitSprite(behaviour.getTexture().withSuffix("/front"), x0, y0, CELL, CELL);
 
-        // Indicator light — the gauge_indicator sprite, top-right within the cell, tinted by state.
-        int color = behaviour.waitingForNetwork ? 0xFFFFAA00
-                  : behaviour.satisfied         ? 0xFF55FF55
-                  : behaviour.promisedSatisfied ? 0xFFAAAAFF
-                  : 0xFFFF5555;
-        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
-        gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
-        gfx.setColor(1f, 1f, 1f, 1f);
+        // Indicator light — only shown once a target count is set (matches Create: an unconfigured
+        // gauge has no bulb). Tinted by the gauge's status color.
+        if (behaviour.count != 0) {
+            RenderSystem.enableBlend();
+            int color = behaviour.getIngredientStatusColor();
+            gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 0.9f);
+            gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
+            gfx.setColor(1f, 1f, 1f, 1f);
+        }
 
         // Selection / hover outline, on top so the highlight is always visible.
         if (selected) {
