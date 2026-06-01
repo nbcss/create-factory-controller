@@ -16,12 +16,23 @@ import org.joml.Matrix4f;
 
 import java.io.IOException;
 
+/**
+ * Renders a sprite in a tiled or nine-sliced manner. Functionally similar to
+ * {@link GuiGraphics#blitSprite(ResourceLocation, int, int, int, int, int) GuiGraphics#blitSprite}
+ * where the sprite's scaling type is {@code tile} or {@code nine_slice}, but tiling is done in the shader instead of
+ * with for loops issuing a draw call for every tile.
+ */
 @OnlyIn(Dist.CLIENT)
 public abstract class TiledSpriteRenderer {
 
     // Define a custom vertex format and shader.
+    // The fragment shader receives:
+    // - uv in pixel coordinates within the sprite bounding box, starts at (0, 0) at top-left and will wrap outside the
+    //   sprite size.
+    // - Bounding box of the sprite in the texture atlas. The most suitable built-in VertexFormatElement are UV1 and
+    //   UV2, making 4 i16's, as integers they are in pixel coordinates.
 
-    static final VertexFormat VERTEX_FORMAT = VertexFormat.builder()
+    protected static final VertexFormat VERTEX_FORMAT = VertexFormat.builder()
             .add("Position", VertexFormatElement.POSITION)
             .add("UV0", VertexFormatElement.UV0)
             .add("UV1", VertexFormatElement.UV1)
@@ -39,14 +50,15 @@ public abstract class TiledSpriteRenderer {
         }
     }
 
-    private static ShaderInstance getShader() {
+    protected static ShaderInstance getShader() {
         return shader;
     }
 
 
-    // Polymorphic factory.
-
-    public static TiledSpriteRenderer create(ResourceLocation spriteLocation) {
+    /**
+     * Create a renderer for a sprite in "textures/gui/sprites" with an mcmeta file.
+     */
+    public static @NotNull TiledSpriteRenderer create(ResourceLocation spriteLocation) {
         GuiSpriteManager spriteManager = Minecraft.getInstance().getGuiSprites();
         var sprite = spriteManager.getSprite(spriteLocation);
         var spriteScaling = spriteManager.getSpriteScaling(sprite);
@@ -59,7 +71,12 @@ public abstract class TiledSpriteRenderer {
         };
     }
 
-    public static TiledSpriteRenderer create(ResourceLocation atlasLocation, int uOffset, int vOffset, GuiSpriteScaling spriteScaling) {
+    /**
+     * Create a renderer for any texture, provided with offsets and sprite scaling definition.
+     * @param uOffset Staring u position of the sprite in pixels.
+     * @param vOffset Staring v position of the sprite in pixels.
+     */
+    public static @NotNull TiledSpriteRenderer create(ResourceLocation atlasLocation, int uOffset, int vOffset, GuiSpriteScaling spriteScaling) {
         return switch (spriteScaling.type()) {
             case TILE -> new Tile(atlasLocation, uOffset, vOffset, (GuiSpriteScaling.Tile) spriteScaling);
             case NINE_SLICE -> new NineSlice(atlasLocation, uOffset, vOffset, (GuiSpriteScaling.NineSlice) spriteScaling);
@@ -104,6 +121,9 @@ public abstract class TiledSpriteRenderer {
     }
 
 
+    /**
+     * Renders the sprite tiled.
+     */
     public static class Tile extends TiledSpriteRenderer {
 
         protected final GuiSpriteScaling.Tile spriteScaling;
@@ -126,6 +146,9 @@ public abstract class TiledSpriteRenderer {
         }
     }
 
+    /**
+     * Renders the sprite in a nine-sliced manner.
+     */
     public static class NineSlice extends TiledSpriteRenderer {
 
         protected final GuiSpriteScaling.NineSlice spriteScaling;
@@ -144,6 +167,17 @@ public abstract class TiledSpriteRenderer {
 
             var border = spriteScaling.border();
 
+            //            x,u
+            //       0   1   2   3
+            //    0  -------------
+            //       | 0 | 1 | 2 |
+            // y  1  |---|---|---|
+            // ,     | 3 | 4 | 5 |
+            // v  2  |---|---|---|
+            //       | 6 | 7 | 8 |
+            //    3  -------------
+
+            // Slice the sprite with 4x4 vertices.
             int[] xs = {x, x + border.left(), x + width - border.right(), x + width};
             int[] ys = {y, y + border.top(), y + height - border.bottom(), y + height};
             int[] us = {
@@ -155,6 +189,7 @@ public abstract class TiledSpriteRenderer {
                     vOffset + spriteScaling.height() - border.bottom(), vOffset + spriteScaling.height()
             };
 
+            // Build the 9 quads.
              for (int i = 0; i < 9; i++) {
                  buildQuad(bufferBuilder, pose, blitOffset,
                          xs[i % 3], ys[i / 3], xs[i % 3 + 1], ys[i / 3 + 1],
