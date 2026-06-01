@@ -55,6 +55,14 @@ public class VirtualGaugeWidget extends AbstractWidget {
 
         gfx.blitSprite(behaviour.getTexture().withSuffix("/front"), x0, y0, CELL, CELL);
 
+        if (!behaviour.filter.isEmpty()) {
+            gfx.pose().pushPose();
+            gfx.pose().translate(x0 + 4.0, y0 + 4.0, 0);   // 4-px inset centres the half-size icon
+            gfx.pose().scale(0.5f, 0.5f, 0.5f);            // uniform so item lighting stays correct
+            gfx.renderItem(behaviour.filter, 0, 0);
+            gfx.pose().popPose();
+        }
+
         // Indicator light — only shown once a target count is set (matches Create: an unconfigured
         // gauge has no bulb). Tinted by the gauge's status color.
         if (behaviour.count != 0) {

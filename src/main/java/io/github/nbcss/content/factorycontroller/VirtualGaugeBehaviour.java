@@ -312,6 +312,34 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return tag;
     }
 
+    @Override
+    public CompoundTag toClientNBT(net.minecraft.core.HolderLookup.Provider registries) {
+        // Only what the canvas needs: identity/texture, filter (icon + set-item check), status
+        // (indicator colour + gating), the address (status `isMissingAddress`), and incoming
+        // connections (arrow rendering). Server-only tick state and detailed recipe config are
+        // omitted — those are pulled on demand when a config overlay opens.
+        CompoundTag tag = new CompoundTag();
+        tag.putString("Type", getTypeId().toString());
+        tag.put("Pos", position.toNBT());
+        tag.putString("GaugeItem", itemId.toString());
+        tag.putUUID("Network", networkId);
+
+        tag.put("Filter", filter.saveOptional(registries));
+        tag.putInt("Count", count);
+
+        tag.putBoolean("Satisfied", satisfied);
+        tag.putBoolean("PromisedSatisfied", promisedSatisfied);
+        tag.putBoolean("Waiting", waitingForNetwork);
+        tag.putString("RecipeAddress", recipeAddress);
+
+        ListTag targetedByList = new ListTag();
+        for (VirtualPanelConnection conn : targetedBy.values())
+            targetedByList.add(conn.toNBT());
+        tag.put("TargetedBy", targetedByList);
+
+        return tag;
+    }
+
     public static VirtualGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                 CompoundTag tag,
                                                 net.minecraft.core.HolderLookup.Provider registries) {

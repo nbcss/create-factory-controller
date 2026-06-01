@@ -70,4 +70,13 @@ public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
     // ── Persistence ─────────────────────────────────────────────────────────
 
     CompoundTag toNBT(HolderLookup.Provider registries);
+
+    /**
+     * Serialization for client sync — only the fields the canvas needs (position, item/texture,
+     * status, connections). Defaults to the full {@link #toNBT}; components trim it to keep the
+     * broadcast small. Detailed config (recipe counts, addresses, …) is pulled on demand instead.
+     */
+    default CompoundTag toClientNBT(HolderLookup.Provider registries) {
+        return toNBT(registries);
+    }
 }

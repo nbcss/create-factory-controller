@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-public record ConfigureGaugePacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter, int amount)
+public record ConfigureGaugePacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter, int count)
     implements CustomPacketPayload {
 
     public static final Type<ConfigureGaugePacket> TYPE =
@@ -30,7 +30,7 @@ public record ConfigureGaugePacket(BlockPos pos, VirtualPanelPosition panelPos, 
             BlockPos.STREAM_CODEC, ConfigureGaugePacket::pos,
             POS_CODEC, ConfigureGaugePacket::panelPos,
             ItemStack.OPTIONAL_STREAM_CODEC, ConfigureGaugePacket::filter,
-            ByteBufCodecs.INT, ConfigureGaugePacket::amount,
+            ByteBufCodecs.INT, ConfigureGaugePacket::count,
             ConfigureGaugePacket::new
         );
 
@@ -41,7 +41,7 @@ public record ConfigureGaugePacket(BlockPos pos, VirtualPanelPosition panelPos, 
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.configureGauge(packet.panelPos(), packet.filter(), packet.amount());
+            be.configureGauge(packet.panelPos(), packet.filter(), packet.count());
         });
     }
 }

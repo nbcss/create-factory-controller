@@ -44,6 +44,10 @@ repositories {
         name = "Deployer Maven"
         url = "https://maven.liukrast.net"
     }
+    maven {
+        name = "BlameJared (JEI)"
+        url = "https://maven.blamejared.com"
+    }
 }
 
 base {
@@ -148,6 +152,10 @@ dependencies {
     // Ponder, Flywheel) already come from the explicit Create dependency above.
     compileOnly("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
     localRuntime("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
+
+    // JEI (optional): compile against the API only; run the full mod in dev for testing.
+    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
+    localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

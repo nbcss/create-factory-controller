@@ -165,7 +165,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         ServerLevel serverLevel = (ServerLevel) level;
         List<CompoundTag> tags = new ArrayList<>();
         for (VirtualComponentBehaviour b : components.values())
-            tags.add(b.toNBT(serverLevel.registryAccess()));
+            tags.add(b.toClientNBT(serverLevel.registryAccess()));
         SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, new ArrayList<>(networks));
         for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
             if (player.containerMenu instanceof FactoryControllerMenu menu

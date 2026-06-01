@@ -3,6 +3,8 @@ package io.github.nbcss.content.factorycontroller;
 import io.github.nbcss.CreateFactoryController;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -40,7 +42,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         this.components.addAll(be.components.values());
         this.knownNetworks.addAll(be.networks);
 
-        addPlayerInventorySlots(OFF_SCREEN, OFF_SCREEN, false);
+        addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
     }
 
     /** Client-side constructor (called via IMenuTypeExtension). */
@@ -61,14 +63,20 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         for (int i = 0; i < networkCount; i++)
             knownNetworks.add(new UUID(buf.readLong(), buf.readLong()));
 
-        addPlayerInventorySlots(OFF_SCREEN, OFF_SCREEN, false);
+        addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
     }
 
-    // First inventory slot index within this.slots (gauge slots come before player inv).
-    // Set once in addPlayerInventorySlots, used by repositionSlots to find and remove them.
+    private int extraSlotsStart = -1;
     private int invSlotsStart = -1;
+    private int ghostSlotIndex = -1;
+    /** Client-side 1-slot holder behind the ghost filter slot (UI only; committed via a packet). */
+    public final SimpleContainer ghostInventory = new SimpleContainer(1);
 
-    private void addPlayerInventorySlots(int originX, int hotbarY, boolean expanded) {
+    private void addExtraSlots(int ghostX, int ghostY, int originX, int hotbarY, boolean expanded) {
+        extraSlotsStart = slots.size();
+        ghostSlotIndex = slots.size();
+        addSlot(new GhostSlot(ghostInventory, 0, ghostX, ghostY));
+
         invSlotsStart = slots.size();
         // Main inventory (3 rows × 9): off-screen when collapsed, above hotbar when expanded.
         for (int row = 0; row < 3; row++) {
@@ -83,19 +91,37 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             addSlot(new Slot(cachedPlayerInventory, col, originX + col * 18, hotbarY));
     }
 
-    /**
-     * Rebuilds inventory slots at new positions.
-     * Must be called client-side only (Slot.x/y are final; rebuild is the only option).
-     *
-     * @param originX  left edge of the 9-slot grid, menu-relative (relative to leftPos)
-     * @param hotbarY  top edge of the hotbar row, menu-relative (relative to topPos)
-     * @param expanded whether the 3×9 main inventory rows are shown above the hotbar
-     */
+    /** Rebuilds the ghost + inventory slots at new positions (client-side only). */
+    public void rebuildSlots(int ghostX, int ghostY, int originX, int hotbarY, boolean expanded) {
+        if (extraSlotsStart >= 0)
+            slots.subList(extraSlotsStart, slots.size()).clear();
+        addExtraSlots(ghostX, ghostY, originX, hotbarY, expanded);
+    }
+
+    /** Controller view: reposition the player inventory, keeping the ghost slot off-screen. */
     public void repositionSlots(int originX, int hotbarY, boolean expanded) {
-        // Remove the 36 player inventory slots that were added last.
-        if (invSlotsStart >= 0)
-            slots.subList(invSlotsStart, slots.size()).clear();
-        addPlayerInventorySlots(originX, hotbarY, expanded);
+        rebuildSlots(OFF_SCREEN, OFF_SCREEN, originX, hotbarY, expanded);
+    }
+
+    /** Set-item view: show the ghost slot at the given position alongside the inventory. */
+    public void showGhostSlot(int ghostX, int ghostY, int originX, int hotbarY) {
+        rebuildSlots(ghostX, ghostY, originX, hotbarY, true);
+    }
+
+    public int ghostSlotIndex() { return ghostSlotIndex; }
+    public ItemStack getGhostFilter() { return ghostInventory.getItem(0); }
+
+    /** Sets the ghost filter to a single-count copy of {@code stack} (empty clears it). */
+    public void setGhostFilter(ItemStack stack) {
+        ghostInventory.setItem(0, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+    }
+
+    /** Display-only filter slot — vanilla renders it (icon + hover highlight); the screen sets it. */
+    private static class GhostSlot extends Slot {
+        GhostSlot(Container container, int index, int x, int y) { super(container, index, x, y); }
+        @Override public boolean mayPlace(@NotNull ItemStack stack) { return false; }
+        @Override public boolean mayPickup(@NotNull Player player) { return false; }
+        @Override public int getMaxStackSize() { return 1; }
     }
 
     @Override
@@ -110,6 +136,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     @Override
     public @NotNull ItemStack quickMoveStack(@NotNull Player player, int index) {
         if (invSlotsStart < 0) return ItemStack.EMPTY;
+        if (index == ghostSlotIndex) return ItemStack.EMPTY;   // never shift-move the ghost slot
 
         Slot slot = slots.get(index);
         if (!slot.hasItem()) return ItemStack.EMPTY;
@@ -157,7 +184,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
 
         buf.writeVarInt(be.components.size());
         for (VirtualComponentBehaviour b : be.components.values()) {
-            net.minecraft.nbt.CompoundTag tag = b.toNBT(be.getLevel().registryAccess());
+            net.minecraft.nbt.CompoundTag tag = b.toClientNBT(be.getLevel().registryAccess());
             writeCompoundTag(buf, tag);
         }
 

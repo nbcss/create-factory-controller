@@ -28,9 +28,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int VERTICAL_MARGIN = 10;
     private static final int MIN_IMAGE_W = 195;      // matches vanilla creative inventory width
     private static final int MIN_IMAGE_H = 200;
-    private static final int CANVAS_SIDE_PADDING = 9;
-    private static final int CANVAS_TOP_PADDING = 16;
-    private static final int CANVAS_BOTTOM_PADDING = 9;
+    static final int CANVAS_SIDE_PADDING = 9;     // package-visible: used by SetItemOverlay layout
+    static final int CANVAS_TOP_PADDING = 16;
+    static final int CANVAS_BOTTOM_PADDING = 9;
     private static final int CANVAS_COMPONENT_SIZE = 16;
 
     // Canvas view state
@@ -135,6 +135,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        renderBoard(graphics, mouseX, mouseY, partialTick, false);
+
+        // Inventory panel + its expand button, lifted above canvas gauge icons.
+        RenderSystem.disableDepthTest();
+        renderInventoryBackground(graphics);
+        if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
+        RenderSystem.enableDepthTest();
+    }
+
+    /**
+     * Renders the board itself — tiled background, gauges, connection arrows, frame and the network
+     * selector — but <b>not</b> the player inventory. Exposed so {@link SetItemScreen} can draw the
+     * live board as its (dimmed) backdrop. Pass {@code mouseX/Y = -1} to suppress hover.
+     */
+    public void renderBoard(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick, boolean inOverlay) {
         int x0 = leftPos + CANVAS_SIDE_PADDING;
         int y0 = topPos + CANVAS_TOP_PADDING;
         int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
@@ -150,19 +165,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int maxX = (int) Math.ceil(viewX + (x1 - centerX) / zoomFactor);
         int maxY = (int) Math.ceil(viewY + (y1 - centerY) / zoomFactor);
 
-        // Hovered cell
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
-        // Everything inside the canvas is drawn in canvas-world coordinates under a single pose
-        // that maps world → screen (translate to centre, scale by zoom, translate by the pan). The
-        // pose handles all positioning/scaling, so the render code below works in plain world px.
+        // Canvas-world → screen pose (translate to centre, scale by zoom, translate by the pan).
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, centerY, 0);
-        graphics.pose().scale((float) zoomFactor, (float) zoomFactor, 1);
+        graphics.pose().scale((float) zoomFactor, (float) zoomFactor, (float) zoomFactor);
         graphics.pose().translate((float) -viewX, (float) -viewY, 0);
 
-        // Background — one tile per component cell. Snapped to cell boundaries so the grid stays
-        // world-locked while panning (the shader tiles by mod(UV0, tileSize); UV0 is in world px).
+        // Background — one tile per component cell, snapped to cell boundaries (world-locked).
         int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
         int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
         int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
@@ -170,8 +181,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
-        // Visible components → gauge widgets, rendered in layers so connection arrowheads sit
-        // between each gauge's back and front sprites: gauge backs → connections → gauge fronts.
         List<VirtualComponentBehaviour> components = menu.getComponentsInCanvas(
                 Math.floorDiv(minX, CANVAS_COMPONENT_SIZE),
                 Math.floorDiv(minY, CANVAS_COMPONENT_SIZE),
@@ -179,20 +188,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE)
         );
         List<VirtualGaugeWidget> gauges = new ArrayList<>();
-        for (VirtualComponentBehaviour b : components) {
-            // Only gauges have a canvas widget for now; other component kinds render later.
+        for (VirtualComponentBehaviour b : components)
             if (b instanceof VirtualGaugeBehaviour gaugeBehaviour)
                 gauges.add(new VirtualGaugeWidget(gaugeBehaviour));
-        }
 
-        // Back layer
         for (VirtualGaugeWidget gauge : gauges)
             gauge.renderBack(graphics);
 
-        // Connection arrows — above the gauge backs, below the gauge fronts.
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
-        // Front layer (with hover/selection highlight)
         for (VirtualGaugeWidget gauge : gauges) {
             VirtualPanelPosition pos = gauge.getBehaviour().position();
             boolean hovered  = pos.equals(hoveredPosition) && findGauge(hoveredPosition) != null;
@@ -200,7 +204,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             gauge.renderFront(graphics, hovered, selected);
         }
 
-        // Hovered empty cell highlight (world coords)
         if (hoveredPosition != null && findGauge(hoveredPosition) == null) {
             int hx0 = hoveredPosition.x() * CANVAS_COMPONENT_SIZE;
             int hy0 = hoveredPosition.y() * CANVAS_COMPONENT_SIZE;
@@ -208,7 +211,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         graphics.pose().popPose();
-
         graphics.disableScissor();
 
         // Frame
@@ -216,28 +218,30 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
         RenderSystem.disableBlend();
 
-        networkSelector.render(graphics, mouseX, mouseY, partialTick);
-
-        // Inventory panel + its expand button, lifted above canvas gauge icons (z=150).
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 200);
-        renderInventoryBackground(graphics);
-        if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
-        graphics.pose().popPose();
-    }
-
-    @Override
-    protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        // Title
         int titleX = leftPos + (imageWidth - font.width(title)) / 2;
         int titleY = topPos + 4;
         graphics.drawString(font, title, titleX, titleY, 0x582424, false);
-        super.renderForeground(graphics, mouseX, mouseY, partialTicks);
+
+        // Reset depth for gauge filter icons
+        graphics.flush();
+        RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
+
+        networkSelector.render(graphics, mouseX, mouseY, partialTick);
+
+        // Reset depth for network icons
+        graphics.flush();
+        RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
+
+        if (inOverlay) {
+            graphics.fill(x0, y0, x1, y1, 0xB0101010);
+        }
     }
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
+        //renderTooltip(gfx, mouseX, mouseY);
     }
 
     /** Caller is responsible for any z-translation (see renderBg). */
@@ -262,36 +266,44 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && isInCanvasArea(mouseX, mouseY)) {
+        if (isInCanvasArea(mouseX, mouseY)) {
             int x0 = leftPos + CANVAS_SIDE_PADDING;
             int y0 = topPos + CANVAS_TOP_PADDING;
             int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
             int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
-
             VirtualPanelPosition cell = at(mouseX, mouseY, centerX, centerY);
 
-            // Clicking an existing gauge selects it.
-            if (findGauge(cell) != null) {
-                selectedComponent = cell;
+            if (button == 0) {
+                // Clicking an existing gauge selects it.
+                if (findGauge(cell) != null) {
+                    selectedComponent = cell;
+                    return true;
+                }
+                // Empty cell — attach the carried gauge if valid.
+                ItemStack carried = menu.getCarried();
+                if (ComponentRegistry.containsItem(carried)) {
+                    PacketDistributor.sendToServer(new AttachComponentPacket(
+                            menu.controllerPos, cell, networkSelector.getSelectedNetwork()));
+                    return true;
+                }
+                selectedComponent = null;
                 return true;
             }
-
-            // Empty cell — attach the carried gauge if valid.
-            ItemStack carried = menu.getCarried();
-            if (ComponentRegistry.containsItem(carried)) {
-                PacketDistributor.sendToServer(new AttachComponentPacket(
-                        menu.controllerPos, cell, networkSelector.getSelectedNetwork()));
+            if (button == 1) {
+                // Right-click a filter-less gauge with an empty cursor → open the set-item overlay.
+                if (menu.getCarried().isEmpty()
+                        && findGauge(cell) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty()) {
+                    openSetItem(cell);
+                    return true;
+                }
                 return true;
             }
-
-            selectedComponent = null;
-            return true;
-        }
-        if (button == 2 && isInCanvasArea(mouseX, mouseY)) {
-            isDragging = true;
-            return true;
+            if (button == 2) {
+                isDragging = true;
+                return true;
+            }
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
@@ -365,10 +377,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             selectedComponent = null;
     }
 
+    /** Opens the set-item configuration as its own screen, sharing this menu (no container swap). */
+    private void openSetItem(VirtualPanelPosition pos) {
+        Minecraft.getInstance().setScreen(new SetItemScreen(this, pos));
+    }
+
+    // GUI rectangle, exposed so SetItemScreen can match it (keeps JEI's layout consistent).
+    int guiWidth()  { return imageWidth; }
+    int guiHeight() { return imageHeight; }
+
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // R cycles the bend mode of the hovered gauge's outgoing connection paths — mirrors
-        // Create's short-interact: all outgoing connections advance to the same (mode + 1) % 4.
+        // R on a hovered gauge cycles its outgoing connection bend mode (mirrors Create's wrench).
         if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_R
                 && hoveredPosition != null && findGauge(hoveredPosition) != null) {
             PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredPosition));
