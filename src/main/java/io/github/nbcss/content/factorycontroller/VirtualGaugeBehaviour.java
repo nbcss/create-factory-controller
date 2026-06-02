@@ -46,6 +46,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     /** Target threshold (Create's {@code count}); 0 means the gauge is inactive. */
     public int count = 0;
     public boolean upTo = true;
+    /** Current network stock of {@link #filter} — server-computed, synced for the threshold display. */
+    public int stockLevel = 0;
+    /** Open promised amount of {@link #filter} — server-computed, synced for the promise box. */
+    public int promisedCount = 0;
+    /** Mechanical-crafting arrangement (9 slots) when crafting mode is active; empty otherwise. */
+    public List<ItemStack> activeCraftingArrangement = new ArrayList<>();
 
     // Computed status (server-side, synced to client)
     public boolean satisfied = false;
@@ -125,6 +131,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             satisfied = true;
             promisedSatisfied = true;
             waitingForNetwork = false;
+            stockLevel = 0;
             return;
         }
 
@@ -134,7 +141,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             LogisticsManager.SUMMARIES.invalidate(networkId);
 
         int inStorage = getLevelInStorage();
+        stockLevel = inStorage;
         int promised = getPromised();
+        promisedCount = promised;
         int demand = count * (upTo ? 1 : filter.getMaxStackSize());
 
         boolean shouldSatisfy = inStorage >= demand;
@@ -309,7 +318,28 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             targetingList.add(pos.toNBT());
         tag.put("Targeting", targetingList);
 
+        tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
+
         return tag;
+    }
+
+    private static ListTag writeStacks(List<ItemStack> stacks, net.minecraft.core.HolderLookup.Provider registries) {
+        ListTag list = new ListTag();
+        for (ItemStack s : stacks)
+            list.add(s.saveOptional(registries));
+        return list;
+    }
+
+    private static List<ItemStack> readStacks(ListTag list, net.minecraft.core.HolderLookup.Provider registries) {
+        List<ItemStack> stacks = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++)
+            stacks.add(ItemStack.parseOptional(registries, list.getCompound(i)));
+        return stacks;
+    }
+
+    /** Server-side: flag promises for this gauge's item to be cleared on the next tick. */
+    public void requestClearPromises() {
+        forceClearPromises = true;
     }
 
     @Override
@@ -326,6 +356,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
+        tag.putBoolean("UpTo", upTo);
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -335,6 +366,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // current values without a separate on-demand fetch.
         tag.putInt("RecipeOutput", recipeOutput);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
+        tag.putInt("Stock", stockLevel);
+        tag.putInt("Promised", promisedCount);
+        tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
 
         ListTag targetedByList = new ListTag();
         for (VirtualPanelConnection conn : targetedBy.values())
@@ -355,6 +389,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         b.count = tag.getInt("Count");
         b.upTo = tag.getBoolean("UpTo");
+        b.stockLevel = tag.getInt("Stock");
+        b.promisedCount = tag.getInt("Promised");
+        b.activeCraftingArrangement = readStacks(tag.getList("CraftingArrangement", Tag.TAG_COMPOUND), registries);
 
         b.satisfied = tag.getBoolean("Satisfied");
         b.promisedSatisfied = tag.getBoolean("PromisedSatisfied");

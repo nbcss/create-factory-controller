@@ -2,6 +2,11 @@ package io.github.nbcss.content.factorycontroller.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllRecipeTypes;
+import com.simibubi.create.content.logistics.BigItemStack;
+import com.simibubi.create.content.logistics.box.PackageStyles;
+import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelScreen;
+import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
@@ -16,13 +21,20 @@ import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.packet.ConfigureRecipePacket;
 import io.github.nbcss.content.factorycontroller.packet.RemoveConnectionPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -30,15 +42,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Recipe-configuration overlay for a virtual gauge — a replica of Create's {@code FactoryPanelScreen}
- * in recipe mode (the virtual board only ever has recipe-mode gauges). Like {@link SetItemScreen} it
- * is a separate screen that <b>shares the controller's {@link FactoryControllerMenu}</b> and draws the
- * live board as a dimmed backdrop. It edits, for the gauge: the produced output count, each incoming
- * connection's ingredient amount, the recipe (packager) address, and the promise-clearing interval;
- * confirm saves, trash resets. Backed by the provided {@code factory_gauge.png} panel texture.
+ * (recipe mode): threshold row (filter+stock / count / Item-Stack) like {@code ThresholdSwitchScreen},
+ * an open-promise package box, and mechanical-crafting recipe detection. Shares the controller's
+ * {@link FactoryControllerMenu} and draws the live board as a dimmed backdrop.
  */
 @OnlyIn(Dist.CLIENT)
 public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
@@ -47,57 +60,82 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/factory_gauge.png");
     private static final int PANEL_W = 200, PANEL_H = 184;
 
+    // Stock-keeper number font (create:textures/gui/stock_keeper.png, NUMBERS region 48,176 5x8).
+    private static final ResourceLocation NUMBERS_TEX =
+        ResourceLocation.fromNamespaceAndPath("create", "textures/gui/stock_keeper.png");
+    private static final int NUM_SX = 48, NUM_SY = 176, NUM_W = 5, NUM_H = 8;
+
+    // Threshold-row geometry (filter slot x24-40, count box x48-112, unit box x118-167, band y≈128-144).
+    private static final int THRESH_TOP = 128;
+    private static final int FILTER_X = 25;
+    private static final int COUNT_X = 51, COUNT_W = 64;
+    private static final int UNIT_X = 118, UNIT_W = 49;
+    private static final int THRESH_H = 18;
+
     private final FactoryControllerScreen controller;
     private final VirtualPanelPosition gaugePos;
 
-    // Panel top-left, centred in the GUI rect (same approach as SetItemScreen).
     private int panelX, panelY;
 
-    // Editable state (committed on confirm). Initialised from the gauge's client snapshot.
+    // Editable / derived state.
     private int outputCount = 1;
+    private int thresholdCount = 0;
+    private boolean upTo = true;
     private final List<VirtualPanelPosition> inputPositions = new ArrayList<>();
     private final List<Integer> inputAmounts = new ArrayList<>();
+    private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search
+
+    @Nullable private CraftingRecipe availableCraftingRecipe;
+    private boolean craftingActive;
+    private List<BigItemStack> craftingIngredients = new ArrayList<>();
 
     private EditBox addressBox;
     private ScrollInput promiseExpiration;
     private IconButton confirmButton;
     private IconButton deleteButton;
+    private IconButton newInputButton;
+    private IconButton relocateButton;
+    @Nullable private IconButton craftingButton;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualPanelPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               CreateLang.translate("gui.factory_panel.title_as_recipe").component());
         this.controller = controller;
         this.gaugePos = gaugePos;
+        updateConfigs();   // snapshot once (not per init, so edits/crafting toggle survive resize)
     }
 
     @Override
     protected void init() {
-        // Match the controller's GUI rect so the backdrop fills and JEI's layout stays consistent.
         setWindowSize(controller.guiWidth(), controller.guiHeight());
         setWindowOffset(0, 0);
         super.init();
 
-        // We show no inventory here — push all shared-menu slots off-screen (the controller re-lays
-        // them out in its own init() when we return).
+        // No inventory here — push all shared-menu slots off-screen.
         menu.repositionSlots(-10000, -10000, false);
 
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - PANEL_H) / 2;
 
-        snapshotFromGauge();
+        VirtualGaugeBehaviour g = gauge();
 
-        addressBox = new EditBox(font, panelX + 36, panelY + PANEL_H - 51, 108, 10, Component.empty());
+        // Preserve any unsaved edits across re-init (the crafting toggle re-runs init()).
+        String address = addressBox != null ? addressBox.getValue() : (g == null ? "" : g.recipeAddress);
+        int promiseState = promiseExpiration != null ? promiseExpiration.getState()
+                                                     : (g == null ? -1 : g.promiseClearingInterval);
+
+        addressBox = new EditBox(new NoShadowFontWrapper(font), panelX + 36, panelY + PANEL_H - 77, 108, 10,
+            Component.empty());
         addressBox.setBordered(false);
         addressBox.setMaxLength(64);
         addressBox.setTextColor(0x555555);
-        VirtualGaugeBehaviour g = gauge();
-        addressBox.setValue(g == null ? "" : g.recipeAddress);
+        addressBox.setValue(address);
         addWidget(addressBox);
 
         promiseExpiration = new ScrollInput(panelX + 97, panelY + PANEL_H - 24, 28, 16)
             .withRange(-1, 31)
             .titled(CreateLang.translate("gui.factory_panel.promises_expire_title").component());
-        promiseExpiration.setState(g == null ? -1 : g.promiseClearingInterval);
+        promiseExpiration.setState(promiseState);
         addWidget(promiseExpiration);
 
         confirmButton = new IconButton(panelX + PANEL_W - 33, panelY + PANEL_H - 25, AllIcons.I_CONFIRM);
@@ -109,6 +147,40 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         deleteButton.withCallback(this::deleteAndReturn);
         deleteButton.setToolTip(CreateLang.translate("gui.factory_panel.reset").component());
         addWidget(deleteButton);
+
+        newInputButton = new IconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
+        newInputButton.withCallback(() -> {
+            controller.beginConnectionMode(gaugePos);
+            Minecraft.getInstance().setScreen(controller);
+        });
+        newInputButton.setToolTip(CreateLang.translate("gui.factory_panel.connect_input").component());
+        addWidget(newInputButton);
+
+        relocateButton = new IconButton(panelX + 31, panelY + 67, AllIcons.I_MOVE_GAUGE);
+        relocateButton.withCallback(() -> {
+            // TODO: enter "relocate gauge" mode on the board.
+        });
+        relocateButton.setToolTip(CreateLang.translate("gui.factory_panel.relocate").component());
+        addWidget(relocateButton);
+
+        // Mechanical-crafting toggle — only when the inputs+output match a crafting recipe.
+        craftingButton = null;
+        if (availableCraftingRecipe != null) {
+            craftingButton = new IconButton(panelX + 31, panelY + 27, AllIcons.I_3x3);
+            craftingButton.green = craftingActive;   // glows green while crafting mode is on (like Create)
+            craftingButton.withCallback(() -> {
+                if (availableCraftingRecipe == null) return;   // recipe vanished (e.g. input removed)
+                craftingActive = !craftingActive;
+                if (craftingActive) {
+                    craftingIngredients = FactoryPanelScreen.convertRecipeToPackageOrderContext(
+                        availableCraftingRecipe, inputConfig, false);
+                    lockOutputToRecipe();
+                }
+                init();   // rebuild widgets/layout (matches Create)
+            });
+            craftingButton.setToolTip(CreateLang.translate("gui.factory_panel.activate_crafting").component());
+            addWidget(craftingButton);
+        }
     }
 
     @Override
@@ -117,7 +189,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         super.resize(minecraft, width, height);
     }
 
-    // ── State helpers ────────────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────────
 
     @Nullable
     private VirtualGaugeBehaviour gauge() {
@@ -134,16 +206,95 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return ItemStack.EMPTY;
     }
 
-    private void snapshotFromGauge() {
+    private void updateConfigs() {
         inputPositions.clear();
         inputAmounts.clear();
+        inputConfig.clear();
         VirtualGaugeBehaviour g = gauge();
         if (g == null) return;
         outputCount = Math.max(1, g.recipeOutput);
+        thresholdCount = Math.max(0, g.count);
+        upTo = g.upTo;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
+            int amt = Math.max(1, conn.amount);
             inputPositions.add(conn.from);
-            inputAmounts.add(Math.max(1, conn.amount));
+            inputAmounts.add(amt);
+            inputConfig.add(new BigItemStack(ingredientOf(conn.from), amt));
         }
+
+        craftingActive = !g.activeCraftingArrangement.isEmpty();
+        searchForCraftingRecipe();
+        if (availableCraftingRecipe == null) {
+            craftingActive = false;
+            craftingIngredients = new ArrayList<>();
+        } else if (craftingActive) {
+            craftingIngredients =
+                FactoryPanelScreen.convertRecipeToPackageOrderContext(availableCraftingRecipe, inputConfig, false);
+            lockOutputToRecipe();
+        }
+    }
+
+    /** In crafting mode the output count is fixed to the recipe's yield (not user-scrollable). */
+    private void lockOutputToRecipe() {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (availableCraftingRecipe != null && level != null)
+            outputCount = availableCraftingRecipe.getResultItem(level.registryAccess()).getCount();
+    }
+
+    /** Re-evaluates crafting availability after the input connections change, then rebuilds the layout. */
+    private void onConnectionsChanged() {
+        searchForCraftingRecipe();
+        if (availableCraftingRecipe == null) {
+            craftingActive = false;
+            craftingIngredients = new ArrayList<>();
+        } else if (craftingActive) {
+            craftingIngredients =
+                FactoryPanelScreen.convertRecipeToPackageOrderContext(availableCraftingRecipe, inputConfig, false);
+            lockOutputToRecipe();
+        }
+        init();   // rebuild widgets so the crafting button appears/disappears with availability
+    }
+
+    /** Reimplements Create's FactoryPanelScreen#searchForCraftingRecipe for our gauge's inputs/output. */
+    private void searchForCraftingRecipe() {
+        availableCraftingRecipe = null;
+        VirtualGaugeBehaviour g = gauge();
+        if (g == null || g.filter.isEmpty() || inputConfig.isEmpty()) return;
+
+        ItemStack output = g.filter;
+        Set<Item> itemsToUse = inputConfig.stream()
+            .map(b -> b.stack).filter(i -> !i.isEmpty()).map(ItemStack::getItem).collect(Collectors.toSet());
+
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null) return;
+
+        availableCraftingRecipe = level.getRecipeManager()
+            .getAllRecipesFor(RecipeType.CRAFTING)
+            .parallelStream()
+            .filter(r -> output.getItem() == r.value().getResultItem(level.registryAccess()).getItem())
+            .filter(r -> {
+                if (AllRecipeTypes.shouldIgnoreInAutomation(r)) return false;
+                Set<Item> itemsUsed = new HashSet<>();
+                for (Ingredient ingredient : r.value().getIngredients()) {
+                    if (ingredient.isEmpty()) continue;
+                    boolean available = false;
+                    for (BigItemStack bis : inputConfig)
+                        if (!bis.stack.isEmpty() && ingredient.test(bis.stack)) {
+                            available = true;
+                            itemsUsed.add(bis.stack.getItem());
+                            break;
+                        }
+                    if (!available) return false;
+                }
+                return itemsUsed.size() >= itemsToUse.size();
+            })
+            .findAny()
+            .map(RecipeHolder::value)
+            .orElse(null);
+    }
+
+    private static boolean in(double mx, double my, int x, int y, int w, int h) {
+        return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -156,48 +307,208 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     protected void renderBg(@NotNull GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        // Live board backdrop (dimmed); renderBoard clears depth + dims when inOverlay is true.
         controller.renderBoard(gfx, -1, -1, partialTick, true);
 
         RenderSystem.enableBlend();
         gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
 
         VirtualGaugeBehaviour g = gauge();
+        List<Component> tooltip = null;
 
-        // INPUTS — ingredient items of incoming connections, 3 per row, with their amounts.
-        for (int i = 0; i < inputPositions.size(); i++) {
-            int ix = panelX + 68 + (i % 3) * 20;
-            int iy = panelY + 28 + (i / 3) * 20;
-            ItemStack stack = ingredientOf(inputPositions.get(i));
-            gfx.renderItem(stack, ix, iy);
-            if (!stack.isEmpty())
-                gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(inputAmounts.get(i)));
+        // INPUTS — recipe arrangement when crafting is active, otherwise the connected ingredients.
+        if (craftingActive) {
+            for (int i = 0; i < craftingIngredients.size(); i++) {
+                int ix = panelX + 68 + (i % 3) * 20;
+                int iy = panelY + 28 + (i / 3) * 20;
+                ItemStack stack = craftingIngredients.get(i).stack;
+                gfx.renderItem(stack, ix, iy);
+                if (in(mouseX, mouseY, ix, iy, 16, 16))
+                    tooltip = List.of(
+                        CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
+                        CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component(),
+                        CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component());
+            }
+        } else {
+            for (int i = 0; i < inputPositions.size(); i++) {
+                int ix = panelX + 68 + (i % 3) * 20;
+                int iy = panelY + 28 + (i / 3) * 20;
+                ItemStack stack = ingredientOf(inputPositions.get(i));
+                gfx.renderItem(stack, ix, iy);
+                if (!stack.isEmpty())
+                    gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(inputAmounts.get(i)));
+                if (in(mouseX, mouseY, ix, iy, 16, 16))
+                    tooltip = stack.isEmpty()
+                        ? List.of(
+                            CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
+                            CreateLang.translate("gui.factory_panel.left_click_disconnect")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                        : List.of(
+                            CreateLang.translate("gui.factory_panel.sending_item",
+                                CreateLang.itemName(stack).add(CreateLang.text(" x" + inputAmounts.get(i))).string())
+                                .color(ScrollInput.HEADER_RGB).component(),
+                            CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
+                            CreateLang.translate("gui.factory_panel.left_click_disconnect")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+            }
+            if (inputPositions.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
+                tooltip = List.of(
+                    CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
         }
 
         // OUTPUT — the gauge's filter and produced count.
         if (g != null && !g.filter.isEmpty()) {
-            int ox = panelX + 160;
-            int oy = panelY + 48;
+            int ox = panelX + 160, oy = panelY + 48;
             gfx.renderItem(g.filter, ox, oy);
             gfx.renderItemDecorations(font, g.filter, ox, oy, String.valueOf(outputCount));
+            if (in(mouseX, mouseY, ox, oy, 16, 16))
+                tooltip = List.of(
+                    CreateLang.translate("gui.factory_panel.expected_output",
+                        CreateLang.itemName(g.filter).add(CreateLang.text(" x" + outputCount)).string())
+                        .color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.expected_output_tip_2")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
         }
 
-        // 3D gauge preview + the filter floating in front of it (matches Create's right-side preview).
-        GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack())
-            .scale(4).at(0, 0, -200).render(gfx, panelX + 195, panelY + 55);
-        if (g != null && !g.filter.isEmpty())
-            GuiGameElement.of(g.filter).scale(1.625).at(0, 0, 100).render(gfx, panelX + 214, panelY + 68);
+        renderThreshold(gfx, g);
 
-        // Widgets (added via addWidget for event routing; drawn manually on top of the panel).
+        // Open-promise package box (left of the promise-interval scroll).
+        int pbx = panelX + 68, pby = panelY + PANEL_H - 24;
+        int promised = g == null ? 0 : g.promisedCount;
+        ItemStack box = PackageStyles.getDefaultBox();
+        gfx.renderItem(box, pbx, pby);
+        gfx.renderItemDecorations(font, box, pbx, pby, String.valueOf(promised));
+        if (in(mouseX, mouseY, pbx, pby, 16, 16))
+            tooltip = promised == 0
+                ? List.of(
+                    CreateLang.translate("gui.factory_panel.no_open_promises").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.translate("gui.factory_panel.recipe_promises_tip").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.recipe_promises_tip_1").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.promise_prevents_oversending").style(ChatFormatting.GRAY).component())
+                : List.of(
+                    CreateLang.translate("gui.factory_panel.promised_items").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.text((g == null ? "" : g.filter.getHoverName().getString()) + " x" + promised)
+                        .component(),
+                    CreateLang.translate("gui.factory_panel.left_click_reset")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+
+        // 3D gauge preview + the filter floating in front of it.
+        GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack())
+            .scale(4).at(0, 0, -200).render(gfx, panelX + 195, panelY + 139);
+        if (g != null && !g.filter.isEmpty())
+            GuiGameElement.of(g.filter).scale(1.625).at(0, 0, 100).render(gfx, panelX + 214, panelY + 152);
+
+        // Widgets (added via addWidget; drawn manually on top of the panel).
         addressBox.render(gfx, mouseX, mouseY, partialTick);
         promiseExpiration.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
+        newInputButton.render(gfx, mouseX, mouseY, partialTick);
+        relocateButton.render(gfx, mouseX, mouseY, partialTick);
+        if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
 
         // Promise-interval label over the scroll box.
         int state = promiseExpiration.getState();
         String label = state == -1 ? " /" : state == 0 ? "30s" : state + "m";
         gfx.drawString(font, label, promiseExpiration.getX() + 3, promiseExpiration.getY() + 4, 0xFFEEEEEE, true);
+
+        // Count box tooltip.
+        if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H))
+            tooltip = List.of(
+                CreateLang.translate("factory_panel.target_amount").color(ScrollInput.HEADER_RGB).component(),
+                CreateLang.translate("gui.scrollInput.scrollToModify")
+                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
+                CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
+                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+
+        // Unit box tooltip.
+        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+            String items = CreateLang.translate("schedule.condition.threshold.items").string();
+            String stacks = CreateLang.translate("schedule.condition.threshold.stacks").string();
+            tooltip = List.of(
+                CreateLang.translate("schedule.condition.threshold.item_measure").color(ScrollInput.HEADER_RGB).component(),
+                Component.literal((upTo ? "-> " : "> ") + items).withStyle(upTo ? ChatFormatting.WHITE : ChatFormatting.GRAY),
+                Component.literal((!upTo ? "-> " : "> ") + stacks).withStyle(!upTo ? ChatFormatting.WHITE : ChatFormatting.GRAY),
+                CreateLang.translate("gui.scrollInput.scrollToSelect")
+                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        }
+
+        // Filter/stock box tooltip — the filtered item's normal item tooltip.
+        if (g != null && in(mouseX, mouseY, panelX + FILTER_X, panelY + THRESH_TOP, 16, 16))
+            tooltip = g.filter.isEmpty()
+                ? List.of(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
+                : getTooltipFromItem(Minecraft.getInstance(), g.filter);
+
+        // Address box tooltip (Create's showAddressBoxTooltip, recipe variant).
+        if (addressBox.isHovered() && !addressBox.isFocused())
+            tooltip = addressBox.getValue().isBlank()
+                ? List.of(
+                    CreateLang.translate("gui.factory_panel.recipe_address").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.translate("gui.factory_panel.recipe_address_tip").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.recipe_address_tip_1").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.schedule.lmb_edit")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                : List.of(
+                    CreateLang.translate("gui.factory_panel.recipe_address_given").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.text("'" + addressBox.getValue() + "'").style(ChatFormatting.GRAY).component());
+
+        if (tooltip != null)
+            gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+    }
+
+    private void renderThreshold(GuiGraphics gfx, @Nullable VirtualGaugeBehaviour g) {
+        // Left box: filter icon + current network stock, rendered with the stock-keeper number font.
+        if (g != null && !g.filter.isEmpty()) {
+            int fx = panelX + FILTER_X, fy = panelY + THRESH_TOP;
+            gfx.renderItem(g.filter, fx, fy);
+            gfx.pose().pushPose();
+            gfx.pose().translate(0, 0, 200);
+            drawStockCount(gfx, g.stockLevel, fx, fy);
+            gfx.pose().popPose();
+        }
+
+        // Middle box: target count (or "Inactive" when 0), left-aligned.
+        String countStr = thresholdCount == 0
+            ? CreateLang.translate("gui.factory_panel.inactive").string().trim()
+            : String.valueOf(thresholdCount);
+        gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
+
+        // Right box: unit toggle, left-aligned.
+        String unit = CreateLang.translate(upTo ? "schedule.condition.threshold.items"
+                                                : "schedule.condition.threshold.stacks").string();
+        gfx.drawString(font, unit, panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
+    }
+
+    /** Replica of StockKeeperRequestScreen#drawItemCount — abbreviated count via the NUMBERS sprites. */
+    private void drawStockCount(GuiGraphics gfx, int count, int itemX, int itemY) {
+        String text = count >= 1000000 ? (count / 1000000) + "m"
+            : count >= 10000 ? (count / 1000) + "k"
+            : count >= 1000 ? ((count * 10) / 1000) / 10f + "k"
+            : count >= 100 ? count + "" : " " + count;
+        if (count >= BigItemStack.INF) text = "+";
+        if (text.isBlank()) return;
+
+        int x = (int) Math.floor(-text.length() * 2.5);
+        for (char c : text.toCharArray()) {
+            int index = c - '0';
+            int xOffset = index * 6;
+            int spriteWidth = NUM_W;
+            switch (c) {
+                case ' ': x += 4; continue;
+                case '.': spriteWidth = 3; xOffset = 60; break;
+                case 'k': xOffset = 64; break;
+                case 'm': spriteWidth = 7; xOffset = 70; break;
+                case '+': spriteWidth = 9; xOffset = 84; break;
+                default: break;
+            }
+            RenderSystem.enableBlend();
+            gfx.blit(NUMBERS_TEX, itemX + 13 + x, itemY + 10, 0, NUM_SX + xOffset, NUM_SY, spriteWidth, NUM_H, 256, 256);
+            x += spriteWidth - 1;
+        }
     }
 
     @Override
@@ -210,17 +521,38 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Left-click an input slot → disconnect that ingredient (mirrors Create).
-        for (int i = 0; i < inputPositions.size(); i++) {
-            int ix = panelX + 68 + (i % 3) * 20;
-            int iy = panelY + 28 + (i / 3) * 20;
-            if (mouseX >= ix && mouseX < ix + 16 && mouseY >= iy && mouseY < iy + 16) {
-                PacketDistributor.sendToServer(
-                    new RemoveConnectionPacket(menu.controllerPos, inputPositions.get(i), gaugePos));
-                inputPositions.remove(i);
-                inputAmounts.remove(i);
-                return true;
+        // Right-click the address field → clear it.
+        if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
+            addressBox.setValue("");
+            return true;
+        }
+
+        // Click the open-promise box → clear promises (Create's left-click reset).
+        if (in(mouseX, mouseY, panelX + 68, panelY + PANEL_H - 24, 16, 16)) {
+            sendConfig(true, false);
+            return true;
+        }
+
+        // Input slots: disconnect on click (only outside crafting mode).
+        if (!craftingActive)
+            for (int i = 0; i < inputPositions.size(); i++) {
+                int ix = panelX + 68 + (i % 3) * 20;
+                int iy = panelY + 28 + (i / 3) * 20;
+                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
+                    PacketDistributor.sendToServer(
+                        new RemoveConnectionPacket(menu.controllerPos, inputPositions.get(i), gaugePos));
+                    inputPositions.remove(i);
+                    inputAmounts.remove(i);
+                    inputConfig.remove(i);
+                    onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
+                    return true;
+                }
             }
+
+        // Click the unit box → toggle Item/Stack.
+        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+            upTo = !upTo;
+            return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
@@ -228,43 +560,77 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int step = hasShiftDown() ? 10 : 1;
+        int dir = (int) Math.signum(scrollY);
 
-        for (int i = 0; i < inputPositions.size(); i++) {
-            int ix = panelX + 68 + (i % 3) * 20;
-            int iy = panelY + 28 + (i / 3) * 20;
-            if (mouseX >= ix && mouseX < ix + 16 && mouseY >= iy && mouseY < iy + 16) {
-                inputAmounts.set(i, Mth.clamp((int) (inputAmounts.get(i) + Math.signum(scrollY) * step), 1, 64));
-                return true;
+        // Input amounts (only outside crafting mode).
+        if (!craftingActive)
+            for (int i = 0; i < inputPositions.size(); i++) {
+                int ix = panelX + 68 + (i % 3) * 20;
+                int iy = panelY + 28 + (i / 3) * 20;
+                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
+                    inputAmounts.set(i, Mth.clamp(inputAmounts.get(i) + dir * step, 1, 64));
+                    return true;
+                }
             }
-        }
-
-        int ox = panelX + 160, oy = panelY + 48;
-        if (mouseX >= ox && mouseX < ox + 16 && mouseY >= oy && mouseY < oy + 16) {
-            outputCount = Mth.clamp((int) (outputCount + Math.signum(scrollY) * step), 1, 64);
+        // Output count — locked to the recipe yield while crafting mode is active.
+        if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
+            if (!craftingActive)
+                outputCount = Mth.clamp(outputCount + dir * step, 1, 64);
             return true;
         }
-
+        // Threshold count box.
+        if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
+            thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, 9999);
+            return true;
+        }
+        // Unit box → flip Item/Stack.
+        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+            if (dir != 0) upTo = !upTo;
+            return true;
+        }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
     public void onClose() {
-        confirmAndReturn();   // ESC saves and returns to the controller (Create saves on close too)
+        confirmAndReturn();
     }
 
     // ── Commit ───────────────────────────────────────────────────────────────
 
-    private void confirmAndReturn() {
+    private void sendConfig(boolean clearPromises, boolean reset) {
+        List<ItemStack> arrangement = craftingActive
+            ? craftingIngredients.stream().map(b -> b.stack).toList()
+            : List.of();
+
+        // Per-connection ingredient amounts: in crafting mode each is how many times its item appears
+        // in the arrangement (mirrors Create's sendIt); otherwise the configured amount.
+        List<Integer> amounts = new ArrayList<>();
+        for (int i = 0; i < inputPositions.size(); i++) {
+            if (craftingActive) {
+                ItemStack ing = ingredientOf(inputPositions.get(i));
+                int c = (int) craftingIngredients.stream()
+                    .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))
+                    .count();
+                amounts.add(Math.max(1, c));
+            } else {
+                amounts.add(inputAmounts.get(i));
+            }
+        }
+
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount,
-            promiseExpiration.getState(), new ArrayList<>(inputPositions),
-            new ArrayList<>(inputAmounts), false));
+            promiseExpiration.getState(), thresholdCount, upTo,
+            new ArrayList<>(inputPositions), amounts, new ArrayList<>(arrangement), clearPromises, reset));
+    }
+
+    private void confirmAndReturn() {
+        sendConfig(false, false);
         Minecraft.getInstance().setScreen(controller);
     }
 
     private void deleteAndReturn() {
-        PacketDistributor.sendToServer(new ConfigureRecipePacket(
-            menu.controllerPos, gaugePos, "", 1, -1, new ArrayList<>(), new ArrayList<>(), true));
+        sendConfig(false, true);
         Minecraft.getInstance().setScreen(controller);
     }
 }

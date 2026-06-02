@@ -3,9 +3,11 @@ package io.github.nbcss.content.factorycontroller.gui;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.*;
+import io.github.nbcss.content.factorycontroller.packet.AddConnectionPacket;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
-import io.github.nbcss.content.factorycontroller.packet.ConfigureGaugePacket;
+import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.client.Minecraft;
@@ -68,6 +70,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Interaction state
     @Nullable private VirtualPanelPosition hoveredPosition = null;
     @Nullable private VirtualPanelPosition selectedComponent = null;
+
+    // Board action mode (e.g. connecting). When active, actionPrompt is shown above the inventory and
+    // board clicks are routed to the action instead of normal selection.
+    @Nullable private VirtualPanelPosition pendingConnectionTarget = null;
+    @Nullable private Component actionPrompt = null;
 
     // Pan drag state (middle mouse)
     private boolean isDragging = false;
@@ -143,6 +150,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.disableDepthTest();
         renderInventoryBackground(graphics);
         if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
+
+        // Active board-action prompt (e.g. "Click a second gauge to connect..."), above the inventory.
+        if (actionPrompt != null) {
+            int invTop = topPos + invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0) - INV_TEX_TITLE_H;
+            graphics.drawCenteredString(font, actionPrompt, leftPos + imageWidth / 2, invTop - 14, 0xFFE5C49B);
+        }
         RenderSystem.enableDepthTest();
     }
 
@@ -260,6 +273,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // ── Mouse interaction ──────────────────────────────────────────────────
 
+    /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
+    public void beginConnectionMode(VirtualPanelPosition target) {
+        pendingConnectionTarget = target;
+        actionPrompt = CreateLang.translate("factory_panel.click_second_panel").component();
+    }
+
+    private void clearActionMode() {
+        pendingConnectionTarget = null;
+        actionPrompt = null;
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (isInCanvasArea(mouseX, mouseY)) {
@@ -272,37 +296,50 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualPanelPosition clicked = at(mouseX, mouseY, centerX, centerY);
             ItemStack carried = menu.getCarried();
 
+            // Connection mode: left/right-click a valid gauge to wire it as an input, then exit.
+            if (pendingConnectionTarget != null && (button == 0 || button == 1)) {
+                VirtualComponentBehaviour target = findGauge(pendingConnectionTarget);
+                if (findGauge(clicked) != null && target != null
+                        && !clicked.equals(pendingConnectionTarget)
+                        && !target.targetedBy().containsKey(clicked)) {
+                    PacketDistributor.sendToServer(new AddConnectionPacket(
+                            menu.controllerPos, clicked, pendingConnectionTarget));
+                }
+                clearActionMode();   // any board click ends the mode (valid → connected, else cancelled)
+                return true;
+            }
+
             if (button == 0) {
                 // Clicking an existing gauge selects it.
-                if (findGauge(clicked) != null) {
-                    selectedComponent = clicked;
-                    return true;
-                }
+//                if (findGauge(clicked) != null) {
+//                    selectedComponent = clicked;
+//                    return true;
+//                }
                 // Empty clicked — attach the carried gauge if valid.
                 if (ComponentRegistry.containsItem(carried)) {
                     PacketDistributor.sendToServer(new AttachComponentPacket(
                             menu.controllerPos, clicked, networkSelector.getSelectedNetwork()));
                     return true;
                 }
-                selectedComponent = null;
-                return true;
+                //selectedComponent = null;
+                //return true;
             }
-            if (button == 1) {
+            if (button == 0 || button == 1) {
                 // Right-click a filter-less gauge with an empty cursor → open the set-item overlay.
                 if (findGauge(clicked) instanceof VirtualGaugeBehaviour behaviour) {
                     if (behaviour.filter.isEmpty()) {
                         if (carried.isEmpty()) {
                             Minecraft.getInstance().setScreen(new SetItemScreen(this, behaviour.position()));
                         } else {
-                            PacketDistributor.sendToServer(new ConfigureGaugePacket(
-                                    menu.controllerPos,clicked, carried.copy(), 0));
+                            PacketDistributor.sendToServer(new GaugeSetItemPacket(
+                                    menu.controllerPos, clicked, carried.copy()));
                         }
                     } else if (carried.isEmpty()) {
                         // Configured gauge + empty cursor → open the recipe configuration overlay.
                         Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(this, behaviour.position()));
                     }
+                    return true;
                 }
-                return true;
             }
             if (button == 2) {
                 isDragging = true;

@@ -9,7 +9,9 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,12 +19,14 @@ import java.util.Map;
 /**
  * Sent by {@code ConfigureRecipeScreen} when the player confirms (or deletes) a gauge's recipe
  * configuration. Carries the editable fields: recipe address, output-per-craft, promise-clearing
- * interval, and the per-incoming-connection ingredient amounts. {@code reset == true} wipes the
- * gauge's whole recipe config (mirrors Create's trash button).
+ * interval, target threshold + unit, per-incoming-connection ingredient amounts, the optional
+ * mechanical-crafting arrangement, and the clear-promises / reset flags. {@code reset == true} wipes
+ * the gauge's whole recipe config (mirrors Create's trash button).
  */
 public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos, String address,
-                                    int recipeOutput, int promiseInterval,
+                                    int recipeOutput, int promiseInterval, int count, boolean upTo,
                                     List<VirtualPanelPosition> inputPositions, List<Integer> inputAmounts,
+                                    List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
 
     public static final Type<ConfigureRecipePacket> TYPE =
@@ -37,6 +41,9 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 buf.writeUtf(pkt.address);
                 buf.writeInt(pkt.recipeOutput);
                 buf.writeInt(pkt.promiseInterval);
+                buf.writeInt(pkt.count);
+                buf.writeBoolean(pkt.upTo);
+                buf.writeBoolean(pkt.clearPromises);
                 buf.writeBoolean(pkt.reset);
                 int n = Math.min(pkt.inputPositions.size(), pkt.inputAmounts.size());
                 buf.writeVarInt(n);
@@ -45,6 +52,9 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                     buf.writeInt(pkt.inputPositions.get(i).y());
                     buf.writeInt(pkt.inputAmounts.get(i));
                 }
+                buf.writeVarInt(pkt.craftingArrangement.size());
+                for (ItemStack stack : pkt.craftingArrangement)
+                    ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
             },
             buf -> {
                 BlockPos pos = buf.readBlockPos();
@@ -52,16 +62,23 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 String address = buf.readUtf();
                 int recipeOutput = buf.readInt();
                 int promiseInterval = buf.readInt();
+                int count = buf.readInt();
+                boolean upTo = buf.readBoolean();
+                boolean clearPromises = buf.readBoolean();
                 boolean reset = buf.readBoolean();
                 int n = buf.readVarInt();
-                List<VirtualPanelPosition> positions = new java.util.ArrayList<>(n);
-                List<Integer> amounts = new java.util.ArrayList<>(n);
+                List<VirtualPanelPosition> positions = new ArrayList<>(n);
+                List<Integer> amounts = new ArrayList<>(n);
                 for (int i = 0; i < n; i++) {
                     positions.add(new VirtualPanelPosition(buf.readInt(), buf.readInt()));
                     amounts.add(buf.readInt());
                 }
+                int m = buf.readVarInt();
+                List<ItemStack> arrangement = new ArrayList<>(m);
+                for (int i = 0; i < m; i++)
+                    arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
                 return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, promiseInterval,
-                    positions, amounts, reset);
+                    count, upTo, positions, amounts, arrangement, clearPromises, reset);
             });
 
     @Override
@@ -76,7 +93,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
             for (int i = 0; i < n; i++)
                 inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(),
-                packet.promiseInterval(), inputs, packet.reset());
+                packet.promiseInterval(), packet.count(), packet.upTo(), inputs,
+                packet.craftingArrangement(), packet.clearPromises(), packet.reset());
         });
     }
 }

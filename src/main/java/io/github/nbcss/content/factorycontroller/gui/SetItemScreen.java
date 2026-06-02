@@ -9,7 +9,7 @@ import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
-import io.github.nbcss.content.factorycontroller.packet.ConfigureGaugePacket;
+import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -163,8 +163,8 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     private void returnToController() {
-        PacketDistributor.sendToServer(new ConfigureGaugePacket(
-                menu.controllerPos, gaugePos, menu.getGhostFilter().copy(), 0));
+        PacketDistributor.sendToServer(new GaugeSetItemPacket(
+                menu.controllerPos, gaugePos, menu.getGhostFilter().copy()));
         menu.setGhostFilter(ItemStack.EMPTY);
         Minecraft.getInstance().setScreen(controller);
     }

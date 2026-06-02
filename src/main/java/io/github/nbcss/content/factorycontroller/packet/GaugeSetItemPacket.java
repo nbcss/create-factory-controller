@@ -12,11 +12,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-public record ConfigureGaugePacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter, int count)
+/** Sets a gauge's filter item (the produced output) from the set-item overlay or a carried item. */
+public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter)
     implements CustomPacketPayload {
 
-    public static final Type<ConfigureGaugePacket> TYPE =
-        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "configure_gauge"));
+    public static final Type<GaugeSetItemPacket> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge_set_item"));
 
     private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
         StreamCodec.composite(
@@ -25,23 +26,22 @@ public record ConfigureGaugePacket(BlockPos pos, VirtualPanelPosition panelPos, 
             VirtualPanelPosition::new
         );
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, ConfigureGaugePacket> STREAM_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, GaugeSetItemPacket> STREAM_CODEC =
         StreamCodec.composite(
-            BlockPos.STREAM_CODEC, ConfigureGaugePacket::pos,
-            POS_CODEC, ConfigureGaugePacket::panelPos,
-            ItemStack.OPTIONAL_STREAM_CODEC, ConfigureGaugePacket::filter,
-            ByteBufCodecs.INT, ConfigureGaugePacket::count,
-            ConfigureGaugePacket::new
+            BlockPos.STREAM_CODEC, GaugeSetItemPacket::pos,
+            POS_CODEC, GaugeSetItemPacket::panelPos,
+            ItemStack.OPTIONAL_STREAM_CODEC, GaugeSetItemPacket::filter,
+            GaugeSetItemPacket::new
         );
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
-    public static void handle(ConfigureGaugePacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
+    public static void handle(GaugeSetItemPacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.configureGauge(packet.panelPos(), packet.filter(), packet.count());
+            be.configureGauge(packet.panelPos(), packet.filter());
         });
     }
 }

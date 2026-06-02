@@ -92,16 +92,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (!player.isCreative())
             carried.shrink(1);
 
-        // TEST: auto-connect the new gauge to any one existing component, so the connection
-        // rendering can be exercised without a wiring UI yet. Flow is new → existing, so the
-        // arrowhead lands on the existing (destination) gauge.
-        for (VirtualPanelPosition existing : components.keySet()) {
-            if (!existing.equals(pos)) {
-                behaviour.addConnection(existing);
-                break;
-            }
-        }
-
         setChanged();
         sendData();
     }
@@ -125,10 +115,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Configure panel ────────────────────────────────────────────────────
 
-    public void configureGauge(VirtualPanelPosition pos, ItemStack filter, int amount) {
+    public void configureGauge(VirtualPanelPosition pos, ItemStack filter) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         gauge.filter = filter.copy();
-        gauge.count = Math.max(0, amount);
         setChanged();
         sendData();
     }
@@ -140,16 +129,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput,
-                                int promiseInterval, Map<VirtualPanelPosition, Integer> inputAmounts,
-                                boolean reset) {
+                                int promiseInterval, int count, boolean upTo,
+                                Map<VirtualPanelPosition, Integer> inputAmounts,
+                                List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
 
         if (reset) {
             gauge.filter = ItemStack.EMPTY;
             gauge.count = 0;
+            gauge.upTo = true;
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
             gauge.promiseClearingInterval = -1;
+            gauge.activeCraftingArrangement = new ArrayList<>();
             gauge.disconnectAll();
             setChanged();
             sendData();
@@ -159,10 +151,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.recipeAddress = address;
         gauge.recipeOutput = Math.max(1, recipeOutput);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
+        gauge.count = Math.max(0, count);
+        gauge.upTo = upTo;
+        gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
         for (Map.Entry<VirtualPanelPosition, Integer> e : inputAmounts.entrySet()) {
             VirtualPanelConnection conn = gauge.targetedBy().get(e.getKey());
             if (conn != null) conn.amount = Math.max(1, e.getValue());
         }
+        if (clearPromises) gauge.requestClearPromises();
         setChanged();
         sendData();
     }
