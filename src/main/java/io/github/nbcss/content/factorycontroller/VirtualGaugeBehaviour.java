@@ -87,7 +87,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     // ── Status ───────────────────────────────────────────────────────────────
 
     /** The configured target threshold (Create's {@code count}). */
-    public int getAmount() {
+    public int getCount() {
         return count;
     }
 
@@ -331,6 +331,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
         tag.putBoolean("Waiting", waitingForNetwork);
         tag.putString("RecipeAddress", recipeAddress);
+        // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
+        // current values without a separate on-demand fetch.
+        tag.putInt("RecipeOutput", recipeOutput);
+        tag.putInt("PromiseClearingInterval", promiseClearingInterval);
 
         ListTag targetedByList = new ListTag();
         for (VirtualPanelConnection conn : targetedBy.values())

@@ -5,7 +5,9 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
+import io.github.nbcss.content.factorycontroller.packet.ConfigureGaugePacket;
 import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
+import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -238,12 +240,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
-    @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        super.render(gfx, mouseX, mouseY, partialTick);
-        //renderTooltip(gfx, mouseX, mouseY);
-    }
-
     /** Caller is responsible for any z-translation (see renderBg). */
     private void renderInventoryBackground(GuiGraphics gfx) {
         int texX    = leftPos + invOriginX - INV_TEX_SLOT_LEFT;
@@ -273,19 +269,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
-            VirtualPanelPosition cell = at(mouseX, mouseY, centerX, centerY);
+            VirtualPanelPosition clicked = at(mouseX, mouseY, centerX, centerY);
+            ItemStack carried = menu.getCarried();
 
             if (button == 0) {
                 // Clicking an existing gauge selects it.
-                if (findGauge(cell) != null) {
-                    selectedComponent = cell;
+                if (findGauge(clicked) != null) {
+                    selectedComponent = clicked;
                     return true;
                 }
-                // Empty cell — attach the carried gauge if valid.
-                ItemStack carried = menu.getCarried();
+                // Empty clicked — attach the carried gauge if valid.
                 if (ComponentRegistry.containsItem(carried)) {
                     PacketDistributor.sendToServer(new AttachComponentPacket(
-                            menu.controllerPos, cell, networkSelector.getSelectedNetwork()));
+                            menu.controllerPos, clicked, networkSelector.getSelectedNetwork()));
                     return true;
                 }
                 selectedComponent = null;
@@ -293,10 +289,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
             if (button == 1) {
                 // Right-click a filter-less gauge with an empty cursor → open the set-item overlay.
-                if (menu.getCarried().isEmpty()
-                        && findGauge(cell) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty()) {
-                    openSetItem(cell);
-                    return true;
+                if (findGauge(clicked) instanceof VirtualGaugeBehaviour behaviour) {
+                    if (behaviour.filter.isEmpty()) {
+                        if (carried.isEmpty()) {
+                            Minecraft.getInstance().setScreen(new SetItemScreen(this, behaviour.position()));
+                        } else {
+                            PacketDistributor.sendToServer(new ConfigureGaugePacket(
+                                    menu.controllerPos,clicked, carried.copy(), 0));
+                        }
+                    } else if (carried.isEmpty()) {
+                        // Configured gauge + empty cursor → open the recipe configuration overlay.
+                        Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(this, behaviour.position()));
+                    }
                 }
                 return true;
             }
@@ -375,11 +379,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         networkSelector.onNetworksUpdated();
         if (selectedComponent != null && findGauge(selectedComponent) == null)
             selectedComponent = null;
-    }
-
-    /** Opens the set-item configuration as its own screen, sharing this menu (no container swap). */
-    private void openSetItem(VirtualPanelPosition pos) {
-        Minecraft.getInstance().setScreen(new SetItemScreen(this, pos));
     }
 
     // GUI rectangle, exposed so SetItemScreen can match it (keeps JEI's layout consistent).

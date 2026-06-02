@@ -133,6 +133,40 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
+    /**
+     * Applies a recipe-config edit from {@code ConfigureRecipeScreen}. {@code reset} wipes the gauge's
+     * whole recipe config (filter, threshold, address, output, promise interval, connections);
+     * otherwise the address / output-per-craft / promise interval and per-connection ingredient
+     * amounts are updated.
+     */
+    public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput,
+                                int promiseInterval, Map<VirtualPanelPosition, Integer> inputAmounts,
+                                boolean reset) {
+        if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
+
+        if (reset) {
+            gauge.filter = ItemStack.EMPTY;
+            gauge.count = 0;
+            gauge.recipeAddress = "";
+            gauge.recipeOutput = 1;
+            gauge.promiseClearingInterval = -1;
+            gauge.disconnectAll();
+            setChanged();
+            sendData();
+            return;
+        }
+
+        gauge.recipeAddress = address;
+        gauge.recipeOutput = Math.max(1, recipeOutput);
+        gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
+        for (Map.Entry<VirtualPanelPosition, Integer> e : inputAmounts.entrySet()) {
+            VirtualPanelConnection conn = gauge.targetedBy().get(e.getKey());
+            if (conn != null) conn.amount = Math.max(1, e.getValue());
+        }
+        setChanged();
+        sendData();
+    }
+
     // ── Connections ────────────────────────────────────────────────────────
 
     public void addConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
