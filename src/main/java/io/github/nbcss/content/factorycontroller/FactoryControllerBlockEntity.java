@@ -8,6 +8,7 @@ import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -177,7 +178,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     // ── MenuProvider ───────────────────────────────────────────────────────
 
     @Override
-    public Component getDisplayName() {
+    public @NotNull Component getDisplayName() {
         return Component.translatable("block.createfactorycontroller.factory_controller");
     }
 
@@ -222,6 +223,23 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         ListTag networkList = tag.getList("Networks", Tag.TAG_COMPOUND);
         for (int i = 0; i < networkList.size(); i++)
             networks.add(networkList.getCompound(i).getUUID("Id"));
+    }
+
+    // ── Component / item persistence ───────────────────────────────────────
+
+    /**
+     * Called by vanilla's final {@code collectComponents()} — used by the loot table's
+     * {@code copy_components} function (source: block_entity, include: block_entity_data) so that
+     * manually mined drops also carry the gauge/connection/network configuration.
+     */
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.Builder builder) {
+        super.collectImplicitComponents(builder);
+        if (level != null) {
+            // saveCustomOnly calls saveAdditional → our write() — saves gauges, connections, networks.
+            CompoundTag nbt = saveCustomOnly(level.registryAccess());
+            builder.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
+        }
     }
 
     @Override

@@ -8,8 +8,10 @@ import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -37,7 +39,15 @@ public class CreateFactoryController {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
     public static final DeferredBlock<Block> FACTORY_CONTROLLER =
         BLOCKS.register("factory_controller", () ->
-            new FactoryControllerBlock(BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops()));
+            // Mirror Create's brass casing: stone strength (1.5/6.0), wood sound, requires the correct
+            // tool — and noOcclusion so it renders as a transparent, non-full block. The axe/pickaxe
+            // tool tags (mineable/axe + mineable/pickaxe, see data tags) let a wooden pickaxe OR axe mine it.
+            new FactoryControllerBlock(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.TERRACOTTA_YELLOW)
+                .strength(3.0f, 6.0f)
+                .sound(SoundType.WOOD)
+                .requiresCorrectToolForDrops()
+                .noOcclusion()));
 
     // ── Items ──────────────────────────────────────────────────────────────
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
