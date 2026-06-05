@@ -29,6 +29,10 @@ public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
     /** Where this component sits on the board. */
     VirtualPanelPosition position();
 
+    /** Repositions this component on the board. The controller re-keys the component map and the
+     *  connection graph around it (see {@code FactoryControllerBlockEntity#moveComponent}). */
+    void setPosition(VirtualPanelPosition pos);
+
     /** Item id this component renders as / refunds to. */
     ResourceLocation getItemId();
 

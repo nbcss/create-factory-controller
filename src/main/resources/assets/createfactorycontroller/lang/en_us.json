@@ -2,6 +2,10 @@
   "itemGroup.createfactorycontroller": "Create Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
   "factory_controller.no_network_selected": "No network selected — place a tuned gauge first",
+  "factory_controller.gui.in_network": "In network: %1$s",
+
+  "createfactorycontroller.subtitle.gauge.open": "Gauge panel opens",
+  "createfactorycontroller.subtitle.gauge.close": "Gauge panel closes",
 
   "createfactorycontroller.configuration.title": "Create Factory Controller Configs",
   "createfactorycontroller.configuration.section.createfactorycontroller.common.toml": "Create Factory Controller Configs",

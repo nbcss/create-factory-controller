@@ -3,6 +3,7 @@ package io.github.nbcss.content.factorycontroller.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllRecipeTypes;
+import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.box.PackageStyles;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelScreen;
@@ -19,13 +20,15 @@ import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.packet.ConfigureRecipePacket;
-import io.github.nbcss.content.factorycontroller.packet.RemoveConnectionPacket;
+import io.github.nbcss.content.factorycontroller.packet.DisconnectIngredientPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -103,6 +106,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         this.controller = controller;
         this.gaugePos = gaugePos;
         updateConfigs();   // snapshot once (not per init, so edits/crafting toggle survive resize)
+
+        // Chime when the overlay opens — played client-side for this player only.
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.OPEN_SCREEN.get(), 1.0f, 0.25f));
     }
 
     @Override
@@ -158,7 +165,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         relocateButton = new IconButton(panelX + 31, panelY + 67, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
-            // TODO: enter "relocate gauge" mode on the board.
+            controller.beginRelocateMode(gaugePos);
+            Minecraft.getInstance().setScreen(controller);
         });
         relocateButton.setToolTip(CreateLang.translate("gui.factory_panel.relocate").component());
         addWidget(relocateButton);
@@ -176,7 +184,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                         availableCraftingRecipe, inputConfig, false);
                     lockOutputToRecipe();
                 }
-                init();   // rebuild widgets/layout (matches Create)
+                rebuildWidgets();   // clears + re-runs init() (direct init() would duplicate widgets)
             });
             craftingButton.setToolTip(CreateLang.translate("gui.factory_panel.activate_crafting").component());
             addWidget(craftingButton);
@@ -252,7 +260,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 FactoryPanelScreen.convertRecipeToPackageOrderContext(availableCraftingRecipe, inputConfig, false);
             lockOutputToRecipe();
         }
-        init();   // rebuild widgets so the crafting button appears/disappears with availability
+        rebuildWidgets();   // clears + re-runs init(); button appears/disappears with availability
     }
 
     /** Reimplements Create's FactoryPanelScreen#searchForCraftingRecipe for our gauge's inputs/output. */
@@ -519,6 +527,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     // ── Input ────────────────────────────────────────────────────────────────
 
+    /** Create's GUI button blip (UI_BUTTON_CLICK, soft) — for value-box / slot clicks. */
+    private static void playClickSound() {
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
+    }
+
+    /** Create's value-scroll blip (SCROLL_VALUE, pitch 1.5) — matches its ScrollInput widget. */
+    private static void playScrollSound() {
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Right-click the address field → clear it.
@@ -530,6 +550,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Click the open-promise box → clear promises (Create's left-click reset).
         if (in(mouseX, mouseY, panelX + 68, panelY + PANEL_H - 24, 16, 16)) {
             sendConfig(true, false);
+            playClickSound();
             return true;
         }
 
@@ -540,11 +561,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 int iy = panelY + 28 + (i / 3) * 20;
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     PacketDistributor.sendToServer(
-                        new RemoveConnectionPacket(menu.controllerPos, inputPositions.get(i), gaugePos));
+                        new DisconnectIngredientPacket(menu.controllerPos, inputPositions.get(i), gaugePos));
                     inputPositions.remove(i);
                     inputAmounts.remove(i);
                     inputConfig.remove(i);
                     onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
+                    playClickSound();
                     return true;
                 }
             }
@@ -569,23 +591,30 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 int iy = panelY + 28 + (i / 3) * 20;
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     inputAmounts.set(i, Mth.clamp(inputAmounts.get(i) + dir * step, 1, 64));
+                    playScrollSound();
                     return true;
                 }
             }
         // Output count — locked to the recipe yield while crafting mode is active.
         if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
-            if (!craftingActive)
+            if (!craftingActive) {
                 outputCount = Mth.clamp(outputCount + dir * step, 1, 64);
+                playScrollSound();
+            }
             return true;
         }
-        // Threshold count box.
+        // Threshold count box (max 100, regardless of Item/Stack unit).
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
-            thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, 9999);
+            thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, 100);
+            playScrollSound();
             return true;
         }
         // Unit box → flip Item/Stack.
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
-            if (dir != 0) upTo = !upTo;
+            if (dir != 0) {
+                upTo = !upTo;
+                playScrollSound();
+            }
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
@@ -594,6 +623,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     public void onClose() {
         confirmAndReturn();
+    }
+
+    @Override
+    public void removed() {
+        // Chime on every exit path (confirm/delete buttons, Escape, connect/relocate) as the overlay closes.
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.CLOSE_SCREEN.get(), 1.0f, 0.25f));
+        super.removed();
     }
 
     // ── Commit ───────────────────────────────────────────────────────────────

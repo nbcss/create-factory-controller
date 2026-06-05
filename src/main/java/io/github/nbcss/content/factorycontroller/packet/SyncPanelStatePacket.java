@@ -92,9 +92,10 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
     public static void handle(SyncPanelStatePacket packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.level == null) return;
-            if (!(mc.screen instanceof FactoryControllerScreen screen)) return;
-            FactoryControllerMenu menu = screen.getMenu();
+            if (mc.level == null || mc.player == null) return;
+            // Update the shared menu no matter which screen of this controller is open (controller,
+            // set-item, or configure-recipe) so live state — promise/stock counts etc. — stays current.
+            if (!(mc.player.containerMenu instanceof FactoryControllerMenu menu)) return;
             if (!menu.controllerPos.equals(packet.pos())) return;
 
             menu.components.clear();
@@ -105,7 +106,8 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
             menu.knownNetworks.clear();
             menu.knownNetworks.addAll(packet.networks());
 
-            screen.onPanelSync();
+            if (mc.screen instanceof FactoryControllerScreen screen)
+                screen.onPanelSync();
         });
     }
 }

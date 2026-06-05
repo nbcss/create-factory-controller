@@ -6,6 +6,8 @@ import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
 import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -61,6 +63,18 @@ public class CreateFactoryController {
         BLOCK_ENTITY_TYPES.register("factory_controller", () ->
             BlockEntityType.Builder.of(FactoryControllerBlockEntity::new, FACTORY_CONTROLLER.get()).build(null));
 
+    // ── Sound Events ───────────────────────────────────────────────────────
+    public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
+        DeferredRegister.create(Registries.SOUND_EVENT, MODID);
+    /** UI chime when a virtual-gauge configuration overlay opens (set-item / recipe). */
+    public static final DeferredHolder<SoundEvent, SoundEvent> OPEN_SCREEN =
+        SOUND_EVENTS.register("gauge.open", () -> SoundEvent.createVariableRangeEvent(
+            ResourceLocation.fromNamespaceAndPath(MODID, "gauge.open")));
+    /** UI chime when a virtual-gauge configuration overlay closes (returns to the controller). */
+    public static final DeferredHolder<SoundEvent, SoundEvent> CLOSE_SCREEN =
+        SOUND_EVENTS.register("gauge.close", () -> SoundEvent.createVariableRangeEvent(
+            ResourceLocation.fromNamespaceAndPath(MODID, "gauge.close")));
+
     // ── Menu Types ─────────────────────────────────────────────────────────
     public static final DeferredRegister<MenuType<?>> MENU_TYPES =
         DeferredRegister.create(Registries.MENU, MODID);
@@ -75,6 +89,7 @@ public class CreateFactoryController {
         ITEMS.register(modEventBus);
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
+        SOUND_EVENTS.register(modEventBus);
 
         modEventBus.addListener(this::registerPayloads);
         modEventBus.addListener(this::addCreativeTabContents);
@@ -94,10 +109,12 @@ public class CreateFactoryController {
         PayloadRegistrar registrar = event.registrar(MODID);
         registrar.playToServer(AttachComponentPacket.TYPE, AttachComponentPacket.STREAM_CODEC, AttachComponentPacket::handle);
         registrar.playToServer(RemoveComponentPacket.TYPE, RemoveComponentPacket.STREAM_CODEC, RemoveComponentPacket::handle);
+        registrar.playToServer(MoveComponentPacket.TYPE, MoveComponentPacket.STREAM_CODEC, MoveComponentPacket::handle);
         registrar.playToServer(GaugeSetItemPacket.TYPE, GaugeSetItemPacket.STREAM_CODEC, GaugeSetItemPacket::handle);
         registrar.playToServer(ConfigureRecipePacket.TYPE, ConfigureRecipePacket.STREAM_CODEC, ConfigureRecipePacket::handle);
         registrar.playToServer(AddConnectionPacket.TYPE, AddConnectionPacket.STREAM_CODEC, AddConnectionPacket::handle);
         registrar.playToServer(RemoveConnectionPacket.TYPE, RemoveConnectionPacket.STREAM_CODEC, RemoveConnectionPacket::handle);
+        registrar.playToServer(DisconnectIngredientPacket.TYPE, DisconnectIngredientPacket.STREAM_CODEC, DisconnectIngredientPacket::handle);
         registrar.playToServer(CycleArrowBendPacket.TYPE, CycleArrowBendPacket.STREAM_CODEC, CycleArrowBendPacket::handle);
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
     }

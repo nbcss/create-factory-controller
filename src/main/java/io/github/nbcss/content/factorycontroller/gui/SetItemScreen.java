@@ -11,8 +11,10 @@ import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
+import io.github.nbcss.CreateFactoryController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.ClickType;
@@ -60,6 +62,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         this.controller = controller;
         this.gaugePos = gaugePos;
         this.menu.setGhostFilter(ItemStack.EMPTY);
+        playOpenSound();
+    }
+
+    /** Chime when the overlay opens — played client-side for this player only. */
+    private static void playOpenSound() {
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.OPEN_SCREEN.get(), 1.0f, 0.5f));
     }
 
     @Override
@@ -160,6 +169,14 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     public void onClose() {
         returnToController();   // return to the controller without closing the shared container
+    }
+
+    @Override
+    public void removed() {
+        // Chime on every exit path (confirm button, Escape) as the overlay returns to the controller.
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.CLOSE_SCREEN.get(), 1.0f, 0.5f));
+        super.removed();
     }
 
     private void returnToController() {

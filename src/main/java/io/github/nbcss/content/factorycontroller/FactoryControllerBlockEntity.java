@@ -1,5 +1,6 @@
 package io.github.nbcss.content.factorycontroller;
 
+import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -8,6 +9,12 @@ import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -81,6 +88,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 player.displayClientMessage(
                     Component.translatable("factory_controller.no_network_selected")
                         .withStyle(ChatFormatting.RED), true);
+                playDenySound();
                 return;
             }
             networkId = selectedNetwork;
@@ -92,6 +100,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (!player.isCreative())
             carried.shrink(1);
 
+        playBlockSound(carried.getItem(), true);
         setChanged();
         sendData();
     }
@@ -106,9 +115,56 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         // Return a component item
         ItemStack refund = new ItemStack(BuiltInRegistries.ITEM.get(behaviour.getItemId()));
-        if (!player.getInventory().add(refund))
+        if (!player.isCreative() && !player.getInventory().add(refund))
             player.drop(refund, false);
 
+        playBlockSound(refund.getItem(), false);
+        setChanged();
+        sendData();
+    }
+
+    // ── Component relocate ─────────────────────────────────────────────────────
+
+    /**
+     * Moves the component at {@code from} to the empty cell {@code to}, re-keying both the component
+     * map and the connection graph (every neighbour's {@code targeting}/{@code targetedBy} reference
+     * to the old position is rewritten to the new one). No-op if {@code to} is occupied or {@code from}
+     * holds nothing — the caller (relocate mode) treats an occupied target as an aborted move.
+     */
+    public void moveComponent(VirtualPanelPosition from, VirtualPanelPosition to) {
+        if (from.equals(to)) return;
+        VirtualComponentBehaviour behaviour = components.get(from);
+        if (behaviour == null) return;
+        if (components.containsKey(to)) {   // destination occupied → aborted relocate
+            playDenySound();
+            return;
+        }
+
+        components.remove(from);
+
+        // Incoming sources point at us via their `targeting` set.
+        for (VirtualPanelConnection conn : behaviour.targetedBy().values()) {
+            VirtualComponentBehaviour source = components.get(conn.from);
+            if (source != null) {
+                source.targeting().remove(from);
+                source.targeting().add(to);
+            }
+        }
+        // Outgoing targets key our connection in their `targetedBy` map by our old position.
+        for (VirtualPanelPosition targetPos : behaviour.targeting()) {
+            VirtualComponentBehaviour target = components.get(targetPos);
+            if (target == null) continue;
+            VirtualPanelConnection conn = target.targetedBy().remove(from);
+            if (conn != null) {
+                conn.from = to;
+                target.targetedBy().put(to, conn);
+            }
+        }
+
+        behaviour.setPosition(to);
+        components.put(to, behaviour);
+
+        playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
         setChanged();
         sendData();
     }
@@ -166,9 +222,18 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     // ── Connections ────────────────────────────────────────────────────────
 
     public void addConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
-        if (!components.containsKey(from) || !components.containsKey(to)) return;
-        if (from.equals(to)) return;
-        components.get(to).addConnection(from);
+        VirtualComponentBehaviour target = components.get(to);
+        if (!components.containsKey(from) || target == null || from.equals(to)) {
+            playDenySound();
+            return;
+        }
+        int before = target.targetedBy().size();
+        target.addConnection(from);
+        // addConnection silently no-ops on duplicate / max-reached / missing source: a grown map = success.
+        if (target.targetedBy().size() > before)
+            playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
+        else
+            playDenySound();
     }
 
     public void removeConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
@@ -181,6 +246,44 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         VirtualComponentBehaviour behaviour = components.get(pos);
         if (behaviour == null) return;
         behaviour.cycleArrowBend();
+    }
+
+    // ── Sounds ──────────────────────────────────────────────────────────────
+    // Mirror Create's factory board: played server-side at the controller so nearby players hear them.
+
+    /** Plays a Create sound entry (e.g. {@code CONFIRM}) at the controller. */
+    void playSound(AllSoundEvents.SoundEntry entry, float volume, float pitch) {
+        if (level == null || level.isClientSide()) return;
+        entry.playOnServer(level, getBlockPos(), volume, pitch);
+    }
+
+    /** Plays a vanilla sound event at the controller (BLOCKS category). */
+    void playSound(SoundEvent sound, float volume, float pitch) {
+        if (level == null || level.isClientSide()) return;
+        level.playSound(null, getBlockPos(), sound, SoundSource.BLOCKS, volume, pitch);
+    }
+
+    /** Create's rejection blip — invalid placement, connection, or relocate. */
+    void playDenySound() {
+        if (level == null || level.isClientSide()) return;
+        AllSoundEvents.DENY.playOnServer(level, getBlockPos());
+    }
+
+    /** Create's wrench-rotate sound (random pitch), used when cycling a connection's arrow-bend mode. */
+    void playWrenchRotateSound() {
+        if (level == null || level.isClientSide()) return;
+        AllSoundEvents.WRENCH_ROTATE.playOnServer(level, getBlockPos(), 1f, level.getRandom().nextFloat() + 0.5f);
+    }
+
+    /** Place/break sound of the component's underlying block (matches Create placing/breaking a gauge). */
+    private void playBlockSound(Item item, boolean place) {
+        if (level == null || level.isClientSide()) return;
+        Block block = Block.byItem(item);
+        SoundType type = block.defaultBlockState().getSoundType(level, getBlockPos(), null);
+        if (place)
+            playSound(type.getPlaceSound(), 1f, 1f);
+        else
+            playSound(type.getBreakSound(), (type.volume + 1f) / 2f, type.pitch * 0.8f);
     }
 
     // ── Live menu sync ─────────────────────────────────────────────────────

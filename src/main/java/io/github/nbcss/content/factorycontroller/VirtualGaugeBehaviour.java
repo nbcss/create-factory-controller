@@ -12,11 +12,15 @@ import com.simibubi.create.content.logistics.packagerLink.RequestPromise;
 import com.simibubi.create.content.logistics.packagerLink.RequestPromiseQueue;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrder;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
+import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.CreateFactoryController;
+import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -65,6 +69,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     private int lastReportedPromises = 0;
     private int lastReportedUnloadedLinks = 0;
     private int timer = 0;
+    /** Game tick of the last request attempt; the client decays the connection flash from it. */
+    public long lastRequestTick = Long.MIN_VALUE;
     private boolean forceClearPromises = false;
     public String recipeAddress = "";
     public int recipeOutput = 1;
@@ -118,6 +124,33 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
              :                     0x3D6EBD;
     }
 
+    /**
+     * Count label drawn on the gauge face — replica of Create's
+     * {@code FactoryPanelBehaviour#getCountLabelForValueBox}. Uses the synced {@link #stockLevel} as the
+     * current network stock. Shows the stock (in stacks when {@code !upTo}), and when a target
+     * {@link #count} is set, "stock⏶/target" coloured by satisfaction, with the request marker.
+     */
+    public MutableComponent getCountLabel() {
+        if (filter.isEmpty()) return Component.empty();
+        if (waitingForNetwork) return Component.literal("?");
+
+        int levelInStorage = stockLevel;
+        boolean inf = levelInStorage >= BigItemStack.INF;
+        int inStorage = levelInStorage / (upTo ? 1 : Math.max(1, filter.getMaxStackSize()));
+        int promised = promisedCount;
+        String stacks = upTo ? "" : "▤";
+
+        if (count == 0)
+            return CreateLang.text(inf ? "∞" : inStorage + stacks).color(0xF1EFE8).component();
+
+        return CreateLang.text(inf ? "∞" : inStorage + stacks)
+            .color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
+            .add(CreateLang.text(promised == 0 ? "" : "⏶"))
+            .add(CreateLang.text("/").style(ChatFormatting.WHITE))
+            .add(CreateLang.text(count + stacks).color(0xF1EFE8))
+            .component();
+    }
+
     // ── Tick ───────────────────────────────────────────────────────────────
 
     @Override
@@ -158,6 +191,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         lastReportedLevelInStorage = inStorage;
         lastReportedPromises = promised;
         lastReportedUnloadedLinks = unloadedLinkCount;
+
         satisfied = shouldSatisfy;
         promisedSatisfied = shouldPromiseSatisfy;
         waitingForNetwork = shouldWait;
@@ -173,7 +207,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     private InventorySummary getRelevantSummary() {
-        return LogisticsManager.getSummaryOfNetwork(networkId, false);
+        // Accurate (fresh) summary so the synced stock/satisfied state tracks the network in real time
+        // instead of going stale on the loose cache (which left the count un-updated and caused the
+        // gauge to keep requesting after items had already arrived).
+        return LogisticsManager.getSummaryOfNetwork(networkId, true);
     }
 
     public int getPromised() {
@@ -209,6 +246,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (timer > 0) { timer--; return; }             // throttle between attempts
         if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered) return;
         resetTimer();                                   // we're attempting now; throttle the next one
+        // Stamp the attempt so the client can flash the connections once per request (not continuously).
+        lastRequestTick = controller.getLevel() == null ? 0 : controller.getLevel().getGameTime();
+        controller.setChanged();
+        controller.sendData();
         if (recipeAddress.isBlank()) return;            // recipe mode needs a packager address
 
         // Sum the ingredient demand from incoming connections, grouped by each source's network.
@@ -227,24 +268,34 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         // Verify every ingredient is in stock and build a package order per network.
         Map<UUID, List<BigItemStack>> orderByNetwork = new LinkedHashMap<>();
-        List<BigItemStack> allIngredients = new ArrayList<>();
         for (Map.Entry<UUID, Map<Item, Integer>> netEntry : demandByNetwork.entrySet()) {
-            InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), false);
+            // Accurate summary (Create's tickRequests does the same) so we don't dispatch ingredients
+            // against a stale availability count and over-send.
+            InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
             List<BigItemStack> order = new ArrayList<>();
             for (Map.Entry<Item, Integer> need : netEntry.getValue().entrySet()) {
                 ItemStack stack = ingredientStacks.get(need.getKey());
-                if (summary.getCountOf(stack) < need.getValue()) return;   // can't fulfil → abort
-                BigItemStack big = new BigItemStack(stack.copy(), need.getValue());
-                order.add(big);
-                allIngredients.add(big);
+                if (summary.getCountOf(stack) < need.getValue()) {        // insufficient → flash red
+                    setConnectionsSuccess(false);
+                    return;
+                }
+                order.add(new BigItemStack(stack.copy(), need.getValue()));
             }
             orderByNetwork.put(netEntry.getKey(), order);
         }
 
+        // Crafting context: when mechanical crafting is enabled, derive the crafts from the 3×3
+        // arrangement so the dispatched packages carry the recipe (matching Create's tickRequests —
+        // PackageOrderWithCrafts.singleRecipe(activeCraftingArrangement)); otherwise no crafts. The
+        // previous code wrongly built a recipe from the flat ingredient list even for plain requests,
+        // so crafter-mode packages never carried the actual 3×3 recipe and couldn't be crafted.
+        List<PackageOrderWithCrafts.CraftingEntry> crafts = activeCraftingArrangement.isEmpty()
+            ? PackageOrderWithCrafts.empty().orderedCrafts()
+            : PackageOrderWithCrafts.singleRecipe(activeCraftingArrangement.stream()
+                .map(s -> new BigItemStack(s.copyWithCount(1)))
+                .toList()).orderedCrafts();
         // Resolve packagers for every network up front; abort entirely if any is busy so we never
         // half-fulfil a recipe.
-        List<PackageOrderWithCrafts.CraftingEntry> crafts =
-            PackageOrderWithCrafts.singleRecipe(allIngredients).orderedCrafts();
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : orderByNetwork.entrySet()) {
             PackageOrderWithCrafts order =
@@ -260,11 +311,27 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // All clear — perform the requests and promise the produced output.
         for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
             LogisticsManager.performPackageRequests(req);
+        setConnectionsSuccess(true);   // ingredients were dispatched → flash white
 
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
         if (promises != null)
             promises.add(new RequestPromise(new BigItemStack(filter.copy(), Math.max(1, recipeOutput))));
         controller.setChanged();
+    }
+
+    /**
+     * Flags every incoming connection's last-request outcome (Create's {@code FactoryPanelConnection
+     * #success}), which the connection renderer reads to pulse the line white (could supply) or red
+     * (insufficient). Synced to clients via {@code toClientNBT} only when it actually changes.
+     */
+    private void setConnectionsSuccess(boolean value) {
+        boolean changed = false;
+        for (VirtualPanelConnection conn : targetedBy().values())
+            if (conn.success != value) { conn.success = value; changed = true; }
+        if (changed) {
+            controller.setChanged();
+            controller.sendData();
+        }
     }
 
     private void resetTimer() {
@@ -368,6 +435,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
         tag.putInt("Stock", stockLevel);
         tag.putInt("Promised", promisedCount);
+        tag.putLong("LastRequestTick", lastRequestTick);
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
 
         ListTag targetedByList = new ListTag();
@@ -391,6 +459,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.upTo = tag.getBoolean("UpTo");
         b.stockLevel = tag.getInt("Stock");
         b.promisedCount = tag.getInt("Promised");
+        b.lastRequestTick = tag.getLong("LastRequestTick");
         b.activeCraftingArrangement = readStacks(tag.getList("CraftingArrangement", Tag.TAG_COMPOUND), registries);
 
         b.satisfied = tag.getBoolean("Satisfied");

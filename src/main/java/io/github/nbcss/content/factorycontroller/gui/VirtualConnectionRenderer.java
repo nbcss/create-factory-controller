@@ -2,9 +2,14 @@ package io.github.nbcss.content.factorycontroller.gui;
 
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
+import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import net.createmod.catnip.animation.AnimationTickHolder;
+import net.createmod.catnip.theme.Color;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.util.Mth;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -51,6 +56,19 @@ public final class VirtualConnectionRenderer {
 
     private VirtualConnectionRenderer() {}
 
+    // Flash mix targets (Create's renderPath): on each request attempt the line flashes toward whitish
+    // if the source can supply, or red if it can't. The flash decays over FLASH_DECAY ticks from the
+    // gauge's last-attempt tick, so it pulses once per request (cooldown), not continuously.
+    private static final int FLASH_OK   = 0xEAF2EC;
+    private static final int FLASH_FAIL = 0xE5654B;
+    private static final float FLASH_DECAY = 8f;   // ticks for the attempt flash to fade out
+
+    // The flowing animation scrolls the flat line strip ({@link #LINE_V}/{@link #LINE_H}) toward the
+    // target — a moving brightness wave along a flat line (the strip's own 8-px-period ripple), not
+    // marching chevrons. Idle connections draw the same strip without scrolling.
+    private static final int SCROLL_PERIOD = 8;       // strip length (world px)
+    private static final float SCROLL_SPEED = 0.4f;   // px per render tick
+
     /**
      * Draws every incoming connection in the panel. Call inside the canvas scissor, before the
      * components are drawn, so the gauge icons sit on top of the line ends.
@@ -61,7 +79,7 @@ public final class VirtualConnectionRenderer {
         for (VirtualComponentBehaviour target : menu.components) {
             VirtualPanelPosition toPos = target.position();
             for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : target.targetedBy().entrySet()) {
-                drawConnection(gfx, e.getKey(), toPos, e.getValue(), occupied);
+                drawConnection(gfx, e.getKey(), toPos, e.getValue(), target, occupied);
             }
         }
     }
@@ -69,7 +87,7 @@ public final class VirtualConnectionRenderer {
     /** Draws one grid-following connection. Flow is {@code from → to}; the arrowhead enters {@code to}. */
     private static void drawConnection(GuiGraphics gfx,
                                        VirtualPanelPosition from, VirtualPanelPosition to,
-                                       VirtualPanelConnection conn,
+                                       VirtualPanelConnection conn, VirtualComponentBehaviour target,
                                        Set<VirtualPanelPosition> occupied) {
         if (from.equals(to)) return;
 
@@ -87,24 +105,92 @@ public final class VirtualConnectionRenderer {
 
         int[][] cells = buildCellPath(from, to, mode);
 
-        // Tint encodes state; the sprite is grayscale.
-        if (conn.success) gfx.setColor(0.27f, 0.87f, 0.33f, 1f);
-        else gfx.setColor(0.88f, 0.88f, 0.88f, 1f);
+        // State drives appearance, mirroring Create's FactoryPanelRenderer#renderPath: the line is
+        // tinted by the *target* gauge's ingredient-status colour. While the gauge is actively
+        // requesting (not satisfied / waiting / missing-address / powered) it (a) pulses the whole
+        // line toward white if its source can supply (conn.success) or red if it cannot — the "no
+        // ingredients" flash — and (b) scrolls the chevron strip toward the target (the progressing
+        // wave). Idle connections draw the plain line strip. One arrowhead enters the target cell.
+        int color = 0x888898;
+        boolean flowing = false;
+        if (target instanceof VirtualGaugeBehaviour gauge) {
+            color = gauge.getIngredientStatusColor();
+            flowing = !gauge.isMissingAddress() && !gauge.waitingForNetwork
+                    && !gauge.satisfied && !gauge.redstonePowered;
+            if (flowing) {
+                // Flash once per request attempt, decaying from the gauge's last-attempt tick.
+                float age = Minecraft.getInstance().level.getGameTime() - gauge.lastRequestTick
+                        + AnimationTickHolder.getPartialTicks();
+                float glow = Mth.clamp(1f - age / FLASH_DECAY, 0f, 1f);
+                if (glow > 0f) {
+                    float p = 1f - (1f - glow) * (1f - glow);
+                    color = Color.mixColors(color, conn.success ? FLASH_OK : FLASH_FAIL, p);
+                }
+            }
+        }
+        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
 
-        // World-pixel waypoints (cell centres). The canvas pose maps them to the screen.
+        // World-pixel waypoints (cell centres); pull the last one back to the target's edge so the
+        // arrowhead fills the remaining half-cell.
         float[][] pts = new float[cells.length][2];
         for (int i = 0; i < cells.length; i++)
             pts[i] = new float[] { cellCenter(cells[i][0]), cellCenter(cells[i][1]) };
 
-        // All segments except the final approach are plain line strips (corners overlap, no gaps).
-        for (int i = 0; i < pts.length - 2; i++)
-            segment(gfx, pts[i], pts[i + 1]);
+        int n = pts.length;
+        float[] corner = pts[n - 2];
+        float tx = pts[n - 1][0], ty = pts[n - 1][1];
+        boolean approachVertical = Math.abs(corner[0] - tx) < 0.5f;
+        float half = CELL * 0.5f;
+        pts[n - 1] = approachVertical
+                ? new float[] { tx, ty + (ty < corner[1] ? half : -half) }
+                : new float[] { tx + (tx < corner[0] ? half : -half), ty };
 
-        // Final approach into `to`: line to just inside the edge, then the arrowhead inside the cell.
-        float[] corner = pts[pts.length - 2];
-        drawApproach(gfx, corner[0], corner[1], cellCenter(to.x()), cellCenter(to.y()));
+        // The line: plain strip when idle, or the scrolling chevron strip while flowing.
+        for (int i = 0; i < n - 1; i++)
+            drawLineSegment(gfx, pts[i], pts[i + 1], flowing);
 
+        // Arrowhead entering the target cell.
+        if (approachVertical) {
+            boolean destAbove = ty < corner[1];
+            float arrowTop = destAbove ? pts[n - 1][1] - ARROW_LEN : pts[n - 1][1];
+            blit(gfx, destAbove ? ARROW_N : ARROW_S, Math.round(tx) - THICKNESS / 2, Math.round(arrowTop), THICKNESS, ARROW_LEN);
+        } else {
+            boolean destLeft = tx < corner[0];
+            float arrowLeft = destLeft ? pts[n - 1][0] - ARROW_LEN : pts[n - 1][0];
+            blit(gfx, destLeft ? ARROW_W : ARROW_E, Math.round(arrowLeft), Math.round(ty) - THICKNESS / 2, ARROW_LEN, THICKNESS);
+        }
         gfx.setColor(1f, 1f, 1f, 1f);
+    }
+
+    /**
+     * Draws one axis-aligned line segment {@code a → b} in the current tint by tiling the flat line
+     * strip over its 8-px period. While flowing, the strip scrolls toward the target so its ripple
+     * reads as a progressing wave along a flat line; idle, it is static.
+     */
+    private static void drawLineSegment(GuiGraphics gfx, float[] a, float[] b, boolean flowing) {
+        boolean horizontal = a[1] == b[1];
+        int dir = (int) Math.signum(horizontal ? b[0] - a[0] : b[1] - a[1]);
+        // Scroll so the ripple advances toward the target; integer px keeps the pixel art crisp.
+        int off = flowing ? -dir * Math.round(AnimationTickHolder.getRenderTime() * SCROLL_SPEED) : 0;
+        if (horizontal) {
+            int y = Math.round(a[1]) - THICKNESS / 2;
+            int xa = Math.round(Math.min(a[0], b[0])), xb = Math.round(Math.max(a[0], b[0]));
+            for (int x = xa; x < xb; ) {
+                int u = Math.floorMod(x + off, SCROLL_PERIOD);
+                int run = Math.min(SCROLL_PERIOD - u, xb - x);
+                gfx.blit(TEX, x, y, run, THICKNESS, LINE_H[0] + u, LINE_H[1], run, LINE_H[3], TEX_SIZE, TEX_SIZE);
+                x += run;
+            }
+        } else {
+            int x = Math.round(a[0]) - THICKNESS / 2;
+            int ya = Math.round(Math.min(a[1], b[1])), yb = Math.round(Math.max(a[1], b[1]));
+            for (int y = ya; y < yb; ) {
+                int v = Math.floorMod(y + off, SCROLL_PERIOD);
+                int run = Math.min(SCROLL_PERIOD - v, yb - y);
+                gfx.blit(TEX, x, y, LINE_V[2], run, LINE_V[0], LINE_V[1] + v, LINE_V[2], run, TEX_SIZE, TEX_SIZE);
+                y += run;
+            }
+        }
     }
 
     /**
@@ -156,45 +242,6 @@ public final class VirtualConnectionRenderer {
             }
         }
         return true;
-    }
-
-    /** Draws one axis-aligned segment between two waypoints. */
-    private static void segment(GuiGraphics gfx, float[] a, float[] b) {
-        if (a[1] == b[1]) hLine(gfx, a[0], b[0], a[1], THICKNESS);
-        else              vLine(gfx, a[0], a[1], b[1], THICKNESS);
-    }
-
-    /** Final segment from {@code corner} into the destination {@code (tx,ty)} + the arrowhead. */
-    private static void drawApproach(GuiGraphics gfx, float cornerX, float cornerY, float tx, float ty) {
-        float half = CELL * 0.5f;
-        boolean approachVertical = Math.abs(cornerX - tx) < 0.5f; // x unchanged ⇒ moving vertically
-        if (approachVertical) {
-            boolean destAbove = ty < cornerY;
-            float edge = ty + (destAbove ? half : -half);          // `to` edge the line enters through
-            float arrowTop = destAbove ? edge - ARROW_LEN : edge;
-            vLine(gfx, cornerX, cornerY, edge, THICKNESS);
-            blit(gfx, destAbove ? ARROW_N : ARROW_S,
-                    Math.round(tx) - THICKNESS / 2, Math.round(arrowTop), THICKNESS, ARROW_LEN);
-        } else {
-            boolean destLeft = tx < cornerX;
-            float edge = tx + (destLeft ? half : -half);
-            float arrowLeft = destLeft ? edge - ARROW_LEN : edge;
-            hLine(gfx, cornerX, edge, cornerY, THICKNESS);
-            blit(gfx, destLeft ? ARROW_W : ARROW_E,
-                    Math.round(arrowLeft), Math.round(ty) - THICKNESS / 2, ARROW_LEN, THICKNESS);
-        }
-    }
-
-    /** Vertical line strip at world-x {@code x}, between world-y {@code y0} and {@code y1}. */
-    private static void vLine(GuiGraphics gfx, float x, float y0, float y1, int t) {
-        int ya = Math.round(Math.min(y0, y1)), yb = Math.round(Math.max(y0, y1));
-        if (yb > ya) blit(gfx, LINE_V, Math.round(x) - t / 2, ya, t, yb - ya);
-    }
-
-    /** Horizontal line strip at world-y {@code y}, between world-x {@code x0} and {@code x1}. */
-    private static void hLine(GuiGraphics gfx, float x0, float x1, float y, int t) {
-        int xa = Math.round(Math.min(x0, x1)), xb = Math.round(Math.max(x0, x1));
-        if (xb > xa) blit(gfx, LINE_H, xa, Math.round(y) - t / 2, xb - xa, t);
     }
 
     /** Blits an atlas sub-rect {@code {u,v,w,h}}, stretched into the given (world) rectangle. */

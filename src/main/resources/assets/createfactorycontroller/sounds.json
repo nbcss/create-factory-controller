@@ -1,0 +1,14 @@
+{
+  "gauge.open": {
+    "subtitle": "createfactorycontroller.subtitle.gauge.open",
+    "sounds": [
+      "createfactorycontroller:gauge/open_gauge"
+    ]
+  },
+  "gauge.close": {
+    "subtitle": "createfactorycontroller.subtitle.gauge.close",
+    "sounds": [
+      "createfactorycontroller:gauge/close_gauge"
+    ]
+  }
+}

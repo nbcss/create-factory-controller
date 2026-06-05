@@ -26,7 +26,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     protected static final int MAX_INCOMING = 9;
 
     protected final FactoryControllerBlockEntity controller; // null on the client snapshot
-    protected final VirtualPanelPosition position;
+    protected VirtualPanelPosition position;
     protected final ResourceLocation itemId;
 
     // Connection graph
@@ -48,6 +48,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     // ── Identity ─────────────────────────────────────────────────────────────
 
     @Override public VirtualPanelPosition position() { return position; }
+    @Override public void setPosition(VirtualPanelPosition pos) { this.position = pos; }
     @Override public ResourceLocation getItemId() { return itemId; }
 
     // ── Connection declarations (Deployer-compatible) ─────────────────────────
@@ -127,6 +128,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
             conn.arrowBendMode = sharedMode;
         }
         if (sharedMode != -1) {
+            controller.playWrenchRotateSound();
             controller.setChanged();
             controller.sendData();
         }

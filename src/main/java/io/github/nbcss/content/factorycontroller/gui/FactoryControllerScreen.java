@@ -5,25 +5,27 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.*;
+import net.minecraft.ChatFormatting;
 import io.github.nbcss.content.factorycontroller.packet.AddConnectionPacket;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
-import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
-import net.createmod.catnip.gui.element.GuiGameElement;
+import io.github.nbcss.content.factorycontroller.packet.MoveComponentPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.Util;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
 
@@ -38,11 +40,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int CANVAS_COMPONENT_SIZE = 16;
 
     // Canvas view state
-    private static final double MAX_ZOOM_FACTOR = 3.0;
-    private static final double MIN_ZOOM_FACTOR = 0.5;
+    private static final int MAX_ZOOM_LEVEL = 10;
+    private static final int MIN_ZOOM_LEVEL = -10;
     private double viewX = 0;
     private double viewY = 0;
-    private double zoomFactor = 1.0;
+    private int zoomLevel = 0;
 
     // Inventory panel state — all in menu-relative coords (relative to leftPos/topPos).
     private static final int INV_BOTTOM_MARGIN = 28;
@@ -57,7 +59,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private Button expandButton = null;
 
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
-    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background_default.png");
+    // Reticle drawn over the gauge being acted on (connect/relocate). White 18×18 source, tinted green.
+    private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
+    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background_blueprint.png");
 
     // player_inventory.png layout (176×108, matching Create's convention)
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
@@ -71,10 +75,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private VirtualPanelPosition hoveredPosition = null;
     @Nullable private VirtualPanelPosition selectedComponent = null;
 
+    // Gauge widgets, indexed by board position for O(1) hit-testing and lookup. Rebuilt from
+    // menu.components only when the panel state syncs (see rebuildGaugeWidgets), not per frame.
+    private final Map<VirtualPanelPosition, VirtualGaugeWidget> gaugeWidgets = new LinkedHashMap<>();
+
     // Board action mode (e.g. connecting). When active, actionPrompt is shown above the inventory and
     // board clicks are routed to the action instead of normal selection.
     @Nullable private VirtualPanelPosition pendingConnectionTarget = null;
+    @Nullable private VirtualPanelPosition pendingRelocateTarget = null;
     @Nullable private Component actionPrompt = null;
+    // When the prompt should disappear (millis). Long.MAX_VALUE for the persistent mode prompts;
+    // a finite value for transient messages (e.g. the arrow-mode chime), which fade out near expiry.
+    // Colour lives on the component itself (style); only the fade alpha is applied at draw time.
+    private long actionPromptExpiry = Long.MAX_VALUE;
 
     // Pan drag state (middle mouse)
     private boolean isDragging = false;
@@ -99,6 +112,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         setWindowOffset(0, 0);
 
         super.init();
+
+        rebuildGaugeWidgets();
 
         invHotbarY = scaledH - INV_BOTTOM_MARGIN - HOTBAR_H - topPos;
         invOriginX = (imageWidth - SLOT_ROW_W) / 2 + 1;
@@ -143,6 +158,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // ── Render ─────────────────────────────────────────────────────────────
 
     @Override
+    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        // Hover tooltip for an existing gauge (suppressed while a board action mode is active, where
+        // the hovered cell already gives white/red reticle feedback). hoveredPosition is set in renderBoard.
+        VirtualGaugeWidget hovered = gaugeWidget(hoveredPosition);
+        if (pendingConnectionTarget == null && pendingRelocateTarget == null && hovered != null)
+            graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(), mouseX, mouseY);
+    }
+
+    @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         renderBoard(graphics, mouseX, mouseY, partialTick, false);
 
@@ -151,10 +176,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         renderInventoryBackground(graphics);
         if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
 
-        // Active board-action prompt (e.g. "Click a second gauge to connect..."), above the inventory.
-        if (actionPrompt != null) {
+        // Action prompt above the inventory: an active mode (white) or a fading chime (tan). Each
+        // component carries its own colour; we only modulate the fade alpha here.
+        Component prompt = actionPrompt;
+        int alpha = 255;
+        if (prompt != null) {
+            long remaining = actionPromptExpiry - Util.getMillis();
+            if (remaining <= 0) { actionPrompt = null; prompt = null; }
+            else alpha = (int) (Mth.clamp(remaining / 1000f, 0f, 1f) * 255f);
+        }
+        if (prompt != null && alpha > 4) {
             int invTop = topPos + invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0) - INV_TEX_TITLE_H;
-            graphics.drawCenteredString(font, actionPrompt, leftPos + imageWidth / 2, invTop - 14, 0xFFE5C49B);
+            graphics.drawCenteredString(font, prompt, leftPos + imageWidth / 2, invTop - 14, (alpha << 24) | 0xFFFFFF);
         }
         RenderSystem.enableDepthTest();
     }
@@ -175,17 +208,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.enableScissor(x0, y0, x1, y1);
 
         // Visible canvas-world pixel bounds
-        int minX = (int) Math.floor(viewX + (x0 - centerX) / zoomFactor);
-        int minY = (int) Math.floor(viewY + (y0 - centerY) / zoomFactor);
-        int maxX = (int) Math.ceil(viewX + (x1 - centerX) / zoomFactor);
-        int maxY = (int) Math.ceil(viewY + (y1 - centerY) / zoomFactor);
+        int minX = (int) Math.floor(viewX + (x0 - centerX) / getZoomFactor());
+        int minY = (int) Math.floor(viewY + (y0 - centerY) / getZoomFactor());
+        int maxX = (int) Math.ceil(viewX + (x1 - centerX) / getZoomFactor());
+        int maxY = (int) Math.ceil(viewY + (y1 - centerY) / getZoomFactor());
 
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
         // Canvas-world → screen pose (translate to centre, scale by zoom, translate by the pan).
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, centerY, 0);
-        graphics.pose().scale((float) zoomFactor, (float) zoomFactor, (float) zoomFactor);
+        graphics.pose().scale((float) getZoomFactor(), (float) getZoomFactor(), (float) getZoomFactor());
         graphics.pose().translate((float) -viewX, (float) -viewY, 0);
 
         // Background — one tile per component cell, snapped to cell boundaries (world-locked).
@@ -196,34 +229,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
-        List<VirtualComponentBehaviour> components = menu.getComponentsInCanvas(
-                Math.floorDiv(minX, CANVAS_COMPONENT_SIZE),
-                Math.floorDiv(minY, CANVAS_COMPONENT_SIZE),
-                Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE),
-                Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE)
-        );
-        List<VirtualGaugeWidget> gauges = new ArrayList<>();
-        for (VirtualComponentBehaviour b : components)
-            if (b instanceof VirtualGaugeBehaviour gaugeBehaviour)
-                gauges.add(new VirtualGaugeWidget(gaugeBehaviour));
-
-        for (VirtualGaugeWidget gauge : gauges)
+        for (VirtualGaugeWidget gauge : gaugeWidgets.values())
             gauge.renderBack(graphics);
 
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
-        for (VirtualGaugeWidget gauge : gauges) {
-            VirtualPanelPosition pos = gauge.getBehaviour().position();
-            boolean hovered  = pos.equals(hoveredPosition) && findGauge(hoveredPosition) != null;
-            boolean selected = pos.equals(selectedComponent);
-            gauge.renderFront(graphics, hovered, selected);
-        }
+        for (VirtualGaugeWidget gauge : gaugeWidgets.values())
+            gauge.renderFront(graphics, gauge.position().equals(selectedComponent));
 
-        if (hoveredPosition != null && findGauge(hoveredPosition) == null) {
-            int hx0 = hoveredPosition.x() * CANVAS_COMPONENT_SIZE;
-            int hy0 = hoveredPosition.y() * CANVAS_COMPONENT_SIZE;
-            graphics.fill(hx0, hy0, hx0 + CANVAS_COMPONENT_SIZE, hy0 + CANVAS_COMPONENT_SIZE, 0x6666CCFF);
-        }
+        renderHoverTarget(graphics);
 
         graphics.pose().popPose();
         graphics.disableScissor();
@@ -271,16 +285,88 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
+    // Reticle tints.
+    private static final int TARGET_WHITE = 0xFFFFFF;
+    private static final int TARGET_RED   = 0xFF3333;
+    private static final int TARGET_GREEN = 0x33CC33;
+
+    /**
+     * Draws the {@code target} reticle over the hovered cell, tinted by context: white over a gauge
+     * with an empty cursor, gold over an empty cell when placing/relocating a gauge, and white/red
+     * over a valid/invalid target while in connect mode. The gauge being connected/relocated is
+     * always marked green, taking priority over the hover feedback on that cell. Must run inside the
+     * canvas-world pose.
+     */
+    private void renderHoverTarget(GuiGraphics graphics) {
+        // Source gauge of the active action mode — green, drawn first and given priority.
+        VirtualPanelPosition source = pendingConnectionTarget != null ? pendingConnectionTarget : pendingRelocateTarget;
+        if (source != null) renderTarget(graphics, source, TARGET_GREEN);
+
+        if (hoveredPosition == null || hoveredPosition.equals(source)) return;
+        boolean hoverHasGauge = findGauge(hoveredPosition) != null;
+        ItemStack carried = menu.getCarried();
+
+        if (pendingConnectionTarget != null) {
+            // Connect mode: only gauges are valid targets — white if connectable, red otherwise.
+            if (hoverHasGauge) {
+                VirtualComponentBehaviour target = findGauge(pendingConnectionTarget);
+                boolean valid = target != null
+                        && !hoveredPosition.equals(pendingConnectionTarget)
+                        && !target.targetedBy().containsKey(hoveredPosition);
+                renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            }
+        } else if (pendingRelocateTarget != null) {
+            // Relocate mode: white over a valid (empty) destination, red over an occupied cell.
+            renderTarget(graphics, hoveredPosition, hoverHasGauge ? TARGET_RED : TARGET_WHITE);
+        } else if (ComponentRegistry.containsItem(carried)) {
+            // Holding a gauge: white over an empty cell (valid placement), red over an occupied cell.
+            renderTarget(graphics, hoveredPosition, hoverHasGauge ? TARGET_RED : TARGET_WHITE);
+        } else if (carried.isEmpty()) {
+            // Empty cursor: white over a hovered gauge.
+            if (hoverHasGauge) renderTarget(graphics, hoveredPosition, TARGET_WHITE);
+        }
+    }
+
+    /** Blits the white {@code target} sprite tinted {@code rgb}, overhanging the 16-px cell by 1 px. */
+    private void renderTarget(GuiGraphics graphics, VirtualPanelPosition pos, int rgb) {
+        int x0 = pos.x() * CANVAS_COMPONENT_SIZE - 1;
+        int y0 = pos.y() * CANVAS_COMPONENT_SIZE - 1;
+        RenderSystem.enableBlend();
+        graphics.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+        graphics.blitSprite(TARGET_SPRITE, x0, y0, CANVAS_COMPONENT_SIZE + 2, CANVAS_COMPONENT_SIZE + 2);
+        graphics.setColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+    }
+
     // ── Mouse interaction ──────────────────────────────────────────────────
 
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
     public void beginConnectionMode(VirtualPanelPosition target) {
         pendingConnectionTarget = target;
-        actionPrompt = CreateLang.translate("factory_panel.click_second_panel").component();
+        setPersistentPrompt(CreateLang.translate("factory_panel.click_second_panel").style(ChatFormatting.WHITE).component());
+    }
+
+    /** Enters "relocate" mode: the next empty cell clicked becomes {@code target}'s new position. */
+    public void beginRelocateMode(VirtualPanelPosition target) {
+        pendingRelocateTarget = target;
+        setPersistentPrompt(CreateLang.translate("factory_panel.click_to_relocate").style(ChatFormatting.WHITE).component());
+    }
+
+    /** A prompt that stays until the mode ends (no fade). */
+    private void setPersistentPrompt(Component prompt) {
+        actionPrompt = prompt;
+        actionPromptExpiry = Long.MAX_VALUE;
+    }
+
+    /** A transient prompt that fades out {@code durationMs} after being shown. */
+    private void setTimedPrompt(Component prompt, long durationMs) {
+        actionPrompt = prompt;
+        actionPromptExpiry = Util.getMillis() + durationMs;
     }
 
     private void clearActionMode() {
         pendingConnectionTarget = null;
+        pendingRelocateTarget = null;
         actionPrompt = null;
     }
 
@@ -295,52 +381,48 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerY = (y0 + y1) / 2;
             VirtualPanelPosition clicked = at(mouseX, mouseY, centerX, centerY);
             ItemStack carried = menu.getCarried();
+            VirtualGaugeWidget widget = gaugeWidget(clicked);
+            boolean leftOrRight = button == 0 || button == 1;
 
-            // Connection mode: left/right-click a valid gauge to wire it as an input, then exit.
-            if (pendingConnectionTarget != null && (button == 0 || button == 1)) {
-                VirtualComponentBehaviour target = findGauge(pendingConnectionTarget);
-                if (findGauge(clicked) != null && target != null
-                        && !clicked.equals(pendingConnectionTarget)
-                        && !target.targetedBy().containsKey(clicked)) {
-                    PacketDistributor.sendToServer(new AddConnectionPacket(
-                            menu.controllerPos, clicked, pendingConnectionTarget));
-                }
-                clearActionMode();   // any board click ends the mode (valid → connected, else cancelled)
+            // Shift + left/right-click a gauge → remove it from the board (server refunds if survival).
+            if (hasShiftDown() && leftOrRight && widget != null) {
+                widget.remove(this);
+                if (clicked.equals(selectedComponent)) selectedComponent = null;
                 return true;
             }
 
-            if (button == 0) {
-                // Clicking an existing gauge selects it.
-//                if (findGauge(clicked) != null) {
-//                    selectedComponent = clicked;
-//                    return true;
-//                }
-                // Empty clicked — attach the carried gauge if valid.
-                if (ComponentRegistry.containsItem(carried)) {
-                    PacketDistributor.sendToServer(new AttachComponentPacket(
-                            menu.controllerPos, clicked, networkSelector.getSelectedNetwork()));
-                    return true;
-                }
-                //selectedComponent = null;
-                //return true;
+            // Connection mode: clicking a gauge wires it as an input (server validates and plays the
+            // connect / deny sound); clicking an empty cell just cancels. Either way the mode ends.
+            if (pendingConnectionTarget != null && leftOrRight) {
+                if (widget != null)
+                    PacketDistributor.sendToServer(new AddConnectionPacket(
+                            menu.controllerPos, clicked, pendingConnectionTarget));
+                clearActionMode();
+                return true;
             }
-            if (button == 0 || button == 1) {
-                // Right-click a filter-less gauge with an empty cursor → open the set-item overlay.
-                if (findGauge(clicked) instanceof VirtualGaugeBehaviour behaviour) {
-                    if (behaviour.filter.isEmpty()) {
-                        if (carried.isEmpty()) {
-                            Minecraft.getInstance().setScreen(new SetItemScreen(this, behaviour.position()));
-                        } else {
-                            PacketDistributor.sendToServer(new GaugeSetItemPacket(
-                                    menu.controllerPos, clicked, carried.copy()));
-                        }
-                    } else if (carried.isEmpty()) {
-                        // Configured gauge + empty cursor → open the recipe configuration overlay.
-                        Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(this, behaviour.position()));
-                    }
-                    return true;
-                }
+
+            // Relocate mode: send the destination and let the server move (empty cell) or reject
+            // (occupied cell) with the matching sound. Either way the mode ends.
+            if (pendingRelocateTarget != null && leftOrRight) {
+                PacketDistributor.sendToServer(new MoveComponentPacket(
+                        menu.controllerPos, pendingRelocateTarget, clicked));
+                if (widget == null && pendingRelocateTarget.equals(selectedComponent))
+                    selectedComponent = clicked;
+                clearActionMode();
+                return true;
             }
+
+            // Left-click with a carried gauge → attach it at the cell (server rejects if occupied).
+            if (button == 0 && ComponentRegistry.containsItem(carried)) {
+                PacketDistributor.sendToServer(new AttachComponentPacket(
+                        menu.controllerPos, clicked, networkSelector.getSelectedNetwork()));
+                return true;
+            }
+
+            // Click an existing gauge → its own interaction (set item / configure).
+            if (leftOrRight && widget != null)
+                return widget.onClick(this, carried);
+
             if (button == 2) {
                 isDragging = true;
                 return true;
@@ -352,8 +434,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (isDragging && button == 2) {
-            viewX -= deltaX / zoomFactor;
-            viewY -= deltaY / zoomFactor;
+            viewX -= deltaX / getZoomFactor();
+            viewY -= deltaY / getZoomFactor();
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
@@ -377,20 +459,24 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
 
-            double oldZoom = zoomFactor;
-            zoomFactor = Math.clamp(zoomFactor * (scrollY > 0 ? 1.1 : (1.0 / 1.1)), MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
-            viewX += (mouseX - centerX) * (1.0 / oldZoom - 1.0 / zoomFactor);
-            viewY += (mouseY - centerY) * (1.0 / oldZoom - 1.0 / zoomFactor);
+            double oldZoom = getZoomFactor();
+            zoomLevel = Math.clamp(zoomLevel + (int) Math.signum(scrollY), MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
+            viewX += (mouseX - centerX) * (1.0 / oldZoom - 1.0 / getZoomFactor());
+            viewY += (mouseY - centerY) * (1.0 / oldZoom - 1.0 / getZoomFactor());
             return true;
         }
 
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    private double getZoomFactor() {
+        return 2. * Math.pow(2., zoomLevel / 10.);
+    }
+
     /** Maps a screen position to the canvas cell it falls into. */
     private VirtualPanelPosition at(double posX, double posY, int centerX, int centerY) {
-        int cellX = (int) Math.floor((viewX + (posX - centerX) / zoomFactor) / CANVAS_COMPONENT_SIZE);
-        int cellY = (int) Math.floor((viewY + (posY - centerY) / zoomFactor) / CANVAS_COMPONENT_SIZE);
+        int cellX = (int) Math.floor((viewX + (posX - centerX) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
+        int cellY = (int) Math.floor((viewY + (posY - centerY) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
         return new VirtualPanelPosition(cellX, cellY);
     }
 
@@ -413,6 +499,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Called by SyncPanelStatePacket after menu.gauges/knownNetworks are refreshed. */
     public void onPanelSync() {
+        rebuildGaugeWidgets();   // components were replaced with fresh instances; re-index them
         networkSelector.onNetworksUpdated();
         if (selectedComponent != null && findGauge(selectedComponent) == null)
             selectedComponent = null;
@@ -427,17 +514,53 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // R on a hovered gauge cycles its outgoing connection bend mode (mirrors Create's wrench).
         if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_R
                 && hoveredPosition != null && findGauge(hoveredPosition) != null) {
+            // Optimistically reflect the new mode (server cycles to (mode+1)%4) as a fading prompt,
+            // reusing Create's "Cycled arrow pathing mode □□□□" message with the active mode filled.
+            Integer mode = outgoingArrowBendMode(hoveredPosition);
+            if (mode != null) {
+                char[] dots = {'□', '□', '□', '□'};   // □□□□
+                dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
+                setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
+                        .style(ChatFormatting.WHITE).component(), 3000);
+            }
             PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredPosition));
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    /**
+     * Current shared arrow-bend mode of {@code pos}'s outgoing connections (which may legitimately be
+     * -1, the "auto" mode), or {@code null} if it has no outgoing connection. The client snapshot only
+     * carries incoming connections ({@code targetedBy}), so we find the outgoing ones by scanning every
+     * gauge for a connection whose source is {@code pos}.
+     */
     @Nullable
-    private VirtualComponentBehaviour findGauge(VirtualPanelPosition pos) {
-        if (pos == null) return null;
-        for (VirtualComponentBehaviour b : menu.components)
-            if (b.position().equals(pos)) return b;
+    private Integer outgoingArrowBendMode(VirtualPanelPosition pos) {
+        for (VirtualComponentBehaviour b : menu.components) {
+            VirtualPanelConnection conn = b.targetedBy().get(pos);
+            if (conn != null) return conn.arrowBendMode;
+        }
         return null;
+    }
+
+    /** Rebuilds the position→widget index from the synced component list. */
+    private void rebuildGaugeWidgets() {
+        gaugeWidgets.clear();
+        for (VirtualComponentBehaviour b : menu.components)
+            if (b instanceof VirtualGaugeBehaviour gauge)
+                gaugeWidgets.put(gauge.position(), new VirtualGaugeWidget(gauge));
+    }
+
+    /** The widget at {@code pos}, or {@code null} if the cell is empty (O(1)). */
+    @Nullable
+    VirtualGaugeWidget gaugeWidget(@Nullable VirtualPanelPosition pos) {
+        return pos == null ? null : gaugeWidgets.get(pos);
+    }
+
+    @Nullable
+    private VirtualComponentBehaviour findGauge(@Nullable VirtualPanelPosition pos) {
+        VirtualGaugeWidget w = gaugeWidget(pos);
+        return w == null ? null : w.getBehaviour();
     }
 }
