@@ -430,8 +430,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (g != null && !g.filter.isEmpty())
             GuiGameElement.of(g.filter).scale(1.625).at(0, 0, 100).render(gfx, panelX + 214, panelY + 152);
 
-        // Widgets (added via addWidget; drawn manually on top of the panel).
-        addressBox.render(gfx, mouseX, mouseY, partialTick);
+        // Widgets (added via addWidget; drawn manually on top of the panel). The address box is drawn
+        // later in renderForeground (a clean render pass) so its clipboard hint + suggestion dropdown
+        // aren't clobbered by the 3D gauge preview's render state or covered by later panel draws.
         promiseExpiration.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
@@ -470,19 +471,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             tooltip = g.filter.isEmpty()
                 ? List.of(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
                 : getTooltipFromItem(Minecraft.getInstance(), g.filter);
-
-        // Address box tooltip (Create's showAddressBoxTooltip, recipe variant).
-        if (addressBox.isHovered() && !addressBox.isFocused())
-            tooltip = addressBox.getValue().isBlank()
-                ? List.of(
-                    CreateLang.translate("gui.factory_panel.recipe_address").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.translate("gui.factory_panel.recipe_address_tip").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.recipe_address_tip_1").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.schedule.lmb_edit")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
-                : List.of(
-                    CreateLang.translate("gui.factory_panel.recipe_address_given").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.text("'" + addressBox.getValue() + "'").style(ChatFormatting.GRAY).component());
 
         if (tooltip != null)
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
@@ -542,6 +530,25 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     protected void renderForeground(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         gfx.drawString(font, title, panelX + 97 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
+
+        // Address box drawn here, in the clean foreground pass, so AddressEditBox's clipboard hint icon
+        // and suggestion dropdown (and their tooltips) render on top — like Create's renderable widget.
+        addressBox.render(gfx, mouseX, mouseY, partialTicks);
+        // Address box tooltip (Create's showAddressBoxTooltip, recipe variant) — drawn after the box so
+        // it sits above it; the clipboard-icon tooltip is handled inside AddressEditBox itself.
+        if (addressBox.isHovered() && !addressBox.isFocused())
+            gfx.renderComponentTooltip(font, addressBox.getValue().isBlank()
+                ? List.of(
+                    CreateLang.translate("gui.factory_panel.recipe_address").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.translate("gui.factory_panel.recipe_address_tip").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.factory_panel.recipe_address_tip_1").style(ChatFormatting.GRAY).component(),
+                    CreateLang.translate("gui.schedule.lmb_edit")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                : List.of(
+                    CreateLang.translate("gui.factory_panel.recipe_address_given").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.text("'" + addressBox.getValue() + "'").style(ChatFormatting.GRAY).component()),
+                mouseX, mouseY);
+
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 

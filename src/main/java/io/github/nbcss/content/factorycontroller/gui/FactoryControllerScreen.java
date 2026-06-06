@@ -17,6 +17,7 @@ import io.github.nbcss.content.factorycontroller.packet.AddConnectionPacket;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
 import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
 import io.github.nbcss.content.factorycontroller.packet.MoveComponentPacket;
+import io.github.nbcss.content.factorycontroller.packet.RetuneCarriedPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -54,7 +55,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // Canvas view state
     private static final int MAX_ZOOM_LEVEL = 10;
-    private static final int MIN_ZOOM_LEVEL = -10;
+    private static final int MIN_ZOOM_LEVEL = -20;
     private double viewX = 0;
     private double viewY = 0;
     private int zoomLevel = 0;
@@ -75,7 +76,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int CONTROLLER_MODEL_SCALE = 4;
 
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
-    // Reticle drawn over the gauge being acted on (connect/relocate). White 18×18 source, tinted green.
+    // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
     private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
     private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background_default.png");
 
@@ -154,17 +155,29 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 4;
         int selectorY = topPos + CANVAS_TOP_PADDING + 4;
         if (networkSelector == null)
-            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu.knownNetworks);
+            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried);
         else
             networkSelector.setPosition(selectorX, selectorY);
     }
 
+    /** Re-tunes the carried component item (selector scroll): optimistic client update + server packet. */
+    private void retuneCarried(boolean clear, @Nullable UUID network) {
+        ItemStack carried = menu.getCarried();
+        if (!ComponentRegistry.containsItem(carried)) return;
+        RetuneCarriedPacket.apply(carried, clear ? null : network);   // immediate cursor feedback
+        menu.setCarried(carried);
+        PacketDistributor.sendToServer(new RetuneCarriedPacket(clear, network));
+        // (the scroll sound is played by the selector for both holding and non-holding scrolls)
+    }
+
     @Override
-    public void removed() {
-        // Play controller UI close SFX for all exit paths.
+    public void onClose() {
+        // Controller UI close SFX. Played here (not in removed()) so it only fires on a genuine close
+        // (Escape / inventory key); opening a sub-screen — SetItemScreen / ConfigureRecipeScreen, which
+        // share this menu via setScreen — calls removed() but not onClose(), so it stays silent.
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_CLOSE.get(), 1f));
-        super.removed();
+        super.onClose();
     }
 
     private int expandButtonX() {
@@ -306,6 +319,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             gauge.renderFront(graphics, gauge.position().equals(selectedComponent),
                     bulbGlow(gauge.position(), partialTick));
 
+        renderSelectedNetworkMask(graphics);
         renderHoverTarget(graphics);
 
         graphics.pose().popPose();
@@ -373,6 +387,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int TARGET_WHITE = 0xFFFFFF;
     private static final int TARGET_RED   = 0xFF3333;
     private static final int TARGET_GREEN = 0x33CC33;
+    private static final int TARGET_BLUE  = 0x55AAFF;
+
+    /** Blue reticle over every component on the network currently selected in the network selector. */
+    private void renderSelectedNetworkMask(GuiGraphics graphics) {
+        UUID selected = networkSelector.getSelectedNetwork();
+        if (selected == null) return;
+        for (VirtualGaugeWidget gauge : gaugeWidgets.values())
+            if (selected.equals(gauge.behaviour().networkId))
+                renderTarget(graphics, gauge.position(), TARGET_BLUE);
+    }
 
     /**
      * Draws the {@code target} reticle over the hovered cell, tinted by context: white over a gauge
@@ -417,13 +441,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
-    /** Blits the white {@code target} sprite tinted {@code rgb}, overhanging the 16-px cell by 1 px. */
+    /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
     private void renderTarget(GuiGraphics graphics, VirtualPanelPosition pos, int rgb) {
-        int x0 = pos.x() * CANVAS_COMPONENT_SIZE - 1;
-        int y0 = pos.y() * CANVAS_COMPONENT_SIZE - 1;
+        int x0 = pos.x() * CANVAS_COMPONENT_SIZE;
+        int y0 = pos.y() * CANVAS_COMPONENT_SIZE;
         RenderSystem.enableBlend();
         graphics.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-        graphics.blitSprite(TARGET_SPRITE, x0, y0, CANVAS_COMPONENT_SIZE + 2, CANVAS_COMPONENT_SIZE + 2);
+        graphics.blitSprite(TARGET_SPRITE, x0, y0, CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE);
         graphics.setColor(1f, 1f, 1f, 1f);
         RenderSystem.disableBlend();
     }
@@ -466,10 +490,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      */
     @Nullable
     private UUID networkForAttaching(ItemStack carried) {
-        if (LogisticallyLinkedBlockItem.isTuned(carried))
-            return LogisticallyLinkedBlockItem.networkFromStack(carried);
-        UUID selected = networkSelector.getSelectedNetwork();
-        return (selected != null && menu.knownNetworks.contains(selected)) ? selected : null;
+        // The selector re-tunes the carried item directly, so its own frequency is the source of truth
+        // (null = "no network" selected → placement is denied).
+        return LogisticallyLinkedBlockItem.isTuned(carried) ? LogisticallyLinkedBlockItem.networkFromStack(carried) : null;
     }
 
     private void clearActionMode() {
@@ -622,7 +645,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Called by SyncPanelStatePacket after menu.gauges/knownNetworks are refreshed. */
     public void onPanelSync() {
         rebuildGaugeWidgets();   // components were replaced with fresh instances; re-index them
-        networkSelector.onNetworksUpdated();
         if (selectedComponent != null && findGauge(selectedComponent) == null)
             selectedComponent = null;
     }

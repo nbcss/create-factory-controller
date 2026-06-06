@@ -198,6 +198,14 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         return pos == null ? null : componentsByPosition.get(pos);
     }
 
+    /** Number of components currently on the given network (used by the network selector). */
+    public int componentCountIn(UUID network) {
+        int n = 0;
+        for (VirtualComponentBehaviour c : components)
+            if (c instanceof VirtualGaugeBehaviour g && network.equals(g.networkId)) n++;
+        return n;
+    }
+
     // ── Data serialization for menu open ──────────────────────────────────
 
     /** Called by NeoForge when the server opens this menu for a player. */

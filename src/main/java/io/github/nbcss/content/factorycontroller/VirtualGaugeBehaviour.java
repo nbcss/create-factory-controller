@@ -199,8 +199,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // Bulb-update chime on the unsatisfied → satisfied transition (Create's tickStorageMonitor),
         // played at the controller block so nearby players hear the gauge light up.
         if (!satisfied && shouldSatisfy && demand > 0) {
-            controller.playSound(AllSoundEvents.CONFIRM, 0.075f, 1f);
-            controller.playSound(AllSoundEvents.CONFIRM_2, 0.125f, 0.575f);
+            controller.playSound(AllSoundEvents.CONFIRM, 0.3f, 1f);
+            controller.playSound(AllSoundEvents.CONFIRM_2, 0.5f, 0.575f);
         }
 
         satisfied = shouldSatisfy;

@@ -94,9 +94,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.pose().popPose();
         }
 
-        // Indicator bulb — only shown once a target count is set (matches Create). Green normally, red
-        // when misconfigured/powered; brightness follows the animated glow: dark when understocked,
-        // bright when satisfied, and a bright pulse on each request (the glow flashes to 1).
+        // Indicator bulb — only shown once a target count is set (matches Create).
         if (behaviour.count != 0) {
             boolean invalid = behaviour.isMissingAddress() || behaviour.redstonePowered;
             int base = invalid ? BULB_RED : BULB_GREEN;
