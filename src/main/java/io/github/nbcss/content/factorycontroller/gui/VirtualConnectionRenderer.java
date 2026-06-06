@@ -114,7 +114,7 @@ public final class VirtualConnectionRenderer {
         int color = 0x888898;
         boolean flowing = false;
         if (target instanceof VirtualGaugeBehaviour gauge) {
-            color = gauge.getIngredientStatusColor();
+            color = gauge.getConnectionColor();
             flowing = !gauge.isMissingAddress() && !gauge.waitingForNetwork
                     && !gauge.satisfied && !gauge.redstonePowered;
             if (flowing) {

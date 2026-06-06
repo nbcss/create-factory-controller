@@ -1,6 +1,7 @@
 package io.github.nbcss.content.factorycontroller;
 
 import com.google.common.collect.Multimap;
+import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
@@ -115,10 +116,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     /**
-     * Indicator color (RGB) for the gauge state, matching Create's {@code getIngredientStatusColor}:
-     * gray when inactive/misconfigured/powered, then waiting → satisfied → promised → pending.
+     * Connection-path color (RGB) for the gauge state, matching Create's {@code getIngredientStatusColor}:
+     * gray when inactive/misconfigured/powered, then waiting → satisfied → promised → pending. (The
+     * indicator bulb is coloured separately — green/red — by the screen; see VirtualGaugeWidget.)
      */
-    public int getIngredientStatusColor() {
+    public int getConnectionColor() {
         return count == 0 || isMissingAddress() || redstonePowered ? 0x888898
              : waitingForNetwork ? 0x5B3B3B
              : satisfied         ? 0x9EFF7F
@@ -194,6 +196,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         lastReportedPromises = promised;
         lastReportedUnloadedLinks = unloadedLinkCount;
 
+        // Bulb-update chime on the unsatisfied → satisfied transition (Create's tickStorageMonitor),
+        // played at the controller block so nearby players hear the gauge light up.
+        if (!satisfied && shouldSatisfy && demand > 0) {
+            controller.playSound(AllSoundEvents.CONFIRM, 0.075f, 1f);
+            controller.playSound(AllSoundEvents.CONFIRM_2, 0.125f, 0.575f);
+        }
+
         satisfied = shouldSatisfy;
         promisedSatisfied = shouldPromiseSatisfy;
         waitingForNetwork = shouldWait;
@@ -245,8 +254,16 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     private void tickRequests() {
         if (controller == null) return;                 // client snapshot never ticks, but be safe
         if (targetedBy().isEmpty()) return;             // no ingredients wired in → nothing to craft
-        if (timer > 0) { timer--; return; }             // throttle between attempts
+        // Check satisfaction FIRST (Create's order) so the timer is frozen while stocked/promised. This
+        // is what prevents over-requesting: the timer never idles at 0 ready to fire, so the one-tick
+        // stock/promise flicker as the produced item lands can't trigger an extra request — a request
+        // only fires after the gauge has been continuously understocked for the whole interval.
         if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered) return;
+        if (timer > 0) {                                // throttle between attempts
+            timer = Math.min(timer, getConfigRequestIntervalInTicks());
+            timer--;
+            return;
+        }
         resetTimer();                                   // we're attempting now; throttle the next one
         // Stamp the attempt so the client can flash the connections once per request (not continuously).
         lastRequestTick = controller.getLevel() == null ? 0 : controller.getLevel().getGameTime();

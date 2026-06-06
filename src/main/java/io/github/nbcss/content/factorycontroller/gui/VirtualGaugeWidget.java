@@ -15,6 +15,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -51,6 +52,13 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
     private static final ResourceLocation INDICATOR =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/gauge_indicator");
 
+    // Indicator bulb colours (Create's factory_panel light models): green normally, red when the gauge
+    // is misconfigured (missing address) or redstone-powered. Brightness tracks the bulb glow, never
+    // fully dark so an understocked gauge still reads as a dim ("dark green") light.
+    private static final int BULB_GREEN = 0x9EFF7F;
+    private static final int BULB_RED = 0xFF5555;
+    private static final float BULB_MIN_BRIGHTNESS = 0.35f;
+
     public VirtualPanelPosition position() {
         return behaviour.position();
     }
@@ -72,7 +80,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * Rendered after connections so the front frame covers the arrowheads. (Hover feedback is the
      * {@code target} reticle drawn by the screen.)
      */
-    public void renderFront(GuiGraphics gfx, boolean selected) {
+    public void renderFront(GuiGraphics gfx, boolean selected, float glow) {
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
@@ -86,12 +94,16 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.pose().popPose();
         }
 
-        // Indicator light — only shown once a target count is set (matches Create: an unconfigured
-        // gauge has no bulb). Tinted by the gauge's status color.
+        // Indicator bulb — only shown once a target count is set (matches Create). Green normally, red
+        // when misconfigured/powered; brightness follows the animated glow: dark when understocked,
+        // bright when satisfied, and a bright pulse on each request (the glow flashes to 1).
         if (behaviour.count != 0) {
+            boolean invalid = behaviour.isMissingAddress() || behaviour.redstonePowered;
+            int base = invalid ? BULB_RED : BULB_GREEN;
+            float b = BULB_MIN_BRIGHTNESS + (1f - BULB_MIN_BRIGHTNESS) * Mth.clamp(glow, 0f, 1f);
             RenderSystem.enableBlend();
-            int color = behaviour.getIngredientStatusColor();
-            gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 0.9f);
+            gfx.setColor(((base >> 16) & 0xFF) / 255f * b, ((base >> 8) & 0xFF) / 255f * b,
+                    (base & 0xFF) / 255f * b, 0.9f);
             gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
             gfx.setColor(1f, 1f, 1f, 1f);
         }

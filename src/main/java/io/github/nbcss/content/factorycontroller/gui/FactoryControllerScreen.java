@@ -9,6 +9,8 @@ import io.github.nbcss.CreateFactoryController;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.*;
+import net.createmod.catnip.animation.LerpedFloat;
+import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.content.factorycontroller.packet.AddConnectionPacket;
@@ -32,6 +34,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +94,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Gauge widgets, indexed by board position for O(1) hit-testing and lookup. Rebuilt from
     // menu.components only when the panel state syncs (see rebuildGaugeWidgets), not per frame.
     private final Map<VirtualPanelPosition, VirtualGaugeWidget> gaugeWidgets = new LinkedHashMap<>();
+
+    // Per-gauge indicator-bulb animation (Create's FactoryPanelBehaviour#bulb), kept here so it
+    // survives the per-sync widget rebuild. Chases satisfied→1, and flashes to 1 on each request.
+    private final Map<VirtualPanelPosition, LerpedFloat> bulbs = new HashMap<>();
+    private final Map<VirtualPanelPosition, Long> bulbSeenRequest = new HashMap<>();
 
     // Board action mode (e.g. connecting). When active, actionPrompt is shown above the inventory and
     // board clicks are routed to the action instead of normal selection.
@@ -179,6 +187,36 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         addWidget(expandButton);
     }
 
+    // ── Indicator bulb animation ─────────────────────────────────────────────
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        // Advance each gauge's indicator bulb (mirrors FactoryPanelBehaviour#tick): chase satisfied,
+        // and flash to full on every fresh request attempt (detected via the synced lastRequestTick).
+        for (VirtualGaugeWidget w : gaugeWidgets.values()) {
+            VirtualGaugeBehaviour g = w.behaviour();
+            VirtualPanelPosition pos = g.position();
+            LerpedFloat bulb = bulbs.computeIfAbsent(pos,
+                    p -> LerpedFloat.linear().startWithValue(0).chase(0, 0.175, Chaser.EXP));
+            long seen = bulbSeenRequest.getOrDefault(pos, Long.MIN_VALUE);
+            if (g.lastRequestTick > seen) {
+                bulb.setValue(1);                 // request fired → flash
+                bulbSeenRequest.put(pos, g.lastRequestTick);
+            }
+            bulb.updateChaseTarget(g.satisfied || g.redstonePowered ? 1 : 0);
+            bulb.tickChaser();
+        }
+        bulbs.keySet().removeIf(p -> !gaugeWidgets.containsKey(p));
+        bulbSeenRequest.keySet().removeIf(p -> !gaugeWidgets.containsKey(p));
+    }
+
+    /** Current interpolated bulb glow [0,1] for the gauge at {@code pos} (0 if none). */
+    private float bulbGlow(VirtualPanelPosition pos, float partialTick) {
+        LerpedFloat bulb = bulbs.get(pos);
+        return bulb == null ? 0f : (float) bulb.getValue(partialTick);
+    }
+
     // ── Render ─────────────────────────────────────────────────────────────
 
     @Override
@@ -265,7 +303,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
         for (VirtualGaugeWidget gauge : gaugeWidgets.values())
-            gauge.renderFront(graphics, gauge.position().equals(selectedComponent));
+            gauge.renderFront(graphics, gauge.position().equals(selectedComponent),
+                    bulbGlow(gauge.position(), partialTick));
 
         renderHoverTarget(graphics);
 

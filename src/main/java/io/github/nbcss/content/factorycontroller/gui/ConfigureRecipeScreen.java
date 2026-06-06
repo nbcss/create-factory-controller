@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllRecipeTypes;
 import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.box.PackageStyles;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelScreen;
@@ -14,7 +15,6 @@ import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
-import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
@@ -25,7 +25,6 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -97,7 +96,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private boolean craftingActive;
     private List<BigItemStack> craftingIngredients = new ArrayList<>();
 
-    private EditBox addressBox;
+    private AddressEditBox addressBox;
     private ScrollInput promiseExpiration;
     private IconButton confirmButton;
     private IconButton deleteButton;
@@ -136,10 +135,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int promiseState = promiseExpiration != null ? promiseExpiration.getState()
                                                      : (g == null ? -1 : g.promiseClearingInterval);
 
-        addressBox = new EditBox(new NoShadowFontWrapper(font), panelX + 36, panelY + PANEL_H - 77, 108, 10,
-            Component.empty());
+        // Create's address box with frogport-address autocomplete (DestinationSuggestions). It caps
+        // length at 25 and renders its own suggestion dropdown; we only style it to match the panel.
+        addressBox = new AddressEditBox(this, new NoShadowFontWrapper(font),
+            panelX + 36, panelY + PANEL_H - 77, 108, 10, false);
         addressBox.setBordered(false);
-        addressBox.setMaxLength(FactoryControllerBlockEntity.MAX_ADDRESS_LENGTH);
         addressBox.setTextColor(0x555555);
         addressBox.setValue(address);
         addWidget(addressBox);
@@ -202,6 +202,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     public void resize(@NotNull Minecraft minecraft, int width, int height) {
         controller.resize(minecraft, width, height);
         super.resize(minecraft, width, height);
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        addressBox.tick();   // drives the address autocomplete (DestinationSuggestions)
     }
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -555,9 +561,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Deselect the address box when clicking away from it (mirrors FactoryPanelScreen).
+        if (getFocused() != null && !getFocused().isMouseOver(mouseX, mouseY))
+            setFocused(null);
+
         // Right-click the address field → clear it.
         if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
             addressBox.setValue("");
+            return true;
+        }
+
+        // Let the address box and its suggestion dropdown consume the click first — the dropdown can
+        // overlap the regions checked below, so it must win.
+        if (addressBox.mouseClicked(mouseX, mouseY, button)) {
+            setFocused(addressBox);
             return true;
         }
 
@@ -611,6 +628,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        // Let the address suggestion list consume scrolling first (matches FactoryPanelScreen).
+        if (addressBox.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         int step = hasShiftDown() ? 10 : 1;
         int dir = (int) Math.signum(scrollY);
 
