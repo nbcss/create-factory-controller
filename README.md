@@ -38,3 +38,7 @@ To run a dev client:
 ## License
 
 All Rights Reserved
+
+## Credits
+
+- Winding Noise - Music Box.mp3 by charcrone -- https://freesound.org/s/347035/ -- License: Creative Commons 0

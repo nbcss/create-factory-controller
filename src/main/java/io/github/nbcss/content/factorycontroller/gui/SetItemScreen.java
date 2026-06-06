@@ -68,7 +68,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     /** Chime when the overlay opens — played client-side for this player only. */
     private static void playOpenSound() {
         Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.OPEN_SCREEN.get(), 1.0f, 0.5f));
+            SimpleSoundInstance.forUI(CreateFactoryController.OPEN_SCREEN.get(), 1f));
     }
 
     @Override
@@ -175,7 +175,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     public void removed() {
         // Chime on every exit path (confirm button, Escape) as the overlay returns to the controller.
         Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.CLOSE_SCREEN.get(), 1.0f, 0.5f));
+            SimpleSoundInstance.forUI(CreateFactoryController.CLOSE_SCREEN.get(), 1f));
         super.removed();
     }
 
