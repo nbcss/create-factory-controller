@@ -44,6 +44,8 @@ public class NetworkSelectorWidget extends AbstractWidget {
     private static final int SLOT_GAP  = 2;
     private static final int PADDING   = 2;
     public static final int WIDGET_W   = PADDING + SLOT_SIZE + PADDING;
+    /** At most this many entries are shown at once; the rest scroll through a window on the selection. */
+    private static final int VISIBLE   = 5;
 
     private static final int SELECT_COLOR   = 0xFF66CCFF;
     private static final int SLOT_BG        = 0xFF404040;
@@ -137,11 +139,21 @@ public class NetworkSelectorWidget extends AbstractWidget {
         return n == 0 ? 0 : PADDING + n * SLOT_SIZE + (n - 1) * SLOT_GAP + PADDING;
     }
 
+    /**
+     * First entry index of the {@value #VISIBLE}-slot window. With ≤5 entries everything is shown;
+     * otherwise the window keeps the selection two slots from the top (centre) where possible, clamped
+     * to the ends — so the first/second selection shows entries 1-5 and the last/second-last shows the
+     * final 5.
+     */
+    private static int windowStart(int selected, int n) {
+        return n <= VISIBLE ? 0 : Mth.clamp(selected - VISIBLE / 2, 0, n - VISIBLE);
+    }
+
     // ── Interaction ───────────────────────────────────────────────────────────
 
     @Override
     public boolean isMouseOver(double mx, double my) {
-        int h = heightFor(buildEntries().size());
+        int h = heightFor(Math.min(buildEntries().size(), VISIBLE));
         return visible && mx >= getX() && mx < getX() + WIDGET_W && my >= getY() && my < getY() + h;
     }
 
@@ -170,16 +182,20 @@ public class NetworkSelectorWidget extends AbstractWidget {
     protected void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         syncSelection();
         List<Entry> entries = buildEntries();
-        this.height = heightFor(entries.size());
+        int n = entries.size();
+        int visible = Math.min(n, VISIBLE);
+        this.height = heightFor(visible);
         if (entries.isEmpty()) return;
 
         int sel = selectedIndex(entries);
+        int start = windowStart(sel, n);
         Font font = Minecraft.getInstance().font;
 
-        for (int i = 0; i < entries.size(); i++) {
+        for (int slot = 0; slot < visible; slot++) {
+            int i = start + slot;
             Entry e = entries.get(i);
             int slotX = getX() + PADDING;
-            int slotY = getY() + PADDING + i * (SLOT_SIZE + SLOT_GAP);
+            int slotY = getY() + PADDING + slot * (SLOT_SIZE + SLOT_GAP);
 
             if (i == sel)
                 gfx.fill(slotX - 1, slotY - 1, slotX + SLOT_SIZE + 1, slotY + SLOT_SIZE + 1, SELECT_COLOR);
