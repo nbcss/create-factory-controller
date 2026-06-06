@@ -1,9 +1,25 @@
 {
+  "factory_controller.open": {
+    "sounds": [
+      {
+        "name": "createfactorycontroller:factory_controller/open",
+        "volume": 0.4
+      }
+    ]
+  },
+  "factory_controller.close": {
+    "sounds": [
+      {
+        "name": "createfactorycontroller:factory_controller/close",
+        "volume": 0.4
+      }
+    ]
+  },
   "gauge.open": {
     "sounds": [
       {
         "name": "createfactorycontroller:gauge/open",
-        "volume": 0.25
+        "volume": 4
       }
     ]
   },
@@ -11,7 +27,7 @@
     "sounds": [
       {
         "name": "createfactorycontroller:gauge/close",
-        "volume": 0.25
+        "volume": 4
       }
     ]
   }

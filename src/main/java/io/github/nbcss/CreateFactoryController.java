@@ -66,12 +66,18 @@ public class CreateFactoryController {
     // ── Sound Events ───────────────────────────────────────────────────────
     public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
         DeferredRegister.create(Registries.SOUND_EVENT, MODID);
-    /** UI chime when a virtual-gauge configuration overlay opens (set-item / recipe). */
-    public static final DeferredHolder<SoundEvent, SoundEvent> OPEN_SCREEN =
+    // Factory controller UI open/close
+    public static final DeferredHolder<SoundEvent, SoundEvent> CONTROLLER_UI_OPEN =
+        SOUND_EVENTS.register("factory_controller.open", () -> SoundEvent.createVariableRangeEvent(
+            ResourceLocation.fromNamespaceAndPath(MODID, "factory_controller.open")));
+    public static final DeferredHolder<SoundEvent, SoundEvent> CONTROLLER_UI_CLOSE =
+        SOUND_EVENTS.register("factory_controller.close", () -> SoundEvent.createVariableRangeEvent(
+            ResourceLocation.fromNamespaceAndPath(MODID, "factory_controller.close")));;
+    // Virtual-gauge configuration overlay open/close
+    public static final DeferredHolder<SoundEvent, SoundEvent> GAUGE_UI_OPEN =
         SOUND_EVENTS.register("gauge.open", () -> SoundEvent.createVariableRangeEvent(
             ResourceLocation.fromNamespaceAndPath(MODID, "gauge.open")));
-    /** UI chime when a virtual-gauge configuration overlay closes (returns to the controller). */
-    public static final DeferredHolder<SoundEvent, SoundEvent> CLOSE_SCREEN =
+    public static final DeferredHolder<SoundEvent, SoundEvent> GAUGE_UI_CLOSE =
         SOUND_EVENTS.register("gauge.close", () -> SoundEvent.createVariableRangeEvent(
             ResourceLocation.fromNamespaceAndPath(MODID, "gauge.close")));
 

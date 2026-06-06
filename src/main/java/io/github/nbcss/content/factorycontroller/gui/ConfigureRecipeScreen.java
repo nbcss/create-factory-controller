@@ -114,7 +114,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         // Chime when the overlay opens — played client-side for this player only.
         Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.OPEN_SCREEN.get(), 1f));
+            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
     }
 
     @Override
@@ -668,7 +668,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     public void removed() {
         // Chime on every exit path (confirm/delete buttons, Escape, connect/relocate) as the overlay closes.
         Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.CLOSE_SCREEN.get(), 1f));
+            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
         super.removed();
     }
 

@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import io.github.nbcss.CreateFactoryController;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.*;
@@ -21,6 +22,7 @@ import net.minecraft.Util;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -108,6 +110,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     public FactoryControllerScreen(FactoryControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
+        // Play controller UI open SFX when the screen is constructed.
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_OPEN.get(), 1f));
     }
 
     @Override
@@ -144,6 +149,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu.knownNetworks);
         else
             networkSelector.setPosition(selectorX, selectorY);
+    }
+
+    @Override
+    public void removed() {
+        // Play controller UI close SFX for all exit paths.
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_CLOSE.get(), 1f));
+        super.removed();
     }
 
     private int expandButtonX() {

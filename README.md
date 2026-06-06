@@ -41,4 +41,7 @@ All Rights Reserved
 
 ## Credits
 
-- Winding Noise - Music Box.mp3 by charcrone -- https://freesound.org/s/347035/ -- License: Creative Commons 0
+Sounds:
+
+- Winding Noise - Music Box by charcrone -- https://freesound.org/s/347035/ -- License: Creative Commons 0
+- Pocket watch. Clicking open and closed, chain noise and picking up by JarredKarp -- https://freesound.org/s/490968/ -- License: Attribution NonCommercial 4.0
