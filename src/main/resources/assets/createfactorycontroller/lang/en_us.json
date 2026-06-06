@@ -2,10 +2,16 @@
   "itemGroup.createfactorycontroller": "Create Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
   "factory_controller.no_network_selected": "No network selected — place a tuned gauge first",
+  "factory_controller.component_limit": "Controller is full (%1$s components max)",
   "factory_controller.gui.in_network": "In network: %1$s",
+  "factory_controller.gui.capacity": "Capacity: %1$s / %2$s",
+  "factory_controller.gui.zoom": "Zoom: x%1$s",
 
   "createfactorycontroller.subtitle.gauge.open": "Gauge panel opens",
   "createfactorycontroller.subtitle.gauge.close": "Gauge panel closes",
+
+  "createfactorycontroller.gui.right_click_repeat": "Right-Click to repeat ingredient",
+  "createfactorycontroller.gui.package_overflow": "Warning: ingredient exceed one package",
 
   "createfactorycontroller.configuration.title": "Create Factory Controller Configs",
   "createfactorycontroller.configuration.section.createfactorycontroller.common.toml": "Create Factory Controller Configs",

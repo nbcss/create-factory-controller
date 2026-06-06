@@ -24,7 +24,7 @@ import java.util.Map;
  * the gauge's whole recipe config (mirrors Create's trash button).
  */
 public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos, String address,
-                                    int recipeOutput, int promiseInterval, int count, boolean upTo,
+                                    int recipeOutput, int craftBatch, int promiseInterval, int count, boolean upTo,
                                     List<VirtualPanelPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
@@ -40,6 +40,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 buf.writeInt(pkt.panelPos.y());
                 buf.writeUtf(pkt.address);
                 buf.writeInt(pkt.recipeOutput);
+                buf.writeInt(pkt.craftBatch);
                 buf.writeInt(pkt.promiseInterval);
                 buf.writeInt(pkt.count);
                 buf.writeBoolean(pkt.upTo);
@@ -61,6 +62,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 VirtualPanelPosition panelPos = new VirtualPanelPosition(buf.readInt(), buf.readInt());
                 String address = buf.readUtf();
                 int recipeOutput = buf.readInt();
+                int craftBatch = buf.readInt();
                 int promiseInterval = buf.readInt();
                 int count = buf.readInt();
                 boolean upTo = buf.readBoolean();
@@ -77,7 +79,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 List<ItemStack> arrangement = new ArrayList<>(m);
                 for (int i = 0; i < m; i++)
                     arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
-                return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, promiseInterval,
+                return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, promiseInterval,
                     count, upTo, positions, amounts, arrangement, clearPromises, reset);
             });
 
@@ -88,11 +90,14 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            Map<VirtualPanelPosition, Integer> inputs = new LinkedHashMap<>();
+            // Group per-slot amounts by connection, preserving order: a connection repeated across
+            // several slots arrives as the same position multiple times → one list entry per slot.
+            Map<VirtualPanelPosition, List<Integer>> inputs = new LinkedHashMap<>();
             int n = Math.min(packet.inputPositions().size(), packet.inputAmounts().size());
             for (int i = 0; i < n; i++)
-                inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
-            be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(),
+                inputs.computeIfAbsent(packet.inputPositions().get(i), k -> new ArrayList<>())
+                      .add(packet.inputAmounts().get(i));
+            be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
                 packet.promiseInterval(), packet.count(), packet.upTo(), inputs,
                 packet.craftingArrangement(), packet.clearPromises(), packet.reset());
         });

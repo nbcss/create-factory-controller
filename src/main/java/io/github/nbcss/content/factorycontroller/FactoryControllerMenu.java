@@ -17,9 +17,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 public class FactoryControllerMenu extends AbstractContainerMenu {
-
-    // Synced data (populated server-side, read client-side)
     public final List<VirtualComponentBehaviour> components = new ArrayList<>();
+    /** Position → component index for O(1) lookup; mirrors {@link #components}. */
+    private final Map<VirtualPanelPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
     public final List<UUID> knownNetworks = new ArrayList<>();
     public final BlockPos controllerPos;
 
@@ -39,7 +39,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         this.cachedPlayerInventory = playerInventory;
 
         // Snapshot data from BE for client sync
-        this.components.addAll(be.components.values());
+        setComponents(be.components.values());
         this.knownNetworks.addAll(be.networks);
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
@@ -56,7 +56,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         for (int i = 0; i < componentCount; i++) {
             CompoundTagHelper helper = new CompoundTagHelper(buf);
             VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, helper.tag(), playerInventory.player.level().registryAccess());
-            if (b != null) components.add(b);
+            if (b != null) addComponent(b);
         }
 
         int networkCount = buf.readVarInt();
@@ -172,8 +172,30 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         return original;
     }
 
-    public List<VirtualComponentBehaviour> getComponentsInCanvas(int minX, int minY, int maxX, int maxY) {
-        return components; //FIXME stub, calculate via input range only
+    // ── Component access (keep the list + position index in sync) ─────────────
+
+    /** Adds a component, indexing it by position. A later component at the same cell wins. */
+    public void addComponent(VirtualComponentBehaviour component) {
+        components.add(component);
+        componentsByPosition.put(component.position(), component);
+    }
+
+    /** Replaces all components (used on the full sync), rebuilding the position index. */
+    public void setComponents(Collection<? extends VirtualComponentBehaviour> newComponents) {
+        clearComponents();
+        for (VirtualComponentBehaviour c : newComponents) addComponent(c);
+    }
+
+    /** Removes every component and clears the position index. */
+    public void clearComponents() {
+        components.clear();
+        componentsByPosition.clear();
+    }
+
+    /** O(1) lookup of the component occupying {@code pos}, or {@code null} if the cell is empty. */
+    @Nullable
+    public VirtualComponentBehaviour getComponent(@Nullable VirtualPanelPosition pos) {
+        return pos == null ? null : componentsByPosition.get(pos);
     }
 
     // ── Data serialization for menu open ──────────────────────────────────

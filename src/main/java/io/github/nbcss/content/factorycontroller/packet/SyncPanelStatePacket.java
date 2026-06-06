@@ -98,10 +98,10 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
             if (!(mc.player.containerMenu instanceof FactoryControllerMenu menu)) return;
             if (!menu.controllerPos.equals(packet.pos())) return;
 
-            menu.components.clear();
+            menu.clearComponents();
             for (CompoundTag tag : packet.gaugeTags()) {
                 VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, tag, mc.level.registryAccess());
-                if (b != null) menu.components.add(b);
+                if (b != null) menu.addComponent(b);
             }
             menu.knownNetworks.clear();
             menu.knownNetworks.addAll(packet.networks());

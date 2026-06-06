@@ -9,14 +9,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "createfactorycontroller:factory_controller",
-          "functions": [
-            {
-              "function": "minecraft:copy_components",
-              "source": "block_entity",
-              "include": [ "minecraft:block_entity_data" ]
-            }
-          ]
+          "name": "createfactorycontroller:factory_controller"
         }
       ],
       "rolls": 1.0

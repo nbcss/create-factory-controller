@@ -14,8 +14,8 @@ import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
@@ -27,6 +27,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.network.chat.Component;
@@ -69,6 +70,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int NUM_SX = 48, NUM_SY = 176, NUM_W = 5, NUM_H = 8;
 
     // Threshold-row geometry (filter slot x24-40, count box x48-112, unit box x118-167, band y≈128-144).
+    /** The input arrangement is a 3×3 grid, so at most 9 slots (incl. repeats) can be shown. */
+    private static final int MAX_INPUT_SLOTS = 9;
     private static final int THRESH_TOP = 128;
     private static final int FILTER_X = 25;
     private static final int COUNT_X = 51, COUNT_W = 64;
@@ -82,6 +85,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     // Editable / derived state.
     private int outputCount = 1;
+    /** Crafts per request in crafting mode (≥1). The output slot shows outputCount × craftBatch. */
+    private int craftBatch = 1;
     private int thresholdCount = 0;
     private boolean upTo = true;
     private final List<VirtualPanelPosition> inputPositions = new ArrayList<>();
@@ -134,7 +139,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         addressBox = new EditBox(new NoShadowFontWrapper(font), panelX + 36, panelY + PANEL_H - 77, 108, 10,
             Component.empty());
         addressBox.setBordered(false);
-        addressBox.setMaxLength(64);
+        addressBox.setMaxLength(FactoryControllerBlockEntity.MAX_ADDRESS_LENGTH);
         addressBox.setTextColor(0x555555);
         addressBox.setValue(address);
         addWidget(addressBox);
@@ -157,6 +162,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         newInputButton = new IconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
         newInputButton.withCallback(() -> {
+            sendConfig(false, false);   // commit edits (incl. repeated slots) before leaving the screen
             controller.beginConnectionMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
@@ -165,6 +171,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         relocateButton = new IconButton(panelX + 31, panelY + 67, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
+            sendConfig(false, false);   // commit edits (incl. repeated slots) before leaving the screen
             controller.beginRelocateMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
@@ -201,17 +208,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Nullable
     private VirtualGaugeBehaviour gauge() {
-        for (VirtualComponentBehaviour c : menu.components)
-            if (c instanceof VirtualGaugeBehaviour g && g.position().equals(gaugePos))
-                return g;
-        return null;
+        return menu.getComponent(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
     private ItemStack ingredientOf(VirtualPanelPosition pos) {
-        for (VirtualComponentBehaviour c : menu.components)
-            if (c instanceof VirtualGaugeBehaviour g && g.position().equals(pos))
-                return g.filter;
-        return ItemStack.EMPTY;
+        return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
     private void updateConfigs() {
@@ -221,13 +222,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         VirtualGaugeBehaviour g = gauge();
         if (g == null) return;
         outputCount = Math.max(1, g.recipeOutput);
+        craftBatch = Math.max(1, g.craftBatch);
         thresholdCount = Math.max(0, g.count);
         upTo = g.upTo;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
-            int amt = Math.max(1, conn.amount);
-            inputPositions.add(conn.from);
-            inputAmounts.add(amt);
-            inputConfig.add(new BigItemStack(ingredientOf(conn.from), amt));
+            // One grid slot per stored amount — a repeated connection expands into several slots.
+            List<Integer> amts = conn.amounts.isEmpty() ? List.of(1) : conn.amounts;
+            for (int raw : amts) {
+                int amt = Math.max(1, raw);
+                inputPositions.add(conn.from);
+                inputAmounts.add(amt);
+                inputConfig.add(new BigItemStack(ingredientOf(conn.from), amt));
+            }
         }
 
         craftingActive = !g.activeCraftingArrangement.isEmpty();
@@ -330,6 +336,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 int iy = panelY + 28 + (i / 3) * 20;
                 ItemStack stack = craftingIngredients.get(i).stack;
                 gfx.renderItem(stack, ix, iy);
+                // With a batch > 1 each grid slot consumes (slot amount × batch) of its item — show it.
+                if (!stack.isEmpty() && craftBatch > 1)
+                    gfx.renderItemDecorations(font, stack, ix, iy,
+                        String.valueOf(Math.max(1, stack.getCount()) * craftBatch));
                 if (in(mouseX, mouseY, ix, iy, 16, 16))
                     tooltip = List.of(
                         CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
@@ -357,7 +367,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
                             CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
+                            Component.translatable("createfactorycontroller.gui.right_click_repeat")
+                                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             }
             if (inputPositions.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
                 tooltip = List.of(
@@ -366,15 +378,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
         }
 
-        // OUTPUT — the gauge's filter and produced count.
+        // OUTPUT — the gauge's filter and produced count. In crafting mode this is the whole batch
+        // (per-craft yield × craft count); a single package carries every craft.
         if (g != null && !g.filter.isEmpty()) {
             int ox = panelX + 160, oy = panelY + 48;
+            int producedCount = craftingActive ? outputCount * Math.max(1, craftBatch) : outputCount;
             gfx.renderItem(g.filter, ox, oy);
-            gfx.renderItemDecorations(font, g.filter, ox, oy, String.valueOf(outputCount));
+            gfx.renderItemDecorations(font, g.filter, ox, oy, String.valueOf(producedCount));
             if (in(mouseX, mouseY, ox, oy, 16, 16))
                 tooltip = List.of(
                     CreateLang.translate("gui.factory_panel.expected_output",
-                        CreateLang.itemName(g.filter).add(CreateLang.text(" x" + outputCount)).string())
+                        CreateLang.itemName(g.filter).add(CreateLang.text(" x" + producedCount)).string())
                         .color(ScrollInput.HEADER_RGB).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
@@ -554,21 +568,37 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        // Input slots: disconnect on click (only outside crafting mode).
+        // Input slots (only outside crafting mode). Right-click repeats the ingredient into the next
+        // slot (sharing the same connection link); any other click removes that slot, severing the
+        // link only once its last repeated slot is gone.
         if (!craftingActive)
             for (int i = 0; i < inputPositions.size(); i++) {
                 int ix = panelX + 68 + (i % 3) * 20;
                 int iy = panelY + 28 + (i / 3) * 20;
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
-                    PacketDistributor.sendToServer(
-                        new DisconnectIngredientPacket(menu.controllerPos, inputPositions.get(i), gaugePos));
-                    inputPositions.remove(i);
-                    inputAmounts.remove(i);
-                    inputConfig.remove(i);
-                    onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
-                    playClickSound();
+                if (!in(mouseX, mouseY, ix, iy, 16, 16)) continue;
+                VirtualPanelPosition from = inputPositions.get(i);
+
+                if (button == 1) {   // right-click → repeat into the next slot (always starts at x1)
+                    ItemStack ing = ingredientOf(from);
+                    if (!ing.isEmpty() && inputPositions.size() < MAX_INPUT_SLOTS) {
+                        inputPositions.add(i + 1, from);
+                        inputAmounts.add(i + 1, 1);
+                        inputConfig.add(i + 1, new BigItemStack(ing, 1));
+                        playClickSound();
+                    }
                     return true;
                 }
+
+                inputPositions.remove(i);
+                inputAmounts.remove(i);
+                inputConfig.remove(i);
+                if (!inputPositions.contains(from)) {   // last slot for this connection → drop the link
+                    PacketDistributor.sendToServer(
+                        new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
+                    onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
+                }
+                playClickSound();
+                return true;
             }
 
         // Click the unit box → toggle Item/Stack.
@@ -595,9 +625,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     return true;
                 }
             }
-        // Output count — locked to the recipe yield while crafting mode is active.
+        // Output slot. Outside crafting mode this is the free output count; in crafting mode the
+        // per-craft yield is fixed, so scrolling instead changes how many crafts ride one request
+        // (one craft per notch, capped so the produced total stays within 64 items).
         if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
-            if (!craftingActive) {
+            if (craftingActive) {
+                int maxBatch = Math.max(1, 64 / Math.max(1, outputCount));
+                int next = Mth.clamp(craftBatch + dir, 1, maxBatch);
+                if (next != craftBatch) {
+                    craftBatch = next;
+                    playScrollSound();
+                }
+            } else {
                 outputCount = Mth.clamp(outputCount + dir * step, 1, 64);
                 playScrollSound();
             }
@@ -633,6 +672,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         super.removed();
     }
 
+    /** JEI exclusion zone covering the 3D gauge preview that protrudes from the bottom-right corner. */
+    @Override
+    public List<Rect2i> getExtraAreas() {
+        return List.of(new Rect2i(panelX + 195, panelY + 152, 52, 35));
+    }
+
     // ── Commit ───────────────────────────────────────────────────────────────
 
     private void sendConfig(boolean clearPromises, boolean reset) {
@@ -640,25 +685,35 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ? craftingIngredients.stream().map(b -> b.stack).toList()
             : List.of();
 
-        // Per-connection ingredient amounts: in crafting mode each is how many times its item appears
-        // in the arrangement (mirrors Create's sendIt); otherwise the configured amount.
+        // Per-slot ingredient amounts. Outside crafting mode we send one entry per slot so repeats
+        // survive (the server sums them per connection). In crafting mode the per-craft usage is one
+        // value per unique connection (times the item appears in the arrangement, like Create's sendIt),
+        // so repeated slots are collapsed to a single entry.
+        List<VirtualPanelPosition> positions = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
-        for (int i = 0; i < inputPositions.size(); i++) {
-            if (craftingActive) {
-                ItemStack ing = ingredientOf(inputPositions.get(i));
+        if (craftingActive) {
+            Set<VirtualPanelPosition> seen = new HashSet<>();
+            for (VirtualPanelPosition pos : inputPositions) {
+                if (!seen.add(pos)) continue;
+                ItemStack ing = ingredientOf(pos);
                 int c = (int) craftingIngredients.stream()
                     .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))
                     .count();
+                positions.add(pos);
                 amounts.add(Math.max(1, c));
-            } else {
-                amounts.add(inputAmounts.get(i));
+            }
+        } else {
+            for (int i = 0; i < inputPositions.size(); i++) {
+                positions.add(inputPositions.get(i));
+                amounts.add(Math.max(1, inputAmounts.get(i)));
             }
         }
 
+        int batch = craftingActive ? Math.max(1, craftBatch) : 1;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
-            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount,
+            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch,
             promiseExpiration.getState(), thresholdCount, upTo,
-            new ArrayList<>(inputPositions), amounts, new ArrayList<>(arrangement), clearPromises, reset));
+            positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }
 
     private void confirmAndReturn() {

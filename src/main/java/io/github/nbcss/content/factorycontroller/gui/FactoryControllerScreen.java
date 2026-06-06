@@ -2,9 +2,13 @@ package io.github.nbcss.content.factorycontroller.gui;
 
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.*;
+import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.content.factorycontroller.packet.AddConnectionPacket;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
@@ -14,6 +18,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.Util;
+import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -25,7 +31,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
 
@@ -57,6 +65,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private int invHotbarY;
     private boolean inventoryExpanded = false;
     @Nullable private Button expandButton = null;
+
+    // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
+    private static final int CONTROLLER_MODEL_SCALE = 4;
 
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 18×18 source, tinted green.
@@ -164,12 +175,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // the hovered cell already gives white/red reticle feedback). hoveredPosition is set in renderBoard.
         VirtualGaugeWidget hovered = gaugeWidget(hoveredPosition);
         if (pendingConnectionTarget == null && pendingRelocateTarget == null && hovered != null)
-            graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(), mouseX, mouseY);
+            graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(menu), mouseX, mouseY);
     }
 
     @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         renderBoard(graphics, mouseX, mouseY, partialTick, false);
+
+        // Decorative controller block model anchored in the bottom-left corner, drawn over the board.
+        RenderSystem.enableBlend();
+        GuiGameElement.of(new ItemStack(CreateFactoryController.FACTORY_CONTROLLER_ITEM.get()))
+                .scale(CONTROLLER_MODEL_SCALE)
+                .render(graphics, leftPos - 74, topPos + imageHeight - 80);
 
         // Inventory panel + its expand button, lifted above canvas gauge icons.
         RenderSystem.disableDepthTest();
@@ -258,7 +275,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
 
-        // Reset depth for network icons
+        // Component count
+        int count = menu.components.size();
+        Component countText = Component.translatable("factory_controller.gui.capacity",
+                count, FactoryControllerBlockEntity.MAX_COMPONENTS);
+        int countColor = count >= FactoryControllerBlockEntity.MAX_COMPONENTS ? 0xFFFF5555 : 0xFFFFFFFF;
+        graphics.drawString(font, countText, x1 - font.width(countText) - 4, y0 + 4, countColor, true);
+
+        // Zoom factor just below it. The world-pixel scale is twice this displayed value, so we halve
+        // it (e.g. the default 2.0 zoom shows "x1"); fractional levels show up to 2 trimmed decimals.
+        double zoom = getZoomFactor() / 2.0;
+        String zoomStr = String.format(java.util.Locale.ROOT, "%.2f", zoom);
+        if (zoomStr.contains(".")) zoomStr = zoomStr.replaceAll("0+$", "").replaceAll("\\.$", "");
+        Component zoomText = Component.translatable("factory_controller.gui.zoom", zoomStr);
+        graphics.drawString(font, zoomText, x1 - font.width(zoomText) - 4, y0 + 6 + font.lineHeight, 0xFFFFFFFF, true);
+
+        // Reset depth for network icons & helper text
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
@@ -319,9 +351,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Relocate mode: white over a valid (empty) destination, red over an occupied cell.
             renderTarget(graphics, hoveredPosition, hoverHasGauge ? TARGET_RED : TARGET_WHITE);
         } else if (ComponentRegistry.containsItem(carried)) {
-            // Holding a gauge: white over an empty cell (valid placement), red over an occupied cell.
-            renderTarget(graphics, hoveredPosition, hoverHasGauge ? TARGET_RED : TARGET_WHITE);
-        } else if (carried.isEmpty()) {
+            // Holding a gauge: white over an empty cell (valid placement), red over an occupied cell —
+            // or red anywhere if placement would fail for lack of a network.
+            boolean noNetwork = networkForAttaching(carried) == null;
+            renderTarget(graphics, hoveredPosition, (hoverHasGauge || noNetwork) ? TARGET_RED : TARGET_WHITE);
+        } else if (!carried.isEmpty()) {
+            // Holding a non-gauge item: white over an unconfigured gauge (clicking sets its filter).
+            if (findGauge(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
+                renderTarget(graphics, hoveredPosition, TARGET_WHITE);
+        } else {
             // Empty cursor: white over a hovered gauge.
             if (hoverHasGauge) renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         }
@@ -362,6 +400,24 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void setTimedPrompt(Component prompt, long durationMs) {
         actionPrompt = prompt;
         actionPromptExpiry = Util.getMillis() + durationMs;
+    }
+
+    /** Create's rejection blip, played client-side for board actions the client rejects before sending. */
+    private void playDenySound() {
+        Minecraft.getInstance().getSoundManager().play(
+                SimpleSoundInstance.forUI(AllSoundEvents.DENY.getMainEvent(), 1.0f));
+    }
+
+    /**
+     * The network a carried gauge would attach to, or {@code null} if placement isn't possible: a
+     * tuned gauge brings its own network, an untuned one needs a known network selected.
+     */
+    @Nullable
+    private UUID networkForAttaching(ItemStack carried) {
+        if (LogisticallyLinkedBlockItem.isTuned(carried))
+            return LogisticallyLinkedBlockItem.networkFromStack(carried);
+        UUID selected = networkSelector.getSelectedNetwork();
+        return (selected != null && menu.knownNetworks.contains(selected)) ? selected : null;
     }
 
     private void clearActionMode() {
@@ -414,8 +470,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
             // Left-click with a carried gauge → attach it at the cell (server rejects if occupied).
             if (button == 0 && ComponentRegistry.containsItem(carried)) {
-                PacketDistributor.sendToServer(new AttachComponentPacket(
-                        menu.controllerPos, clicked, networkSelector.getSelectedNetwork()));
+                // Board full (placing on an empty cell would add a component) → prompt, don't send.
+                if (widget == null && menu.components.size() >= FactoryControllerBlockEntity.MAX_COMPONENTS) {
+                    setTimedPrompt(Component.translatable("factory_controller.component_limit",
+                            FactoryControllerBlockEntity.MAX_COMPONENTS).withStyle(ChatFormatting.RED), 3000);
+                    playDenySound();
+                    return true;
+                }
+                UUID network = networkForAttaching(carried);
+                // No usable network → surface the requirement as a 3s board prompt, don't send.
+                if (network == null) {
+                    setTimedPrompt(Component.translatable("factory_controller.no_network_selected")
+                            .withStyle(ChatFormatting.RED), 3000);
+                    playDenySound();
+                    return true;
+                }
+                PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, clicked, network));
                 return true;
             }
 
@@ -505,9 +575,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             selectedComponent = null;
     }
 
-    // GUI rectangle, exposed so SetItemScreen can match it (keeps JEI's layout consistent).
-    int guiWidth()  { return imageWidth; }
-    int guiHeight() { return imageHeight; }
+    public int guiWidth()  { return imageWidth; }
+    public int guiHeight() { return imageHeight; }
+
+    /** JEI exclusion zone covering the cosmetic controller model in the bottom-left corner. */
+    @Override
+    public List<Rect2i> getExtraAreas() {
+        return List.of(new Rect2i(leftPos - 74, topPos + imageHeight - 80, 74, 80));
+    }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -561,6 +636,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable
     private VirtualComponentBehaviour findGauge(@Nullable VirtualPanelPosition pos) {
         VirtualGaugeWidget w = gaugeWidget(pos);
-        return w == null ? null : w.getBehaviour();
+        return w == null ? null : w.behaviour();
     }
 }

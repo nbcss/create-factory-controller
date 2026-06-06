@@ -74,6 +74,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     private boolean forceClearPromises = false;
     public String recipeAddress = "";
     public int recipeOutput = 1;
+    /** Crafts carried per request package in mechanical-crafting mode (≥1); 1 = a single craft. */
+    public int craftBatch = 1;
     public int promiseClearingInterval = -1;
     public RequestPromiseQueue restockerPromises;
 
@@ -252,6 +254,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         controller.sendData();
         if (recipeAddress.isBlank()) return;            // recipe mode needs a packager address
 
+        // A single request can carry several crafts in one package (crafter mode only); the per-craft
+        // ingredient demand and the produced output are both multiplied by this batch count.
+        int batch = activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, craftBatch);
+
         // Sum the ingredient demand from incoming connections, grouped by each source's network.
         Map<UUID, Map<Item, Integer>> demandByNetwork = new LinkedHashMap<>();
         Map<Item, ItemStack> ingredientStacks = new HashMap<>();
@@ -259,7 +265,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
             ItemStack ingredient = source.filter;
             if (ingredient.isEmpty()) continue;
-            int needed = Math.max(1, e.getValue().amount);
+            int needed = e.getValue().totalAmount() * batch;   // sum across the connection's repeated slots
             demandByNetwork.computeIfAbsent(source.networkId, k -> new LinkedHashMap<>())
                            .merge(ingredient.getItem(), needed, Integer::sum);
             ingredientStacks.putIfAbsent(ingredient.getItem(), ingredient);
@@ -291,9 +297,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // so crafter-mode packages never carried the actual 3×3 recipe and couldn't be crafted.
         List<PackageOrderWithCrafts.CraftingEntry> crafts = activeCraftingArrangement.isEmpty()
             ? PackageOrderWithCrafts.empty().orderedCrafts()
-            : PackageOrderWithCrafts.singleRecipe(activeCraftingArrangement.stream()
-                .map(s -> new BigItemStack(s.copyWithCount(1)))
-                .toList()).orderedCrafts();
+            // CraftingEntry.count is the number of times to run this 3×3 pattern — i.e. the batch.
+            : List.of(new PackageOrderWithCrafts.CraftingEntry(
+                new PackageOrder(activeCraftingArrangement.stream()
+                    .map(s -> new BigItemStack(s.copyWithCount(1)))
+                    .toList()),
+                batch));
         // Resolve packagers for every network up front; abort entirely if any is busy so we never
         // half-fulfil a recipe.
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
@@ -315,7 +324,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
         if (promises != null)
-            promises.add(new RequestPromise(new BigItemStack(filter.copy(), Math.max(1, recipeOutput))));
+            promises.add(new RequestPromise(new BigItemStack(filter.copy(), Math.max(1, recipeOutput) * batch)));
         controller.setChanged();
     }
 
@@ -372,6 +381,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putInt("Timer", timer);
         tag.putString("RecipeAddress", recipeAddress);
         tag.putInt("RecipeOutput", recipeOutput);
+        tag.putInt("CraftBatch", craftBatch);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
 
         // Connections
@@ -432,6 +442,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
         // current values without a separate on-demand fetch.
         tag.putInt("RecipeOutput", recipeOutput);
+        tag.putInt("CraftBatch", craftBatch);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
         tag.putInt("Stock", stockLevel);
         tag.putInt("Promised", promisedCount);
@@ -470,6 +481,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.timer = tag.getInt("Timer");
         b.recipeAddress = tag.getString("RecipeAddress");
         b.recipeOutput = tag.getInt("RecipeOutput");
+        b.craftBatch = Math.max(1, tag.getInt("CraftBatch"));   // absent (legacy data) → 1
         b.promiseClearingInterval = tag.getInt("PromiseClearingInterval");
 
         ListTag targetedByList = tag.getList("TargetedBy", Tag.TAG_COMPOUND);

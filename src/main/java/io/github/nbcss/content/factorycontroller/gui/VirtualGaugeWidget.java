@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
+import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.RemoveComponentPacket;
@@ -21,7 +22,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * A single gauge on the canvas: renders it, builds its hover tooltip, and handles clicks on it.
@@ -32,23 +36,20 @@ import java.util.List;
  * {@code CELL} world px at {@code (position * CELL)} and this class never deals with zoom/pan.</p>
  */
 @OnlyIn(Dist.CLIENT)
-public class VirtualGaugeWidget {
+public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
 
     private static final int CELL = 16;
 
-    /** Status indicator light, drawn top-right within the cell and tinted by gauge state. */
+    /**
+     * A dispatched package has a 3×3 (9-slot) buffer; a request that needs more can't be carried.
+     */
+    private static final int MAX_PACKAGE_SLOTS = 9;
+
+    /**
+     * Status indicator light, drawn top-right within the cell and tinted by gauge state.
+     */
     private static final ResourceLocation INDICATOR =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/gauge_indicator");
-
-    private final VirtualGaugeBehaviour behaviour;
-
-    public VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
-        this.behaviour = behaviour;
-    }
-
-    public VirtualGaugeBehaviour getBehaviour() {
-        return behaviour;
-    }
 
     public VirtualPanelPosition position() {
         return behaviour.position();
@@ -136,7 +137,7 @@ public class VirtualGaugeWidget {
      * item to set" until a filter exists, then "Click to configure" — and, when inactive, the red
      * reason (no target amount / missing address), matching {@code FactoryPanelBehaviour#getLabel}.
      */
-    public List<Component> getGaugeTooltip() {
+    public List<Component> getGaugeTooltip(FactoryControllerMenu menu) {
         List<Component> lines = new ArrayList<>();
         lines.add(behaviour.filter.isEmpty()
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
@@ -153,12 +154,71 @@ public class VirtualGaugeWidget {
             lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
+        // Warn when the requested ingredients can't fit in a single dispatched package (9 slots).
+        // Crafting-mode gauges pack their crafts into one package via the recipe entry, so skip them.
+        if (behaviour.activeCraftingArrangement.isEmpty() && !behaviour.targetedBy().isEmpty()
+                && requiredPackageSlots(menu) > MAX_PACKAGE_SLOTS)
+            lines.add(Component.translatable("createfactorycontroller.gui.package_overflow")
+                    .withStyle(ChatFormatting.GOLD));
         return lines;
+    }
+
+    /**
+     * The largest number of package buffer slots any one dispatched package would need. The request
+     * builds one package per source network (mirroring {@code tickRequests}); within a network, each
+     * distinct ingredient stack needs ⌈summed count ÷ max stack size⌉ slots (the count is per-craft
+     * demand × craft batch in crafting mode). A package buffers {@value #MAX_PACKAGE_SLOTS} slots, so
+     * any network exceeding that can't be carried in a single package.
+     */
+    private int requiredPackageSlots(FactoryControllerMenu menu) {
+        int batch = behaviour.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, behaviour.craftBatch);
+        Map<UUID, List<ItemStack>> stacksByNet = new HashMap<>();
+        Map<UUID, List<Integer>> countsByNet = new HashMap<>();
+        for (VirtualPanelConnection conn : behaviour.targetedBy().values()) {
+            VirtualGaugeBehaviour source = menu.getComponent(conn.from) instanceof VirtualGaugeBehaviour g ? g : null;
+            if (source == null || source.filter.isEmpty()) continue;
+            ItemStack ing = source.filter;
+            int need = conn.totalAmount() * batch;
+            List<ItemStack> stacks = stacksByNet.computeIfAbsent(source.networkId, k -> new ArrayList<>());
+            List<Integer> counts = countsByNet.computeIfAbsent(source.networkId, k -> new ArrayList<>());
+            int idx = -1;
+            for (int i = 0; i < stacks.size(); i++)
+                if (ItemStack.isSameItemSameComponents(stacks.get(i), ing)) {
+                    idx = i;
+                    break;
+                }
+            if (idx < 0) {
+                stacks.add(ing);
+                counts.add(need);
+            } else counts.set(idx, counts.get(idx) + need);
+        }
+        int maxSlots = 0;
+        for (UUID net : stacksByNet.keySet()) {
+            List<ItemStack> stacks = stacksByNet.get(net);
+            List<Integer> counts = countsByNet.get(net);
+            int slots = 0;
+            for (int i = 0; i < stacks.size(); i++) {
+                int max = Math.max(1, stacks.get(i).getMaxStackSize());
+                slots += (counts.get(i) + max - 1) / max;
+            }
+            maxSlots = Math.max(maxSlots, slots);
+        }
+        return maxSlots;
+    }
+
+    /**
+     * The source gauge at {@code pos}, or {@code null} if none.
+     */
+    private VirtualGaugeBehaviour sourceGauge(FactoryControllerMenu menu, VirtualPanelPosition pos) {
+        //fixme remove this
+        return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
     // ── Interaction ────────────────────────────────────────────────────────────
 
-    /** Shift-click: remove this gauge from the board (server refunds the item in survival). */
+    /**
+     * Shift-click: remove this gauge from the board (server refunds the item in survival).
+     */
     public void remove(FactoryControllerScreen screen) {
         PacketDistributor.sendToServer(
                 new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));

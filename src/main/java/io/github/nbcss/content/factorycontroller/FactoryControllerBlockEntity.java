@@ -15,8 +15,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
-import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -30,7 +28,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -41,8 +38,17 @@ import java.util.*;
 
 public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider {
 
+    /** Hard cap on components a single controller may hold — bounds the BE/item NBT and sync size. */
+    public static final int MAX_COMPONENTS = 256;
+    /** Max characters of a gauge's packager address (clamped server-side, authoritative). */
+    public static final int MAX_ADDRESS_LENGTH = 25;
+
     public final Map<VirtualPanelPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
     public final Set<UUID> networks = new LinkedHashSet<>();
+
+    /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
+     *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
+    private boolean menuSyncQueued = false;
 
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
@@ -64,6 +70,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (level == null || level.isClientSide()) return;
         for (VirtualComponentBehaviour component : components.values())
             component.tick();
+        // Flush at most one menu snapshot per tick (gauge ticks above may have queued several).
+        if (menuSyncQueued) {
+            menuSyncQueued = false;
+            syncMenuToPlayers();
+        }
     }
 
     // ── Gauge attach ───────────────────────────────────────────────────────
@@ -76,6 +87,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         if (components.containsKey(pos)) return;
 
+        if (components.size() >= MAX_COMPONENTS) {   // board full — bounds NBT/packet size
+            player.displayClientMessage(
+                Component.translatable("factory_controller.component_limit", MAX_COMPONENTS)
+                    .withStyle(ChatFormatting.RED), true);
+            playDenySound();
+            return;
+        }
+
         UUID networkId;
         if (LogisticallyLinkedBlockItem.isTuned(carried)) {
             networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
@@ -85,10 +104,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             // Selection is a client-side GUI choice; validate it against networks this
             // controller actually knows (populated by previously attached tuned gauges).
             if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
-                player.displayClientMessage(
-                    Component.translatable("factory_controller.no_network_selected")
-                        .withStyle(ChatFormatting.RED), true);
-                playDenySound();
                 return;
             }
             networkId = selectedNetwork;
@@ -184,9 +199,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * otherwise the address / output-per-craft / promise interval and per-connection ingredient
      * amounts are updated.
      */
-    public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput,
+    public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput, int craftBatch,
                                 int promiseInterval, int count, boolean upTo,
-                                Map<VirtualPanelPosition, Integer> inputAmounts,
+                                Map<VirtualPanelPosition, List<Integer>> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
 
@@ -196,6 +211,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.upTo = true;
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
+            gauge.craftBatch = 1;
             gauge.promiseClearingInterval = -1;
             gauge.activeCraftingArrangement = new ArrayList<>();
             gauge.disconnectAll();
@@ -204,15 +220,21 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             return;
         }
 
-        gauge.recipeAddress = address;
+        gauge.recipeAddress = address.length() > MAX_ADDRESS_LENGTH
+            ? address.substring(0, MAX_ADDRESS_LENGTH) : address;
         gauge.recipeOutput = Math.max(1, recipeOutput);
+        gauge.craftBatch = Math.max(1, craftBatch);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
         gauge.count = Math.max(0, count);
         gauge.upTo = upTo;
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
-        for (Map.Entry<VirtualPanelPosition, Integer> e : inputAmounts.entrySet()) {
+        for (Map.Entry<VirtualPanelPosition, List<Integer>> e : inputAmounts.entrySet()) {
             VirtualPanelConnection conn = gauge.targetedBy().get(e.getKey());
-            if (conn != null) conn.amount = Math.max(1, e.getValue());
+            if (conn == null) continue;
+            List<Integer> amts = new ArrayList<>();
+            for (int a : e.getValue()) amts.add(Math.max(1, a));
+            if (amts.isEmpty()) amts.add(1);
+            conn.amounts = amts;
         }
         if (clearPromises) gauge.requestClearPromises();
         setChanged();
@@ -290,22 +312,28 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     @Override
     public void sendData() {
-        super.sendData();
-        syncMenuToPlayers();
+        super.sendData();          // vanilla BE chunk update (coalesced per tick; carries no board, see write())
+        menuSyncQueued = true;     // defer the heavy menu snapshot to the tick flush (coalesced)
     }
 
     private void syncMenuToPlayers() {
         if (level == null || level.isClientSide()) return;
         ServerLevel serverLevel = (ServerLevel) level;
+        // Only players with this controller's GUI open need the snapshot — gather them first and skip
+        // building it entirely when nobody is watching.
+        List<ServerPlayer> viewers = new ArrayList<>();
+        for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers())
+            if (player.containerMenu instanceof FactoryControllerMenu menu
+                    && menu.controllerPos.equals(getBlockPos()))
+                viewers.add(player);
+        if (viewers.isEmpty()) return;
+
         List<CompoundTag> tags = new ArrayList<>();
         for (VirtualComponentBehaviour b : components.values())
             tags.add(b.toClientNBT(serverLevel.registryAccess()));
         SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, new ArrayList<>(networks));
-        for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
-            if (player.containerMenu instanceof FactoryControllerMenu menu
-                    && menu.controllerPos.equals(getBlockPos()))
-                PacketDistributor.sendToPlayer(player, packet);
-        }
+        for (ServerPlayer player : viewers)
+            PacketDistributor.sendToPlayer(player, packet);
     }
 
     // ── MenuProvider ───────────────────────────────────────────────────────
@@ -326,6 +354,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     @Override
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.write(tag, registries, clientPacket);
+
+        // The block-entity chunk-sync packet carries no board: nothing in the world renders from it, and
+        // an open GUI gets the full snapshot via the menu (writeExtraData + SyncPanelStatePacket). This
+        // keeps per-tick updates to nearby (non-GUI) players tiny regardless of board size.
+        if (clientPacket) return;
 
         ListTag gaugeList = new ListTag();
         for (VirtualComponentBehaviour b : components.values())
@@ -358,28 +391,30 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             networks.add(networkList.getCompound(i).getUUID("Id"));
     }
 
-    // ── Component / item persistence ───────────────────────────────────────
+    // ── Component drops ─────────────────────────────────────────────────────
 
     /**
-     * Called by vanilla's final {@code collectComponents()} — used by the loot table's
-     * {@code copy_components} function (source: block_entity, include: block_entity_data) so that
-     * manually mined drops also carry the gauge/connection/network configuration.
+     * Drops every attached component as its own item at the controller. Called when the controller
+     * block is destroyed: the board configuration is <b>not</b> stored on the dropped controller item,
+     * so the gauges are returned to the world instead.
      */
-    @Override
-    protected void collectImplicitComponents(DataComponentMap.Builder builder) {
-        super.collectImplicitComponents(builder);
-        if (level != null) {
-            // saveCustomOnly calls saveAdditional → our write() — saves gauges, connections, networks.
-            CompoundTag nbt = saveCustomOnly(level.registryAccess());
-            builder.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
+    public void dropComponents() {
+        if (level == null || level.isClientSide()) return;
+        for (VirtualComponentBehaviour b : components.values()) {
+            ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(b.getItemId()));
+            if (!stack.isEmpty())
+                Block.popResource(level, getBlockPos(), stack);
         }
+        components.clear();
     }
 
+    /**
+     * The picked/dropped controller item carries no board data — components drop separately on break.
+     * Overridden to a no-op so vanilla's default (which embeds {@code saveCustomOnly} into
+     * {@code BLOCK_ENTITY_DATA}) doesn't bake the whole board into the item.
+     */
     @Override
     public void saveToItem(ItemStack stack, HolderLookup.Provider registries) {
-        super.saveToItem(stack, registries);
-        CompoundTag beData = new CompoundTag();
-        write(beData, registries, false);
-        stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(beData));
+        // intentionally empty
     }
 }
