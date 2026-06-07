@@ -60,7 +60,7 @@ import java.util.stream.Collectors;
 public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
 
     private static final ResourceLocation PANEL_TEX =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/factory_gauge.png");
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/configure_recipe.png");
     private static final int PANEL_W = 200, PANEL_H = 184;
 
     // Stock-keeper number font (create:textures/gui/stock_keeper.png, NUMBERS region 48,176 5x8).
@@ -531,11 +531,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     protected void renderForeground(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         gfx.drawString(font, title, panelX + 97 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
 
-        // Address box drawn here, in the clean foreground pass, so AddressEditBox's clipboard hint icon
-        // and suggestion dropdown (and their tooltips) render on top — like Create's renderable widget.
         addressBox.render(gfx, mouseX, mouseY, partialTicks);
-        // Address box tooltip (Create's showAddressBoxTooltip, recipe variant) — drawn after the box so
-        // it sits above it; the clipboard-icon tooltip is handled inside AddressEditBox itself.
         if (addressBox.isHovered() && !addressBox.isFocused())
             gfx.renderComponentTooltip(font, addressBox.getValue().isBlank()
                 ? List.of(

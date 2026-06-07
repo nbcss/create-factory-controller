@@ -1,23 +1,23 @@
 {
   "itemGroup.createfactorycontroller": "Create Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
-  "factory_controller.no_network_selected": "No network selected — place a tuned gauge first",
-  "factory_controller.component_limit": "Controller is full (%1$s components max)",
-  "factory_controller.gui.in_network": "In network: %1$s",
-  "factory_controller.gui.capacity": "Capacity: %1$s/%2$s",
-  "factory_controller.gui.zoom": "Zoom: x%1$s",
-  "factory_controller.gui.no_selected_network": "No network selected",
-  "factory_controller.gui.selected_network": "Selected %1$s",
-  "factory_controller.network.default": "Network #%1$s",
-  "factory_controller.network.none": "No network",
 
-  "createfactorycontroller.subtitle.gauge.open": "Gauge panel opens",
-  "createfactorycontroller.subtitle.gauge.close": "Gauge panel closes",
+  "createfactorycontroller.message.no_network": "No network — place a tuned gauge first",
+  "createfactorycontroller.message.no_network_tuned": "No network tuned — use network selector to tune",
+  "createfactorycontroller.message.component_limit": "Controller is full (%1$s components max)",
 
+  "createfactorycontroller.gui.in_network": "In network: %1$s",
+  "createfactorycontroller.gui.capacity": "Capacity: %1$s/%2$s",
+  "createfactorycontroller.gui.zoom": "Zoom: x%1$s",
+  "createfactorycontroller.gui.no_selected_network": "No network selected",
+  "createfactorycontroller.gui.selected_network": "Selected %1$s",
   "createfactorycontroller.gui.right_click_repeat": "Right-Click to repeat ingredient",
-  "createfactorycontroller.gui.package_overflow": "Warning: ingredient exceed one package",
+  "createfactorycontroller.gui.package_overflow": "Warning: ingredient exceeds one package",
 
-  "createfactorycontroller.configuration.title": "Create Factory Controller Configs",
-  "createfactorycontroller.configuration.section.createfactorycontroller.common.toml": "Create Factory Controller Configs",
-  "createfactorycontroller.configuration.section.createfactorycontroller.common.toml.title": "Create Factory Controller Configs"
+  "createfactorycontroller.network.default": "Network #%1$s",
+
+  "createfactorycontroller.subtitle.controller.open": "Controller panel opens",
+  "createfactorycontroller.subtitle.controller.close": "Controller panel closes",
+  "createfactorycontroller.subtitle.gauge.open": "Gauge panel opens",
+  "createfactorycontroller.subtitle.gauge.close": "Gauge panel closes"
 }

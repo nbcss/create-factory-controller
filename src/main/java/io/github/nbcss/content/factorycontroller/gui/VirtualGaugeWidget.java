@@ -153,7 +153,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
                 : CreateLang.text(behaviour.filter.getHoverName().getString()).color(0xFBDC7D).component());
         if (!behaviour.filter.isEmpty()) {
-            lines.add(Component.translatable("factory_controller.gui.in_network", behaviour.stockLevel)
+            lines.add(Component.translatable("createfactorycontroller.gui.in_network", behaviour.stockLevel)
                     .withStyle(ChatFormatting.GRAY));
         }
         lines.add((behaviour.filter.isEmpty()
@@ -214,14 +214,6 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             maxSlots = Math.max(maxSlots, slots);
         }
         return maxSlots;
-    }
-
-    /**
-     * The source gauge at {@code pos}, or {@code null} if none.
-     */
-    private VirtualGaugeBehaviour sourceGauge(FactoryControllerMenu menu, VirtualPanelPosition pos) {
-        //fixme remove this
-        return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
     // ── Interaction ────────────────────────────────────────────────────────────

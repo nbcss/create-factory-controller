@@ -1,5 +1,6 @@
 {
   "factory_controller.open": {
+    "subtitle": "createfactorycontroller.subtitle.controller.open",
     "sounds": [
       {
         "name": "createfactorycontroller:factory_controller/open",
@@ -8,6 +9,7 @@
     ]
   },
   "factory_controller.close": {
+    "subtitle": "createfactorycontroller.subtitle.controller.close",
     "sounds": [
       {
         "name": "createfactorycontroller:factory_controller/close",
@@ -16,6 +18,7 @@
     ]
   },
   "gauge.open": {
+    "subtitle": "createfactorycontroller.subtitle.gauge.open",
     "sounds": [
       {
         "name": "createfactorycontroller:gauge/open",
@@ -24,6 +27,7 @@
     ]
   },
   "gauge.close": {
+    "subtitle": "createfactorycontroller.subtitle.gauge.close",
     "sounds": [
       {
         "name": "createfactorycontroller:gauge/close",

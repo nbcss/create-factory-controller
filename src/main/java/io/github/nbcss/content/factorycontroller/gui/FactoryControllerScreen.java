@@ -79,7 +79,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
     private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
-    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background_default.png");
+    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background/create_bricks.png");
 
     // player_inventory.png layout (176×108, matching Create's convention)
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
@@ -163,8 +163,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void onNetworkSelected(@Nullable UUID network) {
         MutableComponent message = network == null
-                ? Component.translatable("factory_controller.gui.no_selected_network")
-                : Component.translatable("factory_controller.gui.selected_network", menu.networkName(network));
+                ? Component.translatable("createfactorycontroller.gui.no_selected_network")
+                : Component.translatable("createfactorycontroller.gui.selected_network", menu.networkName(network));
         setTimedPrompt(message.withStyle(ChatFormatting.WHITE), 3000);
     }
 
@@ -348,7 +348,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         // Component count
         int count = menu.components.size();
-        Component countText = Component.translatable("factory_controller.gui.capacity",
+        Component countText = Component.translatable("createfactorycontroller.gui.capacity",
                 count, FactoryControllerBlockEntity.MAX_COMPONENTS);
         int countColor = count >= FactoryControllerBlockEntity.MAX_COMPONENTS ? 0xFFFF5555 : 0xFFFFFFFF;
         graphics.drawString(font, countText, x1 - font.width(countText) - 4, y0 + 4, countColor, true);
@@ -358,7 +358,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         double zoom = getZoomFactor() / 2.0;
         String zoomStr = String.format(java.util.Locale.ROOT, "%.2f", zoom);
         if (zoomStr.contains(".")) zoomStr = zoomStr.replaceAll("0+$", "").replaceAll("\\.$", "");
-        Component zoomText = Component.translatable("factory_controller.gui.zoom", zoomStr);
+        Component zoomText = Component.translatable("createfactorycontroller.gui.zoom", zoomStr);
         graphics.drawString(font, zoomText, x1 - font.width(zoomText) - 4, y0 + 6 + font.lineHeight, 0xFFFFFFFF, true);
 
         // Reset depth for network icons & helper text
@@ -490,14 +490,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /**
-     * The network a carried gauge would attach to, or {@code null} if placement isn't possible: a
+     * The network a stack gauge would attach to, or {@code null} if placement isn't possible: a
      * tuned gauge brings its own network, an untuned one needs a known network selected.
      */
     @Nullable
-    private UUID networkForAttaching(ItemStack carried) {
-        // The selector re-tunes the carried item directly, so its own frequency is the source of truth
-        // (null = "no network" selected → placement is denied).
-        return LogisticallyLinkedBlockItem.isTuned(carried) ? LogisticallyLinkedBlockItem.networkFromStack(carried) : null;
+    private UUID networkForAttaching(ItemStack stack) {
+        return LogisticallyLinkedBlockItem.isTuned(stack) ? LogisticallyLinkedBlockItem.networkFromStack(stack) : null;
     }
 
     private void clearActionMode() {
@@ -552,7 +550,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (button == 0 && ComponentRegistry.containsItem(carried)) {
                 // Board full (placing on an empty cell would add a component) → prompt, don't send.
                 if (widget == null && menu.components.size() >= FactoryControllerBlockEntity.MAX_COMPONENTS) {
-                    setTimedPrompt(Component.translatable("factory_controller.component_limit",
+                    setTimedPrompt(Component.translatable("createfactorycontroller.message.component_limit",
                             FactoryControllerBlockEntity.MAX_COMPONENTS).withStyle(ChatFormatting.RED), 3000);
                     playDenySound();
                     return true;
@@ -560,7 +558,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 UUID network = networkForAttaching(carried);
                 // No usable network → surface the requirement as a 3s board prompt, don't send.
                 if (network == null) {
-                    setTimedPrompt(Component.translatable("factory_controller.no_network_selected")
+                    setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() ?
+                            "createfactorycontroller.message.no_network" :
+                            "createfactorycontroller.message.no_network_tuned")
                             .withStyle(ChatFormatting.RED), 3000);
                     playDenySound();
                     return true;

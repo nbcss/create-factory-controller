@@ -91,7 +91,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         if (components.size() >= MAX_COMPONENTS) {   // board full — bounds NBT/packet size
             player.displayClientMessage(
-                Component.translatable("factory_controller.component_limit", MAX_COMPONENTS)
+                Component.translatable("createfactorycontroller.message.component_limit", MAX_COMPONENTS)
                     .withStyle(ChatFormatting.RED), true);
             playDenySound();
             return;

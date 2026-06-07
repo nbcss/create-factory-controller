@@ -52,7 +52,6 @@ public class NetworkSelectorWidget extends AbstractWidget {
     private static final int SELECTION_X    = 0;    // selection-box top-left X within the panel
     private static final int SELECTION_DY   = -5;   // selection-box top-left Y relative to its icon
     private static final int ARROW_X        = 9;    // arrow top-left X within the panel
-    private static final int ARROW_UP_DY    = -8;   // arrow_up top-left Y relative to the panel top
     private static final int VISIBLE        = 5;    // max rows shown at once
 
     private static final int NEW_PLUS_COLOR = 0xFF55FF55;   // green "+"
