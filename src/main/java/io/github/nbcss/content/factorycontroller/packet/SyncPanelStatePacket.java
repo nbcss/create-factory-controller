@@ -23,7 +23,8 @@ import java.util.UUID;
  * Server → client: full gauge + network snapshot so the open screen stays live.
  * Sent by FactoryControllerBlockEntity.sendData() to any player who has this menu open.
  */
-public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, List<UUID> networks)
+public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, List<UUID> networks,
+                                   List<String> networkNames)
         implements CustomPacketPayload {
 
     public static final Type<SyncPanelStatePacket> TYPE =
@@ -68,6 +69,22 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
             }
         };
 
+    private static final StreamCodec<RegistryFriendlyByteBuf, List<String>> STRING_LIST_CODEC =
+        new StreamCodec<>() {
+            @Override
+            public List<String> decode(RegistryFriendlyByteBuf buf) {
+                int size = buf.readVarInt();
+                List<String> list = new ArrayList<>(size);
+                for (int i = 0; i < size; i++) list.add(buf.readUtf());
+                return list;
+            }
+            @Override
+            public void encode(RegistryFriendlyByteBuf buf, List<String> names) {
+                buf.writeVarInt(names.size());
+                for (String s : names) buf.writeUtf(s);
+            }
+        };
+
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncPanelStatePacket> STREAM_CODEC =
         new StreamCodec<>() {
             @Override
@@ -75,13 +92,15 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
                 List<CompoundTag> tags = TAG_LIST_CODEC.decode(buf);
                 List<UUID> networks = UUID_LIST_CODEC.decode(buf);
-                return new SyncPanelStatePacket(pos, tags, networks);
+                List<String> names = STRING_LIST_CODEC.decode(buf);
+                return new SyncPanelStatePacket(pos, tags, networks, names);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
                 BlockPos.STREAM_CODEC.encode(buf, packet.pos());
                 TAG_LIST_CODEC.encode(buf, packet.gaugeTags());
                 UUID_LIST_CODEC.encode(buf, packet.networks());
+                STRING_LIST_CODEC.encode(buf, packet.networkNames());
             }
         };
 
@@ -105,6 +124,11 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
             }
             menu.knownNetworks.clear();
             menu.knownNetworks.addAll(packet.networks());
+            menu.networkNicknames.clear();
+            List<UUID> nets = packet.networks();
+            List<String> names = packet.networkNames();
+            for (int i = 0; i < nets.size() && i < names.size(); i++)
+                if (!names.get(i).isBlank()) menu.networkNicknames.put(nets.get(i), names.get(i));
 
             if (mc.screen instanceof FactoryControllerScreen screen)
                 screen.onPanelSync();

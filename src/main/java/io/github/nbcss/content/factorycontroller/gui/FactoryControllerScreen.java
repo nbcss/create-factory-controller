@@ -27,6 +27,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -153,11 +154,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         addWidget(expandButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 4;
-        int selectorY = topPos + CANVAS_TOP_PADDING + 4;
+        int selectorY = topPos + CANVAS_TOP_PADDING + 9;
         if (networkSelector == null)
-            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried);
+            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
         else
             networkSelector.setPosition(selectorX, selectorY);
+    }
+
+    private void onNetworkSelected(@Nullable UUID network) {
+        MutableComponent message = network == null
+                ? Component.translatable("factory_controller.gui.no_selected_network")
+                : Component.translatable("factory_controller.gui.selected_network", menu.networkName(network));
+        setTimedPrompt(message.withStyle(ChatFormatting.WHITE), 3000);
     }
 
     /** Re-tunes the carried component item (selector scroll): optimistic client update + server packet. */
@@ -172,9 +180,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public void onClose() {
-        // Controller UI close SFX. Played here (not in removed()) so it only fires on a genuine close
-        // (Escape / inventory key); opening a sub-screen — SetItemScreen / ConfigureRecipeScreen, which
-        // share this menu via setScreen — calls removed() but not onClose(), so it stays silent.
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_CLOSE.get(), 1f));
         super.onClose();

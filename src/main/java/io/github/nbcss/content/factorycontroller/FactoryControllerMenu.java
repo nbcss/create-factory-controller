@@ -3,6 +3,7 @@ package io.github.nbcss.content.factorycontroller;
 import io.github.nbcss.CreateFactoryController;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -21,6 +22,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     /** Position → component index for O(1) lookup; mirrors {@link #components}. */
     private final Map<VirtualPanelPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
     public final List<UUID> knownNetworks = new ArrayList<>();
+    /** Client mirror of the controller's per-network nicknames (synced); see {@link #networkName}. */
+    public final Map<UUID, String> networkNicknames = new HashMap<>();
     public final BlockPos controllerPos;
 
     // Server-side: reference to the actual BE
@@ -60,8 +63,12 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         }
 
         int networkCount = buf.readVarInt();
-        for (int i = 0; i < networkCount; i++)
-            knownNetworks.add(new UUID(buf.readLong(), buf.readLong()));
+        for (int i = 0; i < networkCount; i++) {
+            UUID id = new UUID(buf.readLong(), buf.readLong());
+            knownNetworks.add(id);
+            String nick = buf.readUtf();
+            if (!nick.isBlank()) networkNicknames.put(id, nick);
+        }
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -222,7 +229,16 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         for (UUID id : be.networks) {
             buf.writeLong(id.getMostSignificantBits());
             buf.writeLong(id.getLeastSignificantBits());
+            buf.writeUtf(be.networkNicknames.getOrDefault(id, ""));
         }
+    }
+
+    /** Display name for a network: its nickname, or a default "Network #XXXX" from the last 4 UUID chars. */
+    public Component networkName(UUID network) {
+        String nick = networkNicknames.get(network);
+        if (nick != null && !nick.isBlank()) return Component.literal(nick);
+        String s = network.toString();
+        return Component.translatable("factory_controller.network.default", s.substring(s.length() - 4));
     }
 
     private static void writeCompoundTag(RegistryFriendlyByteBuf buf, net.minecraft.nbt.CompoundTag tag) {

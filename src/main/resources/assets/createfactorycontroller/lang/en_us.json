@@ -4,8 +4,12 @@
   "factory_controller.no_network_selected": "No network selected — place a tuned gauge first",
   "factory_controller.component_limit": "Controller is full (%1$s components max)",
   "factory_controller.gui.in_network": "In network: %1$s",
-  "factory_controller.gui.capacity": "Capacity: %1$s / %2$s",
+  "factory_controller.gui.capacity": "Capacity: %1$s/%2$s",
   "factory_controller.gui.zoom": "Zoom: x%1$s",
+  "factory_controller.gui.no_selected_network": "No network selected",
+  "factory_controller.gui.selected_network": "Selected %1$s",
+  "factory_controller.network.default": "Network #%1$s",
+  "factory_controller.network.none": "No network",
 
   "createfactorycontroller.subtitle.gauge.open": "Gauge panel opens",
   "createfactorycontroller.subtitle.gauge.close": "Gauge panel closes",

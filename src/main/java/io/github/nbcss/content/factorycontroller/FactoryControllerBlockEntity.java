@@ -45,6 +45,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     public final Map<VirtualPanelPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
     public final Set<UUID> networks = new LinkedHashSet<>();
+    /** Optional per-network nicknames (blank/absent → a default name is shown). Assignment UI is TBD. */
+    public final Map<UUID, String> networkNicknames = new HashMap<>();
 
     /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
      *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
@@ -331,7 +333,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<CompoundTag> tags = new ArrayList<>();
         for (VirtualComponentBehaviour b : components.values())
             tags.add(b.toClientNBT(serverLevel.registryAccess()));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, new ArrayList<>(networks));
+        List<UUID> netList = new ArrayList<>(networks);
+        List<String> nameList = new ArrayList<>(netList.size());
+        for (UUID id : netList) nameList.add(networkNicknames.getOrDefault(id, ""));
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, netList, nameList);
         for (ServerPlayer player : viewers)
             PacketDistributor.sendToPlayer(player, packet);
     }
@@ -369,6 +374,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         for (UUID id : networks) {
             CompoundTag entry = new CompoundTag();
             entry.putUUID("Id", id);
+            String nick = networkNicknames.get(id);
+            if (nick != null && !nick.isBlank()) entry.putString("Name", nick);
             networkList.add(entry);
         }
         tag.put("Networks", networkList);
@@ -386,9 +393,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         networks.clear();
+        networkNicknames.clear();
         ListTag networkList = tag.getList("Networks", Tag.TAG_COMPOUND);
-        for (int i = 0; i < networkList.size(); i++)
-            networks.add(networkList.getCompound(i).getUUID("Id"));
+        for (int i = 0; i < networkList.size(); i++) {
+            CompoundTag entry = networkList.getCompound(i);
+            UUID id = entry.getUUID("Id");
+            networks.add(id);
+            if (entry.contains("Name")) networkNicknames.put(id, entry.getString("Name"));
+        }
     }
 
     // ── Component drops ─────────────────────────────────────────────────────
