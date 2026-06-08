@@ -263,6 +263,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // stock/promise flicker as the produced item lands can't trigger an extra request — a request
         // only fires after the gauge has been continuously understocked for the whole interval.
         if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered || controllerPowered) return;
+        if (isMissingAddress()) return;
         if (timer > 0) {                                // throttle between attempts
             timer = Math.min(timer, getConfigRequestIntervalInTicks());
             timer--;

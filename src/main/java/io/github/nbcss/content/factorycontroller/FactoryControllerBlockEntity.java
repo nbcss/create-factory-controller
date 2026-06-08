@@ -42,7 +42,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Max characters of a gauge's packager address (clamped server-side, authoritative). */
     public static final int MAX_ADDRESS_LENGTH = 25;
     /** Max characters of the controller's custom display name (clamped server-side, authoritative). */
-    public static final int MAX_NAME_LENGTH = 35;
+    public static final int MAX_NAME_LENGTH = 25;
     public static final int BOARD_LIMIT = 128;
 
     /** Whether the given position lies on the finite ±{@link #BOARD_LIMIT}-cell board. */

@@ -5,7 +5,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
-import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.CreateFactoryControllerClient;
@@ -50,7 +49,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Responsive sizing — all in GUI-scaled pixels.
     private static final int SIDE_MARGIN = 160;
     private static final int VERTICAL_MARGIN = 10;
-    private static final int MIN_IMAGE_W = 195;      // matches vanilla creative inventory width
+    private static final int MIN_IMAGE_W = 215;
     private static final int MIN_IMAGE_H = 200;
     static final int CANVAS_SIDE_PADDING = 9;     // package-visible: used by SetItemOverlay layout
     static final int CANVAS_TOP_PADDING = 16;
@@ -88,6 +87,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
     private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
+    // Edit-name cue drawn after the controller name when idle (indicator only). 9×9 sprite.
+    private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
+    private static final int RENAME_BUTTON_SIZE = 9;
     private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background/create_bricks.png");
 
     // player_inventory.png layout (176×108, matching Create's convention)
@@ -182,7 +184,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         String currentName = nameBox != null ? nameBox.getValue() : menu.controllerName;
         boolean wasFocused = nameBox != null && nameBox.isFocused();
         nameBox = new EditBox(new NoShadowFontWrapper(font),
-                leftPos + 8, topPos + 4, imageWidth - 16, 10, Component.empty());
+                leftPos + 10, topPos + 4, imageWidth - 20, 10, Component.empty());
         nameBox.setMaxLength(FactoryControllerBlockEntity.MAX_NAME_LENGTH);
         nameBox.setBordered(false);
         nameBox.setTextColor(NAME_COLOR);
@@ -409,9 +411,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (!nameBox.isFocused()) {
                 if (blank)
                     graphics.drawString(font, menu.controllerDisplayName(), x, nameBox.getY(), NAME_COLOR, false);
-                // Edit-name icon after the text — indicator-only cue, 3px above the box like the station.
-                AllGuiTextures.STATION_EDIT_NAME.render(graphics,
-                        x + font.width(shownStr) + 5, nameBox.getY() - 3);
+                // Edit-name icon after the text — indicator-only cue, vertically centred on the text.
+                graphics.blitSprite(RENAME_BUTTON_SPRITE,
+                        x + font.width(shownStr) + 5, nameBox.getY() + (font.lineHeight - RENAME_BUTTON_SIZE) / 2 - 1,
+                        RENAME_BUTTON_SIZE, RENAME_BUTTON_SIZE);
             }
         }
 
