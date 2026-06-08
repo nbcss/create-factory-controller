@@ -153,67 +153,20 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
                 : CreateLang.text(behaviour.filter.getHoverName().getString()).color(0xFBDC7D).component());
         if (!behaviour.filter.isEmpty()) {
-            lines.add(Component.translatable("createfactorycontroller.gui.in_network", behaviour.stockLevel)
+            lines.add(Component.translatable("createfactorycontroller.gui.in_stock", behaviour.stockLevel)
                     .withStyle(ChatFormatting.GRAY));
         }
         lines.add((behaviour.filter.isEmpty()
                 ? CreateLang.translate("logistics.filter.click_to_set")
                 : CreateLang.translate("factory_panel.click_to_configure"))
                 .style(ChatFormatting.WHITE).component());
+        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                .withStyle(ChatFormatting.DARK_GRAY));
         if (!behaviour.targetedBy().isEmpty() && behaviour.count == 0)
             lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
-        // Warn when the requested ingredients can't fit in a single dispatched package (9 slots).
-        // Crafting-mode gauges pack their crafts into one package via the recipe entry, so skip them.
-        if (behaviour.activeCraftingArrangement.isEmpty() && !behaviour.targetedBy().isEmpty()
-                && requiredPackageSlots(menu) > MAX_PACKAGE_SLOTS)
-            lines.add(Component.translatable("createfactorycontroller.gui.package_overflow")
-                    .withStyle(ChatFormatting.GOLD));
         return lines;
-    }
-
-    /**
-     * The largest number of package buffer slots any one dispatched package would need. The request
-     * builds one package per source network (mirroring {@code tickRequests}); within a network, each
-     * distinct ingredient stack needs ⌈summed count ÷ max stack size⌉ slots (the count is per-craft
-     * demand × craft batch in crafting mode). A package buffers {@value #MAX_PACKAGE_SLOTS} slots, so
-     * any network exceeding that can't be carried in a single package.
-     */
-    private int requiredPackageSlots(FactoryControllerMenu menu) {
-        int batch = behaviour.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, behaviour.craftBatch);
-        Map<UUID, List<ItemStack>> stacksByNet = new HashMap<>();
-        Map<UUID, List<Integer>> countsByNet = new HashMap<>();
-        for (VirtualPanelConnection conn : behaviour.targetedBy().values()) {
-            VirtualGaugeBehaviour source = menu.getComponent(conn.from) instanceof VirtualGaugeBehaviour g ? g : null;
-            if (source == null || source.filter.isEmpty()) continue;
-            ItemStack ing = source.filter;
-            int need = conn.totalAmount() * batch;
-            List<ItemStack> stacks = stacksByNet.computeIfAbsent(source.networkId, k -> new ArrayList<>());
-            List<Integer> counts = countsByNet.computeIfAbsent(source.networkId, k -> new ArrayList<>());
-            int idx = -1;
-            for (int i = 0; i < stacks.size(); i++)
-                if (ItemStack.isSameItemSameComponents(stacks.get(i), ing)) {
-                    idx = i;
-                    break;
-                }
-            if (idx < 0) {
-                stacks.add(ing);
-                counts.add(need);
-            } else counts.set(idx, counts.get(idx) + need);
-        }
-        int maxSlots = 0;
-        for (UUID net : stacksByNet.keySet()) {
-            List<ItemStack> stacks = stacksByNet.get(net);
-            List<Integer> counts = countsByNet.get(net);
-            int slots = 0;
-            for (int i = 0; i < stacks.size(); i++) {
-                int max = Math.max(1, stacks.get(i).getMaxStackSize());
-                slots += (counts.get(i) + max - 1) / max;
-            }
-            maxSlots = Math.max(maxSlots, slots);
-        }
-        return maxSlots;
     }
 
     // ── Interaction ────────────────────────────────────────────────────────────

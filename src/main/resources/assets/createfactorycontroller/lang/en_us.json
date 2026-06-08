@@ -6,18 +6,22 @@
   "createfactorycontroller.message.no_network_tuned": "No network tuned — use network selector to tune",
   "createfactorycontroller.message.component_limit": "Controller is full (%1$s components max)",
 
-  "createfactorycontroller.gui.in_network": "In network: %1$s",
+  "createfactorycontroller.gui.in_stock": "In stock: %1$s",
   "createfactorycontroller.gui.capacity": "Capacity: %1$s/%2$s",
   "createfactorycontroller.gui.zoom": "Zoom: x%1$s",
   "createfactorycontroller.gui.no_selected_network": "No network selected",
   "createfactorycontroller.gui.selected_network": "Selected %1$s",
-  "createfactorycontroller.gui.right_click_repeat": "Right-Click to repeat ingredient",
-  "createfactorycontroller.gui.package_overflow": "Warning: ingredient exceeds one package",
+  "createfactorycontroller.gui.action_disconnect": "Click to disconnect",
+  "createfactorycontroller.gui.action_repeat_ingredient": "Shift-Click to repeat ingredient",
+  "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
+
+  "key.categories.createfactorycontroller": "Create: Factory Controller",
+  "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
 
   "createfactorycontroller.network.default": "Network #%1$s",
 
-  "createfactorycontroller.subtitle.controller.open": "Controller panel opens",
-  "createfactorycontroller.subtitle.controller.close": "Controller panel closes",
+  "createfactorycontroller.subtitle.controller.open": "Factory controller opens",
+  "createfactorycontroller.subtitle.controller.close": "Factory controller closes",
   "createfactorycontroller.subtitle.gauge.open": "Gauge panel opens",
   "createfactorycontroller.subtitle.gauge.close": "Gauge panel closes"
 }

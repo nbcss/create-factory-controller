@@ -41,19 +41,21 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public static final int MAX_COMPONENTS = 256;
     /** Max characters of a gauge's packager address (clamped server-side, authoritative). */
     public static final int MAX_ADDRESS_LENGTH = 25;
-    /** Board extent in cells from the origin: a cell is on the board iff {@code |x| <= BOARD_HALF_CELLS}
-     *  and {@code |y| <= BOARD_HALF_CELLS}. The GUI clamps panning to this same region. */
-    public static final int BOARD_HALF_CELLS = 128;
+    /** Max characters of the controller's custom display name (clamped server-side, authoritative). */
+    public static final int MAX_NAME_LENGTH = 35;
+    public static final int BOARD_LIMIT = 128;
 
-    /** Whether the given cell lies on the finite ±{@link #BOARD_HALF_CELLS}-cell board. */
-    public static boolean isCellOnBoard(VirtualPanelPosition pos) {
-        return Math.abs(pos.x()) <= BOARD_HALF_CELLS && Math.abs(pos.y()) <= BOARD_HALF_CELLS;
+    /** Whether the given position lies on the finite ±{@link #BOARD_LIMIT}-cell board. */
+    public static boolean isOutBoard(VirtualPanelPosition pos) {
+        return Math.abs(pos.x()) > BOARD_LIMIT || Math.abs(pos.y()) > BOARD_LIMIT;
     }
 
     public final Map<VirtualPanelPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
     public final Set<UUID> networks = new LinkedHashSet<>();
-    /** Optional per-network nicknames (blank/absent → a default name is shown). Assignment UI is TBD. */
     public final Map<UUID, String> networkNicknames = new HashMap<>();
+
+    /** Player-assigned display name; blank means use the default translated block name. */
+    public String customName = "";
 
     /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
      *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
@@ -124,7 +126,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         if (components.containsKey(pos)) return;
 
-        if (!isCellOnBoard(pos)) return;   // outside the finite board
+        if (isOutBoard(pos)) return;   // outside the finite board
 
         // board full — bounds NBT/packet size
         if (components.size() >= MAX_COMPONENTS) return;
@@ -185,7 +187,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (from.equals(to)) return;
         VirtualComponentBehaviour behaviour = components.get(from);
         if (behaviour == null) return;
-        if (!isCellOnBoard(to)) return;     // can't relocate off the finite board
+        if (isOutBoard(to)) return;     // can't relocate off the finite board
         if (components.containsKey(to)) {   // destination occupied → aborted relocate
             playDenySound();
             return;
@@ -306,6 +308,18 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         behaviour.cycleArrowBend();
     }
 
+    // ── Rename ───────────────────────────────────────────────────────────────
+
+    /** Sets the controller's custom name (blank clears it). Clamped to {@link #MAX_NAME_LENGTH}. */
+    public void setCustomName(String name) {
+        String trimmed = name == null ? "" : name.strip();
+        if (trimmed.length() > MAX_NAME_LENGTH) trimmed = trimmed.substring(0, MAX_NAME_LENGTH);
+        if (trimmed.equals(customName)) return;
+        customName = trimmed;
+        setChanged();
+        sendData();
+    }
+
     // ── Sounds ──────────────────────────────────────────────────────────────
     // Mirror Create's factory board: played server-side at the controller so nearby players hear them.
 
@@ -370,7 +384,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<UUID> netList = new ArrayList<>(networks);
         List<String> nameList = new ArrayList<>(netList.size());
         for (UUID id : netList) nameList.add(networkNicknames.getOrDefault(id, ""));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, netList, nameList);
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, netList, nameList, customName);
         for (ServerPlayer player : viewers)
             PacketDistributor.sendToPlayer(player, packet);
     }
@@ -379,7 +393,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     @Override
     public @NotNull Component getDisplayName() {
-        return Component.translatable("block.createfactorycontroller.factory_controller");
+        return customName.isBlank()
+            ? Component.translatable("block.createfactorycontroller.factory_controller")
+            : Component.literal(customName);
     }
 
     @Nullable
@@ -398,6 +414,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // an open GUI gets the full snapshot via the menu (writeExtraData + SyncPanelStatePacket). This
         // keeps per-tick updates to nearby (non-GUI) players tiny regardless of board size.
         if (clientPacket) return;
+
+        if (!customName.isBlank()) tag.putString("CustomName", customName);
 
         ListTag gaugeList = new ListTag();
         for (VirtualComponentBehaviour b : components.values())
@@ -418,6 +436,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     @Override
     protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.read(tag, registries, clientPacket);
+
+        customName = tag.getString("CustomName");   // "" when absent
 
         components.clear();
         ListTag componentList = tag.getList("Components", Tag.TAG_COMPOUND);

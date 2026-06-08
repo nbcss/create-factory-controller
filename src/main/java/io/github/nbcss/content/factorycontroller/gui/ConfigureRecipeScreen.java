@@ -364,17 +364,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     tooltip = stack.isEmpty()
                         ? List.of(
                             CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
-                            CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            Component.translatable("createfactorycontroller.gui.action_disconnect")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         : List.of(
                             CreateLang.translate("gui.factory_panel.sending_item",
                                 CreateLang.itemName(stack).add(CreateLang.text(" x" + inputAmounts.get(i))).string())
                                 .color(ScrollInput.HEADER_RGB).component(),
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                            CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                            Component.translatable("createfactorycontroller.gui.right_click_repeat")
+                            Component.translatable("createfactorycontroller.gui.action_disconnect")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
+                            Component.translatable("createfactorycontroller.gui.action_repeat_ingredient")
                                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             }
             if (inputPositions.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
@@ -588,8 +588,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        // Input slots (only outside crafting mode). Right-click repeats the ingredient into the next
-        // slot (sharing the same connection link); any other click removes that slot, severing the
+        // Input slots (only outside crafting mode). Shift-click repeats the ingredient into the next
+        // slot (sharing the same connection link); a plain click removes that slot, severing the
         // link only once its last repeated slot is gone.
         if (!craftingActive)
             for (int i = 0; i < inputPositions.size(); i++) {
@@ -598,7 +598,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 if (!in(mouseX, mouseY, ix, iy, 16, 16)) continue;
                 VirtualPanelPosition from = inputPositions.get(i);
 
-                if (button == 1) {   // right-click → repeat into the next slot (always starts at x1)
+                if (hasShiftDown()) {   // shift-click → repeat into the next slot (always starts at x1)
                     ItemStack ing = ingredientOf(from);
                     if (!ing.isEmpty() && inputPositions.size() < MAX_INPUT_SLOTS) {
                         inputPositions.add(i + 1, from);

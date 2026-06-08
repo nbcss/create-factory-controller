@@ -24,6 +24,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     public final List<UUID> knownNetworks = new ArrayList<>();
     /** Client mirror of the controller's per-network nicknames (synced); see {@link #networkName}. */
     public final Map<UUID, String> networkNicknames = new HashMap<>();
+    /** Controller's custom display name (synced); blank means the default translated block name. */
+    public String controllerName = "";
     public final BlockPos controllerPos;
 
     // Server-side: reference to the actual BE
@@ -44,6 +46,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         // Snapshot data from BE for client sync
         setComponents(be.components.values());
         this.knownNetworks.addAll(be.networks);
+        this.controllerName = be.customName;
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -69,6 +72,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             String nick = buf.readUtf();
             if (!nick.isBlank()) networkNicknames.put(id, nick);
         }
+
+        this.controllerName = buf.readUtf();
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -231,6 +236,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             buf.writeLong(id.getLeastSignificantBits());
             buf.writeUtf(be.networkNicknames.getOrDefault(id, ""));
         }
+
+        buf.writeUtf(be.customName);
     }
 
     /** True while the controller block is redstone-powered (gauges paused). Derived from the synced
@@ -240,6 +247,13 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             if (component instanceof VirtualGaugeBehaviour gauge && gauge.controllerPowered)
                 return true;
         return false;
+    }
+
+    /** Controller display name: the custom name, or the default translated block name when unset. */
+    public Component controllerDisplayName() {
+        return controllerName.isBlank()
+            ? Component.translatable("block.createfactorycontroller.factory_controller")
+            : Component.literal(controllerName);
     }
 
     /** Display name for a network: its nickname, or a default "Network #XXXX" from the last 4 UUID chars. */

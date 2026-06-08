@@ -26,6 +26,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import static net.minecraft.client.gui.screens.Screen.hasShiftDown;
+
 /**
  * Vertical network picker shown in the controller canvas, drawn with the {@code network_selector}
  * sprites: a nine-slice {@code panel} background, a {@code selection_box} around the selected entry,
@@ -78,16 +80,16 @@ public class NetworkSelectorWidget extends AbstractWidget {
     @FunctionalInterface
     public interface RetuneHandler { void retune(boolean clear, @Nullable UUID network); }
 
-    private enum Kind { NO_NETWORK, KNOWN, NEW_NETWORK }
-    private record Entry(Kind kind, @Nullable UUID network) {}
+    private enum Type { NO_NETWORK, KNOWN, NEW_NETWORK }
+    private record Entry(Type type, @Nullable UUID network) {}
 
     private final FactoryControllerMenu menu;
     private final RetuneHandler retune;
     private final java.util.function.Consumer<UUID> onSelect;   // notified (network or null) when the selection changes
 
     // Persistent selection (used when not holding a component; mirrored from the held item otherwise).
-    private Kind selKind = Kind.NO_NETWORK;
-    @Nullable private UUID selNet = null;
+    private Type selectType = Type.NO_NETWORK;
+    @Nullable private UUID selectNetwork = null;
     private boolean wasHolding = false;
 
     public NetworkSelectorWidget(int x, int y, FactoryControllerMenu menu, RetuneHandler retune,
@@ -104,7 +106,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
     @Nullable
     public UUID getSelectedNetwork() {
         syncSelection();
-        return selKind == Kind.NO_NETWORK ? null : selNet;
+        return selectType == Type.NO_NETWORK ? null : selectNetwork;
     }
 
     // ── Model ─────────────────────────────────────────────────────────────────
@@ -138,34 +140,46 @@ public class NetworkSelectorWidget extends AbstractWidget {
         boolean holding = !held.isEmpty();
         if (holding) {
             UUID freq = freqOf(held);
-            if (freq == null) { selKind = Kind.NO_NETWORK; selNet = null; }
-            else if (menu.knownNetworks.contains(freq)) { selKind = Kind.KNOWN; selNet = freq; }
-            else { selKind = Kind.NEW_NETWORK; selNet = freq; }
+            if (freq == null) {
+                selectType = Type.NO_NETWORK;
+                selectNetwork = null;
+            } else if (menu.knownNetworks.contains(freq)) {
+                selectType = Type.KNOWN;
+                selectNetwork = freq;
+            } else {
+                selectType = Type.NEW_NETWORK;
+                selectNetwork = freq;
+            }
+            if (!wasHolding) {
+                onSelect.accept(selectType == Type.NO_NETWORK ? null : selectNetwork);
+            }
         } else if (wasHolding) {
-            selKind = Kind.NO_NETWORK; selNet = null;   // component → no component: back to "no network"
+            selectType = Type.NO_NETWORK;
+            selectNetwork = null;   // component → no component: back to "no network"
         }
         wasHolding = holding;
     }
 
     private List<Entry> buildEntries() {
         List<Entry> list = new ArrayList<>();
-        list.add(new Entry(Kind.NO_NETWORK, null));                 // always top
+        list.add(new Entry(Type.NO_NETWORK, null));                 // always top
 
         List<UUID> known = new ArrayList<>(menu.knownNetworks);
         known.sort(Comparator.comparingInt(menu::componentCountIn).reversed());
-        for (UUID u : known) list.add(new Entry(Kind.KNOWN, u));
+        for (UUID u : known) list.add(new Entry(Type.KNOWN, u));
 
         UUID heldFreq = freqOf(heldComponent());
         if (heldFreq != null && !menu.knownNetworks.contains(heldFreq))
-            list.add(new Entry(Kind.NEW_NETWORK, heldFreq));        // bottom, only while holding such an item
+            list.add(new Entry(Type.NEW_NETWORK, heldFreq));        // bottom, only while holding such an item
         return list;
     }
 
     private int selectedIndex(List<Entry> entries) {
         for (int i = 0; i < entries.size(); i++) {
             Entry e = entries.get(i);
-            if (selKind == Kind.NO_NETWORK ? e.kind == Kind.NO_NETWORK
-                                           : selNet != null && selNet.equals(e.network))
+            if (selectType == Type.NO_NETWORK ?
+                    e.type == Type.NO_NETWORK :
+                    selectNetwork != null && selectNetwork.equals(e.network))
                 return i;
         }
         return 0;   // fall back to "no network"
@@ -206,12 +220,12 @@ public class NetworkSelectorWidget extends AbstractWidget {
         int next = Mth.clamp(cur - (int) Math.signum(scrollY), 0, entries.size() - 1);
         if (next == cur) return true;   // at a clamp boundary — nothing changes
         Entry e = entries.get(next);
-        selKind = e.kind;
-        selNet = e.network;
-        onSelect.accept(e.kind == Kind.NO_NETWORK ? null : e.network);   // prompt the player
+        selectType = e.type;
+        selectNetwork = e.network;
+        onSelect.accept(e.type == Type.NO_NETWORK ? null : e.network);   // prompt the player
         // While holding a component the scroll re-tunes it; otherwise it just moves the selection.
         if (!heldComponent().isEmpty())
-            retune.retune(e.kind == Kind.NO_NETWORK, e.network);
+            retune.retune(e.type == Type.NO_NETWORK, e.network);
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
         return true;
@@ -246,7 +260,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
         // Row icons + decorations. Network icons are tinted by a per-network colour (no_network isn't).
         for (int slot = 0; slot < vis; slot++) {
             Entry e = entries.get(start + slot);
-            ResourceLocation icon = e.kind == Kind.NO_NETWORK ? NO_NETWORK : NETWORK;
+            ResourceLocation icon = e.type == Type.NO_NETWORK ? NO_NETWORK : NETWORK;
             int ix = getX() + ICON_X;
             int iy = iconY(slot);
             if (e.network != null) {
@@ -257,10 +271,10 @@ public class NetworkSelectorWidget extends AbstractWidget {
             } else {
                 gfx.blitSprite(icon, ix, iy, spriteW(icon), spriteH(icon));
             }
-            if (e.kind == Kind.KNOWN)
+            if (e.type == Type.KNOWN)
                 drawDecoration(gfx, font, ix, iy, spriteW(icon), spriteH(icon),
                         String.valueOf(menu.componentCountIn(e.network)), 0xFFFFFFFF);
-            else if (e.kind == Kind.NEW_NETWORK)
+            else if (e.type == Type.NEW_NETWORK)
                 drawDecoration(gfx, font, ix, iy, spriteW(icon), spriteH(icon), "+", NEW_PLUS_COLOR);
         }
 

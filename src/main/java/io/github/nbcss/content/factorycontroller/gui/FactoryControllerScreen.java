@@ -4,10 +4,12 @@ import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
+import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
+import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
-import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.*;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
@@ -17,15 +19,16 @@ import io.github.nbcss.content.factorycontroller.packet.AddConnectionPacket;
 import io.github.nbcss.content.factorycontroller.packet.AttachComponentPacket;
 import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
 import io.github.nbcss.content.factorycontroller.packet.MoveComponentPacket;
+import io.github.nbcss.content.factorycontroller.packet.RenameControllerPacket;
 import io.github.nbcss.content.factorycontroller.packet.RetuneCarriedPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -57,8 +60,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Finite board bounds in canvas-world px: cells |x|,|y| ≤ BOARD_HALF_CELLS, so the region runs from
     // the left edge of the most-negative cell to the right edge of the most-positive one. Panning is
     // clamped so the visible canvas never leaves this rectangle (server enforces placement separately).
-    private static final int BOARD_MIN_PX = -FactoryControllerBlockEntity.BOARD_HALF_CELLS * CANVAS_COMPONENT_SIZE;
-    private static final int BOARD_MAX_PX = (FactoryControllerBlockEntity.BOARD_HALF_CELLS + 1) * CANVAS_COMPONENT_SIZE;
+    private static final int BOARD_MIN_PX = -FactoryControllerBlockEntity.BOARD_LIMIT * CANVAS_COMPONENT_SIZE;
+    private static final int BOARD_MAX_PX = (FactoryControllerBlockEntity.BOARD_LIMIT + 1) * CANVAS_COMPONENT_SIZE;
 
     // Canvas view state
     private static final int MAX_ZOOM_LEVEL = 10;
@@ -124,6 +127,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Network selector widget
     private NetworkSelectorWidget networkSelector;
 
+    // Inline, station-style rename field shown in the title bar. Blank ⇒ the default block name is
+    // drawn instead (see the title section of renderBoard). Edits commit on Enter / screen close.
+    private static final int NAME_COLOR = 0x582424;
+    @Nullable private EditBox nameBox;
+
     public FactoryControllerScreen(FactoryControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         // Play controller UI open SFX when the screen is constructed.
@@ -167,6 +175,49 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
         else
             networkSelector.setPosition(selectorX, selectorY);
+
+        // Rebuild the rename field at the new layout, preserving any in-progress edit across resize.
+        // Geometry mirrors Create's station name box (y+4, height 10, unbordered) so the text baseline
+        // is identical whether or not it's focused (the box is always rendered — no idle/focus shift).
+        String currentName = nameBox != null ? nameBox.getValue() : menu.controllerName;
+        boolean wasFocused = nameBox != null && nameBox.isFocused();
+        nameBox = new EditBox(new NoShadowFontWrapper(font),
+                leftPos + 8, topPos + 4, imageWidth - 16, 10, Component.empty());
+        nameBox.setMaxLength(FactoryControllerBlockEntity.MAX_NAME_LENGTH);
+        nameBox.setBordered(false);
+        nameBox.setTextColor(NAME_COLOR);
+        nameBox.setValue(currentName);
+        if (wasFocused) nameBox.setFocused(true);
+        addWidget(nameBox);
+    }
+
+    /**
+     * Left edge that centres a name of text {@code s} (and its trailing edit icon) in the title bar,
+     * mirroring Create's {@code StationScreen#nameBoxX}: the text width is capped at the box width and a
+     * 10px allowance leaves room for the icon.
+     */
+    private int nameBoxX(String s) {
+        int width = nameBox == null ? imageWidth - 16 : nameBox.getWidth();
+        return leftPos + imageWidth / 2 - (Math.min(font.width(s), width) + 10) / 2;
+    }
+
+    /** Sends the edited controller name to the server (if changed) and leaves edit mode. */
+    private void commitName() {
+        if (nameBox == null) return;
+        nameBox.setFocused(false);
+        collapseNameSelection();   // drop the selection highlight now that we're no longer editing
+        String value = nameBox.getValue().strip();
+        if (value.equals(menu.controllerName)) return;
+        menu.controllerName = value;   // optimistic; the server clamps and re-syncs
+        PacketDistributor.sendToServer(new RenameControllerPacket(menu.controllerPos, value));
+    }
+
+    /** Collapses the name field's text selection (cursor to end, highlight = cursor) so no highlight
+     *  lingers once the box is unfocused — mirrors Create's station tick() behaviour. */
+    private void collapseNameSelection() {
+        if (nameBox == null) return;
+        nameBox.setCursorPosition(nameBox.getValue().length());
+        nameBox.setHighlightPos(nameBox.getCursorPosition());
     }
 
     private void onNetworkSelected(@Nullable UUID network) {
@@ -188,6 +239,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public void onClose() {
+        commitName();   // persist any pending rename before the screen goes away
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_CLOSE.get(), 1f));
         super.onClose();
@@ -218,6 +270,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     protected void containerTick() {
         super.containerTick();
+        if (nameBox != null && !nameBox.isFocused())
+            collapseNameSelection();
         // Advance each gauge's indicator bulb (mirrors FactoryPanelBehaviour#tick): chase satisfied,
         // and flash to full on every fresh request attempt (detected via the synced lastRequestTick).
         for (VirtualGaugeWidget w : gaugeWidgets.values()) {
@@ -343,10 +397,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
         RenderSystem.disableBlend();
 
-        // Title
-        int titleX = leftPos + (imageWidth - font.width(title)) / 2;
-        int titleY = topPos + 4;
-        graphics.drawString(font, title, titleX, titleY, 0x582424, false);
+        // Title — an inline, station-style rename field, horizontally centred on its text (the box X is
+        if (nameBox != null) {
+            boolean blank = nameBox.getValue().isBlank();
+            String shownStr = !nameBox.isFocused() && blank
+                    ? menu.controllerDisplayName().getString()
+                    : nameBox.getValue();
+            int x = nameBoxX(shownStr);
+            nameBox.setX(x);
+            nameBox.render(graphics, mouseX, mouseY, partialTick);
+            if (!nameBox.isFocused()) {
+                if (blank)
+                    graphics.drawString(font, menu.controllerDisplayName(), x, nameBox.getY(), NAME_COLOR, false);
+                // Edit-name icon after the text — indicator-only cue, 3px above the box like the station.
+                AllGuiTextures.STATION_EDIT_NAME.render(graphics,
+                        x + font.width(shownStr) + 5, nameBox.getY() - 3);
+            }
+        }
 
         // Reset depth for gauge filter icons
         graphics.flush();
@@ -520,6 +587,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Name field (title bar): clicking it begins editing with all text selected (mirrors Create's
+        // station); clicking anywhere else commits the pending rename and leaves edit mode.
+        if (nameBox != null) {
+            boolean inNameBar = mouseY > topPos && mouseY < topPos + 14
+                    && mouseX > leftPos && mouseX < leftPos + imageWidth;
+            if (!nameBox.isFocused() && inNameBar) {
+                nameBox.setFocused(true);
+                nameBox.setCursorPosition(nameBox.getValue().length());
+                nameBox.setHighlightPos(0);   // select all
+                setFocused(nameBox);
+                return true;
+            }
+            if (nameBox.isFocused() && !inNameBar)
+                commitName();
+        }
+
         if (isInCanvasArea(mouseX, mouseY)) {
             int x0 = leftPos + CANVAS_SIDE_PADDING;
             int y0 = topPos + CANVAS_TOP_PADDING;
@@ -701,8 +784,27 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // R on a hovered gauge cycles its outgoing connection bend mode (mirrors Create's wrench).
-        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_R
+        // While renaming, route keys to the name field: Enter commits, Escape reverts, and every other
+        // key is swallowed so it can't trigger a board shortcut or the inventory-close key.
+        if (nameBox != null && nameBox.isFocused()) {
+            if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+                    || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
+                commitName();
+                return true;
+            }
+            if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+                nameBox.setValue(menu.controllerName);   // revert the in-progress edit
+                nameBox.setFocused(false);
+                collapseNameSelection();
+                return true;
+            }
+            if (nameBox.keyPressed(keyCode, scanCode, modifiers) || nameBox.canConsumeInput())
+                return true;
+        }
+
+        // The cycle-arrow key (rebindable, R by default) on a hovered gauge cycles its outgoing
+        // connection bend mode (mirrors Create's wrench).
+        if (CreateFactoryControllerClient.CYCLE_ARROW.matches(keyCode, scanCode)
                 && hoveredPosition != null && findGauge(hoveredPosition) != null) {
             // Optimistically reflect the new mode (server cycles to (mode+1)%4) as a fading prompt,
             // reusing Create's "Cycled arrow pathing mode □□□□" message with the active mode filled.

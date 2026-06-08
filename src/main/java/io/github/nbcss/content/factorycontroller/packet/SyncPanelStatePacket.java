@@ -14,6 +14,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +24,11 @@ import java.util.UUID;
  * Server → client: full gauge + network snapshot so the open screen stays live.
  * Sent by FactoryControllerBlockEntity.sendData() to any player who has this menu open.
  */
-public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, List<UUID> networks,
-                                   List<String> networkNames)
+public record SyncPanelStatePacket(BlockPos pos,
+                                   List<CompoundTag> gaugeTags,
+                                   List<UUID> networks,
+                                   List<String> networkNames,
+                                   String controllerName)
         implements CustomPacketPayload {
 
     public static final Type<SyncPanelStatePacket> TYPE =
@@ -33,7 +37,7 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
     private static final StreamCodec<RegistryFriendlyByteBuf, List<CompoundTag>> TAG_LIST_CODEC =
         new StreamCodec<>() {
             @Override
-            public List<CompoundTag> decode(RegistryFriendlyByteBuf buf) {
+            public @NotNull List<CompoundTag> decode(RegistryFriendlyByteBuf buf) {
                 int size = buf.readVarInt();
                 List<CompoundTag> list = new ArrayList<>(size);
                 for (int i = 0; i < size; i++) {
@@ -52,7 +56,7 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
     private static final StreamCodec<RegistryFriendlyByteBuf, List<UUID>> UUID_LIST_CODEC =
         new StreamCodec<>() {
             @Override
-            public List<UUID> decode(RegistryFriendlyByteBuf buf) {
+            public @NotNull List<UUID> decode(RegistryFriendlyByteBuf buf) {
                 int size = buf.readVarInt();
                 List<UUID> list = new ArrayList<>(size);
                 for (int i = 0; i < size; i++)
@@ -72,7 +76,7 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
     private static final StreamCodec<RegistryFriendlyByteBuf, List<String>> STRING_LIST_CODEC =
         new StreamCodec<>() {
             @Override
-            public List<String> decode(RegistryFriendlyByteBuf buf) {
+            public @NotNull List<String> decode(RegistryFriendlyByteBuf buf) {
                 int size = buf.readVarInt();
                 List<String> list = new ArrayList<>(size);
                 for (int i = 0; i < size; i++) list.add(buf.readUtf());
@@ -88,12 +92,13 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncPanelStatePacket> STREAM_CODEC =
         new StreamCodec<>() {
             @Override
-            public SyncPanelStatePacket decode(RegistryFriendlyByteBuf buf) {
+            public @NotNull SyncPanelStatePacket decode(RegistryFriendlyByteBuf buf) {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
                 List<CompoundTag> tags = TAG_LIST_CODEC.decode(buf);
                 List<UUID> networks = UUID_LIST_CODEC.decode(buf);
                 List<String> names = STRING_LIST_CODEC.decode(buf);
-                return new SyncPanelStatePacket(pos, tags, networks, names);
+                String controllerName = buf.readUtf();
+                return new SyncPanelStatePacket(pos, tags, networks, names, controllerName);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
@@ -101,11 +106,12 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
                 TAG_LIST_CODEC.encode(buf, packet.gaugeTags());
                 UUID_LIST_CODEC.encode(buf, packet.networks());
                 STRING_LIST_CODEC.encode(buf, packet.networkNames());
+                buf.writeUtf(packet.controllerName());
             }
         };
 
     @Override
-    public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    public @NotNull Type<? extends CustomPacketPayload> type() { return TYPE; }
 
     // This handler only runs on the client (playToClient packet).
     public static void handle(SyncPanelStatePacket packet, IPayloadContext ctx) {
@@ -129,6 +135,7 @@ public record SyncPanelStatePacket(BlockPos pos, List<CompoundTag> gaugeTags, Li
             List<String> names = packet.networkNames();
             for (int i = 0; i < nets.size() && i < names.size(); i++)
                 if (!names.get(i).isBlank()) menu.networkNicknames.put(nets.get(i), names.get(i));
+            menu.controllerName = packet.controllerName();
 
             if (mc.screen instanceof FactoryControllerScreen screen)
                 screen.onPanelSync();
