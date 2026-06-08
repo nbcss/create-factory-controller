@@ -2,6 +2,7 @@ package io.github.nbcss.content.factorycontroller;
 
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
+import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.CreateFactoryController;
@@ -57,6 +58,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
 
+    // Reused each tick by the Auto Request demand pre-pass (server thread only) so the propagation walk
+    // allocates nothing on the hot path.
+    private final List<VirtualGaugeBehaviour> autoOrderBuf = new ArrayList<>();
+    private final Set<VirtualPanelPosition> autoVisitedBuf = new HashSet<>();
+
     /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
      *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
     private boolean menuSyncQueued = false;
@@ -83,6 +89,35 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
+
+        // Refresh the accurate inventory summaries up front so every gauge this tick reads stock that is
+        // consistent with the live promise queue (a just-arrived package settles its promise instantly,
+        // but the cached summary can still report pre-arrival stock for a tick — dipping stock+promised
+        // and flickering the status). Re-invalidating a network is a cheap idempotent map removal, so we
+        // skip a dedup set. The same loop notes whether any gauge is in auto mode.
+        boolean anyAuto = false;
+        for (VirtualComponentBehaviour component : components.values())
+            if (component instanceof VirtualGaugeBehaviour gauge) {
+                LogisticsManager.ACCURATE_SUMMARIES.invalidate(gauge.networkId);
+                anyAuto |= gauge.mode.isAuto();
+            }
+
+        // Propagate Auto Request demand consumer-first, all in this one tick. Each auto gauge's target is
+        // derived from its consumers' state, so recomputing in arbitrary order would crawl one chain level
+        // per tick — an intermediate gauge would see a stale non-zero demand for a tick and fire a spurious
+        // request (flashing its connection) as the chain clears. Visiting consumers before producers
+        // settles the whole chain at once. Skipped entirely when nothing is in auto mode; buffers reused.
+        if (anyAuto) {
+            autoOrderBuf.clear();
+            autoVisitedBuf.clear();
+            for (VirtualComponentBehaviour component : components.values())
+                if (component instanceof VirtualGaugeBehaviour gauge)
+                    topoVisitConsumersFirst(gauge, autoVisitedBuf, autoOrderBuf);
+            for (VirtualGaugeBehaviour gauge : autoOrderBuf)
+                gauge.recomputeAutoCount();
+            autoOrderBuf.clear();           // drop references so the buffer doesn't pin gauges
+        }
+
         for (VirtualComponentBehaviour component : components.values())
             component.tick();
         // Flush at most one menu snapshot per tick (gauge ticks above may have queued several).
@@ -90,6 +125,18 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             menuSyncQueued = false;
             syncMenuToPlayers();
         }
+    }
+
+    /** Post-order DFS over {@code targeting} (feeds) edges: a gauge is appended only after all the gauges
+     *  it feeds, so the resulting list is consumer-before-producer. The {@code visited} set both dedupes
+     *  and breaks any recipe cycles (best-effort ordering for the degenerate cyclic case). */
+    private void topoVisitConsumersFirst(VirtualGaugeBehaviour gauge, Set<VirtualPanelPosition> visited,
+                                         List<VirtualGaugeBehaviour> order) {
+        if (!visited.add(gauge.position())) return;
+        for (VirtualPanelPosition consumerPos : gauge.targeting())
+            if (components.get(consumerPos) instanceof VirtualGaugeBehaviour consumer)
+                topoVisitConsumersFirst(consumer, visited, order);
+        order.add(gauge);
     }
 
     @Override
@@ -238,7 +285,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput, int craftBatch,
-                                int promiseInterval, int count, boolean upTo,
+                                int promiseInterval, int count, ThresholdMode mode,
                                 Map<VirtualPanelPosition, List<Integer>> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
@@ -246,7 +293,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (reset) {
             gauge.filter = ItemStack.EMPTY;
             gauge.count = 0;
-            gauge.upTo = true;
+            gauge.mode = ThresholdMode.ITEMS;
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
             gauge.craftBatch = 1;
@@ -263,8 +310,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.recipeOutput = Math.max(1, recipeOutput);
         gauge.craftBatch = Math.max(1, craftBatch);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
-        gauge.count = Math.max(0, count);
-        gauge.upTo = upTo;
+        gauge.mode = mode;
+        // In auto mode the count is server-managed (recomputed each tick from consumer demand), so don't
+        // let the client's transient value override it; otherwise take the player's target.
+        if (!mode.isAuto()) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
         for (Map.Entry<VirtualPanelPosition, List<Integer>> e : inputAmounts.entrySet()) {
             VirtualPanelConnection conn = gauge.targetedBy().get(e.getKey());

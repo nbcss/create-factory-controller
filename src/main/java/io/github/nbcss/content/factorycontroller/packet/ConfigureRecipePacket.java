@@ -2,6 +2,7 @@ package io.github.nbcss.content.factorycontroller.packet;
 
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
+import io.github.nbcss.content.factorycontroller.ThresholdMode;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -24,7 +25,8 @@ import java.util.Map;
  * the gauge's whole recipe config (mirrors Create's trash button).
  */
 public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos, String address,
-                                    int recipeOutput, int craftBatch, int promiseInterval, int count, boolean upTo,
+                                    int recipeOutput, int craftBatch, int promiseInterval, int count,
+                                    ThresholdMode mode,
                                     List<VirtualPanelPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
@@ -43,7 +45,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 buf.writeInt(pkt.craftBatch);
                 buf.writeInt(pkt.promiseInterval);
                 buf.writeInt(pkt.count);
-                buf.writeBoolean(pkt.upTo);
+                buf.writeVarInt(pkt.mode.ordinal());
                 buf.writeBoolean(pkt.clearPromises);
                 buf.writeBoolean(pkt.reset);
                 int n = Math.min(pkt.inputPositions.size(), pkt.inputAmounts.size());
@@ -65,7 +67,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 int craftBatch = buf.readInt();
                 int promiseInterval = buf.readInt();
                 int count = buf.readInt();
-                boolean upTo = buf.readBoolean();
+                ThresholdMode mode = ThresholdMode.values()[
+                    Math.floorMod(buf.readVarInt(), ThresholdMode.values().length)];
                 boolean clearPromises = buf.readBoolean();
                 boolean reset = buf.readBoolean();
                 int n = buf.readVarInt();
@@ -80,7 +83,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 for (int i = 0; i < m; i++)
                     arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
                 return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, promiseInterval,
-                    count, upTo, positions, amounts, arrangement, clearPromises, reset);
+                    count, mode, positions, amounts, arrangement, clearPromises, reset);
             });
 
     @Override
@@ -98,7 +101,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 inputs.computeIfAbsent(packet.inputPositions().get(i), k -> new ArrayList<>())
                       .add(packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
-                packet.promiseInterval(), packet.count(), packet.upTo(), inputs,
+                packet.promiseInterval(), packet.count(), packet.mode(), inputs,
                 packet.craftingArrangement(), packet.clearPromises(), packet.reset());
         });
     }

@@ -94,8 +94,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.pose().popPose();
         }
 
-        // Indicator bulb — only shown once a target count is set (matches Create).
-        if (behaviour.count != 0) {
+        // Indicator bulb — shown once the gauge is active (a target count, or auto mode). Matches Create.
+        if (behaviour.isActive()) {
             boolean invalid = behaviour.isMissingAddress() || behaviour.redstonePowered;
             int base = invalid ? BULB_RED : BULB_GREEN;
             float b = BULB_MIN_BRIGHTNESS + (1f - BULB_MIN_BRIGHTNESS) * Mth.clamp(glow, 0f, 1f);
@@ -162,7 +162,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
                 .style(ChatFormatting.WHITE).component());
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
                 .withStyle(ChatFormatting.DARK_GRAY));
-        if (!behaviour.targetedBy().isEmpty() && behaviour.count == 0)
+        if (!behaviour.targetedBy().isEmpty() && !behaviour.isActive())
             lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
