@@ -1,8 +1,12 @@
 {
   "variants": {
-    "facing=north": { "model": "createfactorycontroller:block/factory_controller" },
-    "facing=south": { "model": "createfactorycontroller:block/factory_controller", "y": 180 },
-    "facing=west":  { "model": "createfactorycontroller:block/factory_controller", "y": 270 },
-    "facing=east":  { "model": "createfactorycontroller:block/factory_controller", "y": 90 }
+    "powered=false,facing=north": { "model": "createfactorycontroller:block/factory_controller" },
+    "powered=false,facing=south": { "model": "createfactorycontroller:block/factory_controller", "y": 180 },
+    "powered=false,facing=west":  { "model": "createfactorycontroller:block/factory_controller", "y": 270 },
+    "powered=false,facing=east":  { "model": "createfactorycontroller:block/factory_controller", "y": 90 },
+    "powered=true,facing=north": { "model": "createfactorycontroller:block/factory_controller_powered" },
+    "powered=true,facing=south": { "model": "createfactorycontroller:block/factory_controller_powered", "y": 180 },
+    "powered=true,facing=west":  { "model": "createfactorycontroller:block/factory_controller_powered", "y": 270 },
+    "powered=true,facing=east":  { "model": "createfactorycontroller:block/factory_controller_powered", "y": 90 }
   }
 }
