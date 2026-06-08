@@ -35,7 +35,7 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
     }
 
     @Override
-    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
+    protected @NotNull MapCodec<? extends HorizontalDirectionalBlock> codec() {
         return CODEC;
     }
 
@@ -72,12 +72,19 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    protected void onRemove(BlockState state, @NotNull Level level, @NotNull BlockPos pos,
-                            BlockState newState, boolean movedByPiston) {
-        // On real destruction (not a blockstate change), spill the configured gauges into the world —
-        // the dropped controller item no longer stores the board. Must run before IBE.onRemove clears
-        // the block entity.
+    protected void neighborChanged(@NotNull BlockState state, Level level, @NotNull BlockPos pos,
+                                   @NotNull Block neighborBlock, @NotNull BlockPos neighborPos,
+                                   boolean movedByPiston) {
+        if (level.isClientSide()) return;
+        withBlockEntityDo(level, pos, FactoryControllerBlockEntity::onNeighborChanged);
+    }
+
+    @Override
+    protected void onRemove(@NotNull BlockState state,
+                            @NotNull Level level,
+                            @NotNull BlockPos pos,
+                            @NotNull BlockState newState,
+                            boolean movedByPiston) {
         if (!movedByPiston && !state.is(newState.getBlock()))
             withBlockEntityDo(level, pos, FactoryControllerBlockEntity::dropComponents);
         IBE.onRemove(state, level, pos, newState);

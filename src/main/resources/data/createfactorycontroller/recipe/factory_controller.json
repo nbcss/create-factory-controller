@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "FRL",
+    "SPS",
+    "BCB"
+  ],
+  "key": {
+    "F": {
+      "item": "create:factory_gauge"
+    },
+    "R": {
+      "item": "create:redstone_link"
+    },
+    "L": {
+      "item": "create:stock_link"
+    },
+    "S": {
+      "item": "create:sturdy_sheet"
+    },
+    "P": {
+      "item": "create:precision_mechanism"
+    },
+    "B": {
+      "item": "create:brass_casing"
+    },
+    "C": {
+      "item": "create:contraption_controls"
+    }
+  },
+  "result": {
+    "id": "createfactorycontroller:factory_controller",
+    "count": 1
+  }
+}

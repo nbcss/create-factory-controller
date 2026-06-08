@@ -41,7 +41,7 @@ public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, It
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.configureGauge(packet.panelPos(), packet.filter());
+            be.setComponentItem(packet.panelPos(), packet.filter());
         });
     }
 }

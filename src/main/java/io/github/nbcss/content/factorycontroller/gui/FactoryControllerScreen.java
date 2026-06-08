@@ -54,6 +54,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     static final int CANVAS_BOTTOM_PADDING = 9;
     private static final int CANVAS_COMPONENT_SIZE = 16;
 
+    // Finite board bounds in canvas-world px: cells |x|,|y| ≤ BOARD_HALF_CELLS, so the region runs from
+    // the left edge of the most-negative cell to the right edge of the most-positive one. Panning is
+    // clamped so the visible canvas never leaves this rectangle (server enforces placement separately).
+    private static final int BOARD_MIN_PX = -FactoryControllerBlockEntity.BOARD_HALF_CELLS * CANVAS_COMPONENT_SIZE;
+    private static final int BOARD_MAX_PX = (FactoryControllerBlockEntity.BOARD_HALF_CELLS + 1) * CANVAS_COMPONENT_SIZE;
+
     // Canvas view state
     private static final int MAX_ZOOM_LEVEL = 10;
     private static final int MIN_ZOOM_LEVEL = -20;
@@ -138,6 +144,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         setWindowOffset(0, 0);
 
         super.init();
+
+        clampView();   // window size changed → keep the pan inside the board
 
         rebuildGaugeWidgets();
 
@@ -365,6 +373,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
+        // Redstone-disabled indicator. When the controller block is powered every gauge stops issuing
+        // new requests (see FactoryControllerBlockEntity#updateRedstonePower); surface that on the board.
+        if (menu.isRedstonePowered()) {
+            // TODO: missing texture — draw the "redstone disabled" board indicator sprite here.
+        }
+
         if (inOverlay) {
             graphics.fill(x0, y0, x1, y1, 0xB0101010);
         }
@@ -586,6 +600,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (isDragging && button == 2) {
             viewX -= deltaX / getZoomFactor();
             viewY -= deltaY / getZoomFactor();
+            clampView();
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
@@ -613,6 +628,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             zoomLevel = Math.clamp(zoomLevel + (int) Math.signum(scrollY), MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
             viewX += (mouseX - centerX) * (1.0 / oldZoom - 1.0 / getZoomFactor());
             viewY += (mouseY - centerY) * (1.0 / oldZoom - 1.0 / getZoomFactor());
+            clampView();
             return true;
         }
 
@@ -621,6 +637,26 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private double getZoomFactor() {
         return 2. * Math.pow(2., zoomLevel / 10.);
+    }
+
+    /**
+     * Clamps the pan so the visible canvas never extends past the finite board. When the viewport is
+     * wider than the board on an axis (zoomed far out), that axis is centred on the board instead.
+     * Call after any change to {@link #viewX}/{@link #viewY}, the zoom, or the window size.
+     */
+    private void clampView() {
+        double zoom = getZoomFactor();
+        double halfViewW = (imageWidth - 2 * CANVAS_SIDE_PADDING) / 2.0 / zoom;
+        double halfViewH = (imageHeight - CANVAS_TOP_PADDING - CANVAS_BOTTOM_PADDING) / 2.0 / zoom;
+        viewX = clampAxis(viewX, halfViewW);
+        viewY = clampAxis(viewY, halfViewH);
+    }
+
+    private static double clampAxis(double view, double halfView) {
+        double lower = BOARD_MIN_PX + halfView;
+        double upper = BOARD_MAX_PX - halfView;
+        if (lower >= upper) return (BOARD_MIN_PX + BOARD_MAX_PX) / 2.0;   // viewport ≥ board → centre
+        return Mth.clamp(view, lower, upper);
     }
 
     /** Maps a screen position to the canvas cell it falls into. */

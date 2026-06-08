@@ -1,5 +1,5 @@
 {
-  "itemGroup.createfactorycontroller": "Create Factory Controller",
+  "itemGroup.createfactorycontroller": "Create: Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
 
   "createfactorycontroller.message.no_network": "No network — place a tuned gauge first",

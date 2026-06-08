@@ -233,6 +233,15 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         }
     }
 
+    /** True while the controller block is redstone-powered (gauges paused). Derived from the synced
+     *  gauge state, so it reflects the live server signal on both sides. */
+    public boolean isRedstonePowered() {
+        for (VirtualComponentBehaviour component : components)
+            if (component instanceof VirtualGaugeBehaviour gauge && gauge.controllerPowered)
+                return true;
+        return false;
+    }
+
     /** Display name for a network: its nickname, or a default "Network #XXXX" from the last 4 UUID chars. */
     public Component networkName(UUID network) {
         String nick = networkNicknames.get(network);

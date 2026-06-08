@@ -6,7 +6,6 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.sounds.SoundEvent;
@@ -42,6 +41,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public static final int MAX_COMPONENTS = 256;
     /** Max characters of a gauge's packager address (clamped server-side, authoritative). */
     public static final int MAX_ADDRESS_LENGTH = 25;
+    /** Board extent in cells from the origin: a cell is on the board iff {@code |x| <= BOARD_HALF_CELLS}
+     *  and {@code |y| <= BOARD_HALF_CELLS}. The GUI clamps panning to this same region. */
+    public static final int BOARD_HALF_CELLS = 128;
+
+    /** Whether the given cell lies on the finite ±{@link #BOARD_HALF_CELLS}-cell board. */
+    public static boolean isCellOnBoard(VirtualPanelPosition pos) {
+        return Math.abs(pos.x()) <= BOARD_HALF_CELLS && Math.abs(pos.y()) <= BOARD_HALF_CELLS;
+    }
 
     public final Map<VirtualPanelPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
     public final Set<UUID> networks = new LinkedHashSet<>();
@@ -51,6 +58,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
      *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
     private boolean menuSyncQueued = false;
+
+    /** Whether the controller block is currently receiving a redstone signal. While powered, every
+     *  gauge stops issuing new requests (mirrors Create's factory-panel redstone gate). */
+    private boolean redstonePowered = false;
 
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
@@ -79,6 +90,30 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
     }
 
+    @Override
+    public void lazyTick() {
+        super.lazyTick();
+        if (level != null && !level.isClientSide())
+            updateRedstonePower();
+    }
+
+    /** Called from {@link FactoryControllerBlock#neighborChanged} so redstone edges are picked up at once. */
+    public void onNeighborChanged() {
+        if (level != null && !level.isClientSide())
+            updateRedstonePower();
+    }
+
+    private void updateRedstonePower() {
+        assert level != null;
+        boolean powered = level.hasNeighborSignal(getBlockPos());
+        if (powered == redstonePowered) return;   // no edge → nothing to propagate
+        redstonePowered = powered;
+        for (VirtualComponentBehaviour component : components.values())
+            if (component instanceof VirtualGaugeBehaviour gauge)
+                gauge.controllerPowered = powered;
+        sendData();   // push the new powered state to any open GUI
+    }
+
     // ── Gauge attach ───────────────────────────────────────────────────────
 
     public void attachComponent(VirtualPanelPosition pos, Player player, @Nullable UUID selectedNetwork) {
@@ -89,13 +124,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         if (components.containsKey(pos)) return;
 
-        if (components.size() >= MAX_COMPONENTS) {   // board full — bounds NBT/packet size
-            player.displayClientMessage(
-                Component.translatable("createfactorycontroller.message.component_limit", MAX_COMPONENTS)
-                    .withStyle(ChatFormatting.RED), true);
-            playDenySound();
-            return;
-        }
+        if (!isCellOnBoard(pos)) return;   // outside the finite board
+
+        // board full — bounds NBT/packet size
+        if (components.size() >= MAX_COMPONENTS) return;
 
         UUID networkId;
         if (LogisticallyLinkedBlockItem.isTuned(carried)) {
@@ -112,6 +144,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         VirtualGaugeBehaviour behaviour = new VirtualGaugeBehaviour(this, pos, networkId, itemId);
+        behaviour.controllerPowered = redstonePowered;   // inherit the live redstone state
         components.put(pos, behaviour);
 
         if (!player.isCreative())
@@ -152,6 +185,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (from.equals(to)) return;
         VirtualComponentBehaviour behaviour = components.get(from);
         if (behaviour == null) return;
+        if (!isCellOnBoard(to)) return;     // can't relocate off the finite board
         if (components.containsKey(to)) {   // destination occupied → aborted relocate
             playDenySound();
             return;
@@ -188,7 +222,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Configure panel ────────────────────────────────────────────────────
 
-    public void configureGauge(VirtualPanelPosition pos, ItemStack filter) {
+    public void setComponentItem(VirtualPanelPosition pos, ItemStack filter) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         gauge.filter = filter.copy();
         setChanged();
@@ -420,13 +454,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         components.clear();
     }
 
-    /**
-     * The picked/dropped controller item carries no board data — components drop separately on break.
-     * Overridden to a no-op so vanilla's default (which embeds {@code saveCustomOnly} into
-     * {@code BLOCK_ENTITY_DATA}) doesn't bake the whole board into the item.
-     */
     @Override
-    public void saveToItem(ItemStack stack, HolderLookup.Provider registries) {
+    public void saveToItem(@NotNull ItemStack stack, HolderLookup.@NotNull Provider registries) {
         // intentionally empty
     }
 }

@@ -64,6 +64,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public boolean waitingForNetwork = false;
     /** No redstone on the virtual board, but kept for parity with Create's status logic. */
     public boolean redstonePowered = false;
+    /** Set by the host controller when its block receives a redstone signal; while true this gauge
+     *  issues no new requests (the whole board is paused). Distinct from {@link #redstonePowered},
+     *  which mirrors a real gauge's own redstone state. */
+    public boolean controllerPowered = false;
 
     // Internal tick state
     private int lastReportedLevelInStorage = 0;
@@ -258,7 +262,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // is what prevents over-requesting: the timer never idles at 0 ready to fire, so the one-tick
         // stock/promise flicker as the produced item lands can't trigger an extra request — a request
         // only fires after the gauge has been continuously understocked for the whole interval.
-        if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered) return;
+        if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered || controllerPowered) return;
         if (timer > 0) {                                // throttle between attempts
             timer = Math.min(timer, getConfigRequestIntervalInTicks());
             timer--;
@@ -455,6 +459,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
         tag.putBoolean("Waiting", waitingForNetwork);
+        tag.putBoolean("ControllerPowered", controllerPowered);
         tag.putString("RecipeAddress", recipeAddress);
         // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
         // current values without a separate on-demand fetch.
@@ -493,6 +498,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.satisfied = tag.getBoolean("Satisfied");
         b.promisedSatisfied = tag.getBoolean("PromisedSatisfied");
         b.waitingForNetwork = tag.getBoolean("Waiting");
+        b.controllerPowered = tag.getBoolean("ControllerPowered");
         b.lastReportedLevelInStorage = tag.getInt("LastLevel");
         b.lastReportedPromises = tag.getInt("LastPromised");
         b.timer = tag.getInt("Timer");
