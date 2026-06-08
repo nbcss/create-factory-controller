@@ -28,6 +28,15 @@ public class CreateFactoryControllerClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,
             "key.categories.createfactorycontroller");
 
+    /**
+     * Drag this button on the controller canvas to pan the view. Rebindable from Options ▸ Controls;
+     * defaults to the middle mouse button (the original hard-wired behaviour).
+     */
+    public static final KeyMapping PAN_VIEW = new KeyMapping(
+            "key.createfactorycontroller.pan_view",
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
+            "key.categories.createfactorycontroller");
+
     public CreateFactoryControllerClient(ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
         // The config screen is accessed by going to the Mods screen > clicking on your mod > clicking on config.
@@ -43,5 +52,6 @@ public class CreateFactoryControllerClient {
     @SubscribeEvent
     static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(CYCLE_ARROW);
+        event.register(PAN_VIEW);
     }
 }

@@ -1,5 +1,6 @@
 package io.github.nbcss.content.factorycontroller.gui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
@@ -20,6 +21,7 @@ import io.github.nbcss.content.factorycontroller.packet.CycleArrowBendPacket;
 import io.github.nbcss.content.factorycontroller.packet.MoveComponentPacket;
 import io.github.nbcss.content.factorycontroller.packet.RenameControllerPacket;
 import io.github.nbcss.content.factorycontroller.packet.RetuneCarriedPacket;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -65,6 +67,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Canvas view state
     private static final int MAX_ZOOM_LEVEL = 10;
     private static final int MIN_ZOOM_LEVEL = -20;
+    // On-screen pan speed (px per second) when holding a movement key (WASD by default). Applied
+    // per-frame against the real frame delta so panning stays smooth at any framerate.
+    private static final double KEY_PAN_SPEED = 160.0;
+    /** Wall-clock time (ms) of the previous keyboard-pan frame; 0 until the first frame. */
+    private long lastPanFrameMs = 0;
     private double viewX = 0;
     private double viewY = 0;
     private int zoomLevel = 0;
@@ -191,6 +198,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         nameBox.setValue(currentName);
         if (wasFocused) nameBox.setFocused(true);
         addWidget(nameBox);
+
+        lastPanFrameMs = 0;   // fresh frame-delta base on (re)entry, so the first pan frame doesn't jump
     }
 
     /**
@@ -303,6 +312,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         super.render(graphics, mouseX, mouseY, partialTick);
         // Hover tooltip for an existing gauge (suppressed while a board action mode is active, where
         // the hovered cell already gives white/red reticle feedback). hoveredPosition is set in renderBoard.
@@ -673,7 +683,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (leftOrRight && widget != null)
                 return widget.onClick(this, carried);
 
-            if (button == 2) {
+            // Pan-view button (rebindable, middle mouse by default) → start a drag-pan.
+            if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
                 isDragging = true;
                 return true;
             }
@@ -683,7 +694,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (isDragging && button == 2) {
+        if (isDragging && CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
             viewX -= deltaX / getZoomFactor();
             viewY -= deltaY / getZoomFactor();
             clampView();
@@ -694,7 +705,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 2) isDragging = false;
+        if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) isDragging = false;
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
@@ -723,6 +734,44 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private double getZoomFactor() {
         return 2. * Math.pow(2., zoomLevel / 10.);
+    }
+
+    /**
+     * Pans the view from the game's movement keybindings (Forward/Back/Left/Right — WASD by default)
+     * currently held. Called once per frame and scaled by the real frame-delta time so movement stays
+     * smooth at any framerate; the speed is constant in screen pixels (divided by the zoom to get world
+     * px), so it feels the same at any zoom. Skipped while renaming so typed letters don't move the board.
+     */
+    private void tickKeyboardPan() {
+        long now = Util.getMillis();
+        long previous = lastPanFrameMs;
+        lastPanFrameMs = now;
+        if (previous == 0) return;   // first frame: establish the time base, don't jump
+
+        if (nameBox != null && nameBox.isFocused()) return;
+        Minecraft mc = Minecraft.getInstance();
+        double dx = 0, dy = 0;
+        if (isKeyHeld(mc.options.keyLeft))  dx -= 1;
+        if (isKeyHeld(mc.options.keyRight)) dx += 1;
+        if (isKeyHeld(mc.options.keyUp))    dy -= 1;   // Forward → reveal content above (view moves up)
+        if (isKeyHeld(mc.options.keyDown))  dy += 1;
+        if (dx == 0 && dy == 0) return;
+
+        // Seconds since the last frame, clamped so a hitch / paused frame can't fling the view.
+        double elapsedSec = Math.min((now - previous) / 1000.0, 0.1);
+        double step = KEY_PAN_SPEED * elapsedSec / getZoomFactor();
+        viewX += dx * step;
+        viewY += dy * step;
+        clampView();
+    }
+
+    /** Whether {@code mapping}'s bound keyboard key is physically held — {@link KeyMapping#isDown()}
+     *  doesn't update while a screen is open, so we poll the window directly (keyboard keys only). */
+    private static boolean isKeyHeld(KeyMapping mapping) {
+        InputConstants.Key key = mapping.getKey();
+        if (key.getType() != InputConstants.Type.KEYSYM || key.getValue() == InputConstants.UNKNOWN.getValue())
+            return false;
+        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow().getWindow(), key.getValue());
     }
 
     /**

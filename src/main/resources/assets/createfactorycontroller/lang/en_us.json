@@ -17,6 +17,7 @@
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
+  "key.createfactorycontroller.pan_view": "Pan View (drag)",
 
   "createfactorycontroller.network.default": "Network #%1$s",
 
