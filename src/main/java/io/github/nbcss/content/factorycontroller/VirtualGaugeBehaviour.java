@@ -172,10 +172,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (filter.isEmpty()) return Component.empty();
         if (waitingForNetwork) return Component.literal("?");
 
-        boolean inf = isInfiniteStock();
-        int inStorage = stockLevel / unit.toItemCount(filter);
-        int promised = promisedCount;
-        String stacks = unit.suffix;
+        String inStorage = isInfiniteStock() ? "∞" : stockLevel / unit.toItemCount(filter) + unit.suffix;
 
         if (!isActive())
             return CreateLang.text(inStorage).color(0xF1EFE8).component();
