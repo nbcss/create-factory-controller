@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.nbcss.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "InventorySummaryMixin"
+  ],
+  "refmap": "createfactorycontroller.refmap.json"
+}

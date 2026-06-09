@@ -13,6 +13,7 @@ import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
@@ -74,8 +75,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int MAX_INPUT_SLOTS = 9;
     private static final int THRESH_TOP = 128;
     private static final int FILTER_X = 25;
-    private static final int COUNT_X = 51, COUNT_W = 64;
-    private static final int UNIT_X = 118, UNIT_W = 49;
+    private static final int COUNT_X = 51, COUNT_W = 40;
+    private static final int UNIT_X = 95, UNIT_W = 50;
+    private static final int AUTO_BTN_X = 150;
     private static final int THRESH_H = 18;
 
     private final FactoryControllerScreen controller;
@@ -89,6 +91,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int craftBatch = 1;
     private int thresholdCount = 0;
     private ThresholdMode mode = ThresholdMode.ITEMS;
+    private boolean autoMode = false;
     private final List<VirtualPanelPosition> inputPositions = new ArrayList<>();
     private final List<Integer> inputAmounts = new ArrayList<>();
     private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search
@@ -104,6 +107,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private IconButton newInputButton;
     private IconButton relocateButton;
     @Nullable private IconButton craftingButton;
+    @Nullable private IconButton autoModeButton;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualPanelPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -197,6 +201,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             craftingButton.setToolTip(CreateLang.translate("gui.factory_panel.activate_crafting").component());
             addWidget(craftingButton);
         }
+
+        // Auto mode toggle — right of the unit box. Green when auto mode is on.
+        ScreenElement followsDemandIcon = (gfx, x, y) -> gfx.blitSprite(
+            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/follows_demand"),
+            x, y, 16, 16);
+        autoModeButton = new IconButton(panelX + AUTO_BTN_X, panelY + THRESH_TOP - 1, followsDemandIcon);
+        autoModeButton.green = autoMode;
+        autoModeButton.withCallback(this::toggleAutoMode);
+        addWidget(autoModeButton);
     }
 
     @Override
@@ -232,6 +245,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         craftBatch = Math.max(1, g.craftBatch);
         thresholdCount = Math.max(0, g.count);
         mode = g.mode;
+        autoMode = g.autoMode;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
             // One grid slot per stored amount — a repeated connection expands into several slots.
             List<Integer> amts = conn.amounts.isEmpty() ? List.of(1) : conn.amounts;
@@ -440,6 +454,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
+        if (autoModeButton != null) autoModeButton.render(gfx, mouseX, mouseY, partialTick);
 
         // Promise-interval label over the scroll box.
         int state = promiseExpiration.getState();
@@ -449,7 +464,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Count box tooltip. In auto mode the count is system-managed, so the scroll hints are replaced
         // by a note that the target is driven by downstream requests.
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H))
-            tooltip = mode.isAuto()
+            tooltip = autoMode
                 ? List.of(
                     CreateLang.translate("factory_panel.target_amount").color(ScrollInput.HEADER_RGB).component(),
                     Component.translatable("createfactorycontroller.gui.threshold.auto_managed")
@@ -461,15 +476,22 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
 
-        // Unit box tooltip — three selectable modes (items / stacks / auto), with the active one arrowed.
+        // Unit box tooltip — two selectable modes (items / stacks), with the active one arrowed.
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H))
             tooltip = List.of(
                 CreateLang.translate("schedule.condition.threshold.item_measure").color(ScrollInput.HEADER_RGB).component(),
                 ThresholdMode.ITEMS.tooltipLine(mode == ThresholdMode.ITEMS),
                 ThresholdMode.STACKS.tooltipLine(mode == ThresholdMode.STACKS),
-                ThresholdMode.AUTO.tooltipLine(mode == ThresholdMode.AUTO),
                 CreateLang.translate("gui.scrollInput.scrollToSelect")
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+
+        // Auto mode button tooltip.
+        if (autoModeButton != null && autoModeButton.isMouseOver(mouseX, mouseY))
+            tooltip = List.of(
+                CreateLang.text(Component.translatable("createfactorycontroller.gui.threshold.auto").getString())
+                    .color(ScrollInput.HEADER_RGB).component(),
+                Component.translatable("createfactorycontroller.gui.threshold.auto_managed")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
 
         // Filter/stock box tooltip — the filtered item's normal item tooltip.
         if (g != null && in(mouseX, mouseY, panelX + FILTER_X, panelY + THRESH_TOP, 16, 16))
@@ -495,15 +517,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Middle box: target count, left-aligned. In auto mode the count is system-managed, so show the
         // live server value in gray (the player can't edit it here) — including a literal "0" when there
         // is currently no demand, rather than the "Inactive" label used for a manually-zeroed target.
-        int displayCount = mode.isAuto() && g != null ? Math.max(0, g.count) : thresholdCount;
-        String countStr = displayCount == 0 && !mode.isAuto()
-            ? CreateLang.translate("gui.factory_panel.inactive").string().trim()
+        int displayCount = autoMode && g != null ? Math.max(0, g.count) : thresholdCount;
+        String countStr = displayCount == 0 && !autoMode
+            ? // CreateLang.translate("gui.factory_panel.inactive").string().trim()
+              "∅"
             : String.valueOf(displayCount);
-        int countColor = mode.isAuto() ? 0xFFBBBBBB : 0xFFFFFFFF;
+        int countColor = autoMode ? 0xFFBBBBBB : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
 
         // Right box: unit/mode label (Items / Stacks / Auto), left-aligned.
         gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
+
     }
 
     /** Replica of StockKeeperRequestScreen#drawItemCount — abbreviated count via the NUMBERS sprites. */
@@ -628,7 +652,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 return true;
             }
 
-        // Click the unit box → cycle Items → Stacks → Auto.
+        // Click the unit box → cycle Items ↔ Stacks.
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
             setMode(mode.cycle(1));
             return true;
@@ -674,19 +698,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Threshold count box (max 100, regardless of unit). Locked in auto mode — the count is
         // system-managed, so swallow the scroll without changing it.
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
-            if (!mode.isAuto()) {
+            if (!autoMode) {
                 thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, 100);
                 playScrollSound();
             }
             return true;
         }
-        // Unit box → cycle Items / Stacks / Auto. Scrolling up advances the list (negate: scroll-up is
+        // Unit box → cycle Items / Stacks. Scrolling up advances the list (negate: scroll-up is
         // a positive dir but should move forward through the modes, matching the click cycle).
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
-            if (dir != 0) {
-                setMode(mode.cycle(-dir));
-                playScrollSound();
-            }
+            if (dir != 0) setMode(mode.cycle(-dir));
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
@@ -745,20 +766,24 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int batch = craftingActive ? Math.max(1, craftBatch) : 1;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch,
-            promiseExpiration.getState(), thresholdCount, mode,
+            promiseExpiration.getState(), thresholdCount, mode, autoMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }
 
-    /**
-     * Switches the threshold mode. When leaving auto, the live system-managed count becomes the new
-     * editable target so the value carries over instead of snapping back to the stale snapshot.
-     */
     private void setMode(ThresholdMode newMode) {
-        if (mode.isAuto() && !newMode.isAuto()) {
+        mode = newMode;
+        playScrollSound();
+    }
+
+    /** Toggles auto mode. When turning off, the live server-computed count carries into the editable target. */
+    private void toggleAutoMode() {
+        if (autoMode) {
             VirtualGaugeBehaviour g = gauge();
             if (g != null) thresholdCount = Mth.clamp(g.count, 0, 100);
         }
-        mode = newMode;
+        autoMode = !autoMode;
+        if (autoModeButton != null) autoModeButton.green = autoMode;
+        playClickSound();
     }
 
     private void confirmAndReturn() {

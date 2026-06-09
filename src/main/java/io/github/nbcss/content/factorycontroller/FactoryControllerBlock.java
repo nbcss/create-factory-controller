@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -27,11 +29,16 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
 
     public static final MapCodec<FactoryControllerBlock> CODEC = simpleCodec(FactoryControllerBlock::new);
 
+    /** Render-only flag: true while the block receives a redstone signal, selecting the powered model. */
+    public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
+
     private static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 14, 16);
 
     public FactoryControllerBlock(Properties properties) {
         super(properties);
-        registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH));
+        registerDefaultState(defaultBlockState()
+            .setValue(FACING, Direction.NORTH)
+            .setValue(POWERED, false));
     }
 
     @Override
@@ -41,7 +48,7 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, POWERED);
     }
 
     @Override
@@ -55,7 +62,10 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        boolean powered = context.getLevel().hasNeighborSignal(context.getClickedPos());
+        return defaultBlockState()
+            .setValue(FACING, context.getHorizontalDirection().getOpposite())
+            .setValue(POWERED, powered);
     }
 
     @Override
@@ -76,6 +86,11 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
                                    @NotNull Block neighborBlock, @NotNull BlockPos neighborPos,
                                    boolean movedByPiston) {
         if (level.isClientSide()) return;
+        // Keep the render-only POWERED state in sync (vanilla syncs the blockstate to clients and picks
+        // the matching model); the BE handles the request-pausing logic separately.
+        boolean powered = level.hasNeighborSignal(pos);
+        if (powered != state.getValue(POWERED))
+            level.setBlock(pos, state.setValue(POWERED, powered), Block.UPDATE_CLIENTS);
         withBlockEntityDo(level, pos, FactoryControllerBlockEntity::onNeighborChanged);
     }
 

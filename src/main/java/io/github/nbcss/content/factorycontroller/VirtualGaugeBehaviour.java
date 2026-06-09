@@ -48,11 +48,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
-    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive. In {@link ThresholdMode#AUTO}
-     *  this is recomputed every tick from the demand of the parent recipes wired to this gauge. */
+    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive. In auto mode
+     *  ({@link #autoMode}) this is recomputed every tick from the demand of the parent recipes wired to this gauge. */
     public int count = 0;
-    /** How the threshold is measured / managed (items, stacks, or auto). Replaces Create's {@code upTo}. */
+    /** How the threshold is measured (items or stacks). Replaces Create's {@code upTo}. */
     public ThresholdMode mode = ThresholdMode.ITEMS;
+    /** When true the target {@link #count} is managed automatically each tick from consumer demand;
+     *  the threshold is always counted in items. The player may not edit count directly while this is on. */
+    public boolean autoMode = false;
     /** Current network stock of {@link #filter} — server-computed, synced for the threshold display. */
     public int stockLevel = 0;
     /** Open promised amount of {@link #filter} — server-computed, synced for the promise box. */
@@ -78,6 +81,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     /** Last synced {@link #count}; in auto mode count is recomputed each tick, so it must be part of the
      *  storage-monitor dirty check or a count-only change wouldn't reach the client's gray number. */
     private int lastReportedCount = -1;
+    /** Bridges the gap between a promise settling (live) and the loose stock summary recomputing: holds the
+     *  just-settled amount as "stock already here, summary hasn't caught up yet" so stock+promised stays
+     *  conserved across the settlement (no satisfied/connection dip). Cleared when the summary recomputes. */
+    private int creditStock = 0;
+    /** Ticks the current {@link #creditStock} has been held; a safety cap in case the recomputed summary
+     *  value happens to be unchanged so the "raw stock changed" clear never fires. */
+    private int creditAge = 0;
     private int timer = 0;
     /** Game tick of the last request attempt; the client decays the connection flash from it. */
     public long lastRequestTick = Long.MIN_VALUE;
@@ -123,7 +133,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * {@code count == 0} for "inactive" goes through this instead.
      */
     public boolean isActive() {
-        return count != 0 || mode.isAuto();
+        return count != 0 || autoMode;
     }
 
     /**
@@ -160,10 +170,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         int levelInStorage = stockLevel;
         boolean inf = levelInStorage >= BigItemStack.INF;
-        boolean perItem = mode.isPerItem();
-        int inStorage = levelInStorage / (perItem ? 1 : Math.max(1, filter.getMaxStackSize()));
+        int inStorage = levelInStorage / mode.toItemCount(filter);
         int promised = promisedCount;
-        String stacks = perItem ? "" : "▤";
+        String stacks = mode.suffix;
 
         if (!isActive())
             return CreateLang.text(inf ? "∞" : inStorage + stacks).color(0xF1EFE8).component();
@@ -173,7 +182,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             .color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
             .add(CreateLang.text(promised == 0 ? "" : "⏶"))
             .add(CreateLang.text("/").style(ChatFormatting.WHITE))
-            .add(CreateLang.text(count + stacks).color(0xF1EFE8))
+            .add(CreateLang.text(count + stacks).color(autoMode ? (count > 0 ? 0x06ACFF : 0x035882) : 0xF1EFE8))
             .component();
     }
 
@@ -188,39 +197,22 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     /**
-     * Auto Request Mode demand: the amount of this gauge's output that its consumers <em>currently</em>
-     * need from it. A consumer ({@link #targeting}) only counts while it is actively trying to craft —
-     * i.e. it is itself understocked and not already covered by promises (see
-     * {@link #isDemandingIngredients()}); a satisfied or promised consumer needs nothing right now, so it
-     * contributes 0. Each contributing consumer adds its per-request demand for this ingredient (the
-     * connection's summed slot amounts × that consumer's craft batch).
-     *
-     * <p>Reads only direct consumers, so it terminates even if recipes form a loop, and it chains
-     * naturally: when the top of an auto chain is satisfied its demand collapses to 0, which makes the
-     * level below it satisfied, and so on down the chain.</p>
-     */
-    /**
      * Controller pre-pass hook: refresh the Auto Request target. Invoked once per tick in consumer-first
      * order (see {@code FactoryControllerBlockEntity#tick}) so a demand change propagates through a whole
      * auto chain within a single tick rather than crawling one level per tick.
      */
-    public void recomputeAutoCount() {
-        if (mode.isAuto() && controller != null)
-            count = computeAutoNeed();
-    }
-
-    private int computeAutoNeed() {
-        if (controller == null) return 0;
-        int total = 0;
+    public void computeDemand() {
+        if (!autoMode || controller == null) return;
+        int demand = 0;
         for (VirtualPanelPosition parentPos : targeting) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
             VirtualPanelConnection conn = parent.targetedBy().get(position);
             if (conn == null) continue;
             int parentBatch = parent.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, parent.craftBatch);
-            total += conn.totalAmount() * parentBatch;
+            demand += conn.totalAmount() * parentBatch;
         }
-        return total;
+        count = demand <= 0 ? 0 : Math.ceilDiv(demand, mode.toItemCount(filter));
     }
 
     /**
@@ -228,18 +220,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * yet covered by stock + open promises. An auto producer feeding this gauge calls it to size its own
      * demand.
      *
-     * <p>Coverage is read <em>live</em> ({@link #getLevelInStorage()} + {@link #getPromised()}) rather
-     * than from the cached {@link #satisfied}/{@link #promisedSatisfied} flags on purpose: when this
-     * consumer places a request it registers a promise the same tick, so the producer's demand collapses
-     * to 0 in lockstep with the stock that request is about to drain. Going through the flags instead lags
-     * a tick, which briefly left the producer reading "stock &lt; need" → a one-tick satisfied flicker on
-     * the bulb/connection right as the demand cleared.</p>
+     * <p>Coverage is the gauge's last-tick conserved snapshot ({@link #stockLevel} = effectiveStock,
+     * + {@link #promisedCount}) rather than a fresh loose read: both halves come from the same
+     * tickStorageMonitor pass, so the credit-stock bridge keeps them conserved across a settlement. A fresh
+     * loose read would dip (promise drops a frame before the summary stock rises) and make the consumer
+     * falsely look "demanding" → the producer would size phantom demand and over-produce.</p>
      */
     private boolean isDemandingIngredients() {
         if (count == 0 || waitingForNetwork || redstonePowered || controllerPowered || isMissingAddress())
             return false;
-        int demand = count * (mode.isPerItem() ? 1 : Math.max(1, filter.getMaxStackSize()));
-        return getLevelInStorage() + getPromised() < demand;
+        // Use the conserved snapshot (effectiveStock via stockLevel, + promisedCount) from this gauge's last
+        // tickStorageMonitor — both halves from the same instant, so the credit bridge prevents the
+        // settlement dip that would otherwise make a consumer falsely look "demanding" → phantom demand.
+        return stockLevel + promisedCount < count * mode.toItemCount(filter);
     }
 
     private void tickStorageMonitor() {
@@ -257,21 +250,38 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             LogisticsManager.SUMMARIES.invalidate(networkId);
 
         int inStorage = getLevelInStorage();
-        stockLevel = inStorage;
         int promised = getPromised();
+
+        // Credit-stock bridge. The loose summary lags the live promise queue, so at a settlement `promised`
+        // drops a frame (or ~1s) before `inStorage` rises — which would dip stock+promised and flash the
+        // connection / open the request gate. When `promised` drops with no matching raw-stock rise, those
+        // items just entered inventory the summary hasn't recomputed yet: hold the delta as creditStock and
+        // count it as stock until the summary catches up (raw stock changes → authoritative → clear).
+        // Skipped under promise expiry, where a drop may be an expiry rather than a settlement.
+        if (inStorage != lastReportedLevelInStorage) {
+            creditStock = 0;
+            creditAge = 0;
+        } else {
+            if (promiseClearingInterval == -1 && promised < lastReportedPromises)
+                creditStock += lastReportedPromises - promised;
+            if (creditStock > 0 && ++creditAge > 40) {   // safety: summary must have recomputed by now
+                creditStock = 0;
+                creditAge = 0;
+            }
+        }
+        stockLevel = inStorage + creditStock;
+        int effectiveStock = stockLevel;
         promisedCount = promised;
 
         // NB: the auto target (count) is refreshed once per tick by the controller's consumer-first
         // pre-pass (recomputeAutoCount), not here, so a chain settles in a single tick.
+        int demand = count * mode.toItemCount(filter);
 
-        // Auto mode counts in raw items (count already an item total); otherwise honour the unit toggle.
-        int demand = count * (mode.isPerItem() ? 1 : filter.getMaxStackSize());
-
-        // Satisfied is real-stock only (bulb stays dim / connection stays pending until the items actually
-        // arrive, even in auto). promisedSatisfied still folds in promises — it gates requests so in-flight
-        // items aren't re-requested, but it doesn't make the gauge read as satisfied.
-        boolean shouldSatisfy = inStorage >= demand;
-        boolean shouldPromiseSatisfy = inStorage + promised >= demand;
+        // Satisfied is real-stock only (bulb stays dim / connection stays pending until items actually
+        // arrive). promisedSatisfied still folds in promises so in-flight items aren't re-requested. Both
+        // use effectiveStock, so the credit bridge keeps them from dipping across a settlement.
+        boolean shouldSatisfy = effectiveStock >= demand;
+        boolean shouldPromiseSatisfy = effectiveStock + promised >= demand;
         boolean shouldWait = unloadedLinkCount > 0;
 
         if (lastReportedLevelInStorage == inStorage && lastReportedPromises == promised
@@ -307,10 +317,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     private InventorySummary getRelevantSummary() {
-        // Accurate (fresh) summary so the synced stock/satisfied state tracks the network in real time
-        // instead of going stale on the loose cache (which left the count un-updated and caused the
-        // gauge to keep requesting after items had already arrived).
-        return LogisticsManager.getSummaryOfNetwork(networkId, true);
+        // Loose (20-tick) summary, matching Create's recipe panels — cheap on big networks, no invalidation.
+        // The stock half lags the live promise, so on its own stock+promised would dip across a settlement
+        // (the connection flicker / spurious request). tickStorageMonitor compensates with creditStock,
+        // which holds a just-settled promise as stock until this summary recomputes, keeping stock+promised
+        // conserved.
+        return LogisticsManager.getSummaryOfNetwork(networkId, false);
     }
 
     public int getPromised() {
@@ -418,7 +430,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                 new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);
             Multimap<PackagerBlockEntity, PackagingRequest> found =
                 LogisticsManager.findPackagersForRequest(netEntry.getKey(), order, null, recipeAddress);
-            if (found == null || found.isEmpty()) return;     // no packager could serve this network
+            if (found.isEmpty()) return;     // no packager could serve this network
             for (PackagerBlockEntity packager : found.keySet())
                 if (packager.isTooBusyFor(RequestType.RESTOCK)) return;
             dispatch.add(found);
@@ -479,6 +491,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
         tag.putString("Mode", mode.name());
+        tag.putBoolean("AutoMode", autoMode);
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -541,6 +554,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
         tag.putString("Mode", mode.name());
+        tag.putBoolean("AutoMode", autoMode);
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -576,6 +590,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         b.count = tag.getInt("Count");
         b.mode = ThresholdMode.fromName(tag.getString("Mode"));
+        b.autoMode = tag.getBoolean("AutoMode");
         b.stockLevel = tag.getInt("Stock");
         b.promisedCount = tag.getInt("Promised");
         b.lastRequestTick = tag.getLong("LastRequestTick");
