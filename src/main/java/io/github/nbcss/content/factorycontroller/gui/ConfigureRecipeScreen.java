@@ -17,7 +17,7 @@ import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.ThresholdMode;
+import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
  */
 @OnlyIn(Dist.CLIENT)
 public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
+    private static final int MAX_THRESHOLD_COUNT = 100;
 
     private static final ResourceLocation PANEL_TEX =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/configure_recipe.png");
@@ -77,7 +78,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int FILTER_X = 25;
     private static final int COUNT_X = 51, COUNT_W = 40;
     private static final int UNIT_X = 95, UNIT_W = 50;
-    private static final int AUTO_BTN_X = 150;
+    private static final int PASSIVE_BTN_X = 150;
     private static final int THRESH_H = 18;
 
     private final FactoryControllerScreen controller;
@@ -90,8 +91,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Crafts per request in crafting mode (≥1). The output slot shows outputCount × craftBatch. */
     private int craftBatch = 1;
     private int thresholdCount = 0;
-    private ThresholdMode mode = ThresholdMode.ITEMS;
-    private boolean autoMode = false;
+    private ThresholdUnit mode = ThresholdUnit.ITEMS;
+    private boolean passiveMode = false;
     private final List<VirtualPanelPosition> inputPositions = new ArrayList<>();
     private final List<Integer> inputAmounts = new ArrayList<>();
     private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search
@@ -107,7 +108,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private IconButton newInputButton;
     private IconButton relocateButton;
     @Nullable private IconButton craftingButton;
-    @Nullable private IconButton autoModeButton;
+    @Nullable private IconButton passiveModeButton;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualPanelPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -202,14 +203,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             addWidget(craftingButton);
         }
 
-        // Auto mode toggle — right of the unit box. Green when auto mode is on.
+        // Passive mode toggle — right of the unit box. Green when passive mode is on.
         ScreenElement followsDemandIcon = (gfx, x, y) -> gfx.blitSprite(
             ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/follows_demand"),
             x, y, 16, 16);
-        autoModeButton = new IconButton(panelX + AUTO_BTN_X, panelY + THRESH_TOP - 1, followsDemandIcon);
-        autoModeButton.green = autoMode;
-        autoModeButton.withCallback(this::toggleAutoMode);
-        addWidget(autoModeButton);
+        passiveModeButton = new IconButton(panelX + PASSIVE_BTN_X, panelY + THRESH_TOP - 1, followsDemandIcon);
+        passiveModeButton.green = passiveMode;
+        passiveModeButton.withCallback(this::togglePassiveMode);
+        addWidget(passiveModeButton);
     }
 
     @Override
@@ -244,8 +245,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         outputCount = Math.max(1, g.recipeOutput);
         craftBatch = Math.max(1, g.craftBatch);
         thresholdCount = Math.max(0, g.count);
-        mode = g.mode;
-        autoMode = g.autoMode;
+        mode = g.unit;
+        passiveMode = g.passiveMode;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
             // One grid slot per stored amount — a repeated connection expands into several slots.
             List<Integer> amts = conn.amounts.isEmpty() ? List.of(1) : conn.amounts;
@@ -454,17 +455,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
-        if (autoModeButton != null) autoModeButton.render(gfx, mouseX, mouseY, partialTick);
+        if (passiveModeButton != null) passiveModeButton.render(gfx, mouseX, mouseY, partialTick);
 
         // Promise-interval label over the scroll box.
         int state = promiseExpiration.getState();
         String label = state == -1 ? " /" : state == 0 ? "30s" : state + "m";
         gfx.drawString(font, label, promiseExpiration.getX() + 3, promiseExpiration.getY() + 4, 0xFFEEEEEE, true);
 
-        // Count box tooltip. In auto mode the count is system-managed, so the scroll hints are replaced
+        // Count box tooltip. In passive mode the count is system-managed, so the scroll hints are replaced
         // by a note that the target is driven by downstream requests.
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H))
-            tooltip = autoMode
+            tooltip = passiveMode
                 ? List.of(
                     CreateLang.translate("factory_panel.target_amount").color(ScrollInput.HEADER_RGB).component(),
                     Component.translatable("createfactorycontroller.gui.threshold.auto_managed")
@@ -480,18 +481,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H))
             tooltip = List.of(
                 CreateLang.translate("schedule.condition.threshold.item_measure").color(ScrollInput.HEADER_RGB).component(),
-                ThresholdMode.ITEMS.tooltipLine(mode == ThresholdMode.ITEMS),
-                ThresholdMode.STACKS.tooltipLine(mode == ThresholdMode.STACKS),
+                ThresholdUnit.ITEMS.tooltipLine(mode == ThresholdUnit.ITEMS),
+                ThresholdUnit.STACKS.tooltipLine(mode == ThresholdUnit.STACKS),
                 CreateLang.translate("gui.scrollInput.scrollToSelect")
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
 
-        // Auto mode button tooltip.
-        if (autoModeButton != null && autoModeButton.isMouseOver(mouseX, mouseY))
+        // Passive mode button tooltip.
+        if (passiveModeButton != null && passiveModeButton.isMouseOver(mouseX, mouseY))
             tooltip = List.of(
-                CreateLang.text(Component.translatable("createfactorycontroller.gui.threshold.auto").getString())
+                CreateLang.text(Component.translatable("createfactorycontroller.gui.passive_mode").getString())
                     .color(ScrollInput.HEADER_RGB).component(),
-                Component.translatable("createfactorycontroller.gui.threshold.auto_managed")
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                Component.translatable("createfactorycontroller.gui.passive_mode_tip_1")
+                    .withStyle(ChatFormatting.GRAY),
+                Component.translatable("createfactorycontroller.gui.passive_mode_tip_2")
+                    .withStyle(ChatFormatting.GRAY));
 
         // Filter/stock box tooltip — the filtered item's normal item tooltip.
         if (g != null && in(mouseX, mouseY, panelX + FILTER_X, panelY + THRESH_TOP, 16, 16))
@@ -503,29 +506,26 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
-    private void renderThreshold(GuiGraphics gfx, @Nullable VirtualGaugeBehaviour g) {
-        // Left box: filter icon + current network stock, rendered with the stock-keeper number font.
-        if (g != null && !g.filter.isEmpty()) {
+    private void renderThreshold(GuiGraphics gfx, @Nullable VirtualGaugeBehaviour behaviour) {
+        // stock level
+        if (behaviour != null && !behaviour.filter.isEmpty()) {
             int fx = panelX + FILTER_X, fy = panelY + THRESH_TOP;
-            gfx.renderItem(g.filter, fx, fy);
+            gfx.renderItem(behaviour.filter, fx, fy);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
-            drawStockCount(gfx, g.stockLevel, fx, fy);
+            drawStockCount(gfx, behaviour.stockLevel, fx, fy);
             gfx.pose().popPose();
         }
-
-        // Middle box: target count, left-aligned. In auto mode the count is system-managed, so show the
-        // live server value in gray (the player can't edit it here) — including a literal "0" when there
-        // is currently no demand, rather than the "Inactive" label used for a manually-zeroed target.
-        int displayCount = autoMode && g != null ? Math.max(0, g.count) : thresholdCount;
-        String countStr = displayCount == 0 && !autoMode
-            ? // CreateLang.translate("gui.factory_panel.inactive").string().trim()
-              "∅"
-            : String.valueOf(displayCount);
-        int countColor = autoMode ? 0xFFBBBBBB : 0xFFFFFFFF;
+        // demand
+        int displayCount = thresholdCount;
+        if (passiveMode && behaviour != null && behaviour.passiveMode) {
+            displayCount = Math.max(0, behaviour.count);
+        }
+        String countStr = displayCount == 0 && !passiveMode
+            ? "∅" : String.valueOf(displayCount);
+        int countColor = passiveMode ? 0xFFBBBBBB : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
-
-        // Right box: unit/mode label (Items / Stacks / Auto), left-aligned.
+        // unit
         gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
 
     }
@@ -695,11 +695,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
             return true;
         }
-        // Threshold count box (max 100, regardless of unit). Locked in auto mode — the count is
-        // system-managed, so swallow the scroll without changing it.
+        // Threshold count box. Locked in passive mode.
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
-            if (!autoMode) {
-                thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, 100);
+            if (!passiveMode) {
+                thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, MAX_THRESHOLD_COUNT);
                 playScrollSound();
             }
             return true;
@@ -766,23 +765,25 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int batch = craftingActive ? Math.max(1, craftBatch) : 1;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch,
-            promiseExpiration.getState(), thresholdCount, mode, autoMode,
+            promiseExpiration.getState(), thresholdCount, mode, passiveMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }
 
-    private void setMode(ThresholdMode newMode) {
+    private void setMode(ThresholdUnit newMode) {
         mode = newMode;
         playScrollSound();
     }
 
-    /** Toggles auto mode. When turning off, the live server-computed count carries into the editable target. */
-    private void toggleAutoMode() {
-        if (autoMode) {
-            VirtualGaugeBehaviour g = gauge();
-            if (g != null) thresholdCount = Mth.clamp(g.count, 0, 100);
+    /** Toggles passive mode. When turning off, the live server-computed count carries into the editable target. */
+    private void togglePassiveMode() {
+        if (passiveMode) {
+            VirtualGaugeBehaviour behaviour = gauge();
+            thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0, MAX_THRESHOLD_COUNT);
+        } else {
+            thresholdCount = 0;
         }
-        autoMode = !autoMode;
-        if (autoModeButton != null) autoModeButton.green = autoMode;
+        passiveMode = !passiveMode;
+        if (passiveModeButton != null) passiveModeButton.green = passiveMode;
         playClickSound();
     }
 

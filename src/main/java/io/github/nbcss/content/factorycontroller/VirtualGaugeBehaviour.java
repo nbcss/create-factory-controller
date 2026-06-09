@@ -48,14 +48,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
-    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive. In auto mode
-     *  ({@link #autoMode}) this is recomputed every tick from the demand of the parent recipes wired to this gauge. */
+    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive. In passive mode
+     *  ({@link #passiveMode}) this is recomputed every tick from the demand of the parent recipes wired to this gauge. */
     public int count = 0;
     /** How the threshold is measured (items or stacks). Replaces Create's {@code upTo}. */
-    public ThresholdMode mode = ThresholdMode.ITEMS;
-    /** When true the target {@link #count} is managed automatically each tick from consumer demand;
+    public ThresholdUnit unit = ThresholdUnit.ITEMS;
+    /** When true the target {@link #count} is managed passively each tick from consumer demand;
      *  the threshold is always counted in items. The player may not edit count directly while this is on. */
-    public boolean autoMode = false;
+    public boolean passiveMode = false;
     /** Current network stock of {@link #filter} — server-computed, synced for the threshold display. */
     public int stockLevel = 0;
     /** Open promised amount of {@link #filter} — server-computed, synced for the promise box. */
@@ -78,7 +78,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     private int lastReportedLevelInStorage = 0;
     private int lastReportedPromises = 0;
     private int lastReportedUnloadedLinks = 0;
-    /** Last synced {@link #count}; in auto mode count is recomputed each tick, so it must be part of the
+    /** Last synced {@link #count}; in passive mode count is recomputed each tick, so it must be part of the
      *  storage-monitor dirty check or a count-only change wouldn't reach the client's gray number. */
     private int lastReportedCount = -1;
     /** Bridges the gap between a promise settling (live) and the loose stock summary recomputing: holds the
@@ -127,13 +127,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     /**
      * Whether the gauge has an active recipe target. A manual gauge becomes active once its target
-     * {@link #count} is non-zero; an {@link ThresholdMode#AUTO} gauge is <em>always</em> active — it
+     * {@link #count} is non-zero; a passive mode gauge is <em>always</em> active — it
      * manages a live, often-zero demand, so it must behave like a regular demand-0 gauge (satisfied,
      * green, bulb lit, labelled "stock/0") rather than an unconfigured one. Everything that used to test
      * {@code count == 0} for "inactive" goes through this instead.
      */
     public boolean isActive() {
-        return count != 0 || autoMode;
+        return count != 0 || passiveMode;
     }
 
     /**
@@ -170,19 +170,18 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         int levelInStorage = stockLevel;
         boolean inf = levelInStorage >= BigItemStack.INF;
-        int inStorage = levelInStorage / mode.toItemCount(filter);
+        int inStorage = levelInStorage / unit.toItemCount(filter);
         int promised = promisedCount;
-        String stacks = mode.suffix;
+        String stacks = unit.suffix;
 
         if (!isActive())
             return CreateLang.text(inf ? "∞" : inStorage + stacks).color(0xF1EFE8).component();
 
-        // Auto with no current demand still reads "stock/0" — it's a live demand-0 gauge, not inactive.
         return CreateLang.text(inf ? "∞" : inStorage + stacks)
             .color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
             .add(CreateLang.text(promised == 0 ? "" : "⏶"))
             .add(CreateLang.text("/").style(ChatFormatting.WHITE))
-            .add(CreateLang.text(count + stacks).color(autoMode ? (count > 0 ? 0x06ACFF : 0x035882) : 0xF1EFE8))
+            .add(CreateLang.text(count + stacks).color(passiveMode ? (count > 0 ? 0x06ACFF : 0x035882) : 0xF1EFE8))
             .component();
     }
 
@@ -190,19 +189,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     @Override
     public void tick() {
-        // Auto target is recomputed inside tickStorageMonitor (it needs the same fresh stock/promise
+        // Passive target is recomputed inside tickStorageMonitor (it needs the same fresh stock/promise
         // figures), so it stays in sync with the satisfaction state in a single pass.
         tickStorageMonitor();
         tickRequests();
     }
 
     /**
-     * Controller pre-pass hook: refresh the Auto Request target. Invoked once per tick in consumer-first
+     * Controller pre-pass hook: refresh the Passive Request target. Invoked once per tick in consumer-first
      * order (see {@code FactoryControllerBlockEntity#tick}) so a demand change propagates through a whole
-     * auto chain within a single tick rather than crawling one level per tick.
+     * passive chain within a single tick rather than crawling one level per tick.
      */
     public void computeDemand() {
-        if (!autoMode || controller == null) return;
+        if (!passiveMode || controller == null) return;
         int demand = 0;
         for (VirtualPanelPosition parentPos : targeting) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
@@ -212,7 +211,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             int parentBatch = parent.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, parent.craftBatch);
             demand += conn.totalAmount() * parentBatch;
         }
-        count = demand <= 0 ? 0 : Math.ceilDiv(demand, mode.toItemCount(filter));
+        count = demand <= 0 ? 0 : Math.ceilDiv(demand, unit.toItemCount(filter));
     }
 
     /**
@@ -232,7 +231,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // Use the conserved snapshot (effectiveStock via stockLevel, + promisedCount) from this gauge's last
         // tickStorageMonitor — both halves from the same instant, so the credit bridge prevents the
         // settlement dip that would otherwise make a consumer falsely look "demanding" → phantom demand.
-        return stockLevel + promisedCount < count * mode.toItemCount(filter);
+        return stockLevel + promisedCount < count * unit.toItemCount(filter);
     }
 
     private void tickStorageMonitor() {
@@ -273,9 +272,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         int effectiveStock = stockLevel;
         promisedCount = promised;
 
-        // NB: the auto target (count) is refreshed once per tick by the controller's consumer-first
-        // pre-pass (recomputeAutoCount), not here, so a chain settles in a single tick.
-        int demand = count * mode.toItemCount(filter);
+        // NB: the passive target (count) is refreshed once per tick by the controller's consumer-first
+        // pre-pass (computeDemand), not here, so a chain settles in a single tick.
+        int demand = count * unit.toItemCount(filter);
 
         // Satisfied is real-stock only (bulb stays dim / connection stays pending until items actually
         // arrive). promisedSatisfied still folds in promises so in-flight items aren't re-requested. Both
@@ -490,8 +489,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
-        tag.putString("Mode", mode.name());
-        tag.putBoolean("AutoMode", autoMode);
+        tag.putString("Mode", unit.name());
+        tag.putBoolean("Passive", passiveMode);
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -553,8 +552,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
-        tag.putString("Mode", mode.name());
-        tag.putBoolean("AutoMode", autoMode);
+        tag.putString("Unit", unit.name());
+        tag.putBoolean("Passive", passiveMode);
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -589,8 +588,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItemId);
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         b.count = tag.getInt("Count");
-        b.mode = ThresholdMode.fromName(tag.getString("Mode"));
-        b.autoMode = tag.getBoolean("AutoMode");
+        b.unit = ThresholdUnit.fromName(tag.getString("Unit"));
+        b.passiveMode = tag.getBoolean("Passive");
         b.stockLevel = tag.getInt("Stock");
         b.promisedCount = tag.getInt("Promised");
         b.lastRequestTick = tag.getLong("LastRequestTick");

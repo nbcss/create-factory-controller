@@ -2,7 +2,7 @@ package io.github.nbcss.content.factorycontroller.packet;
 
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.FactoryControllerBlockEntity;
-import io.github.nbcss.content.factorycontroller.ThresholdMode;
+import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -20,13 +20,13 @@ import java.util.Map;
 /**
  * Sent by {@code ConfigureRecipeScreen} when the player confirms (or deletes) a gauge's recipe
  * configuration. Carries the editable fields: recipe address, output-per-craft, promise-clearing
- * interval, target threshold + unit, auto mode flag, per-incoming-connection ingredient amounts,
+ * interval, target threshold + unit, passive mode flag, per-incoming-connection ingredient amounts,
  * the optional mechanical-crafting arrangement, and the clear-promises / reset flags.
  * {@code reset == true} wipes the gauge's whole recipe config (mirrors Create's trash button).
  */
 public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos, String address,
                                     int recipeOutput, int craftBatch, int promiseInterval, int count,
-                                    ThresholdMode mode, boolean autoMode,
+                                    ThresholdUnit mode, boolean passiveMode,
                                     List<VirtualPanelPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
@@ -46,7 +46,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 buf.writeInt(pkt.promiseInterval);
                 buf.writeInt(pkt.count);
                 buf.writeVarInt(pkt.mode.ordinal());
-                buf.writeBoolean(pkt.autoMode);
+                buf.writeBoolean(pkt.passiveMode);
                 buf.writeBoolean(pkt.clearPromises);
                 buf.writeBoolean(pkt.reset);
                 int n = Math.min(pkt.inputPositions.size(), pkt.inputAmounts.size());
@@ -68,9 +68,9 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 int craftBatch = buf.readInt();
                 int promiseInterval = buf.readInt();
                 int count = buf.readInt();
-                ThresholdMode mode = ThresholdMode.values()[
-                    Math.floorMod(buf.readVarInt(), ThresholdMode.values().length)];
-                boolean autoMode = buf.readBoolean();
+                ThresholdUnit mode = ThresholdUnit.values()[
+                    Math.floorMod(buf.readVarInt(), ThresholdUnit.values().length)];
+                boolean passiveMode = buf.readBoolean();
                 boolean clearPromises = buf.readBoolean();
                 boolean reset = buf.readBoolean();
                 int n = buf.readVarInt();
@@ -85,7 +85,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 for (int i = 0; i < m; i++)
                     arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
                 return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, promiseInterval,
-                    count, mode, autoMode, positions, amounts, arrangement, clearPromises, reset);
+                    count, mode, passiveMode, positions, amounts, arrangement, clearPromises, reset);
             });
 
     @Override
@@ -103,7 +103,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 inputs.computeIfAbsent(packet.inputPositions().get(i), k -> new ArrayList<>())
                       .add(packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
-                packet.promiseInterval(), packet.count(), packet.mode(), packet.autoMode(), inputs,
+                packet.promiseInterval(), packet.count(), packet.mode(), packet.passiveMode(), inputs,
                 packet.craftingArrangement(), packet.clearPromises(), packet.reset());
         });
     }

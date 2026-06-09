@@ -80,7 +80,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * Rendered after connections so the front frame covers the arrowheads. (Hover feedback is the
      * {@code target} reticle drawn by the screen.)
      */
-    public void renderFront(GuiGraphics gfx, boolean selected, float glow) {
+    public void renderFront(GuiGraphics gfx, float glow) {
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
@@ -94,7 +94,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.pose().popPose();
         }
 
-        // Indicator bulb — shown once the gauge is active (a target count, or auto mode). Matches Create.
+        // Indicator bulb — shown once the gauge is active.
         if (behaviour.isActive()) {
             boolean invalid = behaviour.isMissingAddress() || behaviour.redstonePowered;
             int base = invalid ? BULB_RED : BULB_GREEN;
@@ -106,37 +106,24 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.setColor(1f, 1f, 1f, 1f);
         }
 
-        // Selection outline, on top so the highlight is always visible.
-        if (selected) {
-            gfx.renderOutline(x0 - 1, y0 - 1, CELL + 2, CELL + 2, 0xFFFFAA00);
+        // render count overlay
+        if (!behaviour.filter.isEmpty()) {
+            Component label = behaviour.getCountLabel();
+            Font font = Minecraft.getInstance().font;
+            int w = font.width(label);
+            float scale = 0.5f;
+
+            gfx.pose().pushPose();
+            gfx.pose().translate(x0 + CELL - 1, y0 + CELL - 1, 200);
+            gfx.pose().scale(scale, scale, 1);
+            // Full 8-direction outline, like Create's in-world value-box labels (not a drop shadow).
+            Matrix4f matrix = gfx.pose().last().pose();
+            font.drawInBatch8xOutline(label.getVisualOrderText(), -w, -font.lineHeight,
+                    0xFFFFFFFF, 0x000000,
+                    matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
+            gfx.flush();
+            gfx.pose().popPose();
         }
-
-        renderCount(gfx, x0, y0);
-    }
-
-    /**
-     * Stock / target count on the gauge face (Create's value-box count), scaled to fit the cell.
-     * Shows current network stock — in stacks when in stack mode — plus "/target" with the request
-     * marker once a target count is set. Component carries its own colours.
-     */
-    private void renderCount(GuiGraphics gfx, int x0, int y0) {
-        if (behaviour.filter.isEmpty()) return;
-        Component label = behaviour.getCountLabel();
-        if (label.getString().isEmpty()) return;
-
-        Font font = Minecraft.getInstance().font;
-        int w = font.width(label);
-        float scale = 0.5f;
-
-        gfx.pose().pushPose();
-        gfx.pose().translate(x0 + CELL - 1, y0 + CELL - 1, 200);
-        gfx.pose().scale(scale, scale, 1);
-        // Full 8-direction outline, like Create's in-world value-box labels (not a drop shadow).
-        Matrix4f matrix = gfx.pose().last().pose();
-        font.drawInBatch8xOutline(label.getVisualOrderText(), -w, -font.lineHeight, 0xFFFFFFFF, 0x000000,
-                matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
-        gfx.flush();
-        gfx.pose().popPose();
     }
 
     // ── Tooltip ──────────────────────────────────────────────────────────────

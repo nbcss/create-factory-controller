@@ -109,7 +109,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // Interaction state
     @Nullable private VirtualPanelPosition hoveredPosition = null;
-    @Nullable private VirtualPanelPosition selectedComponent = null;
 
     // Gauge widgets, indexed by board position for O(1) hit-testing and lookup. Rebuilt from
     // menu.components only when the panel state syncs (see rebuildGaugeWidgets), not per frame.
@@ -395,8 +394,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
         for (VirtualGaugeWidget gauge : gaugeWidgets.values())
-            gauge.renderFront(graphics, gauge.position().equals(selectedComponent),
-                    bulbGlow(gauge.position(), partialTick));
+            gauge.renderFront(graphics, bulbGlow(gauge.position(), partialTick));
 
         renderSelectedNetworkMask(graphics);
         renderHoverTarget(graphics);
@@ -631,7 +629,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Shift + left/right-click a gauge → remove it from the board (server refunds if survival).
             if (hasShiftDown() && leftOrRight && widget != null) {
                 widget.remove(this);
-                if (clicked.equals(selectedComponent)) selectedComponent = null;
                 return true;
             }
 
@@ -650,8 +647,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (pendingRelocateTarget != null && leftOrRight) {
                 PacketDistributor.sendToServer(new MoveComponentPacket(
                         menu.controllerPos, pendingRelocateTarget, clicked));
-                if (widget == null && pendingRelocateTarget.equals(selectedComponent))
-                    selectedComponent = clicked;
                 clearActionMode();
                 return true;
             }
@@ -821,8 +816,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Called by SyncPanelStatePacket after menu.gauges/knownNetworks are refreshed. */
     public void onPanelSync() {
         rebuildGaugeWidgets();   // components were replaced with fresh instances; re-index them
-        if (selectedComponent != null && findGauge(selectedComponent) == null)
-            selectedComponent = null;
     }
 
     public int guiWidth()  { return imageWidth; }

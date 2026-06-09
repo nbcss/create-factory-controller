@@ -14,8 +14,10 @@
   "createfactorycontroller.gui.action_disconnect": "Click to disconnect",
   "createfactorycontroller.gui.action_repeat_ingredient": "Shift-Click to repeat ingredient",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
-  "createfactorycontroller.gui.threshold.auto": "Auto",
-  "createfactorycontroller.gui.threshold.auto_managed": "Auto managed by request",
+  "createfactorycontroller.gui.threshold.auto_managed": "Auto managed on demand",
+  "createfactorycontroller.gui.passive_mode": "Passive Request",
+  "createfactorycontroller.gui.passive_mode_tip_1": "Auto adjust target amount",
+  "createfactorycontroller.gui.passive_mode_tip_2": "based on active demand",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",

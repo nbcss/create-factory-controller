@@ -57,10 +57,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
 
-    // Reused each tick by the Auto Request demand pre-pass (server thread only) so the propagation walk
+    // Reused each tick by the Passive Request demand pre-pass (server thread only) so the propagation walk
     // allocates nothing on the hot path.
-    private final List<VirtualGaugeBehaviour> autoOrderBuf = new ArrayList<>();
-    private final Set<VirtualPanelPosition> autoVisitedBuf = new HashSet<>();
+    private final List<VirtualGaugeBehaviour> passiveOrderBuf = new ArrayList<>();
+    private final Set<VirtualPanelPosition> passiveVisitedBuf = new HashSet<>();
 
     /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
      *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
@@ -89,27 +89,27 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         super.tick();
         if (level == null || level.isClientSide()) return;
 
-        // Auto Request demand pre-pass: settle the auto-gauge dependency graph consumer-first in this one
+        // Passive Request demand pre-pass: settle the passive-gauge dependency graph consumer-first in this one
         // tick, so a cleared demand doesn't crawl one chain level per tick (which would make an
         // intermediate gauge hold a stale non-zero demand for a tick and fire a spurious request / flash).
-        // Only auto gauges participate: a non-auto gauge has a fixed target, so it needs no recompute and
+        // Only passive gauges participate: a non-passive gauge has a fixed target, so it needs no recompute and
         // demand never propagates through it — it's a constant from a producer's point of view. So we both
-        // start the DFS only from auto gauges and recurse only into auto consumers. Skipped entirely when
-        // no gauge is in auto mode; buffers are reused so the walk allocates nothing.
-        boolean anyAuto = false;
+        // start the DFS only from passive gauges and recurse only into passive consumers. Skipped entirely when
+        // no gauge is in passive mode; buffers are reused so the walk allocates nothing.
+        boolean anyPassive = false;
         for (VirtualComponentBehaviour component : components.values())
-            if (component instanceof VirtualGaugeBehaviour gauge && gauge.autoMode) { anyAuto = true; break; }
+            if (component instanceof VirtualGaugeBehaviour gauge && gauge.passiveMode) { anyPassive = true; break; }
 
-        if (anyAuto) {
-            autoOrderBuf.clear();
-            autoVisitedBuf.clear();
+        if (anyPassive) {
+            passiveOrderBuf.clear();
+            passiveVisitedBuf.clear();
             for (VirtualComponentBehaviour component : components.values())
-                if (component instanceof VirtualGaugeBehaviour gauge && gauge.autoMode)
-                    topoVisitAutoConsumersFirst(gauge);
-            for (VirtualGaugeBehaviour gauge : autoOrderBuf)
+                if (component instanceof VirtualGaugeBehaviour gauge && gauge.passiveMode)
+                    topoVisitPassiveConsumersFirst(gauge);
+            for (VirtualGaugeBehaviour gauge : passiveOrderBuf)
                 gauge.computeDemand();
-            autoOrderBuf.clear();
-            autoVisitedBuf.clear();
+            passiveOrderBuf.clear();
+            passiveVisitedBuf.clear();
         }
 
         for (VirtualComponentBehaviour component : components.values())
@@ -121,16 +121,16 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
     }
 
-    /** Post-order DFS over auto→auto {@code targeting} (feeds) edges: an auto gauge is appended only after
-     *  the auto gauges it feeds, so the list is consumer-before-producer. Non-auto consumers are skipped —
+    /** Post-order DFS over passive→passive {@code targeting} (feeds) edges: a passive gauge is appended only after
+     *  the passive gauges it feeds, so the list is consumer-before-producer. Non-passive consumers are skipped —
      *  their target is fixed, so demand stops at them and they need no ordering. The {@code visited} set
      *  both dedupes and breaks any recipe cycles (best-effort ordering for the degenerate cyclic case). */
-    private void topoVisitAutoConsumersFirst(VirtualGaugeBehaviour gauge) {
-        if (!autoVisitedBuf.add(gauge.position())) return;
+    private void topoVisitPassiveConsumersFirst(VirtualGaugeBehaviour gauge) {
+        if (!passiveVisitedBuf.add(gauge.position())) return;
         for (VirtualPanelPosition consumerPos : gauge.targeting())
-            if (components.get(consumerPos) instanceof VirtualGaugeBehaviour consumer && consumer.autoMode)
-                topoVisitAutoConsumersFirst(consumer);
-        autoOrderBuf.add(gauge);
+            if (components.get(consumerPos) instanceof VirtualGaugeBehaviour consumer && consumer.passiveMode)
+                topoVisitPassiveConsumersFirst(consumer);
+        passiveOrderBuf.add(gauge);
     }
 
     @Override
@@ -279,7 +279,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput, int craftBatch,
-                                int promiseInterval, int count, ThresholdMode mode, boolean autoMode,
+                                int promiseInterval, int count, ThresholdUnit mode, boolean passiveMode,
                                 Map<VirtualPanelPosition, List<Integer>> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
@@ -287,8 +287,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (reset) {
             gauge.filter = ItemStack.EMPTY;
             gauge.count = 0;
-            gauge.mode = ThresholdMode.ITEMS;
-            gauge.autoMode = false;
+            gauge.unit = ThresholdUnit.ITEMS;
+            gauge.passiveMode = false;
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
             gauge.craftBatch = 1;
@@ -305,11 +305,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.recipeOutput = Math.max(1, recipeOutput);
         gauge.craftBatch = Math.max(1, craftBatch);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
-        gauge.mode = mode;
-        gauge.autoMode = autoMode;
-        // In auto mode the count is server-managed (recomputed each tick from consumer demand), so don't
+        gauge.unit = mode;
+        gauge.passiveMode = passiveMode;
+        // In passive mode the count is server-managed (recomputed each tick from consumer demand), so don't
         // let the client's transient value override it; otherwise take the player's target.
-        if (!autoMode) gauge.count = Math.max(0, count);
+        if (!passiveMode) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
         for (Map.Entry<VirtualPanelPosition, List<Integer>> e : inputAmounts.entrySet()) {
             VirtualPanelConnection conn = gauge.targetedBy().get(e.getKey());

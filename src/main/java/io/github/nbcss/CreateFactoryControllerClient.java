@@ -13,9 +13,8 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import org.lwjgl.glfw.GLFW;
 
-// This class will not load on dedicated servers. Accessing client side code from here is safe.
+
 @Mod(value = CreateFactoryController.MODID, dist = Dist.CLIENT)
-// You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
 @EventBusSubscriber(modid = CreateFactoryController.MODID, value = Dist.CLIENT)
 public class CreateFactoryControllerClient {
 

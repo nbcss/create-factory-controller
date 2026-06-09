@@ -7,14 +7,9 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * How a gauge's target threshold is measured. Replaces the old {@code upTo} boolean so the unit
- * box can cycle between two states. Auto Request Mode is a separate toggle ({@link VirtualGaugeBehaviour#autoMode}).
- *
- * <ul>
- *   <li>{@link #ITEMS} — target is a raw item count (Create's {@code upTo == true}).</li>
- *   <li>{@link #STACKS} — target is measured in stacks (Create's {@code upTo == false}).</li>
- * </ul>
+ * box can cycle between states.
  */
-public enum ThresholdMode {
+public enum ThresholdUnit {
     ITEMS("") {
         @Override
         public int toItemCount(ItemStack stack) {
@@ -37,12 +32,12 @@ public enum ThresholdMode {
     };
 
     public final String suffix;
-    ThresholdMode(String suffix) {
+    ThresholdUnit(String suffix) {
         this.suffix = suffix;
     }
 
     /** Next mode in the cycle ITEMS → STACKS, advancing by {@code dir} (±1). */
-    public ThresholdMode cycle(int dir) {
+    public ThresholdUnit cycle(int dir) {
         int next = Math.floorMod(ordinal() + Integer.signum(dir == 0 ? 1 : dir), values().length);
         return values()[next];
     }
@@ -59,7 +54,7 @@ public enum ThresholdMode {
             .withStyle(active ? ChatFormatting.WHITE : ChatFormatting.GRAY);
     }
 
-    public static ThresholdMode fromName(String name) {
+    public static ThresholdUnit fromName(String name) {
         try {
             return valueOf(name);
         } catch (IllegalArgumentException e) {
