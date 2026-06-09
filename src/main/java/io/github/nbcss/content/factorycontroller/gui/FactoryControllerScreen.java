@@ -407,7 +407,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
         RenderSystem.disableBlend();
 
-        // Title — an inline, station-style rename field, horizontally centred on its text (the box X is
+        // Title
         if (nameBox != null) {
             boolean blank = nameBox.getValue().isBlank();
             String shownStr = !nameBox.isFocused() && blank
@@ -421,7 +421,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     graphics.drawString(font, menu.controllerDisplayName(), x, nameBox.getY(), NAME_COLOR, false);
                 // Edit-name icon after the text — indicator-only cue, vertically centred on the text.
                 graphics.blitSprite(RENAME_BUTTON_SPRITE,
-                        x + font.width(shownStr) + 5, nameBox.getY() + (font.lineHeight - RENAME_BUTTON_SIZE) / 2 - 1,
+                        x + font.width(shownStr) + 5,
+                        nameBox.getY() + (font.lineHeight - RENAME_BUTTON_SIZE) / 2 - 1,
                         RENAME_BUTTON_SIZE, RENAME_BUTTON_SIZE);
             }
         }
@@ -450,12 +451,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Reset depth for network icons & helper text
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
-
-        // Redstone-disabled indicator. When the controller block is powered every gauge stops issuing
-        // new requests (see FactoryControllerBlockEntity#updateRedstonePower); surface that on the board.
-        if (menu.isRedstonePowered()) {
-            // TODO: missing texture — draw the "redstone disabled" board indicator sprite here.
-        }
 
         if (inOverlay) {
             graphics.fill(x0, y0, x1, y1, 0xB0101010);

@@ -140,7 +140,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
                 : CreateLang.text(behaviour.filter.getHoverName().getString()).color(0xFBDC7D).component());
         if (!behaviour.filter.isEmpty()) {
-            lines.add(Component.translatable("createfactorycontroller.gui.in_stock", behaviour.stockLevel)
+            lines.add(Component.translatable("createfactorycontroller.gui.in_stock",
+                            behaviour.isInfiniteStock() ? "∞" : behaviour.stockLevel)
                     .withStyle(ChatFormatting.GRAY));
         }
         lines.add((behaviour.filter.isEmpty()

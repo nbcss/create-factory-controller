@@ -125,6 +125,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return count;
     }
 
+    public boolean isInfiniteStock() {
+        return stockLevel >= BigItemStack.INF;
+    }
+
     /**
      * Whether the gauge has an active recipe target. A manual gauge becomes active once its target
      * {@link #count} is non-zero; a passive mode gauge is <em>always</em> active — it
@@ -168,9 +172,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (filter.isEmpty()) return Component.empty();
         if (waitingForNetwork) return Component.literal("?");
 
-        String inStorage = stockLevel >= BigItemStack.INF ?
-            "∞" :
-            stockLevel / unit.toItemCount(filter) + unit.suffix;
+        boolean inf = isInfiniteStock();
+        int inStorage = stockLevel / unit.toItemCount(filter);
+        int promised = promisedCount;
+        String stacks = unit.suffix;
 
         if (!isActive())
             return CreateLang.text(inStorage).color(0xF1EFE8).component();
