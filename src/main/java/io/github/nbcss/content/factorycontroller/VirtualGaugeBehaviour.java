@@ -168,20 +168,17 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (filter.isEmpty()) return Component.empty();
         if (waitingForNetwork) return Component.literal("?");
 
-        int levelInStorage = stockLevel;
-        boolean inf = levelInStorage >= BigItemStack.INF;
-        int inStorage = levelInStorage / unit.toItemCount(filter);
-        int promised = promisedCount;
-        String stacks = unit.suffix;
+        String inStorage = stockLevel >= BigItemStack.INF ?
+            "∞" :
+            stockLevel / unit.toItemCount(filter) + unit.suffix;
 
         if (!isActive())
-            return CreateLang.text(inf ? "∞" : inStorage + stacks).color(0xF1EFE8).component();
+            return CreateLang.text(inStorage).color(0xF1EFE8).component();
 
-        return CreateLang.text(inf ? "∞" : inStorage + stacks)
-            .color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
-            .add(CreateLang.text(promised == 0 ? "" : "⏶"))
+        return CreateLang.text(inStorage).color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
+            .add(CreateLang.text(promisedCount == 0 ? "" : "⏶"))
             .add(CreateLang.text("/").style(ChatFormatting.WHITE))
-            .add(CreateLang.text(count + stacks).color(passiveMode ? (count > 0 ? 0x06ACFF : 0x035882) : 0xF1EFE8))
+            .add(CreateLang.text(count + unit.suffix).color(passiveMode ? 0x9ECFFC : 0xF1EFE8))
             .component();
     }
 
