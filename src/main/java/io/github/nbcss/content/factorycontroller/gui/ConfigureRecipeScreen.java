@@ -466,13 +466,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Widgets (added via addWidget; drawn manually on top of the panel). The address box is drawn
         // later in renderForeground (a clean render pass) so its clipboard hint + suggestion dropdown
         // aren't clobbered by the 3D gauge preview's render state or covered by later panel draws.
-        promiseExpiration.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
         if (passiveModeButton != null) passiveModeButton.render(gfx, mouseX, mouseY, partialTick);
+        // Rendered last of the widgets so the ScrollInput's own hover tooltip draws on top of the other
+        // buttons instead of being covered by them (the value label below still paints over its box).
+        promiseExpiration.render(gfx, mouseX, mouseY, partialTick);
 
         // Promise-interval label over the scroll box.
         int state = promiseExpiration.getState();

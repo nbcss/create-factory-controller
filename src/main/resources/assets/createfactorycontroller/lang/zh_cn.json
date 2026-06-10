@@ -1,0 +1,37 @@
+{
+  "itemGroup.createfactorycontroller": "机械动力: 工厂控制台",
+  "block.createfactorycontroller.factory_controller": "工厂控制台",
+
+  "createfactorycontroller.gui.in_stock": "库存: %1$s",
+  "createfactorycontroller.gui.capacity": "容量: %1$s/%2$s",
+  "createfactorycontroller.gui.zoom": "缩放: x%1$s",
+  "createfactorycontroller.gui.network_selector": "网络选择器",
+  "createfactorycontroller.gui.hold_to_tune": "可为准星物品设定网络",
+  "createfactorycontroller.config.full_overlay": "完整信息模式",
+  "createfactorycontroller.config.max_components": "控制台最大组件数量",
+  "createfactorycontroller.gui.action_disconnect": "点击以断连",
+  "createfactorycontroller.gui.action_repeat_ingredient": "按住Shift点击以复制原料",
+  "createfactorycontroller.gui.action_remove_component": "按住Shift点击以移除",
+  "createfactorycontroller.gui.threshold.auto_managed": "由下游需求自动配置",
+  "createfactorycontroller.gui.passive_mode": "被动请求模式",
+  "createfactorycontroller.gui.passive_mode_tip_1": "根据下游配方活跃的需求",
+  "createfactorycontroller.gui.passive_mode_tip_2": "来自动调整目标仓储数量",
+  "createfactorycontroller.gui.prompt.no_selected_network": "未选择网络",
+  "createfactorycontroller.gui.prompt.selected_network": "已选择%1$s",
+  "createfactorycontroller.gui.prompt.no_first_network": "无网络 — 需先放置首个已设定网络的仪表盘",
+  "createfactorycontroller.gui.prompt.no_network_tuned": "未设定网络 — 可使用网络选择器来设定物品网络",
+  "createfactorycontroller.gui.prompt.component_limit": "控制台容量已满（最多放置%1$s组件）",
+
+  "key.categories.createfactorycontroller": "机械动力: 工厂控制台",
+  "key.createfactorycontroller.cycle_arrow": "循环箭头路径模式",
+  "key.createfactorycontroller.pan_view": "移动视角（拖拽）",
+  "key.createfactorycontroller.toggle_full_overlay": "切换完整信息模式",
+
+  "createfactorycontroller.network.default": "网络#%1$s",
+  "createfactorycontroller.network.none": "无网络",
+
+  "createfactorycontroller.subtitle.controller.open": "打开工厂控制台",
+  "createfactorycontroller.subtitle.controller.close": "关闭工厂控制台",
+  "createfactorycontroller.subtitle.gauge.open": "打开仪表盘",
+  "createfactorycontroller.subtitle.gauge.close": "关闭仪表盘"
+}

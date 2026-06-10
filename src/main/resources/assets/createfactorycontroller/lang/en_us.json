@@ -25,7 +25,7 @@
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
   "key.createfactorycontroller.pan_view": "Pan View (drag)",
-  "key.createfactorycontroller.toggle_full_overlay": "Toggle Full Overlay (in controller GUI)",
+  "key.createfactorycontroller.toggle_full_overlay": "Toggle Full Overlay",
 
   "createfactorycontroller.network.default": "Network #%1$s",
   "createfactorycontroller.network.none": "No network",
