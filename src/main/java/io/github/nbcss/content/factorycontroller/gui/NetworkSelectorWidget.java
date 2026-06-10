@@ -2,9 +2,12 @@ package io.github.nbcss.content.factorycontroller.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import io.github.nbcss.content.factorycontroller.ComponentRegistry;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -26,48 +29,41 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-import static net.minecraft.client.gui.screens.Screen.hasShiftDown;
-
 /**
- * Vertical network picker shown in the controller canvas, drawn with the {@code network_selector}
- * sprites: a nine-slice {@code panel} background, a {@code selection_box} around the selected entry,
- * {@code network}/{@code no_network} row icons, and {@code arrow_up}/{@code arrow_down} indicators
- * when entries are scrolled off the top/bottom.
+ * Single-slot network picker shown in the controller canvas, drawn with the {@code selection_frame}
+ * sprite. Only the <b>currently selected</b> network (or "no network", or — while holding a component
+ * tuned to an unknown frequency — a "new network" entry) is shown at any time; there is no list,
+ * window, or scroll arrows.
  *
- * <p>A "no network" entry is always on top, then known networks sorted by component count (desc), and
- * — while holding a component tuned to an unknown frequency — a "new network" entry (green "+") at the
- * bottom. At most {@value #VISIBLE} rows show at once, windowed around the selection. While holding a
- * component the selection mirrors that item's tuned frequency and scrolling re-tunes the item;
- * otherwise scrolling just moves the selection. The screen reads {@link #getSelectedNetwork()} to
- * highlight that network's components.</p>
+ * <p>The underlying selection model is unchanged: a "no network" entry, the known networks sorted by
+ * component count (desc), and a trailing "new network" entry while holding a freshly-tuned component.
+ * Scrolling moves through that ordered set (re-tuning the held item when one is held); the screen reads
+ * {@link #getSelectedNetwork()} to highlight that network's components.</p>
  *
- * <p>Only the layout offsets below are hardcoded; every sprite's pixel size is read from the GUI
- * sprite manager at render time so the art can change size without touching this class.</p>
+ * <p>The slot is painted in four layers (back to front): a high-contrast background fill auto-derived
+ * from the icon colour, the {@code selection_frame}, the network icon tinted by its per-network colour
+ * (last 6 hex digits of the UUID), and the component-count (or "+") label.</p>
  */
 @OnlyIn(Dist.CLIENT)
 public class NetworkSelectorWidget extends AbstractWidget {
 
-    // Hardcoded layout (top-left offsets relative to the panel origin); sizes come from the sprites.
-    private static final int ICON_X         = 5;    // icon top-left X within the panel
-    private static final int FIRST_ICON_Y   = 5;    // first icon top-left Y within the panel
-    private static final int ROW_PITCH      = 22;   // vertical distance between icon rows
-    private static final int SELECTION_X    = 0;    // selection-box top-left X within the panel
-    private static final int SELECTION_DY   = -5;   // selection-box top-left Y relative to its icon
-    private static final int ARROW_X        = 9;    // arrow top-left X within the panel
-    private static final int VISIBLE        = 5;    // max rows shown at once
-
     private static final int NEW_PLUS_COLOR = 0xFF55FF55;   // green "+"
+    private static final int WINDOW_BACK    = 2;
+    private static final int WINDOW_FWD     = 2;
+    private static final int WINDOW_RESERVE = 7;
+    /** Neutral slot fill for the "no network" entry (its icon carries no per-network colour). */
+    private static final int NO_NETWORK_COLOR = 0xFF6e6e6e;
+    /** Contrast fills chosen against the icon's luminance so a tinted icon always stays legible. */
+    private static final int DARK_FILL = 0xFF3a3a3a;
+    private static final int LIGHT_FILL = 0xFFe8dfd3;
 
     private static ResourceLocation sprite(String name) {
         return ResourceLocation.fromNamespaceAndPath("createfactorycontroller",
                 "factory_controller/network_selector/" + name);
     }
-    private static final ResourceLocation PANEL        = sprite("panel");
-    private static final ResourceLocation SELECTION    = sprite("selection_box");
-    private static final ResourceLocation NETWORK      = sprite("network");
-    private static final ResourceLocation NO_NETWORK   = sprite("no_network");
-    private static final ResourceLocation ARROW_UP     = sprite("arrow_up");
-    private static final ResourceLocation ARROW_DOWN   = sprite("arrow_down");
+    private static final ResourceLocation SELECTION_FRAME = sprite("selection_frame");
+    private static final ResourceLocation NETWORK         = sprite("network");
+    private static final ResourceLocation NO_NETWORK      = sprite("no_network");
 
     private static int spriteW(ResourceLocation loc) {
         return Minecraft.getInstance().getGuiSprites().getSprite(loc).contents().width();
@@ -94,7 +90,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
 
     public NetworkSelectorWidget(int x, int y, FactoryControllerMenu menu, RetuneHandler retune,
                                  java.util.function.Consumer<UUID> onSelect) {
-        super(x, y, 0, 0, Component.empty());   // width/height are set from the panel sprite each render
+        super(x, y, 0, 0, Component.empty());   // width/height are set from the frame sprite each render
         this.menu = menu;
         this.retune = retune;
         this.onSelect = onSelect;
@@ -132,6 +128,16 @@ public class NetworkSelectorWidget extends AbstractWidget {
     }
 
     /**
+     * A high-contrast opaque (ARGB) slot fill for an icon tinted {@code rgb}: dark behind a bright icon,
+     * light behind a dark one, using perceptual (Rec. 601) luminance so any hue stays legible.
+     */
+    private static int contrastFill(int rgb) {
+        int r = (rgb >> 16) & 0xFF, g = (rgb >> 8) & 0xFF, b = rgb & 0xFF;
+        double luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+        return luminance > 0.5 ? DARK_FILL : LIGHT_FILL;
+    }
+
+    /**
      * While holding a component the selection mirrors its tuned frequency; when the cursor changes
      * from a component to no component it resets to "no network"; otherwise the selection persists.
      */
@@ -162,7 +168,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
 
     private List<Entry> buildEntries() {
         List<Entry> list = new ArrayList<>();
-        list.add(new Entry(Type.NO_NETWORK, null));                 // always top
+        list.add(new Entry(Type.NO_NETWORK, null));                 // always first
 
         List<UUID> known = new ArrayList<>(menu.knownNetworks);
         known.sort(Comparator.comparingInt(menu::componentCountIn).reversed());
@@ -170,7 +176,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
 
         UUID heldFreq = freqOf(heldComponent());
         if (heldFreq != null && !menu.knownNetworks.contains(heldFreq))
-            list.add(new Entry(Type.NEW_NETWORK, heldFreq));        // bottom, only while holding such an item
+            list.add(new Entry(Type.NEW_NETWORK, heldFreq));        // last, only while holding such an item
         return list;
     }
 
@@ -185,35 +191,83 @@ public class NetworkSelectorWidget extends AbstractWidget {
         return 0;   // fall back to "no network"
     }
 
-    /**
-     * First entry index of the {@value #VISIBLE}-row window: with ≤5 entries everything shows; else the
-     * selection stays two rows from the top (centre) where possible, clamped to the ends.
-     */
-    private static int windowStart(int selected, int n) {
-        return n <= VISIBLE ? 0 : Mth.clamp(selected - VISIBLE / 2, 0, n - VISIBLE);
+    // ── Tooltip ─────────────────────────────────────────────────────────────────
+
+    private Component entryName(Entry e) {
+        // A new network uses the same "Network #XXXX"/nickname naming as a known one (it just isn't tracked
+        // yet); only the "no network" entry has a dedicated label.
+        return e.type == Type.NO_NETWORK
+                ? Component.translatable("createfactorycontroller.network.none")
+                : menu.networkName(e.network);
     }
 
     /**
-     * Rendered panel height for {@code rows} visible icons. The panel sprite is sized for two rows, so
-     * each row beyond the second adds one pitch (and a single row shrinks it by one pitch).
+     * Hover tooltip: a "Network Selector" header, a windowed list of entries with the selected one marked
+     * {@code "-> "} (others {@code "> "}), {@code "> ..."} rows when entries are hidden above/below, and
+     * Create's scroll-to-select hint.
+     *
+     * <p>The windowing mirrors Create's {@code SelectionScrollInput#updateTooltip}: the window grows toward
+     * an edge to absorb the line a {@code "> ..."} would occupy, and a single hidden row is shown rather
+     * than elided — so the <b>total option-area line count never changes while scrolling</b> (here: 6).</p>
      */
-    private int panelHeight(int rows) {
-        return rows <= 0 ? 0 : spriteH(PANEL) + (rows - 2) * ROW_PITCH;
-    }
+    public List<Component> getTooltipLines() {
+        syncSelection();
+        List<Entry> entries = buildEntries();
+        int state = selectedIndex(entries);
+        int min = 0, max = entries.size();
 
-    private int iconY(int slot) { return getY() + FIRST_ICON_Y + slot * ROW_PITCH; }
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.translatable("createfactorycontroller.gui.network_selector")
+                .withColor(ScrollInput.HEADER_RGB.getRGB()));
+
+        // Centred window, clamped so WINDOW_RESERVE rows always remain from each edge (keeps the count fixed).
+        int start = Math.max(Math.min(max - WINDOW_RESERVE, state - WINDOW_BACK), min);
+        int end   = Math.min(Math.max(min + WINDOW_RESERVE, state + WINDOW_FWD), max);
+
+        if (start == min + 1) start--;          // a single hidden row above → show it instead of "> ..."
+        if (start > min)
+            lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+        if (end == max - 1) end++;              // a single hidden row below → show it instead of "> ..."
+        for (int i = start; i < end; i++) {
+            Entry e = entries.get(i);
+            boolean selected = i == state;
+            // The "new network" entry is coloured green for the whole line (it would create a fresh network);
+            // otherwise the selected row is white and the rest gray.
+            ChatFormatting color = e.type == Type.NEW_NETWORK ? ChatFormatting.GREEN
+                    : selected ? ChatFormatting.WHITE : ChatFormatting.GRAY;
+            lines.add(Component.literal(selected ? "-> " : "> ").append(entryName(e)).withStyle(color));
+        }
+        if (end < max)
+            lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+
+        lines.add(CreateLang.translate("gui.scrollInput.scrollToSelect")
+                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        lines.add(Component.translatable("createfactorycontroller.gui.hold_to_tune")
+                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        return lines;
+    }
 
     // ── Interaction ───────────────────────────────────────────────────────────
 
     @Override
     public boolean isMouseOver(double mx, double my) {
-        int vis = Math.min(buildEntries().size(), VISIBLE);
-        return visible && mx >= getX() && mx < getX() + spriteW(PANEL) && my >= getY() && my < getY() + panelHeight(vis);
+        return visible && mx >= getX() && mx < getX() + spriteW(SELECTION_FRAME)
+                && my >= getY() && my < getY() + spriteH(SELECTION_FRAME);
     }
 
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
         if (!isMouseOver(mx, my)) return false;
+        scrollSelection(scrollY);
+        return true;
+    }
+
+    /**
+     * Advances the selection by the scroll direction (re-tuning a held component), independent of cursor
+     * position — so the screen can route a shift+scroll anywhere over the canvas here. Returns {@code true}
+     * if it consumed the scroll (always; a clamp boundary is still "handled").
+     */
+    public boolean scrollSelection(double scrollY) {
         syncSelection();
         List<Entry> entries = buildEntries();
         int cur = selectedIndex(entries);
@@ -237,54 +291,40 @@ public class NetworkSelectorWidget extends AbstractWidget {
     protected void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         syncSelection();
         List<Entry> entries = buildEntries();
-        int n = entries.size();
-        int vis = Math.min(n, VISIBLE);
-        int panelH = panelHeight(vis);
-        this.width = spriteW(PANEL);
-        this.height = panelH;
-        if (n == 0) return;
+        int frameW = spriteW(SELECTION_FRAME);
+        int frameH = spriteH(SELECTION_FRAME);
+        this.width = frameW;
+        this.height = frameH;
+        if (entries.isEmpty()) return;
 
-        int sel = selectedIndex(entries);
-        int start = windowStart(sel, n);
+        Entry e = entries.get(selectedIndex(entries));
         Font font = Minecraft.getInstance().font;
+        int rgb = e.network != null ? networkColor(e.network) : NO_NETWORK_COLOR;
+        int fill = contrastFill(rgb);
 
         RenderSystem.enableBlend();
 
-        // Nine-slice panel background.
-        gfx.blitSprite(PANEL, getX(), getY(), spriteW(PANEL), panelH);
-
-        // Selection box behind the selected icon (always inside the window).
-        gfx.blitSprite(SELECTION, getX() + SELECTION_X, iconY(sel - start) + SELECTION_DY,
-                spriteW(SELECTION), spriteH(SELECTION));
-
-        // Row icons + decorations. Network icons are tinted by a per-network colour (no_network isn't).
-        for (int slot = 0; slot < vis; slot++) {
-            Entry e = entries.get(start + slot);
-            ResourceLocation icon = e.type == Type.NO_NETWORK ? NO_NETWORK : NETWORK;
-            int ix = getX() + ICON_X;
-            int iy = iconY(slot);
-            if (e.network != null) {
-                int c = networkColor(e.network);
-                gfx.setColor(((c >> 16) & 0xFF) / 255f, ((c >> 8) & 0xFF) / 255f, (c & 0xFF) / 255f, 1f);
-                gfx.blitSprite(icon, ix, iy, spriteW(icon), spriteH(icon));
-                gfx.setColor(1f, 1f, 1f, 1f);
-            } else {
-                gfx.blitSprite(icon, ix, iy, spriteW(icon), spriteH(icon));
-            }
-            if (e.type == Type.KNOWN)
-                drawDecoration(gfx, font, ix, iy, spriteW(icon), spriteH(icon),
-                        String.valueOf(menu.componentCountIn(e.network)), 0xFFFFFFFF);
-            else if (e.type == Type.NEW_NETWORK)
-                drawDecoration(gfx, font, ix, iy, spriteW(icon), spriteH(icon), "+", NEW_PLUS_COLOR);
-        }
+        gfx.fill(getX() + 4, getY() + 4, getX() + 22, getY() + 22, fill);
 
         RenderSystem.enableBlend();
-        // Scroll arrows when entries are hidden above/below the window.
-        int ax = getX() + ARROW_X;
-        if (start > 0)
-            gfx.blitSprite(ARROW_UP, ax, getY() - 7, spriteW(ARROW_UP), spriteH(ARROW_UP));
-        if (start + vis < n)
-            gfx.blitSprite(ARROW_DOWN, ax, getY() + panelH - 2, spriteW(ARROW_DOWN), spriteH(ARROW_DOWN));
+        gfx.blitSprite(SELECTION_FRAME, getX(), getY(), frameW, frameH);
+
+        ResourceLocation icon = e.type == Type.NO_NETWORK ? NO_NETWORK : NETWORK;
+        int iconW = spriteW(icon);
+        int iconH = spriteH(icon);
+        int ix = getX() + 5;
+        int iy = getY() + 5;
+
+        gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+        gfx.blitSprite(icon, ix, iy, iconW, iconH);
+        gfx.setColor(1f, 1f, 1f, 1f);
+
+        // 4. Component-count label (known networks) or the green "+" (new network).
+        if (e.type == Type.KNOWN)
+            drawDecoration(gfx, font, ix, iy, iconW, iconH,
+                    String.valueOf(menu.componentCountIn(e.network)), 0xFFFFFFFF);
+        else if (e.type == Type.NEW_NETWORK)
+            drawDecoration(gfx, font, ix, iy, iconW, iconH, "+", NEW_PLUS_COLOR);
     }
 
     /** Bottom-right corner decoration over an icon, drawn with an 8-direction outline (like the gauge count). */

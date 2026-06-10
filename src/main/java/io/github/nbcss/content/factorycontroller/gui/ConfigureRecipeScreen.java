@@ -701,7 +701,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
             if (craftingActive) {
                 int maxBatch = Math.max(1, 64 / Math.max(1, outputCount));
-                int next = Mth.clamp(craftBatch + dir, 1, maxBatch);
+                int next = Mth.clamp(craftBatch + dir * step, 1, maxBatch);
                 if (next != craftBatch) {
                     craftBatch = next;
                     playScrollSound();

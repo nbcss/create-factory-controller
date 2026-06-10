@@ -2,15 +2,11 @@
   "itemGroup.createfactorycontroller": "Create: Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
 
-  "createfactorycontroller.message.no_network": "No network — place a tuned gauge first",
-  "createfactorycontroller.message.no_network_tuned": "No network tuned — use network selector to tune",
-  "createfactorycontroller.message.component_limit": "Controller is full (%1$s components max)",
-
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",
   "createfactorycontroller.gui.capacity": "Capacity: %1$s/%2$s",
   "createfactorycontroller.gui.zoom": "Zoom: x%1$s",
-  "createfactorycontroller.gui.no_selected_network": "No network selected",
-  "createfactorycontroller.gui.selected_network": "Selected %1$s",
+  "createfactorycontroller.gui.network_selector": "Network Selector",
+  "createfactorycontroller.gui.hold_to_tune": "Hold an item to tune",
   "createfactorycontroller.gui.action_disconnect": "Click to disconnect",
   "createfactorycontroller.gui.action_repeat_ingredient": "Shift-Click to repeat ingredient",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
@@ -18,12 +14,18 @@
   "createfactorycontroller.gui.passive_mode": "Passive Request",
   "createfactorycontroller.gui.passive_mode_tip_1": "Auto adjust target amount",
   "createfactorycontroller.gui.passive_mode_tip_2": "based on active demand",
+  "createfactorycontroller.gui.prompt.no_selected_network": "No network selected",
+  "createfactorycontroller.gui.prompt.selected_network": "Selected %1$s",
+  "createfactorycontroller.gui.prompt.no_first_network": "No network — place a tuned gauge first",
+  "createfactorycontroller.gui.prompt.no_network_tuned": "No network tuned — use network selector to tune",
+  "createfactorycontroller.gui.prompt.component_limit": "Controller is full (%1$s components max)",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
   "key.createfactorycontroller.pan_view": "Pan View (drag)",
 
   "createfactorycontroller.network.default": "Network #%1$s",
+  "createfactorycontroller.network.none": "No network",
 
   "createfactorycontroller.subtitle.controller.open": "Factory controller opens",
   "createfactorycontroller.subtitle.controller.close": "Factory controller closes",

@@ -27,6 +27,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.Util;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
@@ -38,6 +39,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Matrix4f;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -177,8 +179,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Event-only: rendered manually in renderBg at the inventory panel's elevated z.
         addWidget(expandButton);
 
-        int selectorX = leftPos + CANVAS_SIDE_PADDING + 4;
-        int selectorY = topPos + CANVAS_TOP_PADDING + 9;
+        int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
+        int selectorY = topPos + CANVAS_TOP_PADDING + 8;
         if (networkSelector == null)
             networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
         else
@@ -232,8 +234,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void onNetworkSelected(@Nullable UUID network) {
         MutableComponent message = network == null
-                ? Component.translatable("createfactorycontroller.gui.no_selected_network")
-                : Component.translatable("createfactorycontroller.gui.selected_network", menu.networkName(network));
+                ? Component.translatable("createfactorycontroller.gui.prompt.no_selected_network")
+                : Component.translatable("createfactorycontroller.gui.prompt.selected_network", menu.networkName(network));
         setTimedPrompt(message.withStyle(ChatFormatting.WHITE), 3000);
     }
 
@@ -326,8 +328,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Hover tooltip for an existing gauge (suppressed while a board action mode is active, where
         // the hovered cell already gives white/red reticle feedback). hoveredPosition is set in renderBoard.
         VirtualGaugeWidget hovered = gaugeWidget(hoveredPosition);
-        if (pendingConnectionTarget == null && pendingRelocateTarget == null && hovered != null)
-            graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(menu), mouseX, mouseY);
+        if (pendingConnectionTarget == null && pendingRelocateTarget == null) {
+            if (hovered != null)
+                graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(menu), mouseX, mouseY);
+            else if (networkSelector.isMouseOver(mouseX, mouseY))
+                graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
+        }
     }
 
     @Override
@@ -356,7 +362,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
         if (prompt != null && alpha > 4) {
             int invTop = topPos + invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0) - INV_TEX_TITLE_H;
-            graphics.drawCenteredString(font, prompt, leftPos + imageWidth / 2, invTop - 14, (alpha << 24) | 0xFFFFFF);
+            int px = leftPos + imageWidth / 2 - font.width(prompt) / 2;
+            int py = invTop - 14;
+            // 8-direction outline (like the gauge count labels) so the prompt reads over any canvas content;
+            // the prompt keeps its own colour (white mode / tan chime), with the fade folded into the alpha.
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 200);
+            Matrix4f matrix = graphics.pose().last().pose();
+            font.drawInBatch8xOutline(prompt.getVisualOrderText(), px, py,
+                    (alpha << 24) | 0xFFFFFF, (alpha << 24),
+                    matrix, graphics.bufferSource(), LightTexture.FULL_BRIGHT);
+            graphics.flush();
+            graphics.pose().popPose();
         }
         RenderSystem.enableDepthTest();
     }
@@ -669,7 +686,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (button == 0 && ComponentRegistry.containsItem(carried)) {
                 // Board full (placing on an empty cell would add a component) → prompt, don't send.
                 if (widget == null && menu.components.size() >= FactoryControllerBlockEntity.MAX_COMPONENTS) {
-                    setTimedPrompt(Component.translatable("createfactorycontroller.message.component_limit",
+                    setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
                             FactoryControllerBlockEntity.MAX_COMPONENTS).withStyle(ChatFormatting.RED), 3000);
                     playDenySound();
                     return true;
@@ -678,8 +695,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 // No usable network → surface the requirement as a 3s board prompt, don't send.
                 if (network == null) {
                     setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() ?
-                            "createfactorycontroller.message.no_network" :
-                            "createfactorycontroller.message.no_network_tuned")
+                            "createfactorycontroller.gui.prompt.no_first_network" :
+                            "createfactorycontroller.gui.prompt.no_network_tuned")
                             .withStyle(ChatFormatting.RED), 3000);
                     playDenySound();
                     return true;
@@ -729,6 +746,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
+
+            // Shift+scroll over the canvas (the inventory panel and selector are already excluded by
+            // isInCanvasArea) changes the network selection instead of zooming.
+            if (hasShiftDown()) {
+                networkSelector.scrollSelection(scrollY);
+                return true;
+            }
 
             double oldZoom = getZoomFactor();
             zoomLevel = Math.clamp(zoomLevel + (int) Math.signum(scrollY), MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);

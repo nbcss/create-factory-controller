@@ -261,7 +261,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         String nick = networkNicknames.get(network);
         if (nick != null && !nick.isBlank()) return Component.literal(nick);
         String s = network.toString();
-        return Component.translatable("createfactorycontroller.network.default", s.substring(s.length() - 4));
+        return Component.translatable("createfactorycontroller.network.default", s.substring(s.length() - 6).toUpperCase());
     }
 
     private static void writeCompoundTag(RegistryFriendlyByteBuf buf, net.minecraft.nbt.CompoundTag tag) {

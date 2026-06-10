@@ -43,7 +43,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public static final int MAX_ADDRESS_LENGTH = 25;
     /** Max characters of the controller's custom display name (clamped server-side, authoritative). */
     public static final int MAX_NAME_LENGTH = 25;
-    public static final int BOARD_LIMIT = 128;
+    public static final int BOARD_LIMIT = 64;
 
     /** Whether the given position lies on the finite ±{@link #BOARD_LIMIT}-cell board. */
     public static boolean isOutBoard(VirtualPanelPosition pos) {
@@ -211,9 +211,28 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (!player.isCreative() && !player.getInventory().add(refund))
             player.drop(refund, false);
 
+        pruneEmptyNetworks();   // removing the last gauge on a network auto-forgets that network
+
         playBlockSound(refund.getItem(), false);
         setChanged();
         sendData();
+    }
+
+    /**
+     * Forgets any known network that no longer has a component on it (and drops its nickname). A network
+     * only becomes known when a tuned gauge is attached, so once its last gauge is removed it carries no
+     * state worth keeping — auto-deleting it keeps the network selector free of dead entries.
+     */
+    private void pruneEmptyNetworks() {
+        networks.removeIf(net -> !isNetworkInUse(net));
+        networkNicknames.keySet().removeIf(net -> !networks.contains(net));
+    }
+
+    private boolean isNetworkInUse(UUID network) {
+        for (VirtualComponentBehaviour c : components.values())
+            if (c instanceof VirtualGaugeBehaviour g && network.equals(g.networkId))
+                return true;
+        return false;
     }
 
     // ── Component relocate ─────────────────────────────────────────────────────
