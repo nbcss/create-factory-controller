@@ -41,3 +41,6 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### Asset authoring tools
+*.blend1
