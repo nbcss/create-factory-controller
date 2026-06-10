@@ -108,7 +108,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
 
         // render count overlay
         Component label = behaviour.getCountLabel();
-        if (!label.getSiblings().isEmpty()) {
+        if (!label.getString().isEmpty()) {
             Font font = Minecraft.getInstance().font;
             int w = font.width(label);
             float scale = 0.5f;

@@ -576,6 +576,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 SimpleSoundInstance.forUI(AllSoundEvents.DENY.getMainEvent(), 1.0f));
     }
 
+    /** Shows a timed error prompt and plays the deny sound. Called from sub-screens (e.g. configure overlay). */
+    public void denyWithMessage(Component message, long durationMs) {
+        setTimedPrompt(message, durationMs);
+        playDenySound();
+    }
+
     /**
      * The network a stack gauge would attach to, or {@code null} if placement isn't possible: a
      * tuned gauge brings its own network, an untuned one needs a known network selected.
@@ -583,12 +589,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable
     private UUID networkForAttaching(ItemStack stack) {
         return LogisticallyLinkedBlockItem.isTuned(stack) ? LogisticallyLinkedBlockItem.networkFromStack(stack) : null;
-    }
-
-    private void clearActionMode() {
-        pendingConnectionTarget = null;
-        pendingRelocateTarget = null;
-        actionPrompt = null;
     }
 
     @Override
@@ -627,13 +627,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Connection mode: clicking a gauge wires it as an input (server validates and plays the
-            // connect / deny sound); clicking an empty cell just cancels. Either way the mode ends.
+            // Connection mode: clicking a gauge wires it as an input; clicking an empty cell cancels.
+            // Client rejects a gauge with no filter set before sending anything.
             if (pendingConnectionTarget != null && leftOrRight) {
-                if (widget != null)
-                    PacketDistributor.sendToServer(new AddConnectionPacket(
-                            menu.controllerPos, clicked, pendingConnectionTarget));
-                clearActionMode();
+                actionPrompt = null;
+                if (widget != null) {
+                    if (widget.behaviour().filter.isEmpty()) {
+                        setTimedPrompt(CreateLang.translate("factory_panel.no_item")
+                                .style(ChatFormatting.RED).component(), 3000);
+                        playDenySound();
+                    } else {
+                        PacketDistributor.sendToServer(new AddConnectionPacket(
+                                menu.controllerPos, clicked, pendingConnectionTarget));
+                    }
+                }
+                pendingConnectionTarget = null;
                 return true;
             }
 
@@ -642,7 +650,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (pendingRelocateTarget != null && leftOrRight) {
                 PacketDistributor.sendToServer(new MoveComponentPacket(
                         menu.controllerPos, pendingRelocateTarget, clicked));
-                clearActionMode();
+                pendingRelocateTarget = null;
+                actionPrompt = null;
                 return true;
             }
 

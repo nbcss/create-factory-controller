@@ -168,7 +168,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         newInputButton = new IconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
         newInputButton.withCallback(() -> {
-            sendConfig(false, false);   // commit edits (incl. repeated slots) before leaving the screen
+            if (inputPositions.size() >= MAX_INPUT_SLOTS) {
+                sendConfig(false, false);   // save current edits before leaving
+                controller.denyWithMessage(
+                    CreateLang.translate("factory_panel.cannot_add_more_inputs")
+                            .style(ChatFormatting.RED).component(), 3000);
+                Minecraft.getInstance().setScreen(controller);
+                return;
+            }
+            sendConfig(false, false);   // commit edits before leaving the screen
             controller.beginConnectionMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
@@ -523,7 +531,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         String countStr = displayCount == 0 && !passiveMode
             ? "∅" : String.valueOf(displayCount);
-        int countColor = passiveMode ? 0xFFBBBBBB : 0xFFFFFFFF;
+        int countColor = passiveMode ? 0xFF9ECFFC : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
         // unit
         gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
