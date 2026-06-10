@@ -7,6 +7,7 @@ import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import io.github.nbcss.ClientConfig;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -420,8 +421,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
+        // In "full overlay" mode every gauge shows its count label; otherwise only the hovered one does.
+        boolean fullOverlay = ClientConfig.fullOverlay();
         for (VirtualGaugeWidget gauge : gaugeWidgets.values())
-            gauge.renderFront(graphics, bulbGlow(gauge.position(), partialTick));
+            gauge.renderFront(graphics, bulbGlow(gauge.position(), partialTick),
+                    fullOverlay || gauge.position().equals(hoveredPosition));
 
         renderSelectedNetworkMask(graphics);
         renderHoverTarget(graphics);
@@ -884,6 +888,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
             if (nameBox.keyPressed(keyCode, scanCode, modifiers) || nameBox.canConsumeInput())
                 return true;
+        }
+
+        // Toggle "full overlay" (rebindable, Left Alt by default). Handled here — never in-world or on
+        // another screen — and persisted client-side via ClientConfig so it survives controllers/sessions.
+        if (CreateFactoryControllerClient.TOGGLE_FULL_OVERLAY.matches(keyCode, scanCode)) {
+            ClientConfig.toggleFullOverlay();
+            // todo update some indicator button
+            return true;
         }
 
         // The cycle-arrow key (rebindable, R by default) on a hovered gauge cycles its outgoing

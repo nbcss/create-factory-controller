@@ -80,7 +80,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * Rendered after connections so the front frame covers the arrowheads. (Hover feedback is the
      * {@code target} reticle drawn by the screen.)
      */
-    public void renderFront(GuiGraphics gfx, float glow) {
+    public void renderFront(GuiGraphics gfx, float glow, boolean showCount) {
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
@@ -106,8 +106,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.setColor(1f, 1f, 1f, 1f);
         }
 
-        // render count overlay
-        Component label = behaviour.getCountLabel();
+        // Count overlay — shown for every gauge in "full overlay" mode, otherwise only for the hovered one.
+        Component label = showCount ? behaviour.getCountLabel() : Component.empty();
         if (!label.getString().isEmpty()) {
             Font font = Minecraft.getInstance().font;
             int w = font.width(label);

@@ -7,6 +7,7 @@
   "createfactorycontroller.gui.zoom": "Zoom: x%1$s",
   "createfactorycontroller.gui.network_selector": "Network Selector",
   "createfactorycontroller.gui.hold_to_tune": "Hold an item to tune",
+  "createfactorycontroller.config.full_overlay": "Full Overlay",
   "createfactorycontroller.gui.action_disconnect": "Click to disconnect",
   "createfactorycontroller.gui.action_repeat_ingredient": "Shift-Click to repeat ingredient",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
@@ -23,6 +24,7 @@
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
   "key.createfactorycontroller.pan_view": "Pan View (drag)",
+  "key.createfactorycontroller.toggle_full_overlay": "Toggle Full Overlay (in controller GUI)",
 
   "createfactorycontroller.network.default": "Network #%1$s",
   "createfactorycontroller.network.none": "No network",
