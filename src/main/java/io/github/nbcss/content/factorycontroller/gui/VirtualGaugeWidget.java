@@ -4,7 +4,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
-import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.RemoveComponentPacket;

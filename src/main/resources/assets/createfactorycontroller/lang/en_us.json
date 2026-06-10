@@ -8,6 +8,7 @@
   "createfactorycontroller.gui.network_selector": "Network Selector",
   "createfactorycontroller.gui.hold_to_tune": "Hold an item to tune",
   "createfactorycontroller.config.full_overlay": "Full Overlay",
+  "createfactorycontroller.config.max_components": "Max Components per Controller",
   "createfactorycontroller.gui.action_disconnect": "Click to disconnect",
   "createfactorycontroller.gui.action_repeat_ingredient": "Shift-Click to repeat ingredient",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",

@@ -5,6 +5,7 @@ import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBloc
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.ServerConfig;
 import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -37,8 +38,11 @@ import java.util.*;
 
 public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider {
 
-    /** Hard cap on components a single controller may hold — bounds the BE/item NBT and sync size. */
-    public static final int MAX_COMPONENTS = 256;
+    /** Cap on components a single controller may hold — bounds the BE/item NBT and sync size.
+     *  Configurable via {@link ServerConfig#maxComponents()} (default 256, max 1024). */
+    public static int maxComponents() {
+        return ServerConfig.maxComponents();
+    }
     /** Max characters of a gauge's packager address (clamped server-side, authoritative). */
     public static final int MAX_ADDRESS_LENGTH = 25;
     /** Max characters of the controller's custom display name (clamped server-side, authoritative). */
@@ -170,7 +174,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (isOutBoard(pos)) return;   // outside the finite board
 
         // board full — bounds NBT/packet size
-        if (components.size() >= MAX_COMPONENTS) return;
+        if (components.size() >= maxComponents()) return;
 
         UUID networkId;
         if (LogisticallyLinkedBlockItem.isTuned(carried)) {

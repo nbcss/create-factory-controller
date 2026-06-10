@@ -99,7 +99,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         // Relocate button, left of the filter slot — commits the chosen item (so a placed selection
         // isn't lost), then hands off to the controller's relocate mode where the next empty cell
         // clicked becomes this gauge's new position. Mirrors ConfigureRecipeScreen's relocate button.
-        relocateButton = new IconButton(filterX() - 47, filterY() - 1, AllIcons.I_MOVE_GAUGE);
+        relocateButton = new IconButton(filterX() - 67, filterY() - 1, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             PacketDistributor.sendToServer(new GaugeSetItemPacket(
                     menu.controllerPos, gaugePos, menu.getGhostFilter().copy()));

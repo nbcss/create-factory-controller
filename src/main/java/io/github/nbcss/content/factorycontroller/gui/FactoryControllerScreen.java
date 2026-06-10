@@ -466,9 +466,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         // Component count
         int count = menu.components.size();
-        Component countText = Component.translatable("createfactorycontroller.gui.capacity",
-                count, FactoryControllerBlockEntity.MAX_COMPONENTS);
-        int countColor = count >= FactoryControllerBlockEntity.MAX_COMPONENTS ? 0xFFFF5555 : 0xFFFFFFFF;
+        int max = FactoryControllerBlockEntity.maxComponents();   // server config value (synced to client)
+        Component countText = Component.translatable("createfactorycontroller.gui.capacity", count, max);
+        int countColor = count >= max ? 0xFFFF5555 : 0xFFFFFFFF;
         graphics.drawString(font, countText, x1 - font.width(countText) - 4, y0 + 4, countColor, true);
 
         // Zoom factor just below it. The world-pixel scale is twice this displayed value, so we halve
@@ -658,40 +658,62 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Connection mode: clicking a gauge wires it as an input; clicking an empty cell cancels.
-            // Client rejects a gauge with no filter set before sending anything.
+            // Connection mode: clicking a gauge wires it as an input; clicking an empty cell (or the
+            // source gauge itself) cancels. Client rejects a gauge with no filter / a duplicate link.
             if (pendingConnectionTarget != null && leftOrRight) {
-                actionPrompt = null;
-                if (widget != null) {
-                    if (widget.behaviour().filter.isEmpty()) {
-                        setTimedPrompt(CreateLang.translate("factory_panel.no_item")
-                                .style(ChatFormatting.RED).component(), 3000);
-                        playDenySound();
-                    } else {
-                        PacketDistributor.sendToServer(new AddConnectionPacket(
-                                menu.controllerPos, clicked, pendingConnectionTarget));
-                    }
-                }
+                VirtualPanelPosition target = pendingConnectionTarget;
                 pendingConnectionTarget = null;
+                actionPrompt = null;
+                if (widget == null || clicked.equals(target)) {
+                    setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
+                            .style(ChatFormatting.WHITE).component(), 3000);
+                    return true;
+                }
+                VirtualGaugeBehaviour input = widget.behaviour();
+                VirtualComponentBehaviour targetComp = findGauge(target);
+                if (input.filter.isEmpty()) {
+                    setTimedPrompt(CreateLang.translate("factory_panel.no_item")
+                            .style(ChatFormatting.RED).component(), 3000);
+                    playDenySound();
+                } else if (targetComp != null && targetComp.targetedBy().containsKey(clicked)) {
+                    setTimedPrompt(CreateLang.translate("factory_panel.already_connected")
+                            .style(ChatFormatting.RED).component(), 3000);
+                    playDenySound();
+                } else {
+                    PacketDistributor.sendToServer(new AddConnectionPacket(
+                            menu.controllerPos, clicked, target));
+                    Component outputName = targetComp instanceof VirtualGaugeBehaviour tg
+                            ? tg.filter.getHoverName() : Component.empty();
+                    setTimedPrompt(CreateLang.translate("factory_panel.panels_connected",
+                            input.filter.getHoverName(), outputName)
+                            .style(ChatFormatting.GREEN).component(), 3000);
+                }
                 return true;
             }
 
-            // Relocate mode: send the destination and let the server move (empty cell) or reject
-            // (occupied cell) with the matching sound. Either way the mode ends.
+            // Relocate mode: an empty, in-board cell moves the gauge there; anything else (occupied cell,
+            // the gauge's own cell, off-board) aborts. Either way the mode ends.
             if (pendingRelocateTarget != null && leftOrRight) {
-                PacketDistributor.sendToServer(new MoveComponentPacket(
-                        menu.controllerPos, pendingRelocateTarget, clicked));
+                VirtualPanelPosition from = pendingRelocateTarget;
                 pendingRelocateTarget = null;
                 actionPrompt = null;
+                if (widget == null && !FactoryControllerBlockEntity.isOutBoard(clicked)) {
+                    PacketDistributor.sendToServer(new MoveComponentPacket(menu.controllerPos, from, clicked));
+                    setTimedPrompt(CreateLang.translate("factory_panel.relocated")
+                            .style(ChatFormatting.GREEN).component(), 3000);
+                } else {
+                    setTimedPrompt(CreateLang.translate("factory_panel.relocation_aborted")
+                            .style(ChatFormatting.WHITE).component(), 3000);
+                }
                 return true;
             }
 
             // Left-click with a carried gauge → attach it at the cell (server rejects if occupied).
             if (button == 0 && ComponentRegistry.containsItem(carried)) {
                 // Board full (placing on an empty cell would add a component) → prompt, don't send.
-                if (widget == null && menu.components.size() >= FactoryControllerBlockEntity.MAX_COMPONENTS) {
+                if (widget == null && menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
                     setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
-                            FactoryControllerBlockEntity.MAX_COMPONENTS).withStyle(ChatFormatting.RED), 3000);
+                            FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
                     playDenySound();
                     return true;
                 }
