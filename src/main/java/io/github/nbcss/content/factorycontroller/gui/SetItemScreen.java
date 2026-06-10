@@ -38,7 +38,7 @@ import java.util.List;
  * {@code renderBg}/{@code renderForeground} flow is identical and proven.
  */
 @OnlyIn(Dist.CLIENT)
-public class SetItemScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
+public class SetItemScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
 
     private static final ResourceLocation PLAYER_INVENTORY_TEX =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
@@ -50,6 +50,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private final VirtualPanelPosition gaugePos;
 
     private IconButton confirm;
+    private IconButton relocateButton;
     private List<Rect2i> extraAreas = Collections.emptyList();
     // Set-item panel top-left, and the player-inventory background top-left — centered in the GUI rect.
     private int panelX, panelY;
@@ -87,12 +88,27 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         int originX = invBgX + 8 - leftPos;                                   // slot grid origin
         int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;                   // hotbar row
 
-        menu.showGhostSlot(ghostX() - leftPos, ghostY() - topPos, originX, hotbarY);
+        menu.showGhostSlot(filterX() - leftPos, filterY() - topPos, originX, hotbarY);
 
         // Real confirm button (like Create's set-item screen) instead of a hit-tested icon.
-        confirm = new IconButton(confirmX(), confirmY(), AllIcons.I_CONFIRM);
+        confirm = new IconButton(panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40
+                , panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25, AllIcons.I_CONFIRM);
         confirm.withCallback(this::returnToController);
         addWidget(confirm);
+
+        // Relocate button, left of the filter slot — commits the chosen item (so a placed selection
+        // isn't lost), then hands off to the controller's relocate mode where the next empty cell
+        // clicked becomes this gauge's new position. Mirrors ConfigureRecipeScreen's relocate button.
+        relocateButton = new IconButton(filterX() - 47, filterY() - 1, AllIcons.I_MOVE_GAUGE);
+        relocateButton.withCallback(() -> {
+            PacketDistributor.sendToServer(new GaugeSetItemPacket(
+                    menu.controllerPos, gaugePos, menu.getGhostFilter().copy()));
+            menu.setGhostFilter(ItemStack.EMPTY);
+            controller.beginRelocateMode(gaugePos);
+            Minecraft.getInstance().setScreen(controller);
+        });
+        relocateButton.setToolTip(CreateLang.translate("gui.factory_panel.relocate").component());
+        addWidget(relocateButton);
 
         extraAreas = List.of(new Rect2i(panelX + bg.getWidth(),
                 panelY + bg.getHeight() - 30, 40, 20));
@@ -107,10 +123,21 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     // ── Layout (tunable to the FACTORY_GAUGE_SET_ITEM texture) ────────────────
-    private int ghostX()   { return panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() / 2 - 18; }
-    private int ghostY()   { return panelY + 28; }
-    private int confirmX() { return panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40; }
-    private int confirmY() { return panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25; }
+    private int filterX()   { return panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() / 2 - 18; }
+    private int filterY()   { return panelY + 28; }
+
+    // Sub-screen renders the controller board as its background (renderBg → controller.renderBoard),
+    // so refresh the parent's gauge-widget cache when a sync lands while this screen is open.
+    @Override
+    public void onPanelSync() {
+        controller.onPanelSync();
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        controller.tickBulbs();     // keep the background board's indicator bulbs animating
+    }
 
     // ── Render ───────────────────────────────────────────────────────────────
 
@@ -131,6 +158,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         gfx.blit(PLAYER_INVENTORY_TEX, invBgX, invBgY, 0, 0, INV_TEX_W, INV_TEX_H);
 
         confirm.render(gfx, mouseX, mouseY, partialTick);
+        relocateButton.render(gfx, mouseX, mouseY, partialTick);
 
         // Decorative gauge model; the configured filter shows in the real ghost slot (vanilla-drawn).
         GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack()).scale(3)
@@ -183,7 +211,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     // ── JEI hooks (used by the handlers registered on this screen) ──
-    public Rect2i ghostSlotArea() { return new Rect2i(ghostX(), ghostY(), 16, 16); }
+    public Rect2i ghostSlotArea() { return new Rect2i(filterX(), filterY(), 16, 16); }
     public void setGhostFromJei(ItemStack stack) { menu.setGhostFilter(stack); }
 
     public List<Rect2i> extraGuiAreas() {

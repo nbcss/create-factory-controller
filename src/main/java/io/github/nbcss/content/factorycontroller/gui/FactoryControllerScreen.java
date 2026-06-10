@@ -46,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
+public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
 
     // Responsive sizing — all in GUI-scaled pixels.
     private static final int SIDE_MARGIN = 160;
@@ -282,8 +282,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         super.containerTick();
         if (nameBox != null && !nameBox.isFocused())
             collapseNameSelection();
-        // Advance each gauge's indicator bulb (mirrors FactoryPanelBehaviour#tick): chase satisfied,
-        // and flash to full on every fresh request attempt (detected via the synced lastRequestTick).
+        tickBulbs();
+    }
+
+    /**
+     * Advance each gauge's indicator bulb (mirrors FactoryPanelBehaviour#tick): chase satisfied, and
+     * flash to full on every fresh request attempt (detected via the synced lastRequestTick).
+     *
+     * <p>Public so a sub-screen ({@link SetItemScreen}, {@link ConfigureRecipeScreen}) that renders this
+     * board as its background can keep the bulbs ticking while it is the active screen — otherwise the
+     * parent's {@code containerTick} never runs and the bulbs freeze.</p>
+     */
+    public void tickBulbs() {
         for (VirtualGaugeWidget w : gaugeWidgets.values()) {
             VirtualGaugeBehaviour g = w.behaviour();
             VirtualPanelPosition pos = g.position();
@@ -818,6 +828,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Called by SyncPanelStatePacket after menu.gauges/knownNetworks are refreshed. */
+    @Override
     public void onPanelSync() {
         rebuildGaugeWidgets();   // components were replaced with fresh instances; re-index them
     }

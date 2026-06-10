@@ -488,7 +488,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
-        tag.putString("Mode", unit.name());
+        tag.putString("Unit", unit.name());
         tag.putBoolean("Passive", passiveMode);
 
         tag.putBoolean("Satisfied", satisfied);

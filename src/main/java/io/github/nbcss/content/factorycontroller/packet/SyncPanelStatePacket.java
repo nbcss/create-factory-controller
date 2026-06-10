@@ -3,7 +3,7 @@ package io.github.nbcss.content.factorycontroller.packet;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.content.factorycontroller.ComponentRegistry;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
+import io.github.nbcss.content.factorycontroller.gui.PanelSyncListener;
 import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -137,8 +137,12 @@ public record SyncPanelStatePacket(BlockPos pos,
                 if (!names.get(i).isBlank()) menu.networkNicknames.put(nets.get(i), names.get(i));
             menu.controllerName = packet.controllerName();
 
-            if (mc.screen instanceof FactoryControllerScreen screen)
-                screen.onPanelSync();
+            // Refresh whichever of this controller's screens is active — the controller canvas itself
+            // or a sub-screen (set-item / configure-recipe) that renders the canvas as its background.
+            // The sub-screens delegate to the parent so its cached gauge widgets are re-indexed too,
+            // otherwise the background count overlay freezes while a sub-screen is open.
+            if (mc.screen instanceof PanelSyncListener listener)
+                listener.onPanelSync();
         });
     }
 }

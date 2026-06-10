@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
  * {@link FactoryControllerMenu} and draws the live board as a dimmed backdrop.
  */
 @OnlyIn(Dist.CLIENT)
-public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
+public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
     private static final int MAX_THRESHOLD_COUNT = 100;
 
     private static final ResourceLocation PANEL_TEX =
@@ -230,7 +230,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     protected void containerTick() {
         super.containerTick();
-        addressBox.tick();   // drives the address autocomplete (DestinationSuggestions)
+        addressBox.tick();          // drives the address autocomplete (DestinationSuggestions)
+        controller.tickBulbs();     // keep the background board's indicator bulbs animating
     }
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -339,6 +340,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private static boolean in(double mx, double my, int x, int y, int w, int h) {
         return mx >= x && mx < x + w && my >= y && my < y + h;
+    }
+
+    // Sub-screen renders the controller board as its background (renderBg → controller.renderBoard),
+    // so refresh the parent's gauge-widget cache when a sync lands while this screen is open. Our own
+    // gauge reads (gauge()) are live lookups into the menu, so they need no extra refresh here.
+    @Override
+    public void onPanelSync() {
+        controller.onPanelSync();
     }
 
     // ── Render ─────────────────────────────────────────────────────────────
