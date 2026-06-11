@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Single-slot network picker shown in the controller canvas, drawn with the {@code selection_frame}
@@ -240,10 +242,14 @@ public class NetworkSelectorWidget extends AbstractWidget {
         if (end < max)
             lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
 
-        lines.add(CreateLang.translate("gui.scrollInput.scrollToSelect")
-                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-        lines.add(Component.translatable("createfactorycontroller.gui.hold_to_tune")
-                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        if (heldComponent().isEmpty()) {
+            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_highlight_tip")
+                    .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
+        } else {
+            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_tune_tip")
+                    .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
+        }
+
         return lines;
     }
 
