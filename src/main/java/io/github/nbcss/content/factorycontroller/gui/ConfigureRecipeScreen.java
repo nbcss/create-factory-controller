@@ -93,9 +93,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int thresholdCount = 0;
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
     private boolean passiveMode = false;
-    private final List<VirtualPanelPosition> inputPositions = new ArrayList<>();
-    private final List<Integer> inputAmounts = new ArrayList<>();
-    private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search
+    // One entry per input CONNECTION (not per grid slot): the source gauge and its TOTAL item count.
+    // The 3×3 grid layout — full stacks first, one partial last slot, contiguous per connection, packed
+    // in connection order — is derived on demand from these via layoutInputSlots().
+    private final List<VirtualPanelPosition> inputConnections = new ArrayList<>();
+    private final List<Integer> inputTotals = new ArrayList<>();
+    private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search (per connection)
 
     @Nullable private CraftingRecipe availableCraftingRecipe;
     private boolean craftingActive;
@@ -168,7 +171,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         newInputButton = new IconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
         newInputButton.withCallback(() -> {
-            if (inputPositions.size() >= MAX_INPUT_SLOTS) {
+            if (layoutInputSlots().size() >= MAX_INPUT_SLOTS) {
                 sendConfig(false, false);   // save current edits before leaving
                 controller.denyWithMessage(
                     CreateLang.translate("factory_panel.cannot_add_more_inputs")
@@ -245,9 +248,75 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
+    /** A grid slot's source: which input connection it belongs to, and how many items sit in it. */
+    private record InputSlot(int connectionIndex, int amount) {}
+
+    private static int stackSizeOf(ItemStack stack) {
+        return stack.isEmpty() ? 1 : Math.max(1, stack.getMaxStackSize());
+    }
+
+    /**
+     * Lays the input connections out into grid slots: each connection fills full stacks first then a single
+     * partial last slot (so no slot exceeds the item's stack size), its slots contiguous, connections packed
+     * in order — capped at {@link #MAX_INPUT_SLOTS}. Recomputed wherever the grid is drawn or hit-tested.
+     */
+    private List<InputSlot> layoutInputSlots() {
+        List<InputSlot> slots = new ArrayList<>();
+        for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
+            int ss = stackSizeOf(ingredientOf(inputConnections.get(c)));
+            int remaining = Math.max(1, inputTotals.get(c));
+            do {
+                if (slots.size() >= MAX_INPUT_SLOTS) return slots;
+                int amt = Math.min(ss, remaining);
+                slots.add(new InputSlot(c, amt));
+                remaining -= amt;
+            } while (remaining > 0);
+        }
+        return slots;
+    }
+
+    /** Slots used by every connection except {@code exceptIndex} (for the remaining-slot budget on scroll). */
+    private int slotsUsedExcept(int exceptIndex) {
+        int used = 0;
+        for (int c = 0; c < inputConnections.size(); c++) {
+            if (c == exceptIndex) continue;
+            int ss = stackSizeOf(ingredientOf(inputConnections.get(c)));
+            int total = Math.max(1, inputTotals.get(c));
+            used += (total + ss - 1) / ss;   // ceil
+        }
+        return used;
+    }
+
+    /**
+     * Scrolls a connection's total (shared by all its slots): plain ±1 item, shift ±10 (snapping to the
+     * next stack-size boundary when it would otherwise cross one from a non-boundary start), ctrl ±1 full
+     * stack. Clamped to ≥1 and to the item count that still fits the free grid slots.
+     */
+    private void adjustInputTotal(int connectionIndex, int dir, boolean shift, boolean ctrl) {
+        int ss = stackSizeOf(ingredientOf(inputConnections.get(connectionIndex)));
+        int cur = Math.max(1, inputTotals.get(connectionIndex));
+
+        int maxSlots = Math.max(1, MAX_INPUT_SLOTS - slotsUsedExcept(connectionIndex));
+        int maxTotal = maxSlots * ss;
+
+        int next;
+        if (ctrl) {
+            next = cur + dir * ss;                       // ±1 full stack
+        } else if (shift) {
+            next = cur + dir * 10;
+            if (cur % ss != 0) {                         // snap across a stack boundary (not from a boundary)
+                int boundary = dir > 0 ? (cur / ss + 1) * ss : (cur / ss) * ss;
+                if (dir > 0 ? next > boundary : next < boundary) next = boundary;
+            }
+        } else {
+            next = cur + dir;                            // ±1 item
+        }
+        inputTotals.set(connectionIndex, Mth.clamp(next, 1, maxTotal));
+    }
+
     private void updateConfigs() {
-        inputPositions.clear();
-        inputAmounts.clear();
+        inputConnections.clear();
+        inputTotals.clear();
         inputConfig.clear();
         VirtualGaugeBehaviour g = gauge();
         if (g == null) return;
@@ -257,14 +326,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         mode = g.unit;
         passiveMode = g.passiveMode;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
-            // One grid slot per stored amount — a repeated connection expands into several slots.
-            List<Integer> amts = conn.amounts.isEmpty() ? List.of(1) : conn.amounts;
-            for (int raw : amts) {
-                int amt = Math.max(1, raw);
-                inputPositions.add(conn.from);
-                inputAmounts.add(amt);
-                inputConfig.add(new BigItemStack(ingredientOf(conn.from), amt));
-            }
+            // Collapse the stored per-slot breakdown into one total; the canonical slot layout (full
+            // stacks first, one partial last) is re-derived on render/scroll/send.
+            int total = conn.totalAmount();
+            inputConnections.add(conn.from);
+            inputTotals.add(total);
+            inputConfig.add(new BigItemStack(ingredientOf(conn.from), total));
         }
 
         craftingActive = !g.activeCraftingArrangement.isEmpty();
@@ -386,14 +453,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                         CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component());
             }
         } else {
-            for (int i = 0; i < inputPositions.size(); i++) {
+            List<InputSlot> slots = layoutInputSlots();
+            for (int i = 0; i < slots.size(); i++) {
+                InputSlot slot = slots.get(i);
                 int ix = panelX + 68 + (i % 3) * 20;
                 int iy = panelY + 28 + (i / 3) * 20;
-                ItemStack stack = ingredientOf(inputPositions.get(i));
+                ItemStack stack = ingredientOf(inputConnections.get(slot.connectionIndex()));
                 gfx.renderItem(stack, ix, iy);
                 if (!stack.isEmpty())
-                    gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(inputAmounts.get(i)));
-                if (in(mouseX, mouseY, ix, iy, 16, 16))
+                    gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(slot.amount()));
+                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
+                    // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
+                    int total = Math.max(1, inputTotals.get(slot.connectionIndex()));
                     tooltip = stack.isEmpty()
                         ? List.of(
                             CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
@@ -401,16 +472,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         : List.of(
                             CreateLang.translate("gui.factory_panel.sending_item",
-                                CreateLang.itemName(stack).add(CreateLang.text(" x" + inputAmounts.get(i))).string())
+                                CreateLang.itemName(stack).add(CreateLang.text(" x" + total)).string())
                                 .color(ScrollInput.HEADER_RGB).component(),
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                            Component.translatable("createfactorycontroller.gui.action_disconnect")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
-                            Component.translatable("createfactorycontroller.gui.action_repeat_ingredient")
-                                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                            CreateLang.translate("gui.factory_panel.left_click_disconnect")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                }
             }
-            if (inputPositions.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
+            if (inputConnections.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
                 tooltip = List.of(
                     CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
                     CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
@@ -638,38 +708,27 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        // Input slots (only outside crafting mode). Shift-click repeats the ingredient into the next
-        // slot (sharing the same connection link); a plain click removes that slot, severing the
-        // link only once its last repeated slot is gone.
-        if (!craftingActive)
-            for (int i = 0; i < inputPositions.size(); i++) {
+        // Input slots (only outside crafting mode). A click on any slot of a connection disconnects that
+        // whole connection (its slots are just a visual breakdown of one shared total; the repeat amount
+        // is now driven by scrolling, not shift-click).
+        if (!craftingActive) {
+            List<InputSlot> slots = layoutInputSlots();
+            for (int i = 0; i < slots.size(); i++) {
                 int ix = panelX + 68 + (i % 3) * 20;
                 int iy = panelY + 28 + (i / 3) * 20;
                 if (!in(mouseX, mouseY, ix, iy, 16, 16)) continue;
-                VirtualPanelPosition from = inputPositions.get(i);
-
-                if (hasShiftDown()) {   // shift-click → repeat into the next slot (always starts at x1)
-                    ItemStack ing = ingredientOf(from);
-                    if (!ing.isEmpty() && inputPositions.size() < MAX_INPUT_SLOTS) {
-                        inputPositions.add(i + 1, from);
-                        inputAmounts.add(i + 1, 1);
-                        inputConfig.add(i + 1, new BigItemStack(ing, 1));
-                        playClickSound();
-                    }
-                    return true;
-                }
-
-                inputPositions.remove(i);
-                inputAmounts.remove(i);
-                inputConfig.remove(i);
-                if (!inputPositions.contains(from)) {   // last slot for this connection → drop the link
-                    PacketDistributor.sendToServer(
-                        new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
-                    onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
-                }
+                int c = slots.get(i).connectionIndex();
+                VirtualPanelPosition from = inputConnections.get(c);
+                inputConnections.remove(c);
+                inputTotals.remove(c);
+                inputConfig.remove(c);
+                PacketDistributor.sendToServer(
+                    new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
+                onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
                 playClickSound();
                 return true;
             }
+        }
 
         // Click the unit box → cycle Items ↔ Stacks.
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
@@ -686,17 +745,21 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int step = hasShiftDown() ? 10 : 1;
         int dir = (int) Math.signum(scrollY);
 
-        // Input amounts (only outside crafting mode).
-        if (!craftingActive)
-            for (int i = 0; i < inputPositions.size(); i++) {
+        // Input amounts (only outside crafting mode). Scrolling any slot of a connection changes that
+        // connection's shared total: plain ±1, shift ±10 (snapping at stack boundaries), ctrl ±1 stack.
+        // The total overflows across as many slots as needed (full stacks first, partial last).
+        if (!craftingActive) {
+            List<InputSlot> slots = layoutInputSlots();
+            for (int i = 0; i < slots.size(); i++) {
                 int ix = panelX + 68 + (i % 3) * 20;
                 int iy = panelY + 28 + (i / 3) * 20;
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
-                    inputAmounts.set(i, Mth.clamp(inputAmounts.get(i) + dir * step, 1, 64));
+                    adjustInputTotal(slots.get(i).connectionIndex(), dir, hasShiftDown(), hasControlDown());
                     playScrollSound();
                     return true;
                 }
             }
+        }
         // Output slot. Outside crafting mode this is the free output count; in crafting mode the
         // per-craft yield is fixed, so scrolling instead changes how many crafts ride one request
         // (one craft per notch, capped so the produced total stays within 64 items).
@@ -757,16 +820,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ? craftingIngredients.stream().map(b -> b.stack).toList()
             : List.of();
 
-        // Per-slot ingredient amounts. Outside crafting mode we send one entry per slot so repeats
-        // survive (the server sums them per connection). In crafting mode the per-craft usage is one
-        // value per unique connection (times the item appears in the arrangement, like Create's sendIt),
-        // so repeated slots are collapsed to a single entry.
+        // Per-slot ingredient amounts. Outside crafting mode we send one entry per derived grid slot
+        // (full stacks first, partial last) so the server sums them back into the connection total. In
+        // crafting mode the per-craft usage is one value per connection (times the item appears in the
+        // arrangement, like Create's sendIt).
         List<VirtualPanelPosition> positions = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
         if (craftingActive) {
-            Set<VirtualPanelPosition> seen = new HashSet<>();
-            for (VirtualPanelPosition pos : inputPositions) {
-                if (!seen.add(pos)) continue;
+            for (VirtualPanelPosition pos : inputConnections) {
                 ItemStack ing = ingredientOf(pos);
                 int c = (int) craftingIngredients.stream()
                     .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))
@@ -775,9 +836,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 amounts.add(Math.max(1, c));
             }
         } else {
-            for (int i = 0; i < inputPositions.size(); i++) {
-                positions.add(inputPositions.get(i));
-                amounts.add(Math.max(1, inputAmounts.get(i)));
+            for (InputSlot slot : layoutInputSlots()) {
+                positions.add(inputConnections.get(slot.connectionIndex()));
+                amounts.add(Math.max(1, slot.amount()));
             }
         }
 

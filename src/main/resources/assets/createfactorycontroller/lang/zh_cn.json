@@ -9,8 +9,6 @@
   "createfactorycontroller.gui.hold_to_tune": "可为准星物品设定网络",
   "createfactorycontroller.config.full_overlay": "完整信息模式",
   "createfactorycontroller.config.max_components": "控制台最大组件数量",
-  "createfactorycontroller.gui.action_disconnect": "点击以断连",
-  "createfactorycontroller.gui.action_repeat_ingredient": "按住Shift点击以复制原料",
   "createfactorycontroller.gui.action_remove_component": "按住Shift点击以移除",
   "createfactorycontroller.gui.threshold.auto_managed": "由下游需求自动配置",
   "createfactorycontroller.gui.passive_mode": "被动请求模式",

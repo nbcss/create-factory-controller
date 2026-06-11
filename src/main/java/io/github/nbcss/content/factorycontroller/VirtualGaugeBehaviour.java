@@ -75,19 +75,25 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public boolean controllerPowered = false;
 
     // Internal tick state
-    private int lastReportedLevelInStorage = 0;
-    private int lastReportedPromises = 0;
     private int lastReportedUnloadedLinks = 0;
     /** Last synced {@link #count}; in passive mode count is recomputed each tick, so it must be part of the
      *  storage-monitor dirty check or a count-only change wouldn't reach the client's gray number. */
     private int lastReportedCount = -1;
-    /** Bridges the gap between a promise settling (live) and the loose stock summary recomputing: holds the
-     *  just-settled amount as "stock already here, summary hasn't caught up yet" so stock+promised stays
-     *  conserved across the settlement (no satisfied/connection dip). Cleared when the summary recomputes. */
-    private int creditStock = 0;
-    /** Ticks the current {@link #creditStock} has been held; a safety cap in case the recomputed summary
-     *  value happens to be unchanged so the "raw stock changed" clear never fires. */
-    private int creditAge = 0;
+    /** Identity of the last loose summary object. The loose cache builds a NEW {@link InventorySummary} when
+     *  it recomputes, so a changed reference is the precise "stock reading just refreshed (authoritative)"
+     *  signal the monitor uses to confirm a fresh drop. */
+    private InventorySummary lastSummaryRef = null;
+    /** Effective {@code stock + promised}, HELD against a transient drop — the conserved sum that feeds
+     *  {@code promisedSatisfied}. At a settlement it dips a frame before the loose stock rises; holding it
+     *  until the conserved sum recovers to the held value bridges that without flicker. {@link #stockLevel}
+     *  is the matching held stock for {@code satisfied}. Crucially the satisfaction booleans are derived from
+     *  these held QUANTITIES vs the fresh {@code demand}, so a demand change (and the passive chain that
+     *  reads it) is never held — only the lag-prone reads are. */
+    private int heldSum = 0;
+    /** One-tick confirm flags: a fresh (refreshed) drop in {@link #stockLevel} / {@link #heldSum} is held one
+     *  tick to ride out the mid-move "reads low" blip, then committed — keeps real drops responsive. */
+    private boolean stockDropPending = false;
+    private boolean sumDropPending = false;
     private int timer = 0;
     /** Game tick of the last request attempt; the client decays the connection flash from it. */
     public long lastRequestTick = Long.MIN_VALUE;
@@ -218,19 +224,15 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * yet covered by stock + open promises. An auto producer feeding this gauge calls it to size its own
      * demand.
      *
-     * <p>Coverage is the gauge's last-tick conserved snapshot ({@link #stockLevel} = effectiveStock,
-     * + {@link #promisedCount}) rather than a fresh loose read: both halves come from the same
-     * tickStorageMonitor pass, so the credit-stock bridge keeps them conserved across a settlement. A fresh
-     * loose read would dip (promise drops a frame before the summary stock rises) and make the consumer
-     * falsely look "demanding" → the producer would size phantom demand and over-produce.</p>
+     * <p>Reads the committed {@link #promisedSatisfied} flag rather than a fresh {@code stock + promised}
+     * sum: that flag is held across a settlement dip by tickStorageMonitor, whereas a live sum would dip a
+     * frame (promise drops before the summary stock rises) and make the consumer falsely look "demanding" →
+     * the producer would size phantom demand and over-produce.</p>
      */
     private boolean isDemandingIngredients() {
         if (count == 0 || waitingForNetwork || redstonePowered || controllerPowered || isMissingAddress())
             return false;
-        // Use the conserved snapshot (effectiveStock via stockLevel, + promisedCount) from this gauge's last
-        // tickStorageMonitor — both halves from the same instant, so the credit bridge prevents the
-        // settlement dip that would otherwise make a consumer falsely look "demanding" → phantom demand.
-        return stockLevel + promisedCount < count * unit.toItemCount(filter);
+        return !promisedSatisfied;
     }
 
     private void tickStorageMonitor() {
@@ -239,6 +241,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             promisedSatisfied = true;
             waitingForNetwork = false;
             stockLevel = 0;
+            promisedCount = 0;
             return;
         }
 
@@ -247,62 +250,63 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (unloadedLinkCount == 0 && lastReportedUnloadedLinks != 0)
             LogisticsManager.SUMMARIES.invalidate(networkId);
 
-        int inStorage = getLevelInStorage();
+        // Apply a pending player-forced clear (side effect only). Its promised drop is absorbed by the hold
+        // below exactly like a settlement or an expiry — no per-cause disambiguation is needed any more.
+        consumeForceClear();
+
+        // The loose cache returns a NEW summary instance when it recomputes, so reference identity is the
+        // precise "stock reading just refreshed (authoritative)" signal.
+        InventorySummary summary = getRelevantSummary();
+        boolean refreshed = summary != lastSummaryRef;
+        lastSummaryRef = summary;
+
+        int inStorage = summary.getCountOf(filter);
         int promised = getPromised();
+        int rawSum = inStorage + promised;
 
-        // Credit-stock bridge. The loose summary lags the live promise queue, so at a settlement `promised`
-        // drops a frame (or ~1s) before `inStorage` rises — which would dip stock+promised and flash the
-        // connection / open the request gate. When `promised` drops with no matching raw-stock rise, those
-        // items just entered inventory the summary hasn't recomputed yet: hold the delta as creditStock and
-        // count it as stock until the summary catches up (raw stock changes → authoritative → clear).
-        // Skipped under promise expiry, where a drop may be an expiry rather than a settlement.
-        if (inStorage != lastReportedLevelInStorage) {
-            creditStock = 0;
-            creditAge = 0;
-        } else {
-            if (promiseClearingInterval == -1 && promised < lastReportedPromises)
-                creditStock += lastReportedPromises - promised;
-            if (creditStock > 0 && ++creditAge > 40) {   // safety: summary must have recomputed by now
-                creditStock = 0;
-                creditAge = 0;
-            }
-        }
-        stockLevel = inStorage + creditStock;
-        int effectiveStock = stockLevel;
-        promisedCount = promised;
+        // Snapshot the committed state for the satisfy chime and the sync dirty-check.
+        boolean wasSatisfied = satisfied;
+        int prevStock = stockLevel, prevPromised = promisedCount;
+        boolean prevPromiseSatisfy = promisedSatisfied, prevWait = waitingForNetwork;
 
-        // NB: the passive target (count) is refreshed once per tick by the controller's consumer-first
-        // pre-pass (computeDemand), not here, so a chain settles in a single tick.
+        // Hold the two lag-prone QUANTITIES against a transient drop (NOT the satisfaction booleans, so demand
+        // changes stay instant). A rise commits at once; a fresh (refreshed) drop is confirmed across one tick
+        // to ride out the mid-move "reads low" blip, then commits; a stale drop is held. The held SUM bridges
+        // a settlement automatically: the conserved stock+promised recovers to the held value once the loose
+        // stock catches up, so it never commits the dip. This single rule replaces creditStock+creditAge+
+        // stockDropHeld and needs no reason for the drop (settlement / expiry / manual clear all the same).
+        if (inStorage >= stockLevel)   { stockLevel = inStorage; stockDropPending = false; }
+        else if (stockDropPending)     { stockLevel = inStorage; stockDropPending = false; }
+        else if (refreshed)            { stockDropPending = true; }
+        if (rawSum >= heldSum)         { heldSum = rawSum; sumDropPending = false; }
+        else if (sumDropPending)       { heldSum = rawSum; sumDropPending = false; }
+        else if (refreshed)            { sumDropPending = true; }
+
+        promisedCount = promised;              // the open-promise number is always shown live (the ⏶ box)
+
+        // Satisfaction is derived from the held quantities vs the CURRENT demand (the passive target `count`
+        // is refreshed once per tick by the controller's consumer-first pre-pass), so a demand change — and
+        // the passive chain that reads `!promisedSatisfied` — settles in a single tick, never held.
         int demand = count * unit.toItemCount(filter);
+        satisfied = stockLevel >= demand;
+        promisedSatisfied = heldSum >= demand;
+        waitingForNetwork = unloadedLinkCount > 0;
 
-        // Satisfied is real-stock only (bulb stays dim / connection stays pending until items actually
-        // arrive). promisedSatisfied still folds in promises so in-flight items aren't re-requested. Both
-        // use effectiveStock, so the credit bridge keeps them from dipping across a settlement.
-        boolean shouldSatisfy = effectiveStock >= demand;
-        boolean shouldPromiseSatisfy = effectiveStock + promised >= demand;
-        boolean shouldWait = unloadedLinkCount > 0;
-
-        if (lastReportedLevelInStorage == inStorage && lastReportedPromises == promised
-                && lastReportedUnloadedLinks == unloadedLinkCount && lastReportedCount == count
-                && satisfied == shouldSatisfy
-                && promisedSatisfied == shouldPromiseSatisfy && waitingForNetwork == shouldWait)
+        if (stockLevel == prevStock && promisedCount == prevPromised && satisfied == wasSatisfied
+                && promisedSatisfied == prevPromiseSatisfy && waitingForNetwork == prevWait
+                && lastReportedCount == count && lastReportedUnloadedLinks == unloadedLinkCount)
             return;
 
-        lastReportedLevelInStorage = inStorage;
-        lastReportedPromises = promised;
-        lastReportedUnloadedLinks = unloadedLinkCount;
         lastReportedCount = count;
+        lastReportedUnloadedLinks = unloadedLinkCount;
 
         // Bulb-update chime on the unsatisfied → satisfied transition (Create's tickStorageMonitor),
         // played at the controller block so nearby players hear the gauge light up.
-        if (!satisfied && shouldSatisfy && demand > 0) {
+        if (!wasSatisfied && satisfied && demand > 0) {
             controller.playSound(AllSoundEvents.CONFIRM, 0.3f, 1f);
             controller.playSound(AllSoundEvents.CONFIRM_2, 0.5f, 0.575f);
         }
 
-        satisfied = shouldSatisfy;
-        promisedSatisfied = shouldPromiseSatisfy;
-        waitingForNetwork = shouldWait;
         controller.setChanged();
         controller.sendData();
     }
@@ -316,24 +320,30 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     private InventorySummary getRelevantSummary() {
         // Loose (20-tick) summary, matching Create's recipe panels — cheap on big networks, no invalidation.
-        // The stock half lags the live promise, so on its own stock+promised would dip across a settlement
-        // (the connection flicker / spurious request). tickStorageMonitor compensates with creditStock,
-        // which holds a just-settled promise as stock until this summary recomputes, keeping stock+promised
-        // conserved.
+        // It lags the live promise queue, so stock+promised dips for a window at a settlement; tickStorageMonitor
+        // holds the satisfied/promised state across that dip (released on this cache's next refresh) rather
+        // than trusting every transient. Its object identity is the refresh signal.
         return LogisticsManager.getSummaryOfNetwork(networkId, false);
     }
 
     public int getPromised() {
         if (filter.isEmpty()) return 0;
-        if (forceClearPromises) {
-            RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-            if (promises != null) promises.forceClear(filter);
-            timer = getConfigRequestIntervalInTicks() / 2;
-            forceClearPromises = false;
-        }
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
         if (promises == null) return 0;
         return promises.getTotalPromisedAndRemoveExpired(filter, getPromiseExpiryTimeInTicks());
+    }
+
+    /**
+     * Applies a pending player-forced promise clear (clears the queue for this item, halves the throttle).
+     * The resulting {@code promised} drop is absorbed by the storage-monitor hold like any other downgrade,
+     * so this no longer needs to flag the clear for special handling.
+     */
+    private void consumeForceClear() {
+        if (!forceClearPromises) return;
+        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
+        if (promises != null) promises.forceClear(filter);
+        timer = getConfigRequestIntervalInTicks() / 2;
+        forceClearPromises = false;
     }
 
     private int getUnloadedLinks() {
@@ -494,8 +504,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
         tag.putBoolean("Waiting", waitingForNetwork);
-        tag.putInt("LastLevel", lastReportedLevelInStorage);
-        tag.putInt("LastPromised", lastReportedPromises);
         tag.putInt("Timer", timer);
         tag.putString("RecipeAddress", recipeAddress);
         tag.putInt("RecipeOutput", recipeOutput);
@@ -598,8 +606,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.promisedSatisfied = tag.getBoolean("PromisedSatisfied");
         b.waitingForNetwork = tag.getBoolean("Waiting");
         b.controllerPowered = tag.getBoolean("ControllerPowered");
-        b.lastReportedLevelInStorage = tag.getInt("LastLevel");
-        b.lastReportedPromises = tag.getInt("LastPromised");
         b.timer = tag.getInt("Timer");
         b.recipeAddress = tag.getString("RecipeAddress");
         b.recipeOutput = tag.getInt("RecipeOutput");
