@@ -314,6 +314,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         inputTotals.set(connectionIndex, Mth.clamp(next, 1, maxTotal));
     }
 
+    /** Crafting mode: change crafts-per-request, capped so the produced total stays within 64 items. */
+    private void adjustCraftBatch(int delta) {
+        int maxBatch = Math.max(1, 64 / Math.max(1, outputCount));
+        int next = Mth.clamp(craftBatch + delta, 1, maxBatch);
+        if (next != craftBatch) {
+            craftBatch = next;
+            playScrollSound();
+        }
+    }
+
     private void updateConfigs() {
         inputConnections.clear();
         inputTotals.clear();
@@ -522,7 +532,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.factory_panel.promise_prevents_oversending").style(ChatFormatting.GRAY).component())
                 : List.of(
                     CreateLang.translate("gui.factory_panel.promised_items").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.text((g == null ? "" : g.filter.getHoverName().getString()) + " x" + promised)
+                    CreateLang.text(g.filter.getHoverName().getString() + " x" + promised)
                         .component(),
                     CreateLang.translate("gui.factory_panel.left_click_reset")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
@@ -538,9 +548,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // aren't clobbered by the 3D gauge preview's render state or covered by later panel draws.
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
+        // Left-side action stack drawn top→bottom (crafting y+27, new-input y+47, relocate y+67): a button's
+        // hover tooltip extends upward from the cursor over the buttons above it, so the upper ones must be
+        // drawn first or a later neighbour (e.g. crafting) would paint over the tooltip.
+        if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
-        if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
         if (passiveModeButton != null) passiveModeButton.render(gfx, mouseX, mouseY, partialTick);
         // Rendered last of the widgets so the ScrollInput's own hover tooltip draws on top of the other
         // buttons instead of being covered by them (the value label below still paints over its box).
@@ -611,7 +624,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             displayCount = Math.max(0, behaviour.count);
         }
         String countStr = displayCount == 0 && !passiveMode
-            ? "∅" : String.valueOf(displayCount);
+            ? "/" : String.valueOf(displayCount);
         int countColor = passiveMode ? 0xFF9ECFFC : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
         // unit
@@ -745,9 +758,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int step = hasShiftDown() ? 10 : 1;
         int dir = (int) Math.signum(scrollY);
 
-        // Input amounts (only outside crafting mode). Scrolling any slot of a connection changes that
-        // connection's shared total: plain ±1, shift ±10 (snapping at stack boundaries), ctrl ±1 stack.
-        // The total overflows across as many slots as needed (full stacks first, partial last).
+        // Inputs. Outside crafting mode, scrolling any slot of a connection changes that connection's
+        // shared total: plain ±1, shift ±10 (snapping at stack boundaries), ctrl ±1 stack. In crafting
+        // mode the inputs are the fixed 3×3 recipe, so scrolling anywhere over them tunes the batch —
+        // identical to scrolling the output slot.
         if (!craftingActive) {
             List<InputSlot> slots = layoutInputSlots();
             for (int i = 0; i < slots.size(); i++) {
@@ -759,18 +773,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     return true;
                 }
             }
+        } else if (in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58)) {
+            adjustCraftBatch(dir * step);
+            return true;
         }
         // Output slot. Outside crafting mode this is the free output count; in crafting mode the
-        // per-craft yield is fixed, so scrolling instead changes how many crafts ride one request
-        // (one craft per notch, capped so the produced total stays within 64 items).
+        // per-craft yield is fixed, so scrolling instead changes how many crafts ride one request.
         if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
             if (craftingActive) {
-                int maxBatch = Math.max(1, 64 / Math.max(1, outputCount));
-                int next = Mth.clamp(craftBatch + dir * step, 1, maxBatch);
-                if (next != craftBatch) {
-                    craftBatch = next;
-                    playScrollSound();
-                }
+                adjustCraftBatch(dir * step);
             } else {
                 outputCount = Mth.clamp(outputCount + dir * step, 1, 64);
                 playScrollSound();
