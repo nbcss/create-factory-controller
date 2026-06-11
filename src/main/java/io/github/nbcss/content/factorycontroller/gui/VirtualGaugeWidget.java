@@ -127,6 +127,11 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
 
     // ── Tooltip ──────────────────────────────────────────────────────────────
 
+    /** Thousands-grouped count, e.g. {@code 1,000,000} (always comma-grouped, locale-independent). */
+    private static String formatCount(int value) {
+        return String.format(java.util.Locale.US, "%,d", value);
+    }
+
     /**
      * Hover tooltip, mirroring Create's factory-panel label/tip (and value-box header colour): the
      * filtered item (or "New factory task") in yellow, the interaction hint in white — "Click with
@@ -139,16 +144,19 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
                 : CreateLang.text(behaviour.filter.getHoverName().getString()).color(0xFBDC7D).component());
         if (!behaviour.filter.isEmpty()) {
-            lines.add(Component.literal("Promised: +100").withStyle(ChatFormatting.GRAY));
             lines.add(Component.translatable("createfactorycontroller.gui.in_stock",
-                            behaviour.isInfiniteStock() ? "∞" : behaviour.stockLevel)
+                            Component.literal(behaviour.isInfiniteStock() ? "∞" : formatCount(behaviour.stockLevel))
+                                    .withStyle(ChatFormatting.WHITE))
                     .withStyle(ChatFormatting.GRAY));
-            lines.add(Component.literal("Target: 1000").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable("createfactorycontroller.gui.promised",
+                            Component.literal((behaviour.promisedCount > 0 ? "+" : "") + formatCount(behaviour.promisedCount))
+                                    .withStyle(behaviour.promisedCount > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
+                    .withStyle(ChatFormatting.GRAY));
         }
         lines.add((behaviour.filter.isEmpty()
                 ? CreateLang.translate("logistics.filter.click_to_set")
                 : CreateLang.translate("factory_panel.click_to_configure"))
-                .style(ChatFormatting.WHITE).component());
+                .style(ChatFormatting.GRAY).component());
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
                 .withStyle(ChatFormatting.DARK_GRAY));
         if (!behaviour.targetedBy().isEmpty() && !behaviour.isActive())

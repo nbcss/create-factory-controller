@@ -119,11 +119,11 @@ public class NetworkSelectorWidget extends AbstractWidget {
         return LogisticallyLinkedBlockItem.isTuned(stack) ? LogisticallyLinkedBlockItem.networkFromStack(stack) : null;
     }
 
-    /** A stable RGB tint for a network: the last 6 hex digits of its UUID (a valid 0xRRGGBB value). */
+    /** A stable RGB tint for a network: the first 6 hex digits of its UUID (a valid 0xRRGGBB value). */
     static int networkColor(UUID network) {
         String s = network.toString();
         try {
-            return Integer.parseInt(s.substring(s.length() - 6), 16);
+            return Integer.parseInt(s.substring(0, 6), 16);
         } catch (NumberFormatException e) {
             return 0xFFFFFF;
         }

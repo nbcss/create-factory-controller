@@ -3,6 +3,7 @@
   "block.createfactorycontroller.factory_controller": "工厂控制台",
 
   "createfactorycontroller.gui.in_stock": "库存: %1$s",
+  "createfactorycontroller.gui.promised": "承诺: %1$s",
   "createfactorycontroller.gui.capacity": "容量: %1$s/%2$s",
   "createfactorycontroller.gui.zoom": "缩放: x%1$s",
   "createfactorycontroller.gui.network_selector": "网络选择器",
