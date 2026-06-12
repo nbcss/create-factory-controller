@@ -35,10 +35,6 @@ To run a dev client:
 ./gradlew runClient
 ```
 
-## License
-
-All Rights Reserved
-
 ## Credits
 
 Sounds:
