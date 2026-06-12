@@ -15,9 +15,6 @@
   "createfactorycontroller.gui.network_selector": "网络选择器",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "滚动以高亮组件",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "滚动以设定网络",
-  "createfactorycontroller.config.full_overlay": "完整信息模式",
-  "createfactorycontroller.config.max_components": "控制台最大组件数量",
-  "createfactorycontroller.config.max_craft_grid": "合成器最大尺寸",
   "createfactorycontroller.gui.action_remove_component": "按住 Shift 点击以移除",
   "createfactorycontroller.gui.threshold.auto_managed": "由下游需求自动配置",
   "createfactorycontroller.gui.passive_mode": "被动请求模式",
@@ -33,6 +30,10 @@
   "key.createfactorycontroller.cycle_arrow": "循环箭头路径模式",
   "key.createfactorycontroller.pan_view": "移动视角（拖拽）",
   "key.createfactorycontroller.toggle_full_overlay": "切换完整信息模式",
+
+  "createfactorycontroller.config.full_overlay": "完整信息模式",
+  "createfactorycontroller.config.max_components": "控制台最大组件数量",
+  "createfactorycontroller.config.max_craft_grid": "合成器最大尺寸",
 
   "createfactorycontroller.network.default": "网络 #%1$s",
   "createfactorycontroller.network.none": "无网络",

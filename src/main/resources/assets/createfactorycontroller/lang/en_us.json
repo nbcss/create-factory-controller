@@ -15,9 +15,6 @@
   "createfactorycontroller.gui.network_selector": "Network Selector",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
-  "createfactorycontroller.config.full_overlay": "Full Overlay",
-  "createfactorycontroller.config.max_components": "Controller Capacity",
-  "createfactorycontroller.config.max_craft_grid": "Max Crafting Grid Size",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
   "createfactorycontroller.gui.threshold.auto_managed": "Auto managed on demand",
   "createfactorycontroller.gui.passive_mode": "Passive Request",
@@ -33,6 +30,10 @@
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
   "key.createfactorycontroller.pan_view": "Pan View (drag)",
   "key.createfactorycontroller.toggle_full_overlay": "Toggle Full Overlay",
+
+  "createfactorycontroller.config.full_overlay": "Full Overlay",
+  "createfactorycontroller.config.max_components": "Controller Capacity",
+  "createfactorycontroller.config.max_craft_grid": "Max Crafting Grid Size",
 
   "createfactorycontroller.network.default": "Network #%1$s",
   "createfactorycontroller.network.none": "No network",
