@@ -302,8 +302,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput, int craftBatch,
-                                int promiseInterval, int count, ThresholdUnit mode, boolean passiveMode,
-                                Map<VirtualPanelPosition, List<Integer>> inputAmounts,
+                                int craftDimension, int promiseInterval, int count, ThresholdUnit mode,
+                                boolean passiveMode, Map<VirtualPanelPosition, List<Integer>> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
 
@@ -315,6 +315,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
             gauge.craftBatch = 1;
+            gauge.craftDimension = 0;
             gauge.promiseClearingInterval = -1;
             gauge.activeCraftingArrangement = new ArrayList<>();
             gauge.disconnectAll();
@@ -327,6 +328,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             ? address.substring(0, MAX_ADDRESS_LENGTH) : address;
         gauge.recipeOutput = Math.max(1, recipeOutput);
         gauge.craftBatch = Math.max(1, craftBatch);
+        gauge.craftDimension = Math.max(0, craftDimension);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
         gauge.unit = mode;
         gauge.passiveMode = passiveMode;

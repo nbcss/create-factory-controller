@@ -300,14 +300,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         for (VirtualGaugeWidget w : gaugeWidgets.values()) {
             VirtualGaugeBehaviour g = w.behaviour();
             VirtualPanelPosition pos = g.position();
+            boolean firstSeen = !bulbSeenRequest.containsKey(pos);
+            // First time we see a gauge (e.g. on opening the GUI), adopt its current request tick and start the
+            // bulb at its steady state — otherwise lastRequestTick > MIN_VALUE reads as a fresh request and the
+            // bulb flashes spuriously on open. Only genuinely later requests should flash.
+            float steady = g.satisfied || g.redstonePowered ? 1 : 0;
             LerpedFloat bulb = bulbs.computeIfAbsent(pos,
-                    p -> LerpedFloat.linear().startWithValue(0).chase(0, 0.175, Chaser.EXP));
-            long seen = bulbSeenRequest.getOrDefault(pos, Long.MIN_VALUE);
-            if (g.lastRequestTick > seen) {
+                    p -> LerpedFloat.linear().startWithValue(steady).chase(0, 0.175, Chaser.EXP));
+            if (firstSeen) {
+                bulbSeenRequest.put(pos, g.lastRequestTick);
+            } else if (g.lastRequestTick > bulbSeenRequest.get(pos)) {
                 bulb.setValue(1);                 // request fired → flash
                 bulbSeenRequest.put(pos, g.lastRequestTick);
             }
-            bulb.updateChaseTarget(g.satisfied || g.redstonePowered ? 1 : 0);
+            bulb.updateChaseTarget(steady);
             bulb.tickChaser();
         }
         bulbs.keySet().removeIf(p -> !gaugeWidgets.containsKey(p));

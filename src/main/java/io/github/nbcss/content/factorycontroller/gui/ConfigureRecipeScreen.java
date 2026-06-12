@@ -4,10 +4,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllRecipeTypes;
 import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.content.kinetics.crafter.MechanicalCraftingRecipe;
 import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.box.PackageStyles;
-import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelScreen;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
@@ -16,6 +16,7 @@ import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.ServerConfig;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
@@ -27,6 +28,7 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -40,6 +42,7 @@ import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -74,6 +77,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // Threshold-row geometry (filter slot x24-40, count box x48-112, unit box x118-167, band y≈128-144).
     /** The input arrangement is a 3×3 grid, so at most 9 slots (incl. repeats) can be shown. */
     private static final int MAX_INPUT_SLOTS = 9;
+    /** A request's produced output must fit one stack; batch is capped so {@code batch × yield ≤ 64}. */
+    private static final int MAX_CRAFT_OUTPUT = 64;
     private static final int THRESH_TOP = 128;
     private static final int FILTER_X = 25;
     private static final int COUNT_X = 51, COUNT_W = 40;
@@ -90,6 +95,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int outputCount = 1;
     /** Crafts per request in crafting mode (≥1). The output slot shows outputCount × craftBatch. */
     private int craftBatch = 1;
+    /** Square crafter-grid size (N→N×N) a recipe is laid out for; defaults to its minimum (max of recipe
+     *  width/height), Ctrl-scrollable up to {@link ServerConfig#maxCraftGridSize()}. 0 until a recipe loads. */
+    private int craftDimension = 0;
     private int thresholdCount = 0;
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
     private boolean passiveMode = false;
@@ -103,6 +111,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Nullable private CraftingRecipe availableCraftingRecipe;
     private boolean craftingActive;
     private List<BigItemStack> craftingIngredients = new ArrayList<>();
+    /** Set in renderBg when Ctrl is held over a crafting ingredient, so renderForeground draws the N×M layout. */
+    private boolean patternHovered;
 
     private AddressEditBox addressBox;
     private ScrollInput promiseExpiration;
@@ -203,14 +213,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             craftingButton.withCallback(() -> {
                 if (availableCraftingRecipe == null) return;   // recipe vanished (e.g. input removed)
                 craftingActive = !craftingActive;
-                if (craftingActive) {
-                    craftingIngredients = FactoryPanelScreen.convertRecipeToPackageOrderContext(
-                        availableCraftingRecipe, inputConfig, false);
-                    lockOutputToRecipe();
-                }
+                if (craftingActive) applyCraftingResolution();   // build the square arrangement + clamps
                 rebuildWidgets();   // clears + re-runs init() (direct init() would duplicate widgets)
             });
-            craftingButton.setToolTip(CreateLang.translate("gui.factory_panel.activate_crafting").component());
+            // No self-tooltip: drawn last in renderForeground (craftingButtonTooltip) so neighbours can't cover it.
             addWidget(craftingButton);
         }
 
@@ -314,14 +320,129 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         inputTotals.set(connectionIndex, Mth.clamp(next, 1, maxTotal));
     }
 
-    /** Crafting mode: change crafts-per-request, capped so the produced total stays within 64 items. */
+    /**
+     * Largest craft batch: the produced item must fit one stack, so {@code batch × yield ≤ 64}. Input slots
+     * never cap the batch — re-packaging splits a multi-craft order into one single-craft package each, so any
+     * batch is dispatchable as long as a single craft fits (enforced by {@link #craftingFitsPackage}).
+     */
+    private int maxCraftBatch() {
+        return Math.max(1, MAX_CRAFT_OUTPUT / Math.max(1, outputCount));
+    }
+
+    /** Crafting mode: change crafts-per-request, capped so the produced output stays within one stack. */
     private void adjustCraftBatch(int delta) {
-        int maxBatch = Math.max(1, 64 / Math.max(1, outputCount));
-        int next = Mth.clamp(craftBatch + delta, 1, maxBatch);
+        int next = Mth.clamp(craftBatch + delta, 1, maxCraftBatch());
         if (next != craftBatch) {
             craftBatch = next;
             playScrollSound();
         }
+    }
+
+    /**
+     * Ctrl-scroll over the recipe's ingredients: resize the square crafter grid, between the recipe's minimum
+     * bounding square and the configured maximum ({@link ServerConfig#maxCraftGridSize()}). Re-lays the
+     * dispatched pattern.
+     */
+    private void adjustCraftDimension(int dir) {
+        int minDim = minCraftDim();
+        int next = Mth.clamp(effectiveCraftDimension() + dir, minDim, maxCraftDim(minDim));
+        if (next != craftDimension) {
+            craftDimension = next;
+            craftingIngredients = buildSquareArrangement(craftDimension);
+            playScrollSound();
+        }
+    }
+
+    /** Upper bound for the crafter-grid size: the server-configured maximum (synced to the client), but never
+     *  below a recipe's own minimum bounding square. */
+    private static int maxCraftDim(int minDim) {
+        return Math.max(minDim, ServerConfig.maxCraftGridSize());
+    }
+
+    /** One drawn cell of the aggregated crafting view: an ingredient and how many sit in this grid slot. */
+    private record CraftSlot(ItemStack stack, int amount) {}
+
+    /**
+     * Collapses the recipe arrangement into its distinct ingredient types (first-appearance order) and the
+     * total cell-count each uses. Aggregating by item means a recipe that reuses one ingredient across many
+     * cells (most recipes) needs only one type slot — the key to showing a &gt;3×3 recipe in the 3×3 grid.
+     */
+    private void craftingTypeAggregate(List<ItemStack> typesOut, List<Integer> cellsOut) {
+        for (BigItemStack b : craftingIngredients) {
+            if (b.stack.isEmpty()) continue;
+            int amt = Math.max(1, b.stack.getCount());
+            int idx = -1;
+            for (int i = 0; i < typesOut.size(); i++)
+                if (ItemStack.isSameItemSameComponents(typesOut.get(i), b.stack)) { idx = i; break; }
+            if (idx < 0) { typesOut.add(b.stack); cellsOut.add(amt); }
+            else cellsOut.set(idx, cellsOut.get(idx) + amt);
+        }
+    }
+
+    /**
+     * The aggregated grid view of a large (&gt;3×3) crafting recipe: one slot per distinct ingredient type,
+     * its amount being the type's total usage (cells × batch). Crafting slots never overflow into a second
+     * slot, so a count above the item's stack size simply shows as a large number in the one slot. Display
+     * only — the dispatched package still carries the real N×M arrangement.
+     */
+    private List<CraftSlot> craftingDisplaySlots() {
+        List<ItemStack> types = new ArrayList<>();
+        List<Integer> cells = new ArrayList<>();
+        craftingTypeAggregate(types, cells);
+        List<CraftSlot> slots = new ArrayList<>();
+        int batch = Math.max(1, craftBatch);
+        for (int t = 0; t < types.size() && slots.size() < MAX_INPUT_SLOTS; t++)
+            slots.add(new CraftSlot(types.get(t), cells.get(t) * batch));
+        return slots;
+    }
+
+    /** Distinct ingredient types in the recipe — one package slot each (crafting slots never overflow). */
+    private int craftingDistinctTypes() {
+        List<ItemStack> types = new ArrayList<>();
+        List<Integer> cells = new ArrayList<>();
+        craftingTypeAggregate(types, cells);
+        return types.size();
+    }
+
+    /**
+     * Whether one craft fits a single 9-slot package: each distinct ingredient type occupies exactly one slot
+     * (no stack-size overflow), and batch is irrelevant because re-packaging splits a multi-craft order into
+     * one package per craft. A recipe with &gt;9 distinct types can't be packaged at all.
+     */
+    private boolean craftingFitsPackage() {
+        return craftingDistinctTypes() <= MAX_INPUT_SLOTS;
+    }
+
+    /** True when the recipe is larger than 3×3 (shaped width or height &gt; 3) — the aggregated/Ctrl path. */
+    private boolean craftingIsLarge() {
+        return availableCraftingRecipe instanceof ShapedRecipe s && (s.getWidth() > 3 || s.getHeight() > 3);
+    }
+
+    /** Minimum square crafter grid for the recipe: its bounding square, but never below 3×3 — Create's
+     *  packaged crafting unpacks into a 3×3-and-up crafter array, so a smaller recipe is laid top-left of a
+     *  3×3 grid rather than a too-small one a standard crafter can't satisfy. */
+    private int minCraftDim() {
+        return Math.max(3, Math.max(craftingPatternWidth(), craftingPatternHeight()));
+    }
+
+    /** The square grid size a recipe lays out into: the stored value, floored at its minimum bounding square
+     *  and capped at the configured maximum. Valid even before crafting is toggled on (defaults to min). */
+    private int effectiveCraftDimension() {
+        int minDim = minCraftDim();
+        return Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
+    }
+
+    /** The crafting toggle's tooltip: the activate hint, plus the current N×N grid size. Rendered last (in
+     *  {@link #renderForeground}) so a later-drawn neighbouring widget can't paint over it. */
+    private List<Component> craftingButtonTooltip() {
+        List<Component> tip = new ArrayList<>();
+        tip.add(CreateLang.translate("gui.factory_panel.activate_crafting").component());
+        if (availableCraftingRecipe != null) {
+            int dim = effectiveCraftDimension();
+            tip.add(Component.translatable("createfactorycontroller.gui.crafting_dimension", dim, dim)
+                .withStyle(ChatFormatting.GRAY));
+        }
+        return tip;
     }
 
     private void updateConfigs() {
@@ -332,6 +453,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (g == null) return;
         outputCount = Math.max(1, g.recipeOutput);
         craftBatch = Math.max(1, g.craftBatch);
+        craftDimension = Math.max(0, g.craftDimension);
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
         passiveMode = g.passiveMode;
@@ -346,14 +468,73 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         craftingActive = !g.activeCraftingArrangement.isEmpty();
         searchForCraftingRecipe();
+        applyCraftingResolution();
+    }
+
+    /**
+     * After {@link #searchForCraftingRecipe}, lays the recipe into a square crafter grid, locks the output to
+     * the recipe yield, and enforces the package-fit gate (a recipe with &gt;9 distinct ingredient types can't
+     * be packaged, so it's rejected). The square (default = the recipe's minimum bounding square, restored from
+     * the gauge or Ctrl-scrollable) is what we dispatch, so the flat pattern maps cell-for-cell onto an N×N
+     * mechanical-crafter array — fixing the misalignment Create's 3-wide package layout caused.
+     */
+    private void applyCraftingResolution() {
         if (availableCraftingRecipe == null) {
             craftingActive = false;
             craftingIngredients = new ArrayList<>();
-        } else if (craftingActive) {
-            craftingIngredients =
-                FactoryPanelScreen.convertRecipeToPackageOrderContext(availableCraftingRecipe, inputConfig, false);
-            lockOutputToRecipe();
+            craftDimension = 0;
+            return;
         }
+        if (!craftingActive) return;
+        lockOutputToRecipe();
+        int minDim = minCraftDim();
+        craftDimension = Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
+        craftingIngredients = buildSquareArrangement(craftDimension);
+        if (!craftingFitsPackage()) {
+            craftingActive = false;
+            availableCraftingRecipe = null;   // hides the crafting toggle; falls back to plain ingredient request
+            craftingIngredients = new ArrayList<>();
+            craftDimension = 0;
+            return;
+        }
+        craftBatch = Mth.clamp(craftBatch, 1, maxCraftBatch());
+    }
+
+    /**
+     * Resolves a recipe cell's ingredient to the connected input stack that satisfies it (count 1), so the
+     * dispatched pattern matches the items the package box will carry; an empty cell stays empty.
+     */
+    private ItemStack resolveCraftCell(Ingredient ing) {
+        if (ing.isEmpty()) return ItemStack.EMPTY;
+        for (BigItemStack b : inputConfig)
+            if (!b.stack.isEmpty() && ing.test(b.stack)) return b.stack.copyWithCount(1);
+        ItemStack[] items = ing.getItems();
+        return items.length > 0 ? items[0].copyWithCount(1) : ItemStack.EMPTY;
+    }
+
+    /**
+     * Lays the recipe's true W×H ingredients into a {@code dim×dim} grid (row-major), the rest empty — the
+     * pattern that maps cell-for-cell onto a dim×dim mechanical-crafter array on unpacking.
+     *
+     * <p>A ≤3×3 recipe is centred within the top-left 3×3 block (matching Create's factory-panel layout, e.g.
+     * a vertical stick at top-middle + centre, not the corner); larger recipes anchor at the top-left corner.
+     * Centring inside the fixed 3×3 block (rather than the whole grid) keeps the recipe in the same on-screen
+     * slots when the grid is scrolled larger.</p>
+     */
+    private List<BigItemStack> buildSquareArrangement(int dim) {
+        List<BigItemStack> out = new ArrayList<>(dim * dim);
+        int w = craftingPatternWidth(), h = craftingPatternHeight();
+        var ings = availableCraftingRecipe.getIngredients();
+        int colOff = craftingIsLarge() ? 0 : (3 - w) / 2;
+        int rowOff = craftingIsLarge() ? 0 : (3 - h) / 2;
+        for (int r = 0; r < dim; r++)
+            for (int c = 0; c < dim; c++) {
+                int rr = r - rowOff, cc = c - colOff;
+                ItemStack s = (rr >= 0 && rr < h && cc >= 0 && cc < w && rr * w + cc < ings.size())
+                    ? resolveCraftCell(ings.get(rr * w + cc)) : ItemStack.EMPTY;
+                out.add(new BigItemStack(s, 1));
+            }
+        return out;
     }
 
     /** In crafting mode the output count is fixed to the recipe's yield (not user-scrollable). */
@@ -366,14 +547,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Re-evaluates crafting availability after the input connections change, then rebuilds the layout. */
     private void onConnectionsChanged() {
         searchForCraftingRecipe();
-        if (availableCraftingRecipe == null) {
-            craftingActive = false;
-            craftingIngredients = new ArrayList<>();
-        } else if (craftingActive) {
-            craftingIngredients =
-                FactoryPanelScreen.convertRecipeToPackageOrderContext(availableCraftingRecipe, inputConfig, false);
-            lockOutputToRecipe();
-        }
+        applyCraftingResolution();
         rebuildWidgets();   // clears + re-runs init(); button appears/disappears with availability
     }
 
@@ -390,10 +564,30 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
 
-        availableCraftingRecipe = level.getRecipeManager()
-            .getAllRecipesFor(RecipeType.CRAFTING)
+        // Vanilla 3×3 first; then Create's mechanical-crafting recipes, which can be larger than 3×3
+        // (MechanicalCraftingRecipe extends ShapedRecipe, so it satisfies the same CraftingRecipe contract).
+        availableCraftingRecipe = matchCraftingRecipe(level, output, itemsToUse, RecipeType.CRAFTING);
+        if (availableCraftingRecipe == null) {
+            RecipeType<MechanicalCraftingRecipe> mechanical = AllRecipeTypes.MECHANICAL_CRAFTING.getType();
+            availableCraftingRecipe = matchCraftingRecipe(level, output, itemsToUse, mechanical);
+        }
+    }
+
+    /**
+     * Finds a recipe of {@code type} that produces {@code output} and whose every ingredient is covered by a
+     * wired input (mirrors Create's {@code FactoryPanelScreen#searchForCraftingRecipe}). Generic over the
+     * crafting recipe type so it serves both vanilla {@code CRAFTING} and Create's {@code MECHANICAL_CRAFTING}.
+     */
+    @Nullable
+    private <T extends CraftingRecipe> CraftingRecipe matchCraftingRecipe(
+            ClientLevel level, ItemStack output, Set<Item> itemsToUse, RecipeType<T> type) {
+        return level.getRecipeManager()
+            .getAllRecipesFor(type)
             .parallelStream()
             .filter(r -> output.getItem() == r.value().getResultItem(level.registryAccess()).getItem())
+            // Reject recipes whose minimum crafter grid exceeds the configured maximum — they'd need a larger
+            // crafter array than allowed, so crafting mode is simply unavailable for them (button never shows).
+            .filter(r -> recipeFitsConfiguredGrid(r.value()))
             .filter(r -> {
                 if (AllRecipeTypes.shouldIgnoreInAutomation(r)) return false;
                 Set<Item> itemsUsed = new HashSet<>();
@@ -411,8 +605,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 return itemsUsed.size() >= itemsToUse.size();
             })
             .findAny()
-            .map(RecipeHolder::value)
+            .<CraftingRecipe>map(RecipeHolder::value)
             .orElse(null);
+    }
+
+    /** Whether a recipe's minimum bounding square (≥3) fits the configured maximum crafter-grid size. Only
+     *  shaped recipes can exceed 3×3; anything else is at most 3×3 and always fits. */
+    private static boolean recipeFitsConfiguredGrid(CraftingRecipe r) {
+        int min = r instanceof ShapedRecipe s ? Math.max(3, Math.max(s.getWidth(), s.getHeight())) : 3;
+        return min <= ServerConfig.maxCraftGridSize();
     }
 
     private static boolean in(double mx, double my, int x, int y, int w, int h) {
@@ -432,7 +633,71 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
+        if (patternHovered) renderCraftingPattern(gfx, mouseX, mouseY);   // Ctrl-held layout, drawn on top
         renderTooltip(gfx, mouseX, mouseY);
+    }
+
+    // Recipe-grid dimensions, matching Create's convertRecipeToPackageOrderContext exactly: a shaped recipe
+    // uses its own width/height; any other (shapeless) uses width = min(3, count), height = min(3, count/3+1).
+    // Getting these right is what centres narrow recipes correctly (e.g. a shapeless 1-ingredient → 1×1 →
+    // centre cell); a hardcoded 3 wide would have pushed it to the left column instead.
+
+    private int craftingPatternWidth() {
+        if (availableCraftingRecipe instanceof ShapedRecipe shaped)
+            return Math.max(1, shaped.getWidth());
+        if (availableCraftingRecipe == null) return 1;
+        return Math.min(3, Math.max(1, availableCraftingRecipe.getIngredients().size()));
+    }
+
+    private int craftingPatternHeight() {
+        if (availableCraftingRecipe instanceof ShapedRecipe shaped)
+            return Math.max(1, shaped.getHeight());
+        if (availableCraftingRecipe == null) return 1;
+        return Math.min(3, availableCraftingRecipe.getIngredients().size() / 3 + 1);
+    }
+
+    /**
+     * Ctrl-held layout popup near the cursor: a header (with the current N×N grid size) and a scroll hint
+     * above the recipe laid out in its dim×dim crafter grid (the exact pattern the package will unpack into,
+     * read from {@link #craftingIngredients}). Ctrl-scrolling an ingredient resizes the grid live.
+     */
+    private void renderCraftingPattern(GuiGraphics gfx, int mouseX, int mouseY) {
+        if (craftingIngredients.isEmpty()) return;
+        int dim = effectiveCraftDimension();
+        int cell = 17;
+        int headerColor = 0xFF000000 | (ScrollInput.HEADER_RGB.getRGB() & 0xFFFFFF);   // blue, like tooltip headers
+        Component l1 = Component.translatable("createfactorycontroller.gui.crafting_pattern", dim, dim);
+        Component l2 = Component.translatable("createfactorycontroller.gui.crafting_scroll_dim")
+            .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC);
+        int gridSpan = dim * cell + 1;                    // include the closing grid line
+        int textBlockH = font.lineHeight * 2 + 2;
+        int gap = 3;
+        int contentW = Math.max(gridSpan, Math.max(font.width(l1), font.width(l2)));
+        int contentH = textBlockH + gap + gridSpan;
+        // Place + clamp like a vanilla tooltip (content origin; the background border extends a few px out).
+        int margin = 6;
+        int cx = Mth.clamp(mouseX + 12, margin, Math.max(margin, width - contentW - margin));
+        int cy = Mth.clamp(mouseY - 12, margin, Math.max(margin, height - contentH - margin));
+
+        gfx.pose().pushPose();
+        // Vanilla tooltip frame (gradient border + dark fill), then draw content above it at z 400.
+        TooltipRenderUtil.renderTooltipBackground(gfx, cx, cy, contentW, contentH, 400);
+        gfx.pose().translate(0, 0, 400);
+        gfx.drawString(font, l1, cx, cy, headerColor, false);
+        gfx.drawString(font, l2, cx, cy + font.lineHeight + 2, 0xFFA0A0A0, false);
+
+        int gridX = cx, gridY = cy + textBlockH + gap;
+        int lineColor = 0xFF556088;
+        for (int k = 0; k <= dim; k++) {
+            gfx.fill(gridX + k * cell, gridY, gridX + k * cell + 1, gridY + dim * cell, lineColor);   // verticals
+            gfx.fill(gridX, gridY + k * cell, gridX + dim * cell + 1, gridY + k * cell + 1, lineColor); // horizontals
+        }
+        for (int i = 0; i < craftingIngredients.size(); i++) {
+            ItemStack s = craftingIngredients.get(i).stack;
+            if (s.isEmpty()) continue;
+            gfx.renderItem(s, gridX + (i % dim) * cell + 1, gridY + (i / dim) * cell + 1);
+        }
+        gfx.pose().popPose();
     }
 
     @Override
@@ -445,22 +710,70 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         VirtualGaugeBehaviour g = gauge();
         List<Component> tooltip = null;
 
-        // INPUTS — recipe arrangement when crafting is active, otherwise the connected ingredients.
-        if (craftingActive) {
-            for (int i = 0; i < craftingIngredients.size(); i++) {
+        // INPUTS — a ≤3×3 recipe fits the grid, so each arrangement cell maps to one input slot (legacy view).
+        // A >3×3 recipe can't, so we aggregate to one slot per distinct ingredient type (count = cells × batch,
+        // no slot overflow) and offer the real N×M layout in a Ctrl-held tooltip (drawn in render()).
+        patternHovered = false;
+        if (craftingActive && craftingIsLarge()) {
+            List<CraftSlot> slots = craftingDisplaySlots();
+            boolean hovering = false;
+            // Walk all 9 grid cells (not just the filled ones) so the tooltip covers every slot, empty too.
+            for (int i = 0; i < MAX_INPUT_SLOTS; i++) {
                 int ix = panelX + 68 + (i % 3) * 20;
                 int iy = panelY + 28 + (i / 3) * 20;
-                ItemStack stack = craftingIngredients.get(i).stack;
+                if (i < slots.size()) {
+                    CraftSlot slot = slots.get(i);
+                    gfx.renderItem(slot.stack(), ix, iy);
+                    gfx.renderItemDecorations(font, slot.stack(), ix, iy, String.valueOf(slot.amount()));
+                }
+                if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
+            }
+            if (hovering) {
+                if (hasControlDown())
+                    patternHovered = true;   // draw the N×M layout grid in render()
+                else {
+                    int dim = effectiveCraftDimension();
+                    tooltip = List.of(
+                        CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
+                        Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
+                        Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
+                        Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
+                }
+            }
+        } else if (craftingActive) {
+            // ≤3×3: render the recipe's own cells straight into the grid, like Create's factory panel. The
+            // arrangement is a dim×dim square, so we read its top-left 3×3 — the recipe keeps its pattern
+            // position here even when the dimension is scrolled up to a larger crafter grid.
+            int dim = effectiveCraftDimension();
+            boolean hovering = false;
+            for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
+                int ix = panelX + 68 + col * 20;
+                int iy = panelY + 28 + row * 20;
+                int idx = row * dim + col;
+                ItemStack stack = (col < dim && row < dim && idx < craftingIngredients.size())
+                    ? craftingIngredients.get(idx).stack : ItemStack.EMPTY;
                 gfx.renderItem(stack, ix, iy);
                 // With a batch > 1 each grid slot consumes (slot amount × batch) of its item — show it.
                 if (!stack.isEmpty() && craftBatch > 1)
                     gfx.renderItemDecorations(font, stack, ix, iy,
                         String.valueOf(Math.max(1, stack.getCount()) * craftBatch));
-                if (in(mouseX, mouseY, ix, iy, 16, 16))
+                if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
+            }
+            if (hovering) {
+                if (hasControlDown())
+                    patternHovered = true;
+                else if (dim > 3)
                     tooltip = List.of(
-                        CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                        CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component(),
-                        CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component());
+                            CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
+                            Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
+                            Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
+                            Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
+                else
+                    tooltip = List.of(
+                            CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
+                            CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component(),
+                            CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component(),
+                            Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
             }
         } else {
             List<InputSlot> slots = layoutInputSlots();
@@ -603,6 +916,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             tooltip = g.filter.isEmpty()
                 ? List.of(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
                 : getTooltipFromItem(Minecraft.getInstance(), g.filter);
+
+        // Crafting toggle — rendered here (last) rather than self-rendered by the widget, so the buttons
+        // drawn after it (new-input / relocate) can't paint over its now multi-line tooltip.
+        if (craftingButton != null && craftingButton.isMouseOver(mouseX, mouseY))
+            tooltip = craftingButtonTooltip();
 
         if (tooltip != null)
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
@@ -774,7 +1092,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 }
             }
         } else if (in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58)) {
-            adjustCraftBatch(dir * step);
+            // Ctrl over the recipe's ingredients resizes the square crafter grid; otherwise tune the batch.
+            if (hasControlDown()) adjustCraftDimension(dir);
+            else adjustCraftBatch(dir * step);
             return true;
         }
         // Output slot. Outside crafting mode this is the free output count; in crafting mode the
@@ -854,8 +1174,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         int batch = craftingActive ? Math.max(1, craftBatch) : 1;
+        int dimension = craftingActive ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
-            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch,
+            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
             promiseExpiration.getState(), thresholdCount, mode, passiveMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }

@@ -102,6 +102,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public int recipeOutput = 1;
     /** Crafts carried per request package in mechanical-crafting mode (≥1); 1 = a single craft. */
     public int craftBatch = 1;
+    /** Square crafter-grid dimension (N→N×N) a large (&gt;3×3) recipe is laid out for; 0 when not used.
+     *  The dispatched arrangement is already padded to this size, so this is kept only to restore the UI. */
+    public int craftDimension = 0;
     public int promiseClearingInterval = -1;
     public RequestPromiseQueue restockerPromises;
 
@@ -508,6 +511,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putString("RecipeAddress", recipeAddress);
         tag.putInt("RecipeOutput", recipeOutput);
         tag.putInt("CraftBatch", craftBatch);
+        tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
 
         // Connections
@@ -571,6 +575,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // current values without a separate on-demand fetch.
         tag.putInt("RecipeOutput", recipeOutput);
         tag.putInt("CraftBatch", craftBatch);
+        tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
         tag.putInt("Stock", stockLevel);
         tag.putInt("Promised", promisedCount);
@@ -610,6 +615,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.recipeAddress = tag.getString("RecipeAddress");
         b.recipeOutput = tag.getInt("RecipeOutput");
         b.craftBatch = Math.max(1, tag.getInt("CraftBatch"));   // absent (legacy data) → 1
+        b.craftDimension = Math.max(0, tag.getInt("CraftDimension"));   // 0 = not a large recipe / unset
         b.promiseClearingInterval = tag.getInt("PromiseClearingInterval");
 
         ListTag targetedByList = tag.getList("TargetedBy", Tag.TAG_COMPOUND);

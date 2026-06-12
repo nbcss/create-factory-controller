@@ -4,11 +4,6 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
  * Client-side, per-installation persisted settings (stored in {@code config/createfactorycontroller-client.toml}).
- *
- * <p>Currently just the "full overlay" toggle for the controller canvas: when on, every gauge draws its
- * count label; when off, only the hovered gauge does. It persists across controllers and game sessions and
- * is local to each player's client. Toggled in-GUI via the rebindable keybind (default Left Alt); also
- * editable from the mod's config screen.</p>
  */
 public final class ClientConfig {
 
@@ -18,8 +13,7 @@ public final class ClientConfig {
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         FULL_OVERLAY = builder
-                .comment("Show the count label on every gauge in the controller overlay (on), or only the hovered gauge (off).",
-                        "Toggle in the controller GUI with the keybind (default Left Alt).")
+                .comment("Show the count label on every gauge in the controller overlay (on), or only the hovered gauge (off).")
                 .translation("createfactorycontroller.config.full_overlay")
                 .define("fullOverlay", true);
         SPEC = builder.build();

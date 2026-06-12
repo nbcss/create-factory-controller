@@ -25,8 +25,8 @@ import java.util.Map;
  * {@code reset == true} wipes the gauge's whole recipe config (mirrors Create's trash button).
  */
 public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos, String address,
-                                    int recipeOutput, int craftBatch, int promiseInterval, int count,
-                                    ThresholdUnit mode, boolean passiveMode,
+                                    int recipeOutput, int craftBatch, int craftDimension, int promiseInterval,
+                                    int count, ThresholdUnit mode, boolean passiveMode,
                                     List<VirtualPanelPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
@@ -43,6 +43,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 buf.writeUtf(pkt.address);
                 buf.writeInt(pkt.recipeOutput);
                 buf.writeInt(pkt.craftBatch);
+                buf.writeInt(pkt.craftDimension);
                 buf.writeInt(pkt.promiseInterval);
                 buf.writeInt(pkt.count);
                 buf.writeVarInt(pkt.mode.ordinal());
@@ -66,6 +67,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 String address = buf.readUtf();
                 int recipeOutput = buf.readInt();
                 int craftBatch = buf.readInt();
+                int craftDimension = buf.readInt();
                 int promiseInterval = buf.readInt();
                 int count = buf.readInt();
                 ThresholdUnit mode = ThresholdUnit.values()[
@@ -84,8 +86,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 List<ItemStack> arrangement = new ArrayList<>(m);
                 for (int i = 0; i < m; i++)
                     arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
-                return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, promiseInterval,
-                    count, mode, passiveMode, positions, amounts, arrangement, clearPromises, reset);
+                return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, craftDimension,
+                    promiseInterval, count, mode, passiveMode, positions, amounts, arrangement, clearPromises, reset);
             });
 
     @Override
@@ -103,8 +105,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 inputs.computeIfAbsent(packet.inputPositions().get(i), k -> new ArrayList<>())
                       .add(packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
-                packet.promiseInterval(), packet.count(), packet.mode(), packet.passiveMode(), inputs,
-                packet.craftingArrangement(), packet.clearPromises(), packet.reset());
+                packet.craftDimension(), packet.promiseInterval(), packet.count(), packet.mode(),
+                packet.passiveMode(), inputs, packet.craftingArrangement(), packet.clearPromises(), packet.reset());
         });
     }
 }
