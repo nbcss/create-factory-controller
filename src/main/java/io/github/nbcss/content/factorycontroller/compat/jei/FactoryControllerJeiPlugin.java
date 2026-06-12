@@ -1,16 +1,19 @@
 package io.github.nbcss.content.factorycontroller.compat.jei;
 
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
 import io.github.nbcss.content.factorycontroller.gui.SetItemScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
+import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,29 +49,51 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
         });
     }
 
-    /** Offers the set-item screen's ghost slot as a drop target for item ingredients. */
+    /**
+     * Offers the set-item screen's ghost slot as a drop target. Item ingredients set the item filter; with
+     * CreateFluidLogistic installed, a dragged fluid is converted to a fluid filter (a virtual tank stack).
+     */
     private static class SetItemGhostHandler implements IGhostIngredientHandler<SetItemScreen> {
         @Override
         public <I> List<Target<I>> getTargetsTyped(SetItemScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
             List<Target<I>> targets = new ArrayList<>();
-            Optional<ItemStack> stack = ingredient.getItemStack();
-            if (stack.isEmpty()) return targets;          // items only
             Rect2i area = screen.ghostSlotArea();
-            targets.add(new Target<>() {
-                @Override
-                public Rect2i getArea() {
-                    return area;
-                }
 
-                @Override
-                public void accept(I dropped) {
-                    screen.setGhostFromJei(stack.get());
+            Optional<ItemStack> stack = ingredient.getItemStack();
+            if (stack.isPresent()) {
+                ItemStack filter = stack.get();
+                targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
+                return targets;
+            }
+            // Fluid ghost → fluid filter, only when CreateFluidLogistic is present.
+            if (FluidCompat.isLoaded()) {
+                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
+                if (fluid.isPresent() && !fluid.get().isEmpty()) {
+                    ItemStack filter = FluidCompat.makeFluidFilter(fluid.get());
+                    if (!filter.isEmpty())
+                        targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
                 }
-            });
+            }
             return targets;
         }
 
         @Override
         public void onComplete() {}
+    }
+
+    /** A drop target over {@code area} that runs {@code action} on accept (ignoring the dropped value, which
+     *  we've already captured as a concrete filter stack). */
+    private static <I> IGhostIngredientHandler.Target<I> dropTarget(Rect2i area, Runnable action) {
+        return new IGhostIngredientHandler.Target<>() {
+            @Override
+            public Rect2i getArea() {
+                return area;
+            }
+
+            @Override
+            public void accept(I dropped) {
+                action.run();
+            }
+        };
     }
 }

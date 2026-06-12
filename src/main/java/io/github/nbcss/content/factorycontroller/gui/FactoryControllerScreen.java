@@ -714,10 +714,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Left-click with a carried gauge → attach it at the cell (server rejects if occupied).
-            if (button == 0 && ComponentRegistry.containsItem(carried)) {
+            // Left-click an EMPTY cell with a carried gauge → attach it there (occupied cells fall through
+            // to the gauge's own click handler below, so left-click sets its filter just like right-click).
+            if (button == 0 && widget == null && ComponentRegistry.containsItem(carried)) {
                 // Board full (placing on an empty cell would add a component) → prompt, don't send.
-                if (widget == null && menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
+                if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
                     setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
                             FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
                     playDenySound();
@@ -737,9 +738,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Click an existing gauge → its own interaction (set item / configure).
+            // Click an existing gauge → its own interaction (set item / configure). Pass the button so an
+            // empty gauge can take a fluid filter on right-click (CreateFluidLogistic) vs an item on left.
             if (leftOrRight && widget != null)
-                return widget.onClick(this, carried);
+                return widget.onClick(this, carried, button);
 
             // Pan-view button (rebindable, middle mouse by default) → start a drag-pan.
             if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {

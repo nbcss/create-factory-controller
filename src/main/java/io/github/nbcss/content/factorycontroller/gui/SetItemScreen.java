@@ -9,7 +9,9 @@ import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import io.github.nbcss.CreateFactoryController;
 import net.minecraft.client.Minecraft;
@@ -180,7 +182,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
         if (slotId == menu.ghostSlotIndex()) {
             if (type == ClickType.QUICK_MOVE) menu.setGhostFilter(ItemStack.EMPTY);
-            else menu.setGhostFilter(menu.getCarried());
+            else menu.setGhostFilter(filterFromCarried(menu.getCarried(), mouseButton));
             return;
         }
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
@@ -208,6 +210,19 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                 menu.controllerPos, gaugePos, menu.getGhostFilter().copy()));
         menu.setGhostFilter(ItemStack.EMPTY);
         Minecraft.getInstance().setScreen(controller);
+    }
+
+    /**
+     * The filter a carried item produces: normally the item itself, but with CreateFluidLogistic installed a
+     * right-click (mouseButton 1) on a filled fluid container uses its stored fluid as a fluid filter instead.
+     * Without the mod, or on left-click, the container item is the filter (requirement: both clicks set item).
+     */
+    private ItemStack filterFromCarried(ItemStack carried, int mouseButton) {
+        if (FluidCompat.isLoaded() && mouseButton == 1) {
+            FluidStack fluid = FluidCompat.fluidInContainer(carried);
+            if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
+        }
+        return carried;
     }
 
     // ── JEI hooks (used by the handlers registered on this screen) ──

@@ -93,13 +93,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         super.tick();
         if (level == null || level.isClientSide()) return;
 
-        // Passive Request demand pre-pass: settle the passive-gauge dependency graph consumer-first in this one
-        // tick, so a cleared demand doesn't crawl one chain level per tick (which would make an
-        // intermediate gauge hold a stale non-zero demand for a tick and fire a spurious request / flash).
-        // Only passive gauges participate: a non-passive gauge has a fixed target, so it needs no recompute and
-        // demand never propagates through it — it's a constant from a producer's point of view. So we both
-        // start the DFS only from passive gauges and recurse only into passive consumers. Skipped entirely when
-        // no gauge is in passive mode; buffers are reused so the walk allocates nothing.
         boolean anyPassive = false;
         for (VirtualComponentBehaviour component : components.values())
             if (component instanceof VirtualGaugeBehaviour gauge && gauge.passiveMode) { anyPassive = true; break; }
@@ -182,8 +175,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (networkId == null) return;
             networks.add(networkId);
         } else {
-            // Selection is a client-side GUI choice; validate it against networks this
-            // controller actually knows (populated by previously attached tuned gauges).
             if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
                 return;
             }
@@ -222,11 +213,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
-    /**
-     * Forgets any known network that no longer has a component on it (and drops its nickname). A network
-     * only becomes known when a tuned gauge is attached, so once its last gauge is removed it carries no
-     * state worth keeping — auto-deleting it keeps the network selector free of dead entries.
-     */
     private void pruneEmptyNetworks() {
         networks.removeIf(net -> !isNetworkInUse(net));
         networkNicknames.keySet().removeIf(net -> !networks.contains(net));
@@ -241,12 +227,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Component relocate ─────────────────────────────────────────────────────
 
-    /**
-     * Moves the component at {@code from} to the empty cell {@code to}, re-keying both the component
-     * map and the connection graph (every neighbour's {@code targeting}/{@code targetedBy} reference
-     * to the old position is rewritten to the new one). No-op if {@code to} is occupied or {@code from}
-     * holds nothing — the caller (relocate mode) treats an occupied target as an aborted move.
-     */
     public void moveComponent(VirtualPanelPosition from, VirtualPanelPosition to) {
         if (from.equals(to)) return;
         VirtualComponentBehaviour behaviour = components.get(from);
@@ -332,8 +312,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
         gauge.unit = mode;
         gauge.passiveMode = passiveMode;
-        // In passive mode the count is server-managed (recomputed each tick from consumer demand), so don't
-        // let the client's transient value override it; otherwise take the player's target.
         if (!passiveMode) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
         for (Map.Entry<VirtualPanelPosition, List<Integer>> e : inputAmounts.entrySet()) {
@@ -439,8 +417,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     private void syncMenuToPlayers() {
         if (level == null || level.isClientSide()) return;
         ServerLevel serverLevel = (ServerLevel) level;
-        // Only players with this controller's GUI open need the snapshot — gather them first and skip
-        // building it entirely when nobody is watching.
         List<ServerPlayer> viewers = new ArrayList<>();
         for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers())
             if (player.containerMenu instanceof FactoryControllerMenu menu
@@ -480,9 +456,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.write(tag, registries, clientPacket);
 
-        // The block-entity chunk-sync packet carries no board: nothing in the world renders from it, and
-        // an open GUI gets the full snapshot via the menu (writeExtraData + SyncPanelStatePacket). This
-        // keeps per-tick updates to nearby (non-GUI) players tiny regardless of board size.
         if (clientPacket) return;
 
         if (!customName.isBlank()) tag.putString("CustomName", customName);

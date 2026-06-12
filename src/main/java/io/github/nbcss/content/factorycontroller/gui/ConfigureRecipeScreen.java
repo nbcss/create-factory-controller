@@ -22,6 +22,7 @@ import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.ConfigureRecipePacket;
 import io.github.nbcss.content.factorycontroller.packet.DisconnectIngredientPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
@@ -101,6 +102,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int thresholdCount = 0;
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
     private boolean passiveMode = false;
+    /** True when the gauge's filter is a CreateFluidLogistic fluid filter: the threshold/output amounts are then
+     *  millibuckets, shown/edited in mB/B with fluid scroll steps. Set once per open in {@link #updateConfigs}. */
+    private boolean fluidMode = false;
     // One entry per input CONNECTION (not per grid slot): the source gauge and its TOTAL item count.
     // The 3×3 grid layout — full stacks first, one partial last slot, contiguous per connection, packed
     // in connection order — is derived on demand from these via layoutInputSlots().
@@ -254,6 +258,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
+    /** Whether input connection {@code c}'s ingredient is a fluid (CreateFluidLogistic) — its amount is then in
+     *  millibuckets, occupies a single slot (no stack split), and scrolls with fluid steps. */
+    private boolean isFluidConn(int c) {
+        return FluidCompat.isFluidFilter(ingredientOf(inputConnections.get(c)));
+    }
+
+    /** Per-ingredient millibucket cap (90 B) */
+    private static final int FLUID_INGREDIENT_CAP_MB = 90_000;
+
     /** A grid slot's source: which input connection it belongs to, and how many items sit in it. */
     private record InputSlot(int connectionIndex, int amount) {}
 
@@ -269,8 +282,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private List<InputSlot> layoutInputSlots() {
         List<InputSlot> slots = new ArrayList<>();
         for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
+            int total = Math.max(1, inputTotals.get(c));
+            if (isFluidConn(c)) {                       // a fluid ingredient is one slot of mB (never stack-split)
+                slots.add(new InputSlot(c, total));
+                continue;
+            }
             int ss = stackSizeOf(ingredientOf(inputConnections.get(c)));
-            int remaining = Math.max(1, inputTotals.get(c));
+            int remaining = total;
             do {
                 if (slots.size() >= MAX_INPUT_SLOTS) return slots;
                 int amt = Math.min(ss, remaining);
@@ -286,6 +304,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int used = 0;
         for (int c = 0; c < inputConnections.size(); c++) {
             if (c == exceptIndex) continue;
+            if (isFluidConn(c)) { used += 1; continue; }     // fluid ingredient = one slot
             int ss = stackSizeOf(ingredientOf(inputConnections.get(c)));
             int total = Math.max(1, inputTotals.get(c));
             used += (total + ss - 1) / ss;   // ceil
@@ -299,6 +318,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * stack. Clamped to ≥1 and to the item count that still fits the free grid slots.
      */
     private void adjustInputTotal(int connectionIndex, int dir, boolean shift, boolean ctrl) {
+        if (isFluidConn(connectionIndex)) {              // fluid ingredient: millibuckets, fluid steps, one slot
+            int curMb = Math.max(1, inputTotals.get(connectionIndex));
+            inputTotals.set(connectionIndex, adjustFluidAmount(curMb, dir, shift, ctrl, 1, FLUID_INGREDIENT_CAP_MB));
+            return;
+        }
         int ss = stackSizeOf(ingredientOf(inputConnections.get(connectionIndex)));
         int cur = Math.max(1, inputTotals.get(connectionIndex));
 
@@ -452,6 +476,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
         passiveMode = g.passiveMode;
+        // Fluid filter (CreateFluidLogistic): amounts are millibuckets. Coerce the unit into the fluid group,
+        // and default a fresh gauge's output to 1000 mB (one bucket).
+        fluidMode = FluidCompat.isFluidFilter(g.filter);
+        if (fluidMode && !mode.fluid) mode = ThresholdUnit.FLUID_MB;
+        if (!fluidMode && mode.fluid) mode = ThresholdUnit.ITEMS;
+        if (fluidMode && outputCount <= 1) outputCount = 1000;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
             // Collapse the stored per-slot breakdown into one total; the canonical slot layout (full
             // stacks first, one partial last) is re-derived on render/scroll/send.
@@ -776,13 +806,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 InputSlot slot = slots.get(i);
                 int ix = panelX + 68 + (i % 3) * 20;
                 int iy = panelY + 28 + (i / 3) * 20;
+                boolean fluidIng = isFluidConn(slot.connectionIndex());
                 ItemStack stack = ingredientOf(inputConnections.get(slot.connectionIndex()));
                 gfx.renderItem(stack, ix, iy);
                 if (!stack.isEmpty())
-                    gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(slot.amount()));
+                    gfx.renderItemDecorations(font, stack, ix, iy,
+                        fluidIng ? formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
                     int total = Math.max(1, inputTotals.get(slot.connectionIndex()));
+                    String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
                     tooltip = stack.isEmpty()
                         ? List.of(
                             CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
@@ -790,7 +823,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         : List.of(
                             CreateLang.translate("gui.factory_panel.sending_item",
-                                CreateLang.itemName(stack).add(CreateLang.text(" x" + total)).string())
+                                CreateLang.itemName(stack).add(CreateLang.text(" x" + totalLabel)).string())
                                 .color(ScrollInput.HEADER_RGB).component(),
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
@@ -810,12 +843,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (g != null && !g.filter.isEmpty()) {
             int ox = panelX + 160, oy = panelY + 48;
             int producedCount = craftingActive ? outputCount * Math.max(1, craftBatch) : outputCount;
+            // Output is always magnitude-scaled (mB/B) regardless of the unit box: short ≤1-dp label, full tooltip.
+            String producedBox = fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount);
+            String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             gfx.renderItem(g.filter, ox, oy);
-            gfx.renderItemDecorations(font, g.filter, ox, oy, String.valueOf(producedCount));
+            gfx.renderItemDecorations(font, g.filter, ox, oy, producedBox);
             if (in(mouseX, mouseY, ox, oy, 16, 16))
                 tooltip = List.of(
                     CreateLang.translate("gui.factory_panel.expected_output",
-                        CreateLang.itemName(g.filter).add(CreateLang.text(" x" + producedCount)).string())
+                        CreateLang.itemName(g.filter).add(CreateLang.text(" x" + producedTip)).string())
                         .color(ScrollInput.HEADER_RGB).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
@@ -828,9 +864,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Open-promise package box (left of the promise-interval scroll).
         int pbx = panelX + 68, pby = panelY + PANEL_H - 24;
         int promised = g == null ? 0 : g.promisedCount;
+        // A fluid gauge's promise is millibuckets — same short mB/B format as the output slot.
+        String promisedLabel = g != null && FluidCompat.isFluidFilter(g.filter)
+            ? formatFluidShort(promised) : String.valueOf(promised);
         ItemStack box = PackageStyles.getDefaultBox();
         gfx.renderItem(box, pbx, pby);
-        gfx.renderItemDecorations(font, box, pbx, pby, String.valueOf(promised));
+        gfx.renderItemDecorations(font, box, pbx, pby, promisedLabel);
         if (in(mouseX, mouseY, pbx, pby, 16, 16))
             tooltip = promised == 0
                 ? List.of(
@@ -840,31 +879,30 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.factory_panel.promise_prevents_oversending").style(ChatFormatting.GRAY).component())
                 : List.of(
                     CreateLang.translate("gui.factory_panel.promised_items").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.text(g.filter.getHoverName().getString() + " x" + promised)
+                    CreateLang.text(g.filter.getHoverName().getString() + " x" + promisedLabel)
                         .component(),
                     CreateLang.translate("gui.factory_panel.left_click_reset")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
 
-        // 3D gauge preview + the filter floating in front of it.
+        // 3D gauge preview + the filter floating in front of it. A fluid filter renders as a 3D fluid block
+        // (the fluid itself) rather than the tank item it's stored in.
         GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack())
             .scale(4).at(0, 0, -200).render(gfx, panelX + 195, panelY + 139);
-        if (g != null && !g.filter.isEmpty())
-            GuiGameElement.of(g.filter).scale(1.625).at(0, 0, 100).render(gfx, panelX + 214, panelY + 152);
+        if (g != null && !g.filter.isEmpty()) {
+            if (FluidCompat.isFluidFilter(g.filter))
+                FluidCubeRenderer.render(gfx, FluidCompat.getFilterFluid(g.filter), panelX + 219, panelY + 157, 16);
+            else
+                GuiGameElement.of(g.filter).scale(1.625).at(0, 0, 100).render(gfx, panelX + 214, panelY + 152);
+        }
 
-        // Widgets (added via addWidget; drawn manually on top of the panel). The address box is drawn
-        // later in renderForeground (a clean render pass) so its clipboard hint + suggestion dropdown
-        // aren't clobbered by the 3D gauge preview's render state or covered by later panel draws.
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
-        // Left-side action stack drawn top→bottom (crafting y+27, new-input y+47, relocate y+67): a button's
-        // hover tooltip extends upward from the cursor over the buttons above it, so the upper ones must be
-        // drawn first or a later neighbour (e.g. crafting) would paint over the tooltip.
+
         if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (passiveModeButton != null) passiveModeButton.render(gfx, mouseX, mouseY, partialTick);
-        // Rendered last of the widgets so the ScrollInput's own hover tooltip draws on top of the other
-        // buttons instead of being covered by them (the value label below still paints over its box).
+
         promiseExpiration.render(gfx, mouseX, mouseY, partialTick);
 
         // Promise-interval label over the scroll box.
@@ -887,14 +925,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
 
-        // Unit box tooltip — two selectable modes (items / stacks), with the active one arrowed.
-        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H))
+        // Unit box tooltip — the two modes of the current group (items/stacks, or mB/B for a fluid filter).
+        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+            ThresholdUnit a = fluidMode ? ThresholdUnit.FLUID_MB : ThresholdUnit.ITEMS;
+            ThresholdUnit b = fluidMode ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.STACKS;
             tooltip = List.of(
                 CreateLang.translate("schedule.condition.threshold.item_measure").color(ScrollInput.HEADER_RGB).component(),
-                ThresholdUnit.ITEMS.tooltipLine(mode == ThresholdUnit.ITEMS),
-                ThresholdUnit.STACKS.tooltipLine(mode == ThresholdUnit.STACKS),
+                a.tooltipLine(mode == a),
+                b.tooltipLine(mode == b),
                 CreateLang.translate("gui.scrollInput.scrollToSelect")
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        }
 
         // Passive mode button tooltip.
         if (passiveModeButton != null && passiveModeButton.isMouseOver(mouseX, mouseY))
@@ -921,6 +962,45 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
+    // ── Fluid mode helpers (CreateFluidLogistic) ───────────────────────────────
+
+    /** The fluid output slot is always capped at 10 B (10000 mB), independent of the threshold unit box. */
+    private static final int FLUID_OUTPUT_CAP_MB = 10_000;
+
+    /**
+     * Largest threshold value the selected fluid unit allows, in that unit: 10000 (mB unit) / 100 (B unit). The
+     * count box value is a plain integer in the unit box's unit (not millibuckets).
+     */
+    private int fluidCountCap() {
+        return mode == ThresholdUnit.FLUID_BUCKET ? 100 : 10_000;
+    }
+
+    /**
+     * Steps a fluid amount in millibuckets (output / ingredient) for one scroll tick: Ctrl ±1, Shift ±10, otherwise
+     * ±1000. The plain (1-bucket / ±1000) step snaps to whole-bucket boundaries when off one, so scrolling up from
+     * e.g. 1 mB lands on 1000 mB ("1B"), not 1001 mB — like the item view's stack-boundary snap. Shift/Ctrl fine
+     * steps never snap.
+     */
+    private static int adjustFluidAmount(int cur, int dir, boolean shift, boolean ctrl, int min, int max) {
+        int next = cur + dir * (ctrl ? 1 : shift ? 10 : 1000);
+        if (!shift && !ctrl && cur % 1000 != 0) {           // 1-bucket step from an off-boundary value
+            int boundary = dir > 0 ? (cur / 1000 + 1) * 1000 : (cur / 1000) * 1000;
+            if (dir > 0 ? next > boundary : next < boundary) next = boundary;
+        }
+        return Mth.clamp(next, min, max);
+    }
+
+    /**
+     * The fluid output slot's label: auto-scaled by magnitude (independent of the unit box) and limited to one
+     * decimal — {@code "XmB"} below a bucket, otherwise buckets to ≤1 dp with the trailing {@code .0} trimmed
+     * ({@code 512→"512mB"}, {@code 2000→"2B"}, {@code 2500→"2.5B"}, {@code 12511→"12.5B"}).
+     */
+    private static String formatFluidShort(int millibuckets) {
+        if (millibuckets < 1000) return millibuckets + "mB";
+        return new java.math.BigDecimal(millibuckets).movePointLeft(3)
+            .setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "B";
+    }
+
     private void renderThreshold(GuiGraphics gfx, @Nullable VirtualGaugeBehaviour behaviour) {
         // stock level
         if (behaviour != null && !behaviour.filter.isEmpty()) {
@@ -928,7 +1008,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.renderItem(behaviour.filter, fx, fy);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
-            drawStockCount(gfx, behaviour.stockLevel, fx, fy);
+            // Fluid stock uses the bucket-aware format + glyphs (CreateFluidLogistic's mB/B/KB on the same
+            // Create NUMBERS sprite); items use the k/m abbreviation. Both share our sprite renderer.
+            drawSpriteCount(gfx, FluidCompat.isFluidFilter(behaviour.filter)
+                ? formatFluidStock(behaviour.stockLevel) : stockCountText(behaviour.stockLevel), fx, fy);
             gfx.pose().popPose();
         }
         // demand
@@ -936,8 +1019,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (passiveMode && behaviour != null && behaviour.passiveMode) {
             displayCount = Math.max(0, behaviour.count);
         }
-        String countStr = displayCount == 0 && !passiveMode
-            ? "/" : String.valueOf(displayCount);
+        // Count box is a plain integer (fluid threshold is whole units of the unit box; items are whole items).
+        String countStr = displayCount == 0 && !passiveMode ? "/" : String.valueOf(displayCount);
         int countColor = passiveMode ? 0xFF9ECFFC : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
         // unit
@@ -945,25 +1028,52 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     }
 
-    /** Replica of StockKeeperRequestScreen#drawItemCount — abbreviated count via the NUMBERS sprites. */
-    private void drawStockCount(GuiGraphics gfx, int count, int itemX, int itemY) {
-        String text = count >= 1000000 ? (count / 1000000) + "m"
+    /** Abbreviated item stock text (k/m), mirroring StockKeeperRequestScreen#drawItemCount. */
+    private static String stockCountText(int count) {
+        if (count >= BigItemStack.INF) return "+";
+        return count >= 1000000 ? (count / 1000000) + "m"
             : count >= 10000 ? (count / 1000) + "k"
             : count >= 1000 ? ((count * 10) / 1000) / 10f + "k"
             : count >= 100 ? count + "" : " " + count;
-        if (count >= BigItemStack.INF) text = "+";
-        if (text.isBlank()) return;
+    }
 
+    /**
+     * Fluid stock text, replicating CreateFluidLogistic's {@code FluidAmountHelper.format}: {@code <100→"XmB"},
+     * {@code <1,000,000→"Y.YB"} (buckets), {@code <1e9→"Y.YKB"} (kilobuckets), else "+". So our label reads the
+     * same as fluid stock in Create's stock keeper, drawn from the same Create NUMBERS sprite.
+     */
+    private static String formatFluidStock(int mb) {
+        if (mb >= 1_000_000_000) return "+";
+        if (mb >= 1_000_000) return compactFluid(mb, 1_000_000, "KB");
+        if (mb >= 100) return compactFluid(mb, 1000, "B");
+        return mb + "mB";
+    }
+
+    private static String compactFluid(int amount, int divisor, String suffix) {
+        if (amount % divisor == 0) return (amount / divisor) + suffix;          // exact: "2B"
+        if (amount / divisor <= 10)                                            // ≤10 units: one decimal "1.5B"
+            return String.format(java.util.Locale.ROOT, "%.1f%s", Math.floor(amount / (divisor / 10.0)) / 10.0, suffix);
+        return String.format(java.util.Locale.ROOT, "%.0f%s", Math.floor(amount / (double) divisor), suffix);  // ">10: "12B"
+    }
+
+    /**
+     * Draws a count/amount string over a slot via Create's NUMBERS sprite sheet — digits, {@code .}, {@code k},
+     * {@code m}, {@code b}, {@code +} (chars lower-cased). The {@code b} (bucket) glyph at xOffset 78 is the one
+     * CreateFluidLogistic uses for fluid amounts; we just map it on the same sheet rather than calling its renderer.
+     */
+    private void drawSpriteCount(GuiGraphics gfx, String text, int itemX, int itemY) {
+        if (text.isBlank()) return;
         int x = (int) Math.floor(-text.length() * 2.5);
-        for (char c : text.toCharArray()) {
-            int index = c - '0';
-            int xOffset = index * 6;
+        for (char raw : text.toCharArray()) {
+            char c = Character.toLowerCase(raw);
+            int xOffset = (c - '0') * 6;
             int spriteWidth = NUM_W;
             switch (c) {
                 case ' ': x += 4; continue;
                 case '.': spriteWidth = 3; xOffset = 60; break;
                 case 'k': xOffset = 64; break;
                 case 'm': spriteWidth = 7; xOffset = 70; break;
+                case 'b': xOffset = 78; break;
                 case '+': spriteWidth = 9; xOffset = 84; break;
                 default: break;
             }
@@ -1097,16 +1207,23 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
             if (craftingActive) {
                 adjustCraftBatch(dir * step);
+            } else if (fluidMode) {
+                outputCount = adjustFluidAmount(outputCount, dir, hasShiftDown(), hasControlDown(), 1, FLUID_OUTPUT_CAP_MB);
+                playScrollSound();
             } else {
                 outputCount = Mth.clamp(outputCount + dir * step, 1, 64);
                 playScrollSound();
             }
             return true;
         }
-        // Threshold count box. Locked in passive mode.
+        // Threshold count box. Locked in passive mode. In fluid mode the amount is millibuckets with fluid steps.
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
             if (!passiveMode) {
-                thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, MAX_THRESHOLD_COUNT);
+                // Fluid threshold is a whole number in the unit box's unit (plain ±1, Shift ±10, Ctrl ±100).
+                int fluidCountStep = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
+                thresholdCount = fluidMode
+                    ? Mth.clamp(thresholdCount + dir * fluidCountStep, 0, fluidCountCap())
+                    : Mth.clamp(thresholdCount + dir * step, 0, MAX_THRESHOLD_COUNT);
                 playScrollSound();
             }
             return true;
@@ -1178,6 +1295,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private void setMode(ThresholdUnit newMode) {
         mode = newMode;
+        if (fluidMode) {   // keep the threshold within the new unit's cap (mB unit allows 10000, B unit 100)
+            thresholdCount = Mth.clamp(thresholdCount, 0, fluidCountCap());
+            outputCount = Mth.clamp(outputCount, 1, FLUID_OUTPUT_CAP_MB);
+        }
         playScrollSound();
     }
 
@@ -1185,7 +1306,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private void togglePassiveMode() {
         if (passiveMode) {
             VirtualGaugeBehaviour behaviour = gauge();
-            thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0, MAX_THRESHOLD_COUNT);
+            thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0,
+                fluidMode ? fluidCountCap() : MAX_THRESHOLD_COUNT);
         } else {
             thresholdCount = 0;
         }

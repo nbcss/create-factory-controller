@@ -1,0 +1,47 @@
+{
+  "itemGroup.createfactorycontroller": "Create: Factory Controller",
+  "block.createfactorycontroller.factory_controller": "Kontroler fabryki",
+
+  "createfactorycontroller.gui.in_stock": "W magazynie: %1$s",
+  "createfactorycontroller.gui.promised": "Oczekiwane: %1$s",
+  "createfactorycontroller.gui.capacity": "Pojemność: %1$s/%2$s",
+  "createfactorycontroller.gui.crafting_unpacked": "Rozpakowano do połączonych",
+  "createfactorycontroller.gui.crafting_crafters": "mechanicznych rzemieślników (%1$sx%2$s)",
+  "createfactorycontroller.gui.crafting_dimension": "Rozmiar siatki rzemiosła: %1$sx%2$s",
+  "createfactorycontroller.gui.crafting_pattern": "Szablon rzemiosła (%1$sx%2$s)",
+  "createfactorycontroller.gui.crafting_hold_ctrl_dim": "Przytrzymaj Ctrl, aby zmienić rozmiar siatki",
+  "createfactorycontroller.gui.crafting_scroll_dim": "Przewiń, aby zmienić rozmiar siatki",
+  "createfactorycontroller.gui.unit_fluid_mb": "mB",
+  "createfactorycontroller.gui.unit_fluid_bucket": "B",
+  "createfactorycontroller.gui.zoom": "Przybliżenie: x%1$s",
+  "createfactorycontroller.gui.network_selector": "Selektor sieci",
+  "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Przewiń, aby podświetlić komponenty",
+  "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Przewiń, aby dostroić",
+  "createfactorycontroller.gui.action_remove_component": "Shift+Kliknięcie, aby usunąć",
+  "createfactorycontroller.gui.threshold.auto_managed": "Automatyczne zarządzanie na żądanie",
+  "createfactorycontroller.gui.passive_mode": "Pasywne żądanie",
+  "createfactorycontroller.gui.passive_mode_tip_1": "Automatycznie dostosuj docelową ilość",
+  "createfactorycontroller.gui.passive_mode_tip_2": "na podstawie aktywnego popytu",
+  "createfactorycontroller.gui.prompt.no_selected_network": "Nie wybrano sieci",
+  "createfactorycontroller.gui.prompt.selected_network": "Wybrano %1$s",
+  "createfactorycontroller.gui.prompt.no_first_network": "Brak sieci — najpierw postaw dostrojony miernik",
+  "createfactorycontroller.gui.prompt.no_network_tuned": "Sieć niedostrojona — użyj selektora, aby dostroić miernik",
+  "createfactorycontroller.gui.prompt.component_limit": "Kontroler jest pełny (maks. %1$s komponentów)",
+
+  "key.categories.createfactorycontroller": "Create: Factory Controller",
+  "key.createfactorycontroller.cycle_arrow": "Przełącz tryb ścieżek strzałek",
+  "key.createfactorycontroller.pan_view": "Przesuń widok (przeciągnij)",
+  "key.createfactorycontroller.toggle_full_overlay": "Przełącz pełną nakładkę",
+
+  "createfactorycontroller.config.full_overlay": "Pełna nakładka",
+  "createfactorycontroller.config.max_components": "Pojemność kontrolera",
+  "createfactorycontroller.config.max_craft_grid": "Maks. rozmiar siatki rzemiosła",
+
+  "createfactorycontroller.network.default": "Sieć #%1$s",
+  "createfactorycontroller.network.none": "Brak sieci",
+
+  "createfactorycontroller.subtitle.controller.open": "Kontroler fabryki otwiera się",
+  "createfactorycontroller.subtitle.controller.close": "Kontroler fabryki zamyka się",
+  "createfactorycontroller.subtitle.gauge.open": "Panel miernika otwiera się",
+  "createfactorycontroller.subtitle.gauge.close": "Panel miernika zamyka się"
+}

@@ -16,6 +16,7 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -23,11 +24,9 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -181,7 +180,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (filter.isEmpty()) return Component.empty();
         if (waitingForNetwork) return Component.literal("?");
 
-        String inStorage = isInfiniteStock() ? "∞" : stockLevel / unit.toItemCount(filter) + unit.suffix;
+        // A fluid filter's stockLevel is millibuckets — shown in the gauge's own unit (mB/B); items show
+        // count/stacks + suffix.
+        String inStorage = isInfiniteStock() ? "∞"
+            : FluidCompat.isFluidFilter(filter) ? unit.formatInUnit(stockLevel)
+            : stockLevel / unit.toCountMultiplier(filter) + unit.suffix;
 
         if (!isActive())
             return CreateLang.text(inStorage).color(0xF1EFE8).component();
@@ -219,7 +222,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             int parentBatch = parent.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, parent.craftBatch);
             demand += conn.totalAmount() * parentBatch;
         }
-        count = demand <= 0 ? 0 : Math.ceilDiv(demand, unit.toItemCount(filter));
+        count = demand <= 0 ? 0 : Math.ceilDiv(demand, unit.toCountMultiplier(filter));
     }
 
     /**
@@ -263,7 +266,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         boolean refreshed = summary != lastSummaryRef;
         lastSummaryRef = summary;
 
-        int inStorage = summary.getCountOf(filter);
+        // A fluid's network availability comes from the per-link summaries (getStockOf) — the exact path CFL's
+        // own fluid logic uses — rather than the merged network summary, which may not carry the virtual tanks.
+        int inStorage = networkStockOf(filter);
         int promised = getPromised();
         int rawSum = inStorage + promised;
 
@@ -287,10 +292,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         promisedCount = promised;              // the open-promise number is always shown live (the ⏶ box)
 
-        // Satisfaction is derived from the held quantities vs the CURRENT demand (the passive target `count`
-        // is refreshed once per tick by the controller's consumer-first pre-pass), so a demand change — and
-        // the passive chain that reads `!promisedSatisfied` — settles in a single tick, never held.
-        int demand = count * unit.toItemCount(filter);
+        int demand = count * unit.toCountMultiplier(filter);
         satisfied = stockLevel >= demand;
         promisedSatisfied = heldSum >= demand;
         waitingForNetwork = unloadedLinkCount > 0;
@@ -318,8 +320,22 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     public int getLevelInStorage() {
         if (filter.isEmpty()) return 0;
-        return getRelevantSummary().getCountOf(filter);
+        return networkStockOf(filter);
     }
+
+    /**
+     * Current network stock of {@code stack}. For a fluid (CreateFluidLogistic) this uses {@code getStockOf},
+     * which sums each link's own summary — the path CFL hooks for fluid, and what its own logic uses — because
+     * the cached merged network summary may not carry the virtual fluid tanks. Items use the loose cached
+     * summary (cheap, matching Create's recipe panels).
+     */
+    private int networkStockOf(ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        return FluidCompat.isFluidFilter(stack)
+            ? LogisticsManager.getStockOf(networkId, stack, null)
+            : getRelevantSummary().getCountOf(stack);
+    }
+
 
     private InventorySummary getRelevantSummary() {
         // Loose (20-tick) summary, matching Create's recipe panels — cheap on big networks, no invalidation.
@@ -388,36 +404,43 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // ingredient demand and the produced output are both multiplied by this batch count.
         int batch = activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, craftBatch);
 
-        // Sum the ingredient demand from incoming connections, grouped by each source's network.
-        Map<UUID, Map<Item, Integer>> demandByNetwork = new LinkedHashMap<>();
-        Map<Item, ItemStack> ingredientStacks = new HashMap<>();
+        // Sum the ingredient demand from incoming connections, grouped by each source's network. Demand is
+        // merged by FULL stack identity (item + components), not just the Item: a fluid ingredient is a virtual
+        // CompressedTankItem whose fluid lives in a data component, so every fluid shares one Item — keying by
+        // Item would collapse different fluids (water + lava) into one demand. The amount is in the ingredient's
+        // own count unit (items, or millibuckets for a fluid), which Create's summary/packaging matches directly.
+        Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
         for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : targetedBy().entrySet()) {
             if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
             ItemStack ingredient = source.filter;
             if (ingredient.isEmpty()) continue;
             int needed = e.getValue().totalAmount() * batch;   // sum across the connection's repeated slots
-            demandByNetwork.computeIfAbsent(source.networkId, k -> new LinkedHashMap<>())
-                           .merge(ingredient.getItem(), needed, Integer::sum);
-            ingredientStacks.putIfAbsent(ingredient.getItem(), ingredient);
+            List<BigItemStack> demands = demandByNetwork.computeIfAbsent(source.networkId, k -> new ArrayList<>());
+            BigItemStack existing = null;
+            for (BigItemStack b : demands)
+                if (ItemStack.isSameItemSameComponents(b.stack, ingredient)) { existing = b; break; }
+            if (existing != null) existing.count += needed;
+            else demands.add(new BigItemStack(ingredient.copy(), needed));
         }
         if (demandByNetwork.isEmpty()) return;
 
-        // Verify every ingredient is in stock and build a package order per network.
-        Map<UUID, List<BigItemStack>> orderByNetwork = new LinkedHashMap<>();
-        for (Map.Entry<UUID, Map<Item, Integer>> netEntry : demandByNetwork.entrySet()) {
-            // Accurate summary (Create's tickRequests does the same) so we don't dispatch ingredients
-            // against a stale availability count and over-send.
+        // Verify every ingredient is in stock (accurate summary, like Create's tickRequests, so we don't
+        // over-send against a stale count). For a fluid the summary reports millibuckets, so the comparison
+        // and the dispatched order are already in the right unit.
+        Map<UUID, List<BigItemStack>> orderByNetwork = demandByNetwork;
+        for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
-            List<BigItemStack> order = new ArrayList<>();
-            for (Map.Entry<Item, Integer> need : netEntry.getValue().entrySet()) {
-                ItemStack stack = ingredientStacks.get(need.getKey());
-                if (summary.getCountOf(stack) < need.getValue()) {        // insufficient → flash red
+            for (BigItemStack need : netEntry.getValue()) {
+                // Fluid ingredients read their stock via getStockOf (per-link), like the storage monitor — the
+                // merged accurate summary may not carry the virtual tanks; items use the accurate summary.
+                int available = FluidCompat.isFluidFilter(need.stack)
+                    ? LogisticsManager.getStockOf(netEntry.getKey(), need.stack, null)
+                    : summary.getCountOf(need.stack);
+                if (available < need.count) {        // insufficient → flash red
                     setConnectionsSuccess(false);
                     return;
                 }
-                order.add(new BigItemStack(stack.copy(), need.getValue()));
             }
-            orderByNetwork.put(netEntry.getKey(), order);
         }
 
         // Crafting context: when mechanical crafting is enabled, derive the crafts from the 3×3
@@ -433,10 +456,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                     .map(s -> new BigItemStack(s.copyWithCount(1)))
                     .toList()),
                 batch));
-        // Resolve packagers for every network up front; abort entirely if any is busy so we never
-        // half-fulfil a recipe.
+        // Resolve packagers for every ITEM-only network up front (abort entirely if any is busy so we never
+        // half-fulfil), and collect fluid-bearing networks separately: CreateFluidLogistic intercepts
+        // findPackagersForRequest for virtual-tank orders and dispatches them itself, returning an empty map —
+        // so those must go through broadcastPackageRequest (which CFL performs end-to-end) or the request would
+        // look unfulfilled here and the output promise below would be skipped (the gauge would re-request forever).
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
+        List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : orderByNetwork.entrySet()) {
+            // A virtual fluid tank ingredient must be dispatched via broadcastPackageRequest (CFL routing) — see below.
+            if (netEntry.getValue().stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
+                fluidNetworks.add(netEntry);
+                continue;
+            }
             PackageOrderWithCrafts order =
                 new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);
             Multimap<PackagerBlockEntity, PackagingRequest> found =
@@ -447,7 +479,18 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             dispatch.add(found);
         }
 
-        // All clear — perform the requests and promise the produced output.
+        // Dispatch fluid networks first (CFL routes the virtual-tank order to fluid packagers). If any can't be
+        // fulfilled, abort before performing the item requests so we don't half-fulfil and skip the promise.
+        for (Map.Entry<UUID, List<BigItemStack>> netEntry : fluidNetworks) {
+            PackageOrderWithCrafts order =
+                new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);
+            if (!LogisticsManager.broadcastPackageRequest(netEntry.getKey(), RequestType.RESTOCK, order, null, recipeAddress)) {
+                setConnectionsSuccess(false);
+                return;
+            }
+        }
+
+        // All clear — perform the item requests and promise the produced output.
         for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
             LogisticsManager.performPackageRequests(req);
         setConnectionsSuccess(true);   // ingredients were dispatched → flash white

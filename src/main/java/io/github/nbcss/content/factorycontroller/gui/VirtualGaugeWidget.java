@@ -5,6 +5,7 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.RemoveComponentPacket;
 import net.minecraft.ChatFormatting;
@@ -132,6 +133,14 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
         return String.format(java.util.Locale.US, "%,d", value);
     }
 
+    /** Stock/promise amount for this gauge: millibuckets in the gauge's own unit (mB/B) for a fluid filter,
+     *  else a grouped item count. */
+    private String formatAmount(int value) {
+        return FluidCompat.isFluidFilter(behaviour.filter)
+                ? behaviour.unit.formatInUnit(value)
+                : formatCount(value);
+    }
+
     /**
      * Hover tooltip, mirroring Create's factory-panel label/tip (and value-box header colour): the
      * filtered item (or "New factory task") in yellow, the interaction hint in white — "Click with
@@ -145,11 +154,11 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
                 : CreateLang.text(behaviour.filter.getHoverName().getString()).color(0xFBDC7D).component());
         if (!behaviour.filter.isEmpty()) {
             lines.add(Component.translatable("createfactorycontroller.gui.in_stock",
-                            Component.literal(behaviour.isInfiniteStock() ? "∞" : formatCount(behaviour.stockLevel))
+                            Component.literal(behaviour.isInfiniteStock() ? "∞" : formatAmount(behaviour.stockLevel))
                                     .withStyle(ChatFormatting.WHITE))
                     .withStyle(ChatFormatting.GRAY));
             lines.add(Component.translatable("createfactorycontroller.gui.promised",
-                            Component.literal((behaviour.promisedCount > 0 ? "+" : "") + formatCount(behaviour.promisedCount))
+                            Component.literal((behaviour.promisedCount > 0 ? "+" : "") + formatAmount(behaviour.promisedCount))
                                     .withStyle(behaviour.promisedCount > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -181,17 +190,29 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * opens the set-item overlay with an empty cursor); a configured gauge opens the recipe overlay
      * with an empty cursor. Always consumes the click.
      */
-    public boolean onClick(FactoryControllerScreen screen, ItemStack carried) {
+    public boolean onClick(FactoryControllerScreen screen, ItemStack carried, int button) {
         FactoryControllerMenu menu = screen.getMenu();
         if (behaviour.filter.isEmpty()) {
             if (carried.isEmpty())
                 Minecraft.getInstance().setScreen(new SetItemScreen(screen, behaviour.position()));
             else
                 PacketDistributor.sendToServer(
-                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), carried.copy()));
+                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), filterFromCarried(carried, button)));
         } else if (carried.isEmpty()) {
             Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(screen, behaviour.position()));
         }
         return true;
+    }
+
+    /**
+     * The filter a carried item sets on an empty gauge: the item itself on left-click, or (with
+     * CreateFluidLogistic installed) the stored fluid as a fluid filter on right-click of a filled container.
+     */
+    private static ItemStack filterFromCarried(ItemStack carried, int button) {
+        if (FluidCompat.isLoaded() && button == 1) {
+            var fluid = FluidCompat.fluidInContainer(carried);
+            if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
+        }
+        return carried.copy();
     }
 }

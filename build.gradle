@@ -156,6 +156,13 @@ dependencies {
     // JEI (optional): compile against the API only; run the full mod in dev for testing.
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
     localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
+
+    // CreateFluidLogistic (optional/soft): not published to a maven, so consumed from a local jar in lib/.
+    // compileOnly lets us reference its fluid types; every use is guarded by ModList.isLoaded("fluidlogistics")
+    // so the mod loads and runs fine without it. localRuntime loads the real mod in dev for testing.
+    def fluidLogisticsJar = fileTree(dir: "lib", include: ["fluidlogistics-*.jar"])
+    compileOnly fluidLogisticsJar
+    localRuntime fluidLogisticsJar
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

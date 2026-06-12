@@ -1,5 +1,6 @@
 package io.github.nbcss.content.factorycontroller;
 
+import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnection;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnectionBuilder;
 import net.minecraft.resources.ResourceLocation;
@@ -79,8 +80,12 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
         VirtualComponentBehaviour source = controller.components.get(fromPos);
         if (source == null) return;
 
+        // A fluid ingredient is measured in millibuckets, so start it at one bucket (1000 mB) like the output
+        // default; item ingredients start at 1.
+        int defaultAmount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter)
+            ? 1000 : 1;
         source.targeting().add(position);
-        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, 1));
+        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, defaultAmount));
         controller.setChanged();
         controller.sendData();
     }

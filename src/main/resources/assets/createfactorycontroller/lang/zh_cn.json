@@ -11,6 +11,8 @@
   "createfactorycontroller.gui.crafting_pattern": "合成布局（%1$sx%2$s）",
   "createfactorycontroller.gui.crafting_hold_ctrl_dim": "按住 Ctrl 以修改合成器尺寸",
   "createfactorycontroller.gui.crafting_scroll_dim": "滚动以修改合成器尺寸",
+  "createfactorycontroller.gui.unit_fluid_mb": "mB",
+  "createfactorycontroller.gui.unit_fluid_bucket": "B",
   "createfactorycontroller.gui.zoom": "缩放: x%1$s",
   "createfactorycontroller.gui.network_selector": "网络选择器",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "滚动以高亮组件",
