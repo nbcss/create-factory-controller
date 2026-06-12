@@ -396,21 +396,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return slots;
     }
 
-    /** Distinct ingredient types in the recipe — one package slot each (crafting slots never overflow). */
-    private int craftingDistinctTypes() {
-        List<ItemStack> types = new ArrayList<>();
-        List<Integer> cells = new ArrayList<>();
-        craftingTypeAggregate(types, cells);
-        return types.size();
-    }
-
     /**
      * Whether one craft fits a single 9-slot package: each distinct ingredient type occupies exactly one slot
      * (no stack-size overflow), and batch is irrelevant because re-packaging splits a multi-craft order into
      * one package per craft. A recipe with &gt;9 distinct types can't be packaged at all.
      */
     private boolean craftingFitsPackage() {
-        return craftingDistinctTypes() <= MAX_INPUT_SLOTS;
+        List<ItemStack> types = new ArrayList<>();
+        List<Integer> cells = new ArrayList<>();
+        craftingTypeAggregate(types, cells);
+        return types.size() <= MAX_INPUT_SLOTS;
     }
 
     /** True when the recipe is larger than 3×3 (shaped width or height &gt; 3) — the aggregated/Ctrl path. */
