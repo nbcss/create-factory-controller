@@ -6,6 +6,7 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.ServerConfig;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -271,6 +272,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void setComponentItem(VirtualPanelPosition pos, ItemStack filter) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         gauge.filter = filter.copy();
+        // Keep the threshold unit in the right group for the new filter so the count label/tooltip read
+        // correctly immediately, before the recipe screen is ever opened: a fluid filter defaults to B,
+        // an item filter to items. Only switch when crossing groups, so a later mB/B (or stacks) choice survives.
+        boolean fluid = FluidCompat.isFluidFilter(gauge.filter);
+        if (fluid && !gauge.unit.fluid) gauge.unit = ThresholdUnit.FLUID_BUCKET;
+        else if (!fluid && gauge.unit.fluid) gauge.unit = ThresholdUnit.ITEMS;
         setChanged();
         sendData();
     }

@@ -9,7 +9,7 @@ import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
-import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.createmod.catnip.gui.element.GuiGameElement;
@@ -18,6 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
@@ -176,6 +177,32 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 
+    /** True only for our ghost filter slot (the sole slot backed by the menu's ghost inventory). The wrapper
+     *  filter item can also sit in the player's inventory as a normal item, so the fluid form is scoped to here. */
+    private boolean isGhostSlot(Slot slot) {
+        return slot.container == menu.ghostInventory;
+    }
+
+    // In the ghost filter slot a fluid filter (CFL/CreateFluid's wrapper item) renders/names itself as the wrapper,
+    // so we draw the fluid itself instead — its icon (replacing the slot content) and its name. Real wrapper items
+    // in the player inventory keep their normal item icon/tooltip.
+    @Override
+    protected void renderSlotContents(GuiGraphics gfx, ItemStack stack, Slot slot, String countString) {
+        if (isGhostSlot(slot)) {
+            FluidStack fluid = FluidCompat.getFilterFluid(stack);
+            if (!fluid.isEmpty()) { FluidGuiRender.icon(gfx, fluid, slot.x, slot.y, 16); return; }
+        }
+        super.renderSlotContents(gfx, stack, slot, countString);
+    }
+
+    @Override
+    protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
+        if (hoveredSlot != null && isGhostSlot(hoveredSlot) && FluidCompat.isFluidFilter(stack))
+            return FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(stack),
+                    minecraft.options.advancedItemTooltips);
+        return super.getTooltipFromContainerItem(stack);
+    }
+
     // ── Input ────────────────────────────────────────────────────────────────
 
     @Override
@@ -213,9 +240,9 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     /**
-     * The filter a carried item produces: normally the item itself, but with CreateFluidLogistic installed a
+     * The filter a carried item produces: normally the item itself, but with a fluid-logistics addon installed a
      * right-click (mouseButton 1) on a filled fluid container uses its stored fluid as a fluid filter instead.
-     * Without the mod, or on left-click, the container item is the filter (requirement: both clicks set item).
+     * Without an addon, or on left-click, the container item is the filter (requirement: both clicks set item).
      */
     private ItemStack filterFromCarried(ItemStack carried, int mouseButton) {
         if (FluidCompat.isLoaded() && mouseButton == 1) {

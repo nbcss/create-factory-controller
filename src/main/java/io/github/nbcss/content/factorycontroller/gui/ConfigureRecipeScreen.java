@@ -22,7 +22,7 @@ import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
-import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.ConfigureRecipePacket;
 import io.github.nbcss.content.factorycontroller.packet.DisconnectIngredientPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
@@ -102,7 +102,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int thresholdCount = 0;
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
     private boolean passiveMode = false;
-    /** True when the gauge's filter is a CreateFluidLogistic fluid filter: the threshold/output amounts are then
+    /** True when the gauge's filter is a fluid filter: the threshold/output amounts are then
      *  millibuckets, shown/edited in mB/B with fluid scroll steps. Set once per open in {@link #updateConfigs}. */
     private boolean fluidMode = false;
     // One entry per input CONNECTION (not per grid slot): the source gauge and its TOTAL item count.
@@ -258,7 +258,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
-    /** Whether input connection {@code c}'s ingredient is a fluid (CreateFluidLogistic) — its amount is then in
+    /** Whether input connection {@code c}'s ingredient is a fluid — its amount is then in
      *  millibuckets, occupies a single slot (no stack split), and scrolls with fluid steps. */
     private boolean isFluidConn(int c) {
         return FluidCompat.isFluidFilter(ingredientOf(inputConnections.get(c)));
@@ -476,10 +476,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
         passiveMode = g.passiveMode;
-        // Fluid filter (CreateFluidLogistic): amounts are millibuckets. Coerce the unit into the fluid group,
+        // Fluid filter: amounts are millibuckets. Coerce the unit into the fluid group,
         // and default a fresh gauge's output to 1000 mB (one bucket).
         fluidMode = FluidCompat.isFluidFilter(g.filter);
-        if (fluidMode && !mode.fluid) mode = ThresholdUnit.FLUID_MB;
+        if (fluidMode && !mode.fluid) mode = ThresholdUnit.FLUID_BUCKET;
         if (!fluidMode && mode.fluid) mode = ThresholdUnit.ITEMS;
         if (fluidMode && outputCount <= 1) outputCount = 1000;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
@@ -808,10 +808,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 int iy = panelY + 28 + (i / 3) * 20;
                 boolean fluidIng = isFluidConn(slot.connectionIndex());
                 ItemStack stack = ingredientOf(inputConnections.get(slot.connectionIndex()));
-                gfx.renderItem(stack, ix, iy);
-                if (!stack.isEmpty())
-                    gfx.renderItemDecorations(font, stack, ix, iy,
-                        fluidIng ? formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
+                FluidGuiRender.filterIcon(gfx, stack, ix, iy);
+                if (!stack.isEmpty()) {
+                    // A fluid filter is a wrapper item whose NeoForge item-decorator paints an overlay (a stray
+                    // black box) — so draw just the count ourselves for fluids, like the stock slot does.
+                    if (fluidIng) drawSlotCount(gfx, formatFluidShort(slot.amount()), ix, iy);
+                    else gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(slot.amount()));
+                }
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
                     int total = Math.max(1, inputTotals.get(slot.connectionIndex()));
@@ -823,7 +826,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         : List.of(
                             CreateLang.translate("gui.factory_panel.sending_item",
-                                CreateLang.itemName(stack).add(CreateLang.text(" x" + totalLabel)).string())
+                                FluidCompat.filterName(stack).getString() + " x" + totalLabel)
                                 .color(ScrollInput.HEADER_RGB).component(),
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
@@ -846,12 +849,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             // Output is always magnitude-scaled (mB/B) regardless of the unit box: short ≤1-dp label, full tooltip.
             String producedBox = fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount);
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
-            gfx.renderItem(g.filter, ox, oy);
-            gfx.renderItemDecorations(font, g.filter, ox, oy, producedBox);
+            FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
+            if (fluidMode) drawSlotCount(gfx, producedBox, ox, oy);
+            else gfx.renderItemDecorations(font, g.filter, ox, oy, producedBox);
             if (in(mouseX, mouseY, ox, oy, 16, 16))
                 tooltip = List.of(
                     CreateLang.translate("gui.factory_panel.expected_output",
-                        CreateLang.itemName(g.filter).add(CreateLang.text(" x" + producedTip)).string())
+                        FluidCompat.filterName(g.filter).getString() + " x" + producedTip)
                         .color(ScrollInput.HEADER_RGB).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
@@ -879,7 +883,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.factory_panel.promise_prevents_oversending").style(ChatFormatting.GRAY).component())
                 : List.of(
                     CreateLang.translate("gui.factory_panel.promised_items").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.text(g.filter.getHoverName().getString() + " x" + promisedLabel)
+                    CreateLang.text(FluidCompat.filterName(g.filter).getString() + " x" + promisedLabel)
                         .component(),
                     CreateLang.translate("gui.factory_panel.left_click_reset")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
@@ -890,7 +894,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             .scale(4).at(0, 0, -200).render(gfx, panelX + 195, panelY + 139);
         if (g != null && !g.filter.isEmpty()) {
             if (FluidCompat.isFluidFilter(g.filter))
-                FluidCubeRenderer.render(gfx, FluidCompat.getFilterFluid(g.filter), panelX + 219, panelY + 157, 16);
+                FluidGuiRender.cube(gfx, FluidCompat.getFilterFluid(g.filter), panelX + 219, panelY + 157, 16);
             else
                 GuiGameElement.of(g.filter).scale(1.625).at(0, 0, 100).render(gfx, panelX + 214, panelY + 152);
         }
@@ -951,7 +955,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (g != null && in(mouseX, mouseY, panelX + FILTER_X, panelY + THRESH_TOP, 16, 16))
             tooltip = g.filter.isEmpty()
                 ? List.of(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
-                : getTooltipFromItem(Minecraft.getInstance(), g.filter);
+                : FluidCompat.isFluidFilter(g.filter)
+                    ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(g.filter),
+                        Minecraft.getInstance().options.advancedItemTooltips)
+                    : getTooltipFromItem(Minecraft.getInstance(), g.filter);
 
         // Crafting toggle — rendered here (last) rather than self-rendered by the widget, so the buttons
         // drawn after it (new-input / relocate) can't paint over its now multi-line tooltip.
@@ -962,7 +969,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
-    // ── Fluid mode helpers (CreateFluidLogistic) ───────────────────────────────
+    // ── Fluid mode helpers ──────────────────────────────────────────────────────
 
     /** The fluid output slot is always capped at 10 B (10000 mB), independent of the threshold unit box. */
     private static final int FLUID_OUTPUT_CAP_MB = 10_000;
@@ -1005,7 +1012,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // stock level
         if (behaviour != null && !behaviour.filter.isEmpty()) {
             int fx = panelX + FILTER_X, fy = panelY + THRESH_TOP;
-            gfx.renderItem(behaviour.filter, fx, fy);
+            FluidGuiRender.filterIcon(gfx, behaviour.filter, fx, fy);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
             // Fluid stock uses the bucket-aware format + glyphs (CreateFluidLogistic's mB/B/KB on the same
@@ -1081,6 +1088,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.blit(NUMBERS_TEX, itemX + 13 + x, itemY + 10, 0, NUM_SX + xOffset, NUM_SY, spriteWidth, NUM_H, 256, 256);
             x += spriteWidth - 1;
         }
+    }
+
+    /**
+     * Draws a slot's count string bottom-right with a shadow, exactly like vanilla's item-count overlay — but
+     * WITHOUT {@code renderItemDecorations}' bar / NeoForge item-decorator pass, which a fluid filter's wrapper
+     * item paints as a stray black overlay box. Used for fluid input/output amounts (mB/B labels).
+     */
+    private void drawSlotCount(GuiGraphics gfx, String text, int slotX, int slotY) {
+        if (text.isBlank()) return;
+        gfx.pose().pushPose();
+        gfx.pose().translate(0, 0, 200);
+        gfx.drawString(font, text, slotX + 19 - 2 - font.width(text), slotY + 6 + 3, 0xFFFFFF, true);
+        gfx.pose().popPose();
     }
 
     @Override

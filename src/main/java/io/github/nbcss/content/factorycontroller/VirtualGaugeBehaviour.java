@@ -16,7 +16,7 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.CreateFactoryController;
-import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -324,9 +324,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     /**
-     * Current network stock of {@code stack}. For a fluid (CreateFluidLogistic) this uses {@code getStockOf},
-     * which sums each link's own summary — the path CFL hooks for fluid, and what its own logic uses — because
-     * the cached merged network summary may not carry the virtual fluid tanks. Items use the loose cached
+     * Current network stock of {@code stack}. For a fluid this uses {@code getStockOf}, which sums each link's
+     * own summary — the path the fluid addons hook for fluid, and what their own logic uses — because the cached
+     * merged network summary may not carry the virtual fluid tanks. Items use the loose cached
      * summary (cheap, matching Create's recipe panels).
      */
     private int networkStockOf(ItemStack stack) {
@@ -457,10 +457,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                     .toList()),
                 batch));
         // Resolve packagers for every ITEM-only network up front (abort entirely if any is busy so we never
-        // half-fulfil), and collect fluid-bearing networks separately: CreateFluidLogistic intercepts
-        // findPackagersForRequest for virtual-tank orders and dispatches them itself, returning an empty map —
-        // so those must go through broadcastPackageRequest (which CFL performs end-to-end) or the request would
-        // look unfulfilled here and the output promise below would be skipped (the gauge would re-request forever).
+        // half-fulfil), and collect fluid-bearing networks separately: the fluid addons intercept
+        // findPackagersForRequest for virtual-tank orders and dispatch them themselves, returning an empty map —
+        // so those must go through broadcastPackageRequest (which the addon performs end-to-end) or the request
+        // would look unfulfilled here and the output promise below would be skipped (the gauge re-requests forever).
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
         List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : orderByNetwork.entrySet()) {

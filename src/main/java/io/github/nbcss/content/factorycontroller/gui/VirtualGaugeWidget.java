@@ -5,7 +5,7 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
-import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.RemoveComponentPacket;
 import net.minecraft.ChatFormatting;
@@ -23,10 +23,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * A single gauge on the canvas: renders it, builds its hover tooltip, and handles clicks on it.
@@ -90,7 +87,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
             gfx.pose().pushPose();
             gfx.pose().translate(x0 + 4.0, y0 + 4.0, 0);   // 4-px inset centres the half-size icon
             gfx.pose().scale(0.5f, 0.5f, 0.5f);            // uniform so item lighting stays correct
-            gfx.renderItem(behaviour.filter, 0, 0);
+            FluidGuiRender.filterIcon(gfx, behaviour.filter, 0, 0);
             gfx.pose().popPose();
         }
 
@@ -151,7 +148,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
         List<Component> lines = new ArrayList<>();
         lines.add(behaviour.filter.isEmpty()
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
-                : CreateLang.text(behaviour.filter.getHoverName().getString()).color(0xFBDC7D).component());
+                : CreateLang.text(FluidCompat.filterName(behaviour.filter).getString()).color(0xFBDC7D).component());
         if (!behaviour.filter.isEmpty()) {
             lines.add(Component.translatable("createfactorycontroller.gui.in_stock",
                             Component.literal(behaviour.isInfiniteStock() ? "∞" : formatAmount(behaviour.stockLevel))
@@ -205,8 +202,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
     }
 
     /**
-     * The filter a carried item sets on an empty gauge: the item itself on left-click, or (with
-     * CreateFluidLogistic installed) the stored fluid as a fluid filter on right-click of a filled container.
+     * The filter a carried item sets on an empty gauge: the item itself on left-click, or (with a
+     * fluid-logistics addon installed) the stored fluid as a fluid filter on right-click of a filled container.
      */
     private static ItemStack filterFromCarried(ItemStack carried, int button) {
         if (FluidCompat.isLoaded() && button == 1) {

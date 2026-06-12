@@ -1,7 +1,7 @@
 package io.github.nbcss.content.factorycontroller.compat.jei;
 
 import io.github.nbcss.CreateFactoryController;
-import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.gui.SetItemScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -50,8 +50,8 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
     }
 
     /**
-     * Offers the set-item screen's ghost slot as a drop target. Item ingredients set the item filter; with
-     * CreateFluidLogistic installed, a dragged fluid is converted to a fluid filter (a virtual tank stack).
+     * Offers the set-item screen's ghost slot as a drop target. Item ingredients set the item filter; with a
+     * fluid-logistics addon installed, a dragged fluid is converted to a fluid filter (the addon's wrapper stack).
      */
     private static class SetItemGhostHandler implements IGhostIngredientHandler<SetItemScreen> {
         @Override
@@ -65,7 +65,7 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
                 targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
                 return targets;
             }
-            // Fluid ghost → fluid filter, only when CreateFluidLogistic is present.
+            // Fluid ghost → fluid filter, only when a fluid-logistics addon is present.
             if (FluidCompat.isLoaded()) {
                 Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
                 if (fluid.isPresent() && !fluid.get().isEmpty()) {

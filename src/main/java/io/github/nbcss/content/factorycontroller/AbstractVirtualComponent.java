@@ -1,6 +1,6 @@
 package io.github.nbcss.content.factorycontroller;
 
-import io.github.nbcss.content.factorycontroller.compat.FluidCompat;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnection;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnectionBuilder;
 import net.minecraft.resources.ResourceLocation;

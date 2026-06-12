@@ -57,6 +57,21 @@ base {
 // Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+// Optional "fluids/energy via packages" addon jars (lib/). CreateFluidLogistic ("fluidlogistics"), CreateFluid
+// ("fluid") and Create: Repackaged ("repackaged") all hook the same package/logistics system and are mutually
+// incompatible at runtime, so exactly ONE is put on the dev runtime, chosen by -PfluidRuntime. We COMPILE against
+// the two fluid-FILTER addons (compileOnly) so both FluidFilterProviders build regardless; repackaged has no
+// compat code yet, so it's runtime-only (for exploration/testing).
+//   -PfluidRuntime=none      (default) → neither (the base runClient stays addon-free)
+//   -PfluidRuntime=cfl                 → CreateFluidLogistic
+//   -PfluidRuntime=createfluid         → CreateFluid
+//   -PfluidRuntime=repackaged          → Create: Repackaged (+ its required compat_manager from maven)
+// The IntelliJ ".run/" folder ships ready-made buttons for the CFL, CreateFluid and Repackaged variants.
+def fluidLogisticsJar = fileTree(dir: "lib", include: ["fluidlogistics-*.jar"])
+def createFluidJar = fileTree(dir: "lib", include: ["fluid-*.jar"])
+def repackagedJar = fileTree(dir: "lib", include: ["repackaged-*.jar"])
+def fluidRuntime = (project.findProperty('fluidRuntime') ?: 'none').toString().toLowerCase()
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
@@ -157,12 +172,24 @@ dependencies {
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
     localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
 
-    // CreateFluidLogistic (optional/soft): not published to a maven, so consumed from a local jar in lib/.
-    // compileOnly lets us reference its fluid types; every use is guarded by ModList.isLoaded("fluidlogistics")
-    // so the mod loads and runs fine without it. localRuntime loads the real mod in dev for testing.
-    def fluidLogisticsJar = fileTree(dir: "lib", include: ["fluidlogistics-*.jar"])
+    // Fluid-logistics addons (optional/soft): CreateFluidLogistic (modid "fluidlogistics") and CreateFluid
+    // (modid "fluid"), consumed from local jars in lib/ (neither is on a maven). We COMPILE against both so both
+    // FluidFilterProviders build; every use of either addon's classes is guarded by ModList.isLoaded(...), so the
+    // mod loads and runs fine with either or neither. The two are MUTUALLY INCOMPATIBLE at runtime, so exactly ONE
+    // is added to the dev runtime via localRuntime, selected by -PfluidRuntime (see the fluidRuntime def above).
+    // localRuntime jars are scanned as mods by NeoForge in dev (unlike a per-run additionalRuntimeClasspath, which
+    // is only a library on the module path and never loads as a mod).
     compileOnly fluidLogisticsJar
-    localRuntime fluidLogisticsJar
+    compileOnly createFluidJar
+    if (fluidRuntime == 'cfl') {
+        localRuntime fluidLogisticsJar
+    } else if (fluidRuntime == 'createfluid') {
+        localRuntime createFluidJar
+    } else if (fluidRuntime == 'repackaged') {
+        localRuntime repackagedJar
+        // Create: Repackaged hard-depends on Compat Manager (liukrast maven, not bundled).
+        localRuntime("net.liukrast:compat_manager-1.21.1:${compat_manager_version}") { transitive = false }
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

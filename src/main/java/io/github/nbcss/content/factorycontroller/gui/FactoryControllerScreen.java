@@ -12,6 +12,7 @@ import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.content.factorycontroller.*;
+import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.gui.element.GuiGameElement;
@@ -689,7 +690,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     PacketDistributor.sendToServer(new AddConnectionPacket(
                             menu.controllerPos, clicked, target));
                     Component outputName = targetComp instanceof VirtualGaugeBehaviour tg
-                            ? tg.filter.getHoverName() : Component.empty();
+                            ? FluidCompat.filterName(tg.filter) : Component.empty();
                     setTimedPrompt(CreateLang.translate("factory_panel.panels_connected",
                             input.filter.getHoverName(), outputName)
                             .style(ChatFormatting.GREEN).component(), 3000);
@@ -739,7 +740,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
 
             // Click an existing gauge → its own interaction (set item / configure). Pass the button so an
-            // empty gauge can take a fluid filter on right-click (CreateFluidLogistic) vs an item on left.
+            // empty gauge can take a fluid filter on right-click (with a fluid addon) vs an item on left.
             if (leftOrRight && widget != null)
                 return widget.onClick(this, carried, button);
 
