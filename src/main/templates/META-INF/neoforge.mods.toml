@@ -95,6 +95,14 @@ config="${mod_id}.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
+[[dependencies.${mod_id}]]
+    modId="deployer"
+    type="required"
+    reason="Provides the panel-connection board library this mod's virtual gauges are built on."
+    versionRange="[${deployer_version},)"
+    ordering="AFTER"
+    side="BOTH"
+
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't
 # stop your mod loading on the server for example.
