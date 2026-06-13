@@ -105,12 +105,6 @@ public final class VirtualConnectionRenderer {
 
         int[][] cells = buildCellPath(from, to, mode);
 
-        // State drives appearance, mirroring Create's FactoryPanelRenderer#renderPath: the line is
-        // tinted by the *target* gauge's ingredient-status colour. While the gauge is actively
-        // requesting (not satisfied / waiting / missing-address / powered) it (a) pulses the whole
-        // line toward white if its source can supply (conn.success) or red if it cannot — the "no
-        // ingredients" flash — and (b) scrolls the chevron strip toward the target (the progressing
-        // wave). Idle connections draw the plain line strip. One arrowhead enters the target cell.
         int color = 0x888898;
         boolean flowing = false;
         if (target instanceof VirtualGaugeBehaviour gauge) {

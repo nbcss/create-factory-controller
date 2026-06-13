@@ -10,17 +10,6 @@ import java.util.Set;
 
 /**
  * A component that can be placed in the controller's virtual panel.
- *
- * <p>This generalizes "anything attachable to the board" — gauges today, Redstone Link /
- * Display Link and third-party Deployer-derived components in the future. It deliberately
- * mirrors how Deployer unifies gauges ({@code AbstractPanelBehaviour}) and links
- * ({@code AbstractPanelSupportBehaviour}) under one connection contract, but without any
- * block-entity / world coupling: a component lives only as data inside
- * {@link FactoryControllerBlockEntity}, addressed by a {@link VirtualPanelPosition}.</p>
- *
- * <p>Every component participates in the same connection graph (so a link can target a gauge,
- * etc.), hence the graph accessors live here rather than on a gauge-specific subtype.
- * Shared graph mechanics are implemented once in {@link AbstractVirtualComponent}.</p>
  */
 public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
 

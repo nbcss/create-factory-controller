@@ -34,11 +34,8 @@ import java.util.UUID;
 
 public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
-    /** Component-type discriminator for this kind. */
     public static final ResourceLocation TYPE_ID =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge");
-
-    /** GUI-sprite folder holding this gauge's {@code back}/{@code front} body textures. */
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/factory_gauge");
 
@@ -47,13 +44,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
-    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive. In passive mode
-     *  ({@link #passiveMode}) this is recomputed every tick from the demand of the parent recipes wired to this gauge. */
+    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive.*/
     public int count = 0;
     /** How the threshold is measured (items or stacks). Replaces Create's {@code upTo}. */
     public ThresholdUnit unit = ThresholdUnit.ITEMS;
-    /** When true the target {@link #count} is managed passively each tick from consumer demand;
-     *  the threshold is always counted in items. The player may not edit count directly while this is on. */
     public boolean passiveMode = false;
     /** Current network stock of {@link #filter} — server-computed, synced for the threshold display. */
     public int stockLevel = 0;
@@ -66,11 +60,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public boolean satisfied = false;
     public boolean promisedSatisfied = false;
     public boolean waitingForNetwork = false;
-    /** No redstone on the virtual board, but kept for parity with Create's status logic. */
     public boolean redstonePowered = false;
-    /** Set by the host controller when its block receives a redstone signal; while true this gauge
-     *  issues no new requests (the whole board is paused). Distinct from {@link #redstonePowered},
-     *  which mirrors a real gauge's own redstone state. */
     public boolean controllerPowered = false;
 
     // Internal tick state
@@ -101,8 +91,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public int recipeOutput = 1;
     /** Crafts carried per request package in mechanical-crafting mode (≥1); 1 = a single craft. */
     public int craftBatch = 1;
-    /** Square crafter-grid dimension (N→N×N) a large (&gt;3×3) recipe is laid out for; 0 when not used.
-     *  The dispatched arrangement is already padded to this size, so this is kept only to restore the UI. */
     public int craftDimension = 0;
     public int promiseClearingInterval = -1;
     public RequestPromiseQueue restockerPromises;
@@ -207,9 +195,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     /**
-     * Controller pre-pass hook: refresh the Passive Request target. Invoked once per tick in consumer-first
-     * order (see {@code FactoryControllerBlockEntity#tick}) so a demand change propagates through a whole
-     * passive chain within a single tick rather than crawling one level per tick.
+     * Controller pre-pass hook: refresh the Passive Request target.
      */
     public void computeDemand() {
         if (!passiveMode || controller == null) return;
@@ -229,11 +215,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * Whether this gauge still needs more of its ingredients — i.e. it is configured to request and isn't
      * yet covered by stock + open promises. An auto producer feeding this gauge calls it to size its own
      * demand.
-     *
-     * <p>Reads the committed {@link #promisedSatisfied} flag rather than a fresh {@code stock + promised}
-     * sum: that flag is held across a settlement dip by tickStorageMonitor, whereas a live sum would dip a
-     * frame (promise drops before the summary stock rises) and make the consumer falsely look "demanding" →
-     * the producer would size phantom demand and over-produce.</p>
      */
     private boolean isDemandingIngredients() {
         if (count == 0 || waitingForNetwork || redstonePowered || controllerPowered || isMissingAddress())
@@ -277,12 +258,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         int prevStock = stockLevel, prevPromised = promisedCount;
         boolean prevPromiseSatisfy = promisedSatisfied, prevWait = waitingForNetwork;
 
-        // Hold the two lag-prone QUANTITIES against a transient drop (NOT the satisfaction booleans, so demand
-        // changes stay instant). A rise commits at once; a fresh (refreshed) drop is confirmed across one tick
-        // to ride out the mid-move "reads low" blip, then commits; a stale drop is held. The held SUM bridges
-        // a settlement automatically: the conserved stock+promised recovers to the held value once the loose
-        // stock catches up, so it never commits the dip. This single rule replaces creditStock+creditAge+
-        // stockDropHeld and needs no reason for the drop (settlement / expiry / manual clear all the same).
         if (inStorage >= stockLevel)   { stockLevel = inStorage; stockDropPending = false; }
         else if (stockDropPending)     { stockLevel = inStorage; stockDropPending = false; }
         else if (refreshed)            { stockDropPending = true; }
@@ -318,16 +293,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // ── Storage queries ────────────────────────────────────────────────────
 
-    public int getLevelInStorage() {
-        if (filter.isEmpty()) return 0;
-        return networkStockOf(filter);
-    }
-
     /**
-     * Current network stock of {@code stack}. For a fluid this uses {@code getStockOf}, which sums each link's
-     * own summary — the path the fluid addons hook for fluid, and what their own logic uses — because the cached
-     * merged network summary may not carry the virtual fluid tanks. Items use the loose cached
-     * summary (cheap, matching Create's recipe panels).
+     * Current network stock of {@code stack}.
      */
     private int networkStockOf(ItemStack stack) {
         if (stack.isEmpty()) return 0;
@@ -338,10 +305,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
 
     private InventorySummary getRelevantSummary() {
-        // Loose (20-tick) summary, matching Create's recipe panels — cheap on big networks, no invalidation.
-        // It lags the live promise queue, so stock+promised dips for a window at a settlement; tickStorageMonitor
-        // holds the satisfied/promised state across that dip (released on this cache's next refresh) rather
-        // than trusting every transient. Its object identity is the refresh signal.
         return LogisticsManager.getSummaryOfNetwork(networkId, false);
     }
 
@@ -354,8 +317,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     /**
      * Applies a pending player-forced promise clear (clears the queue for this item, halves the throttle).
-     * The resulting {@code promised} drop is absorbed by the storage-monitor hold like any other downgrade,
-     * so this no longer needs to flag the clear for special handling.
      */
     private void consumeForceClear() {
         if (!forceClearPromises) return;
@@ -404,11 +365,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // ingredient demand and the produced output are both multiplied by this batch count.
         int batch = activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, craftBatch);
 
-        // Sum the ingredient demand from incoming connections, grouped by each source's network. Demand is
-        // merged by FULL stack identity (item + components), not just the Item: a fluid ingredient is a virtual
-        // CompressedTankItem whose fluid lives in a data component, so every fluid shares one Item — keying by
-        // Item would collapse different fluids (water + lava) into one demand. The amount is in the ingredient's
-        // own count unit (items, or millibuckets for a fluid), which Create's summary/packaging matches directly.
         Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
         for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : targetedBy().entrySet()) {
             if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
@@ -424,10 +380,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         }
         if (demandByNetwork.isEmpty()) return;
 
-        // Verify every ingredient is in stock (accurate summary, like Create's tickRequests, so we don't
-        // over-send against a stale count). For a fluid the summary reports millibuckets, so the comparison
-        // and the dispatched order are already in the right unit.
-        Map<UUID, List<BigItemStack>> orderByNetwork = demandByNetwork;
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
             for (BigItemStack need : netEntry.getValue()) {
@@ -443,11 +395,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             }
         }
 
-        // Crafting context: when mechanical crafting is enabled, derive the crafts from the 3×3
-        // arrangement so the dispatched packages carry the recipe (matching Create's tickRequests —
-        // PackageOrderWithCrafts.singleRecipe(activeCraftingArrangement)); otherwise no crafts. The
-        // previous code wrongly built a recipe from the flat ingredient list even for plain requests,
-        // so crafter-mode packages never carried the actual 3×3 recipe and couldn't be crafted.
         List<PackageOrderWithCrafts.CraftingEntry> crafts = activeCraftingArrangement.isEmpty()
             ? PackageOrderWithCrafts.empty().orderedCrafts()
             // CraftingEntry.count is the number of times to run this 3×3 pattern — i.e. the batch.
@@ -456,14 +403,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                     .map(s -> new BigItemStack(s.copyWithCount(1)))
                     .toList()),
                 batch));
-        // Resolve packagers for every ITEM-only network up front (abort entirely if any is busy so we never
-        // half-fulfil), and collect fluid-bearing networks separately: the fluid addons intercept
-        // findPackagersForRequest for virtual-tank orders and dispatch them themselves, returning an empty map —
-        // so those must go through broadcastPackageRequest (which the addon performs end-to-end) or the request
-        // would look unfulfilled here and the output promise below would be skipped (the gauge re-requests forever).
+
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
         List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();
-        for (Map.Entry<UUID, List<BigItemStack>> netEntry : orderByNetwork.entrySet()) {
+        for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             // A virtual fluid tank ingredient must be dispatched via broadcastPackageRequest (CFL routing) — see below.
             if (netEntry.getValue().stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
                 fluidNetworks.add(netEntry);
@@ -479,8 +422,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             dispatch.add(found);
         }
 
-        // Dispatch fluid networks first (CFL routes the virtual-tank order to fluid packagers). If any can't be
-        // fulfilled, abort before performing the item requests so we don't half-fulfil and skip the promise.
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : fluidNetworks) {
             PackageOrderWithCrafts order =
                 new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);

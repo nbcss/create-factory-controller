@@ -62,9 +62,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     static final int CANVAS_BOTTOM_PADDING = 9;
     private static final int CANVAS_COMPONENT_SIZE = 16;
 
-    // Finite board bounds in canvas-world px: cells |x|,|y| ≤ BOARD_HALF_CELLS, so the region runs from
-    // the left edge of the most-negative cell to the right edge of the most-positive one. Panning is
-    // clamped so the visible canvas never leaves this rectangle (server enforces placement separately).
     private static final int BOARD_MIN_PX = -FactoryControllerBlockEntity.BOARD_LIMIT * CANVAS_COMPONENT_SIZE;
     private static final int BOARD_MAX_PX = (FactoryControllerBlockEntity.BOARD_LIMIT + 1) * CANVAS_COMPONENT_SIZE;
 
@@ -102,8 +99,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
     private static final int RENAME_BUTTON_SIZE = 9;
     private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background/create_bricks.png");
-
-    // player_inventory.png layout (176×108, matching Create's convention)
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
     private static final int INV_TEX_W         = 176;
     private static final int INV_TEX_H         = 108;
@@ -114,23 +109,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Interaction state
     @Nullable private VirtualPanelPosition hoveredPosition = null;
 
-    // Gauge widgets, indexed by board position for O(1) hit-testing and lookup. Rebuilt from
-    // menu.components only when the panel state syncs (see rebuildGaugeWidgets), not per frame.
     private final Map<VirtualPanelPosition, VirtualGaugeWidget> gaugeWidgets = new LinkedHashMap<>();
 
-    // Per-gauge indicator-bulb animation (Create's FactoryPanelBehaviour#bulb), kept here so it
-    // survives the per-sync widget rebuild. Chases satisfied→1, and flashes to 1 on each request.
     private final Map<VirtualPanelPosition, LerpedFloat> bulbs = new HashMap<>();
     private final Map<VirtualPanelPosition, Long> bulbSeenRequest = new HashMap<>();
 
-    // Board action mode (e.g. connecting). When active, actionPrompt is shown above the inventory and
-    // board clicks are routed to the action instead of normal selection.
+    // Board action mode (e.g. connecting).
     @Nullable private VirtualPanelPosition pendingConnectionTarget = null;
     @Nullable private VirtualPanelPosition pendingRelocateTarget = null;
     @Nullable private Component actionPrompt = null;
     // When the prompt should disappear (millis). Long.MAX_VALUE for the persistent mode prompts;
     // a finite value for transient messages (e.g. the arrow-mode chime), which fade out near expiry.
-    // Colour lives on the component itself (style); only the fade alpha is applied at draw time.
     private long actionPromptExpiry = Long.MAX_VALUE;
 
     // Pan drag state (middle mouse)
@@ -203,16 +192,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         addWidget(nameBox);
 
         lastPanFrameMs = 0;   // fresh frame-delta base on (re)entry, so the first pan frame doesn't jump
-    }
-
-    /**
-     * Left edge that centres a name of text {@code s} (and its trailing edit icon) in the title bar,
-     * mirroring Create's {@code StationScreen#nameBoxX}: the text width is capped at the box width and a
-     * 10px allowance leaves room for the icon.
-     */
-    private int nameBoxX(String s) {
-        int width = nameBox == null ? imageWidth - 16 : nameBox.getWidth();
-        return leftPos + imageWidth / 2 - (Math.min(font.width(s), width) + 10) / 2;
     }
 
     /** Sends the edited controller name to the server (if changed) and leaves edit mode. */
@@ -302,9 +281,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualGaugeBehaviour g = w.behaviour();
             VirtualPanelPosition pos = g.position();
             boolean firstSeen = !bulbSeenRequest.containsKey(pos);
-            // First time we see a gauge (e.g. on opening the GUI), adopt its current request tick and start the
-            // bulb at its steady state — otherwise lastRequestTick > MIN_VALUE reads as a fresh request and the
-            // bulb flashes spuriously on open. Only genuinely later requests should flash.
             float steady = g.satisfied || g.redstonePowered ? 1 : 0;
             LerpedFloat bulb = bulbs.computeIfAbsent(pos,
                     p -> LerpedFloat.linear().startWithValue(steady).chase(0, 0.175, Chaser.EXP));
@@ -324,7 +300,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Current interpolated bulb glow [0,1] for the gauge at {@code pos} (0 if none). */
     private float bulbGlow(VirtualPanelPosition pos, float partialTick) {
         LerpedFloat bulb = bulbs.get(pos);
-        return bulb == null ? 0f : (float) bulb.getValue(partialTick);
+        return bulb == null ? 0f : bulb.getValue(partialTick);
     }
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -333,8 +309,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         super.render(graphics, mouseX, mouseY, partialTick);
-        // Hover tooltip for an existing gauge (suppressed while a board action mode is active, where
-        // the hovered cell already gives white/red reticle feedback). hoveredPosition is set in renderBoard.
         VirtualGaugeWidget hovered = gaugeWidget(hoveredPosition);
         if (pendingConnectionTarget == null && pendingRelocateTarget == null) {
             if (hovered != null)
@@ -428,7 +402,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
-        // In "full overlay" mode every gauge shows its count label; otherwise only the hovered one does.
         boolean fullOverlay = ClientConfig.fullOverlay();
         for (VirtualGaugeWidget gauge : gaugeWidgets.values())
             gauge.renderFront(graphics, bulbGlow(gauge.position(), partialTick),
@@ -451,7 +424,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             String shownStr = !nameBox.isFocused() && blank
                     ? menu.controllerDisplayName().getString()
                     : nameBox.getValue();
-            int x = nameBoxX(shownStr);
+            int nameWidth = nameBox == null ? imageWidth - 16 : nameBox.getWidth();
+            int x = leftPos + imageWidth / 2 - (Math.min(font.width(shownStr), nameWidth) + 10) / 2;
             nameBox.setX(x);
             nameBox.render(graphics, mouseX, mouseY, partialTick);
             if (!nameBox.isFocused()) {
@@ -528,13 +502,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 renderTarget(graphics, gauge.position(), TARGET_BLUE);
     }
 
-    /**
-     * Draws the {@code target} reticle over the hovered cell, tinted by context: white over a gauge
-     * with an empty cursor, gold over an empty cell when placing/relocating a gauge, and white/red
-     * over a valid/invalid target while in connect mode. The gauge being connected/relocated is
-     * always marked green, taking priority over the hover feedback on that cell. Must run inside the
-     * canvas-world pose.
-     */
     private void renderHoverTarget(GuiGraphics graphics) {
         // Source gauge of the active action mode — green, drawn first and given priority.
         VirtualPanelPosition source = pendingConnectionTarget != null ? pendingConnectionTarget : pendingRelocateTarget;
@@ -929,8 +896,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        // The cycle-arrow key (rebindable, R by default) on a hovered gauge cycles its outgoing
-        // connection bend mode (mirrors Create's wrench).
+        // The cycle-arrow key on a hovered gauge cycles its outgoing connection bend mode
         if (CreateFactoryControllerClient.CYCLE_ARROW.matches(keyCode, scanCode)
                 && hoveredPosition != null && findGauge(hoveredPosition) != null) {
             // Optimistically reflect the new mode (server cycles to (mode+1)%4) as a fading prompt,
@@ -950,9 +916,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /**
      * Current shared arrow-bend mode of {@code pos}'s outgoing connections (which may legitimately be
-     * -1, the "auto" mode), or {@code null} if it has no outgoing connection. The client snapshot only
-     * carries incoming connections ({@code targetedBy}), so we find the outgoing ones by scanning every
-     * gauge for a connection whose source is {@code pos}.
+     * -1, the "auto" mode), or {@code null} if it has no outgoing connection.
      */
     @Nullable
     private Integer outgoingArrowBendMode(VirtualPanelPosition pos) {

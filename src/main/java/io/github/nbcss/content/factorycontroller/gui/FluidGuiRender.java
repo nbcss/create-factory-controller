@@ -14,14 +14,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 /**
- * GUI rendering for fluids. The fluid-logistics addons store a fluid filter as a wrapper item ("Fluid Manifest",
- * a virtual tank, …) whose own icon/name is the wrapper, not the fluid — so wherever a filter is a fluid we draw
- * the fluid itself: a flat fluid quad in the 16px slots, and a 3D fluid block in the recipe preview.
- *
- * <p>Both go through catnip's {@link net.createmod.catnip.render.FluidRenderHelper#renderFluidBox} (Create is always
- * present, so no addon dependency). We deliberately avoid a plain {@code GuiGraphics.blit} of the still sprite: that
- * uses the sprite's whole UV span, which for an <em>animated</em> fluid stacks every frame into the slot (a dark
- * band at the bottom). renderFluidBox samples the live animation frame, so it stays clean.</p>
+ * GUI rendering for fluids.
  */
 @OnlyIn(Dist.CLIENT)
 public final class FluidGuiRender {

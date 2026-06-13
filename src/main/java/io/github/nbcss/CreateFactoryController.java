@@ -36,18 +36,14 @@ import org.slf4j.Logger;
 public class CreateFactoryController {
 
     public static final String MODID = "createfactorycontroller";
-    public static final Logger LOGGER = LogUtils.getLogger();
 
     // ── Blocks ─────────────────────────────────────────────────────────────
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
     public static final DeferredBlock<Block> FACTORY_CONTROLLER =
         BLOCKS.register("factory_controller", () ->
-            // Mirror Create's brass casing: stone strength (1.5/6.0), wood sound, requires the correct
-            // tool — and noOcclusion so it renders as a transparent, non-full block. The axe/pickaxe
-            // tool tags (mineable/axe + mineable/pickaxe, see data tags) let a wooden pickaxe OR axe mine it.
             new FactoryControllerBlock(BlockBehaviour.Properties.of()
                 .mapColor(MapColor.TERRACOTTA_YELLOW)
-                .strength(3.0f, 6.0f)
+                .strength(50.0f, 1200.0f)
                 .sound(SoundType.WOOD)
                 .requiresCorrectToolForDrops()
                 .noOcclusion()));

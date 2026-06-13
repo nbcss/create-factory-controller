@@ -16,12 +16,6 @@ import java.util.Set;
 
 /**
  * Central registry for virtual components.
- *
- * <p>Holds two things: the set of item ids accepted as placeable components, and a map from
- * component {@code typeId} to a deserializer. The type map is the extension seam — future
- * component kinds (Redstone Link, Display Link) and third-party Deployer-derived components
- * register their {@code typeId → fromNBT} here so persistence/sync can round-trip any mix of
- * components without the controller knowing concrete classes.</p>
  */
 public final class ComponentRegistry {
 

@@ -8,12 +8,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 @Mixin(value = InventorySummary.class, remap = false)
 public class InventorySummaryMixin {
-
-    // InventorySummary.add stores the raw ItemStack reference in BigItemStack.stack.
-    // When a vanilla chest slot is extracted from, ContainerHelper.removeItem calls
-    // slot_stack.split → shrink, mutating the stack in-place (count→0, getItem()→AIR).
-    // The stored reference then reports AIR, causing getCountOf to return 0 for up to
-    // 20 ticks (SUMMARIES TTL).  Passing a copy breaks the aliasing.
     @ModifyArg(
         method = "add(Lnet/minecraft/world/item/ItemStack;I)V",
         at = @At(

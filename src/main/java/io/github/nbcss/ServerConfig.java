@@ -32,8 +32,6 @@ public final class ServerConfig {
         return MAX_COMPONENTS.get();
     }
 
-    /** Upper bound for the crafter-grid size in the recipe screen (synced to clients for the scroll range,
-     *  and enforced server-side when a recipe config arrives). */
     public static int maxCraftGridSize() {
         return MAX_CRAFT_GRID_SIZE.get();
     }
