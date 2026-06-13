@@ -1,6 +1,6 @@
 # Create Factory Controller
 
-Create: Factory Controller addon introduced a new block "Factory Controller" to allow you to easy manage your Factory Gauges in a 2D GUI. Instead of having wall of Factory Gauges in the game world, the Controller block can keep the gauges in a virtual board for you (**Important: Factory Controller currently cannot manage existing factory gauge wall**). Factory Controller integrate and reimplement the dispatch logic of Factory Gauges, so the gauges managed by Factory Controller work more smoothly and received a number of powerful new features. The mod still in early development stage, any bug report and suggestion would be greatly appreciated.
+Create: Factory Controller addon introduced a new block "Factory Controller" to allow you to easily manage your Factory Gauges in a GUI. Instead of having wall of Factory Gauges in the game world, the Controller block can keep the gauges in a virtual board for you (**Important: Factory Controller currently cannot manage existing factory gauge wall**). Factory Controller integrate and reimplement the dispatch logic of Factory Gauges, so the gauges managed by Factory Controller work more smoothly and received a number of powerful new features. The mod still in early development stage, any bug report and suggestion would be greatly appreciated.
 
 ## Features
 
