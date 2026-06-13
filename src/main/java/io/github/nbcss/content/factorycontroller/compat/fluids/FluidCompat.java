@@ -22,7 +22,10 @@ import java.util.List;
  * <p>Supported addons (each {@code compileOnly}, soft-detected at runtime): CreateFluidLogistic (modid
  * {@code fluidlogistics}) and CreateFluid (modid {@code fluid}). A provider is added only when its mod is loaded, so
  * the JVM never resolves an addon's classes when it's absent, and this mod loads and runs fine with either or
- * neither present (the two addons are mutually incompatible, so at most one is ever active). The rest of the fluid
+ * neither present (the two addons are mutually incompatible, so at most one is ever active). Each provider is
+ * instantiated reflectively because its source is excluded from the build when the matching addon jar was absent at
+ * compile time (e.g. CI, where the local {@code lib/} jars don't exist) — a missing provider class is simply skipped.
+ * The rest of the fluid
  * handling (stock reads via Create's logistics, the mB/B units, the cube + stock-keeper rendering, reading a held
  * container) is addon-agnostic and lives elsewhere.</p>
  */
@@ -30,6 +33,9 @@ public final class FluidCompat {
 
     private static final String CFL_MODID = "fluidlogistics";
     private static final String CREATEFLUID_MODID = "fluid";
+
+    private static final String CFL_PROVIDER = "io.github.nbcss.content.factorycontroller.compat.fluids.CflFluidProvider";
+    private static final String CREATEFLUID_PROVIDER = "io.github.nbcss.content.factorycontroller.compat.fluids.CreateFluidProvider";
 
     /** The active providers (one per installed addon), tried in order. {@code makeFluidFilter} uses the first. */
     private static final List<FluidFilterProvider> PROVIDERS = createProviders();
@@ -40,9 +46,23 @@ public final class FluidCompat {
         List<FluidFilterProvider> providers = new ArrayList<>();
         ModList list = ModList.get();
         if (list == null) return providers;
-        if (list.isLoaded(CFL_MODID)) providers.add(new CflFluidProvider());
-        if (list.isLoaded(CREATEFLUID_MODID)) providers.add(new CreateFluidProvider());
+        if (list.isLoaded(CFL_MODID)) addProvider(providers, CFL_PROVIDER);
+        if (list.isLoaded(CREATEFLUID_MODID)) addProvider(providers, CREATEFLUID_PROVIDER);
         return providers;
+    }
+
+    /**
+     * Instantiates an addon provider by name and adds it. The provider's source is excluded from the build when its
+     * addon jar was absent at compile time, so the class may not exist here even though the addon is loaded (a build
+     * mismatch); in that case it's skipped. If the addon is loaded the class normally is present, so this resolves it.
+     */
+    private static void addProvider(List<FluidFilterProvider> providers, String className) {
+        try {
+            Class<?> cls = Class.forName(className);
+            providers.add((FluidFilterProvider) cls.getDeclaredConstructor().newInstance());
+        } catch (ReflectiveOperationException | LinkageError e) {
+            // Provider class not in this build (its addon jar wasn't on the compile classpath); skip it.
+        }
     }
 
     /** Whether any supported fluid-logistics addon is installed; gates all fluid-filter behaviour. */

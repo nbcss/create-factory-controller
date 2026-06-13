@@ -192,6 +192,15 @@ dependencies {
     }
 }
 
+// The fluid-FILTER addon jars (lib/) aren't on any maven and aren't in the repo, so on a clean checkout (e.g. CI)
+// they're absent and their provider can't compile. When a jar is missing, drop just that one provider source from
+// compilation; FluidCompat instantiates the providers reflectively, so it builds (and at runtime skips any provider
+// whose class was excluded). With the lib/ jars present (dev) nothing is excluded and both providers compile as usual.
+tasks.named('compileJava') {
+    if (fluidLogisticsJar.isEmpty()) exclude '**/compat/fluids/CflFluidProvider.java'
+    if (createFluidJar.isEmpty()) exclude '**/compat/fluids/CreateFluidProvider.java'
+}
+
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
