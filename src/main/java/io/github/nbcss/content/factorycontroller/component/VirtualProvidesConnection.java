@@ -1,4 +1,4 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.component;
 
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnection;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnectionBuilder;

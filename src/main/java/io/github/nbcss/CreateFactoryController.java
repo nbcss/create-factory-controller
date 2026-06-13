@@ -1,8 +1,10 @@
 package io.github.nbcss;
 
-import com.mojang.logging.LogUtils;
 import com.simibubi.create.AllCreativeModeTabs;
 import io.github.nbcss.content.factorycontroller.*;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlock;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlockEntity;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
 import io.github.nbcss.content.factorycontroller.packet.*;
 import net.minecraft.core.registries.Registries;
@@ -30,7 +32,6 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
-import org.slf4j.Logger;
 
 @Mod(CreateFactoryController.MODID)
 public class CreateFactoryController {

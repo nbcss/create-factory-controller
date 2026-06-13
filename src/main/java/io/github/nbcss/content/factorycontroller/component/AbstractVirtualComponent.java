@@ -1,5 +1,8 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.component;
 
+import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnection;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnectionBuilder;

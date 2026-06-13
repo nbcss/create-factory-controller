@@ -11,6 +11,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/**
+ * Bug Fix: https://github.com/Creators-of-Create/Create/pull/10496
+ */
 @Mixin(value = PackagerBlockEntity.class, remap = false)
 public abstract class PackagerBlockEntityMixin {
 

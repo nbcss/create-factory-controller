@@ -1,4 +1,4 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.block;
 
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
@@ -6,7 +6,11 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.ServerConfig;
+import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
+import io.github.nbcss.content.factorycontroller.component.ComponentRegistry;
+import io.github.nbcss.content.factorycontroller.component.VirtualComponentBehaviour;
+import io.github.nbcss.content.factorycontroller.component.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -376,28 +380,27 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     }
 
     // ── Sounds ──────────────────────────────────────────────────────────────
-    // Mirror Create's factory board: played server-side at the controller so nearby players hear them.
 
     /** Plays a Create sound entry (e.g. {@code CONFIRM}) at the controller. */
-    void playSound(AllSoundEvents.SoundEntry entry, float volume, float pitch) {
+    public void playSound(AllSoundEvents.SoundEntry entry, float volume, float pitch) {
         if (level == null || level.isClientSide()) return;
         entry.playOnServer(level, getBlockPos(), volume, pitch);
     }
 
     /** Plays a vanilla sound event at the controller (BLOCKS category). */
-    void playSound(SoundEvent sound, float volume, float pitch) {
+    public void playSound(SoundEvent sound, float volume, float pitch) {
         if (level == null || level.isClientSide()) return;
         level.playSound(null, getBlockPos(), sound, SoundSource.BLOCKS, volume, pitch);
     }
 
     /** Create's rejection blip — invalid placement, connection, or relocate. */
-    void playDenySound() {
+    public void playDenySound() {
         if (level == null || level.isClientSide()) return;
         AllSoundEvents.DENY.playOnServer(level, getBlockPos());
     }
 
     /** Create's wrench-rotate sound (random pitch), used when cycling a connection's arrow-bend mode. */
-    void playWrenchRotateSound() {
+    public void playWrenchRotateSound() {
         if (level == null || level.isClientSide()) return;
         AllSoundEvents.WRENCH_ROTATE.playOnServer(level, getBlockPos(), 1f, level.getRandom().nextFloat() + 0.5f);
     }

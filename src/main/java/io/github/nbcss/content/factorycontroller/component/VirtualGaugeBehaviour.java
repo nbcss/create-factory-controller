@@ -1,4 +1,4 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.component;
 
 import com.google.common.collect.Multimap;
 import com.simibubi.create.AllSoundEvents;
@@ -16,6 +16,10 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.ThresholdUnit;
+import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;

@@ -3,10 +3,9 @@ package io.github.nbcss.content.factorycontroller.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
-import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
-import io.github.nbcss.content.factorycontroller.ComponentRegistry;
-import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
+import io.github.nbcss.content.factorycontroller.component.ComponentRegistry;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -28,8 +27,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Single-slot network picker shown in the controller canvas, drawn with the {@code selection_frame}

@@ -2,7 +2,7 @@ package io.github.nbcss.content.factorycontroller.packet;
 
 import com.simibubi.create.foundation.block.IBE;
 import io.github.nbcss.CreateFactoryController;
-import io.github.nbcss.content.factorycontroller.ComponentRegistry;
+import io.github.nbcss.content.factorycontroller.component.ComponentRegistry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;

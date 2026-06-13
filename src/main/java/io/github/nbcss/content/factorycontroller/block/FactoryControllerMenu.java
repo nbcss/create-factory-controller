@@ -1,6 +1,10 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.block;
 
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.component.ComponentRegistry;
+import io.github.nbcss.content.factorycontroller.component.VirtualComponentBehaviour;
+import io.github.nbcss.content.factorycontroller.component.VirtualGaugeBehaviour;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;

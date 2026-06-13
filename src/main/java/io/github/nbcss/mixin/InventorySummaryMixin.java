@@ -6,6 +6,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
+/**
+ * Bug Fix: https://github.com/Creators-of-Create/Create/pull/10496
+ */
 @Mixin(value = InventorySummary.class, remap = false)
 public class InventorySummaryMixin {
     @ModifyArg(

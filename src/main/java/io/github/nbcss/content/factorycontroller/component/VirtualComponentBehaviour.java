@@ -1,6 +1,7 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.component;
 
-import net.minecraft.client.gui.GuiGraphics;
+import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
+import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;

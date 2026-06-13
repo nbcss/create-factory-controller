@@ -1,8 +1,8 @@
 package io.github.nbcss.content.factorycontroller.gui;
 
-import io.github.nbcss.content.factorycontroller.FactoryControllerMenu;
-import io.github.nbcss.content.factorycontroller.VirtualComponentBehaviour;
-import io.github.nbcss.content.factorycontroller.VirtualGaugeBehaviour;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
+import io.github.nbcss.content.factorycontroller.component.VirtualComponentBehaviour;
+import io.github.nbcss.content.factorycontroller.component.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import net.createmod.catnip.animation.AnimationTickHolder;

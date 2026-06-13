@@ -1,6 +1,7 @@
-package io.github.nbcss.content.factorycontroller;
+package io.github.nbcss.content.factorycontroller.component;
 
 import com.simibubi.create.AllBlocks;
+import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlockEntity;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
