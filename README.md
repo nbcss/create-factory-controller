@@ -44,3 +44,6 @@ Sounds:
 
 - Winding Noise - Music Box by charcrone -- https://freesound.org/s/347035/ -- License: Creative Commons 0
 - Pocket watch. Clicking open and closed, chain noise and picking up by JarredKarp -- https://freesound.org/s/490968/ -- License: Attribution NonCommercial 4.0
+
+## AI Disclosure
+The system architecture design and graphics assets are produced by human. AI is used for assist some individual code implementations to accelerate development but closely guard and reviewed by highly experienced Minecraft mod developer to ensure quality of the content. 
