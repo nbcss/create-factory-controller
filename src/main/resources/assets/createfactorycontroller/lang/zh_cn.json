@@ -45,8 +45,11 @@
   "key.createfactorycontroller.toggle_full_overlay": "切换完整信息模式",
 
   "createfactorycontroller.config.full_overlay": "完整信息模式",
+  "createfactorycontroller.config.full_overlay.tooltip": "在控制台界面中显示所有仪表的数量标签，而非仅显示鼠标悬停的仪表。",
   "createfactorycontroller.config.max_components": "控制台最大组件数量",
+  "createfactorycontroller.config.max_components.tooltip": "单个工厂控制台可容纳的最大组件数量。数值越高，控制台的存档数据和界面同步数据包越大。",
   "createfactorycontroller.config.max_craft_grid": "合成器最大尺寸",
+  "createfactorycontroller.config.max_craft_grid.tooltip": "配方界面中，配方可选择的最大动力合成器尺寸。",
 
   "createfactorycontroller.network.default": "网络 #%1$s",
   "createfactorycontroller.network.none": "无网络",
