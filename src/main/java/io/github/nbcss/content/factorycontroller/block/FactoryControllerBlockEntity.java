@@ -68,11 +68,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
 
-    // Reused each tick by the Passive Request demand pre-pass (server thread only) so the propagation walk
-    // allocates nothing on the hot path.
-    private final List<VirtualGaugeBehaviour> passiveOrderBuf = new ArrayList<>();
-    private final Set<VirtualPanelPosition> passiveVisitedBuf = new HashSet<>();
-
     /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
      *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
     private boolean menuSyncQueued = false;
@@ -105,21 +100,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         super.tick();
         if (level == null || level.isClientSide()) return;
 
-        boolean anyPassive = false;
         for (VirtualComponentBehaviour component : components.values())
-            if (component instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.isPassive()) { anyPassive = true; break; }
-
-        if (anyPassive) {
-            passiveOrderBuf.clear();
-            passiveVisitedBuf.clear();
-            for (VirtualComponentBehaviour component : components.values())
-                if (component instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.isPassive())
-                    topoVisitPassiveConsumersFirst(gauge);
-            for (VirtualGaugeBehaviour gauge : passiveOrderBuf)
+            if (component instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.isPassive())
                 gauge.computeDemand();
-            passiveOrderBuf.clear();
-            passiveVisitedBuf.clear();
-        }
 
         for (VirtualComponentBehaviour component : components.values())
             component.tick();
@@ -133,18 +116,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             menuSyncQueued = false;
             syncMenuToPlayers();
         }
-    }
-
-    /** Post-order DFS over passive→passive {@code targeting} (feeds) edges: a passive gauge is appended only after
-     *  the passive gauges it feeds, so the list is consumer-before-producer. Non-passive consumers are skipped —
-     *  their target is fixed, so demand stops at them and they need no ordering. The {@code visited} set
-     *  both dedupes and breaks any recipe cycles (best-effort ordering for the degenerate cyclic case). */
-    private void topoVisitPassiveConsumersFirst(VirtualGaugeBehaviour gauge) {
-        if (!passiveVisitedBuf.add(gauge.position())) return;
-        for (VirtualPanelPosition consumerPos : gauge.targeting())
-            if (components.get(consumerPos) instanceof VirtualGaugeBehaviour consumer && consumer.requestMode.isPassive())
-                topoVisitPassiveConsumersFirst(consumer);
-        passiveOrderBuf.add(gauge);
     }
 
     @Override
