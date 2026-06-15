@@ -1,12 +1,17 @@
 package io.github.nbcss;
 
 import com.simibubi.create.AllCreativeModeTabs;
-import io.github.nbcss.content.factorycontroller.*;
 import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlock;
 import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.gui.FactoryControllerScreen;
+import io.github.nbcss.content.factorycontroller.item.ProductionPatternItem;
+import io.github.nbcss.content.factorycontroller.item.ProductionTarget;
+import io.github.nbcss.content.factorycontroller.production.ProductionOrderManager;
 import io.github.nbcss.content.factorycontroller.packet.*;
+import io.github.nbcss.content.factorycontroller.render.TiledSpriteRenderer;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.world.item.Item.Properties;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -54,6 +59,21 @@ public class CreateFactoryController {
     public static final DeferredItem<net.minecraft.world.item.BlockItem> FACTORY_CONTROLLER_ITEM =
         ITEMS.registerSimpleBlockItem("factory_controller", FACTORY_CONTROLLER);
 
+    /** Virtual, unobtainable Promise Blueprint — intentionally NOT added to any creative tab. */
+    public static final DeferredItem<ProductionPatternItem> PRODUCTION_PATTERN =
+        ITEMS.register("production_pattern", () ->
+            new ProductionPatternItem(new Properties()));
+
+    // ── Data Components ──────────────────────────────────────────────────────
+    public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENTS =
+        DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, MODID);
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ProductionTarget>> PRODUCTION_TARGET =
+        DATA_COMPONENTS.register("production_target", () ->
+            DataComponentType.<ProductionTarget>builder()
+                .persistent(ProductionTarget.CODEC)
+                .networkSynchronized(ProductionTarget.STREAM_CODEC)
+                .build());
+
     // ── Block Entity Types ─────────────────────────────────────────────────
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
@@ -91,12 +111,23 @@ public class CreateFactoryController {
     public CreateFactoryController(IEventBus modEventBus, ModContainer modContainer) {
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
+        DATA_COMPONENTS.register(modEventBus);
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
         SOUND_EVENTS.register(modEventBus);
 
         modEventBus.addListener(this::registerPayloads);
         modEventBus.addListener(this::addCreativeTabContents);
+
+        // Drive the production-order manager once per server tick (independent of any loaded controller/keeper).
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+            (net.neoforged.neoforge.event.tick.ServerTickEvent.Post event) ->
+                ProductionOrderManager.get(event.getServer()).tick(event.getServer()));
+
+        // Clear the static orderable-gauge index on server stop so it never bleeds across worlds in one JVM.
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+            (net.neoforged.neoforge.event.server.ServerStoppedEvent event) ->
+                io.github.nbcss.content.factorycontroller.production.OrderableGaugeRegistry.clear());
 
         // Server config (synced to clients): the per-controller component cap.
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
@@ -125,7 +156,10 @@ public class CreateFactoryController {
         registrar.playToServer(CycleArrowBendPacket.TYPE, CycleArrowBendPacket.STREAM_CODEC, CycleArrowBendPacket::handle);
         registrar.playToServer(RetuneCarriedPacket.TYPE, RetuneCarriedPacket.STREAM_CODEC, RetuneCarriedPacket::handle);
         registrar.playToServer(RenameControllerPacket.TYPE, RenameControllerPacket.STREAM_CODEC, RenameControllerPacket::handle);
+        registrar.playToServer(RequestProductionOrdersPacket.TYPE, RequestProductionOrdersPacket.STREAM_CODEC, RequestProductionOrdersPacket::handle);
+        registrar.playToServer(RemoveProductionOrderPacket.TYPE, RemoveProductionOrderPacket.STREAM_CODEC, RemoveProductionOrderPacket::handle);
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
+        registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);
     }
 
     private void registerScreens(RegisterMenuScreensEvent event) {

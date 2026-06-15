@@ -5,7 +5,13 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "InventorySummaryMixin",
-    "PackagerBlockEntityMixin"
+    "LogisticalStockRequestPacketMixin",
+    "LogisticsGenericManagerMixin",
+    "PackagerBlockEntityMixin",
+    "StockTickerBlockEntityMixin"
+  ],
+  "client": [
+    "StockKeeperRequestScreenMixin"
   ],
   "refmap": "createfactorycontroller.refmap.json"
 }

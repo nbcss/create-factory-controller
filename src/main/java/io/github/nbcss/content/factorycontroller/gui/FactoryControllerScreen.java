@@ -18,6 +18,8 @@ import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.component.ComponentRegistry;
 import io.github.nbcss.content.factorycontroller.component.VirtualComponentBehaviour;
 import io.github.nbcss.content.factorycontroller.component.VirtualGaugeBehaviour;
+import io.github.nbcss.content.factorycontroller.render.TiledSpriteRenderer;
+import io.github.nbcss.content.factorycontroller.render.VirtualConnectionRenderer;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.gui.element.GuiGameElement;

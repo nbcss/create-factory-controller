@@ -8,6 +8,7 @@ import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
 import io.github.nbcss.content.factorycontroller.packet.RemoveComponentPacket;
+import io.github.nbcss.content.factorycontroller.render.FluidGuiRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;

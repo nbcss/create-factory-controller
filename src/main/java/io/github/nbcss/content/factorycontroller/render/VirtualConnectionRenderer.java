@@ -1,4 +1,4 @@
-package io.github.nbcss.content.factorycontroller.gui;
+package io.github.nbcss.content.factorycontroller.render;
 
 import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.component.VirtualComponentBehaviour;

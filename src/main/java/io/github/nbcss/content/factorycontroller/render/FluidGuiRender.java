@@ -1,4 +1,4 @@
-package io.github.nbcss.content.factorycontroller.gui;
+package io.github.nbcss.content.factorycontroller.render;
 
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.vertex.PoseStack;

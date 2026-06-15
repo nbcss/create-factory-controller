@@ -1,7 +1,9 @@
 package io.github.nbcss;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.nbcss.content.factorycontroller.render.ProductionPatternRenderer;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -10,8 +12,11 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 
 
@@ -57,7 +62,9 @@ public class CreateFactoryControllerClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
-
+        event.enqueueWork(() ->
+            net.liukrast.deployer.lib.helper.ClientRegisterHelpers.registerStockKeeperTab(
+                io.github.nbcss.content.factorycontroller.gui.ProductionOrdersTab::new));
     }
 
     @SubscribeEvent
@@ -65,5 +72,16 @@ public class CreateFactoryControllerClient {
         event.register(CYCLE_ARROW);
         event.register(PAN_VIEW);
         event.register(TOGGLE_FULL_OVERLAY);
+    }
+
+    @SubscribeEvent
+    static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new IClientItemExtensions() {
+            private final BlockEntityWithoutLevelRenderer renderer = new ProductionPatternRenderer();
+            @Override
+            public @NotNull BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return renderer;
+            }
+        }, CreateFactoryController.PRODUCTION_PATTERN.get());
     }
 }

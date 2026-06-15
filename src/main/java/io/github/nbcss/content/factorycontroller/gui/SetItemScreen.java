@@ -11,6 +11,7 @@ import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.packet.GaugeSetItemPacket;
+import io.github.nbcss.content.factorycontroller.render.FluidGuiRender;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import io.github.nbcss.CreateFactoryController;

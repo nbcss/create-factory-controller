@@ -13,11 +13,13 @@ import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import io.github.nbcss.content.factorycontroller.render.FluidGuiRender;
 import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
 import io.github.nbcss.ServerConfig;
 import io.github.nbcss.content.factorycontroller.block.FactoryControllerMenu;
+import io.github.nbcss.content.factorycontroller.RequestMode;
 import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.component.VirtualGaugeBehaviour;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
@@ -85,6 +87,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int COUNT_X = 51, COUNT_W = 40;
     private static final int UNIT_X = 95, UNIT_W = 50;
     private static final int PASSIVE_BTN_X = 150;
+    private static final int STOCK_BTN_X = PASSIVE_BTN_X + 19;
     private static final int THRESH_H = 18;
 
     private final FactoryControllerScreen controller;
@@ -101,7 +104,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int craftDimension = 0;
     private int thresholdCount = 0;
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
-    private boolean passiveMode = false;
+    private RequestMode requestMode = RequestMode.NORMAL;
     /** True when the gauge's filter is a fluid filter: the threshold/output amounts are then
      *  millibuckets, shown/edited in mB/B with fluid scroll steps. Set once per open in {@link #updateConfigs}. */
     private boolean fluidMode = false;
@@ -126,6 +129,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private IconButton relocateButton;
     @Nullable private IconButton craftingButton;
     @Nullable private IconButton passiveModeButton;
+    /** Only present while the gauge is passive: toggles PASSIVE ↔ PASSIVE_AND_ALLOW_ORDER. */
+    @Nullable private IconButton stockKeeperButton;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualPanelPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -229,9 +234,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/follows_demand"),
             x, y, 16, 16);
         passiveModeButton = new IconButton(panelX + PASSIVE_BTN_X, panelY + THRESH_TOP - 1, followsDemandIcon);
-        passiveModeButton.green = passiveMode;
+        passiveModeButton.green = requestMode.isPassive();
         passiveModeButton.withCallback(this::togglePassiveMode);
         addWidget(passiveModeButton);
+
+        // "Add Order in Stock Keeper" toggle — passive mode only. Icon: a logistics package box.
+        stockKeeperButton = null;
+        if (requestMode.isPassive()) {
+            ScreenElement boxIcon = (gfx, x, y) -> gfx.renderItem(PackageStyles.getDefaultBox(), x, y);
+            stockKeeperButton = new IconButton(panelX + STOCK_BTN_X, panelY + THRESH_TOP - 1, boxIcon);
+            stockKeeperButton.green = requestMode.allowsOrder();
+            stockKeeperButton.withCallback(this::toggleStockKeeper);
+            addWidget(stockKeeperButton);
+        }
     }
 
     @Override
@@ -475,7 +490,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         craftDimension = Math.max(0, g.craftDimension);
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
-        passiveMode = g.passiveMode;
+        requestMode = g.requestMode;
         // Fluid filter: amounts are millibuckets. Coerce the unit into the fluid group,
         // and default a fresh gauge's output to 1000 mB (one bucket).
         fluidMode = FluidCompat.isFluidFilter(g.filter);
@@ -895,6 +910,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (passiveModeButton != null) passiveModeButton.render(gfx, mouseX, mouseY, partialTick);
+        if (stockKeeperButton != null) stockKeeperButton.render(gfx, mouseX, mouseY, partialTick);
 
         promiseExpiration.render(gfx, mouseX, mouseY, partialTick);
 
@@ -905,7 +921,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         // Count box tooltip
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H))
-            tooltip = passiveMode
+            tooltip = requestMode.isPassive()
                 ? List.of(
                     CreateLang.translate("factory_panel.target_amount").color(ScrollInput.HEADER_RGB).component(),
                     Component.translatable("createfactorycontroller.gui.threshold.auto_managed")
@@ -937,6 +953,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 Component.translatable("createfactorycontroller.gui.passive_mode_tip_1")
                     .withStyle(ChatFormatting.GRAY),
                 Component.translatable("createfactorycontroller.gui.passive_mode_tip_2")
+                    .withStyle(ChatFormatting.GRAY));
+
+        // Stock-keeper toggle tooltip
+        if (stockKeeperButton != null && stockKeeperButton.isMouseOver(mouseX, mouseY))
+            tooltip = List.of(
+                Component.translatable("createfactorycontroller.gui.add_order_in_stock_keeper")
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
+                Component.translatable("createfactorycontroller.gui.add_order_in_stock_keeper_tip_1")
+                    .withStyle(ChatFormatting.GRAY),
+                Component.translatable("createfactorycontroller.gui.add_order_in_stock_keeper_tip_2")
                     .withStyle(ChatFormatting.GRAY));
 
         // Filter/stock box tooltip — the filtered item's normal item tooltip.
@@ -1000,12 +1026,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         // demand
         int displayCount = thresholdCount;
-        if (passiveMode && behaviour != null && behaviour.passiveMode) {
+        if (requestMode.isPassive() && behaviour != null && behaviour.requestMode.isPassive()) {
             displayCount = Math.max(0, behaviour.count);
         }
         // Count box is a plain integer (fluid threshold is whole units of the unit box; items are whole items).
-        String countStr = displayCount == 0 && !passiveMode ? "/" : String.valueOf(displayCount);
-        int countColor = passiveMode ? 0xFF9ECFFC : 0xFFFFFFFF;
+        String countStr = displayCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(displayCount);
+        int countColor = requestMode.isPassive() ? 0xFF9ECFFC : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
         // unit
         gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
@@ -1207,7 +1233,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         // Threshold count box
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
-            if (!passiveMode) {
+            if (!requestMode.isPassive()) {
                 // Fluid threshold is a whole number in the unit box's unit.
                 int fluidCountStep = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
                 thresholdCount = fluidMode
@@ -1274,7 +1300,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int dimension = craftingActive ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
-            promiseExpiration.getState(), thresholdCount, mode, passiveMode,
+            promiseExpiration.getState(), thresholdCount, mode, requestMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }
 
@@ -1287,17 +1313,28 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         playScrollSound();
     }
 
-    /** Toggles passive mode. When turning off, the live server-computed count carries into the editable target. */
+    /** Toggles passive mode (NORMAL ↔ PASSIVE). When turning off, the live server-computed count carries into the
+     *  editable target; turning off also drops allow-order (NORMAL has no order exposure). */
     private void togglePassiveMode() {
-        if (passiveMode) {
+        boolean wasPassive = requestMode.isPassive();
+        if (wasPassive) {
             VirtualGaugeBehaviour behaviour = gauge();
             thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0,
                 fluidMode ? fluidCountCap() : MAX_THRESHOLD_COUNT);
         } else {
             thresholdCount = 0;
         }
-        passiveMode = !passiveMode;
-        if (passiveModeButton != null) passiveModeButton.green = passiveMode;
+        requestMode = wasPassive ? RequestMode.NORMAL : RequestMode.PASSIVE;
+        if (passiveModeButton != null) passiveModeButton.green = requestMode.isPassive();
+        playClickSound();
+        rebuildWidgets();   // add/remove the stock-keeper button to match the new passive state
+    }
+
+    /** Toggles whether this passive gauge is offered as an orderable Promise Blueprint (PASSIVE ↔ PASSIVE_AND_ALLOW_ORDER). */
+    private void toggleStockKeeper() {
+        if (!requestMode.isPassive()) return;   // guard: button only exists in passive mode
+        requestMode = requestMode.allowsOrder() ? RequestMode.PASSIVE : RequestMode.PASSIVE_AND_ALLOW_ORDER;
+        if (stockKeeperButton != null) stockKeeperButton.green = requestMode.allowsOrder();
         playClickSound();
     }
 

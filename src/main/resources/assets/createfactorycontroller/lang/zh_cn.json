@@ -27,6 +27,12 @@
   "createfactorycontroller.gui.prompt.no_first_network": "无网络 — 需先放置首个已设定网络的仪表盘",
   "createfactorycontroller.gui.prompt.no_network_tuned": "未设定网络 — 可使用网络选择器设定物品网络",
   "createfactorycontroller.gui.prompt.component_limit": "控制台容量已满（最多放置 %1$s 个组件）",
+  "createfactorycontroller.gui.add_order_in_stock_keeper": "允许仓库管理员下达制造任务",
+  "createfactorycontroller.gui.add_order_in_stock_keeper_tip_1": "仓库管理员将能够为该仪表",
+  "createfactorycontroller.gui.add_order_in_stock_keeper_tip_2": "手动下达新的制造需求",
+  "item.createfactorycontroller.production_pattern": "创建新生产任务",
+  "createfactorycontroller.gui.production_orders": "生产订单",
+  "createfactorycontroller.gui.no_production_orders": "无进行中生产订单",
 
   "key.categories.createfactorycontroller": "机械动力: 工厂控制台",
   "key.createfactorycontroller.cycle_arrow": "循环箭头路径模式",

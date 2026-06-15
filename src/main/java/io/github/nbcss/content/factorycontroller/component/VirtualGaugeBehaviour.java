@@ -16,11 +16,13 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.CreateFactoryController;
+import io.github.nbcss.content.factorycontroller.RequestMode;
 import io.github.nbcss.content.factorycontroller.ThresholdUnit;
 import io.github.nbcss.content.factorycontroller.VirtualPanelConnection;
 import io.github.nbcss.content.factorycontroller.VirtualPanelPosition;
 import io.github.nbcss.content.factorycontroller.block.FactoryControllerBlockEntity;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
+import io.github.nbcss.content.factorycontroller.production.ProductionOrderManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -45,6 +47,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // Identity
     public final UUID networkId;
+    public UUID patternId = null;
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
@@ -52,7 +55,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public int count = 0;
     /** How the threshold is measured (items or stacks). Replaces Create's {@code upTo}. */
     public ThresholdUnit unit = ThresholdUnit.ITEMS;
-    public boolean passiveMode = false;
+    public RequestMode requestMode = RequestMode.NORMAL;
     /** Current network stock of {@link #filter} — server-computed, synced for the threshold display. */
     public int stockLevel = 0;
     /** Open promised amount of {@link #filter} — server-computed, synced for the promise box. */
@@ -137,7 +140,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * {@code count == 0} for "inactive" goes through this instead.
      */
     public boolean isActive() {
-        return count != 0 || passiveMode;
+        return count != 0 || requestMode.isPassive();
     }
 
     /**
@@ -184,7 +187,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return CreateLang.text(inStorage).color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
             .add(CreateLang.text(promisedCount == 0 ? "" : "⏶"))
             .add(CreateLang.text("/").style(ChatFormatting.WHITE))
-            .add(CreateLang.text(count + unit.suffix).color(passiveMode ? 0x9ECFFC : 0xF1EFE8))
+            .add(CreateLang.text(count + unit.suffix).color(requestMode.isPassive() ? 0x9ECFFC : 0xF1EFE8))
             .component();
     }
 
@@ -202,7 +205,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * Controller pre-pass hook: refresh the Passive Request target.
      */
     public void computeDemand() {
-        if (!passiveMode || controller == null) return;
+        if (!requestMode.isPassive() || controller == null) return;
         int demand = 0;
         for (VirtualPanelPosition parentPos : targeting) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
@@ -212,6 +215,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             int parentBatch = parent.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, parent.craftBatch);
             demand += conn.totalAmount() * parentBatch;
         }
+        // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
+        // order acts like another downstream consumer, so the passive gauge produces to satisfy it too. Only
+        // orderable gauges have a patternId, so non-orderable ones skip this entirely.
+        if (patternId != null && controller.getLevel() != null)
+            demand += ProductionOrderManager.externalDemand(controller.getLevel(), networkId, patternId);
         count = demand <= 0 ? 0 : Math.ceilDiv(demand, unit.toCountMultiplier(filter));
     }
 
@@ -486,11 +494,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.put("Pos", position.toNBT());
         tag.putString("GaugeItem", itemId.toString());
         tag.putUUID("Network", networkId);
+        if (patternId != null) tag.putUUID("PatternId", patternId);   // only orderable gauges carry an id
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
         tag.putString("Unit", unit.name());
-        tag.putBoolean("Passive", passiveMode);
+        tag.putString("RequestMode", requestMode.name());
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -548,11 +557,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.put("Pos", position.toNBT());
         tag.putString("GaugeItem", itemId.toString());
         tag.putUUID("Network", networkId);
+        // patternId is server-only — clients never need it.
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putInt("Count", count);
         tag.putString("Unit", unit.name());
-        tag.putBoolean("Passive", passiveMode);
+        tag.putString("RequestMode", requestMode.name());
 
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
@@ -586,10 +596,16 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         UUID networkId = tag.getUUID("Network");
 
         VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItemId);
+        if (tag.hasUUID("PatternId"))
+            b.patternId = tag.getUUID("PatternId");
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         b.count = tag.getInt("Count");
         b.unit = ThresholdUnit.fromName(tag.getString("Unit"));
-        b.passiveMode = tag.getBoolean("Passive");
+        if (tag.contains("RequestMode"))
+            b.requestMode = RequestMode.fromName(tag.getString("RequestMode"));
+        else   // legacy migration from the old Passive boolean
+            b.requestMode = tag.getBoolean("Passive")
+                ? RequestMode.PASSIVE : RequestMode.NORMAL;
         b.stockLevel = tag.getInt("Stock");
         b.promisedCount = tag.getInt("Promised");
         b.lastRequestTick = tag.getLong("LastRequestTick");
