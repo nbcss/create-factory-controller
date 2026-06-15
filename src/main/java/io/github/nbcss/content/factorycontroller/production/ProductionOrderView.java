@@ -15,7 +15,7 @@ import java.util.List;
 public record ProductionOrderView(int orderId, String address, int ageTicks, List<RequestView> requests) {
 
     /** One request line: the promised item, how much, how much is currently in network stock (for a processing
-     *  task's progress display), and {@link ProductionTask.State} as an ordinal. */
+     *  task's progress display), and {@link ProductionOrder.Task.State} as an ordinal. */
     public record RequestView(ItemStack display, int amount, int inStock, int state) {
         public static final StreamCodec<RegistryFriendlyByteBuf, RequestView> STREAM_CODEC = StreamCodec.composite(
             ItemStack.OPTIONAL_STREAM_CODEC, RequestView::display,
@@ -24,8 +24,8 @@ public record ProductionOrderView(int orderId, String address, int ageTicks, Lis
             ByteBufCodecs.VAR_INT, RequestView::state,
             RequestView::new);
 
-        public ProductionTask.State stateEnum() {
-            ProductionTask.State[] values = ProductionTask.State.values();
+        public ProductionOrder.Task.State stateEnum() {
+            ProductionOrder.Task.State[] values = ProductionOrder.Task.State.values();
             return values[Math.floorMod(state, values.length)];
         }
     }

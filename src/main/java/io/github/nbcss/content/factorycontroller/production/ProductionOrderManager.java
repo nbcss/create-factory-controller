@@ -1,8 +1,10 @@
 package io.github.nbcss.content.factorycontroller.production;
 
+import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour.RequestType;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
+import com.simibubi.create.content.logistics.packagerLink.RequestPromiseQueue;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrder;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
@@ -10,6 +12,7 @@ import com.simibubi.create.content.logistics.packager.PackagingRequest;
 import io.github.nbcss.content.factorycontroller.compat.fluids.FluidCompat;
 import io.github.nbcss.content.factorycontroller.item.ProductionPatternItem;
 import io.github.nbcss.content.factorycontroller.item.ProductionTarget;
+import io.github.nbcss.content.factorycontroller.production.ProductionOrder.Task;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -87,9 +90,17 @@ public class ProductionOrderManager extends SavedData {
         List<ProductionOrderView> out = new ArrayList<>();
         for (ProductionOrder o : getOrdersForNetwork(network)) {
             List<ProductionOrderView.RequestView> rs = new ArrayList<>();
-            for (ProductionTask r : o.tasks()) {
+            for (Task r : o.tasks()) {
                 int stock = r.isActive() ? networkStockOf(r.network, r.item) : 0;
-                rs.add(new ProductionOrderView.RequestView(r.item.copy(), r.amount, stock, r.state.ordinal()));
+                // For an active task, refine the displayed state: WAITING while the network holds no promise for the
+                // item yet, PROCESSING once it does (promises are shared per-network/per-item). Terminal tasks keep
+                // their stored SENT/ABORTED.
+                Task.State display = r.state;
+                if (r.isActive()) {
+                    if (stock >= r.amount) display = Task.State.READY;   // enough in stock — about to ship
+                    else display = networkPromisedOf(r.network, r.item) > 0 ? Task.State.PROCESSING : Task.State.WAITING;
+                }
+                rs.add(new ProductionOrderView.RequestView(r.item.copy(), r.amount, stock, display.ordinal()));
             }
             // A finished order's timer freezes at the moment it completed; an open one keeps counting.
             long endTime = o.isComplete() ? completedAt.getOrDefault(o.orderId(), now) : now;
@@ -99,15 +110,17 @@ public class ProductionOrderManager extends SavedData {
         return out;
     }
 
-    /** Aborts every non-terminal task targeting {@code patternId} on {@code network} — used when a gauge is removed
-     *  or stops being orderable. Affected orders then complete via the all-terminal check. */
+    /** Marks every active task targeting {@code patternId} on {@code network} as {@link Task.State#INVALID_PATTERN}
+     *  — used when a gauge is removed or stops being orderable. Such a task no longer creates demand, but the
+     *  manager still ships it (→ SENT) if the network happens to have enough stock; otherwise it keeps the order
+     *  open until the player removes it. */
     public void abortTasksFor(UUID network, UUID patternId) {
         boolean changed = false;
         for (ProductionOrder o : orders.values())
             if (o.network().equals(network))
-                for (ProductionTask t : o.tasks())
-                    if (!t.isTerminal() && patternId.equals(t.patternId)) {
-                        t.state = ProductionTask.State.ABORTED;
+                for (Task t : o.tasks())
+                    if (t.isActive() && patternId.equals(t.patternId)) {
+                        t.state = Task.State.INVALID_PATTERN;
                         changed = true;
                     }
         if (changed) setDirty();
@@ -120,15 +133,10 @@ public class ProductionOrderManager extends SavedData {
     }
 
     /**
-     * Player-initiated cancel of a whole order (the entry's abort button): every still-incomplete task is marked
-     * {@link ProductionTask.State#ABORTED} (so it stops demanding/shipping) and the order is dropped immediately,
-     * bypassing the {@link #LINGER_TICKS} grace.
+     * Player-initiated cancel of a whole order (the entry's cancel button): the order is dropped immediately,
+     * bypassing the {@link #LINGER_TICKS} grace. Its tasks vanish with it, so their demand stops.
      */
     public void removeOrder(int orderId) {
-        ProductionOrder o = orders.get(orderId);
-        if (o != null)
-            for (ProductionTask t : o.tasks())
-                if (!t.isTerminal()) t.state = ProductionTask.State.ABORTED;
         boolean removed = orders.remove(orderId) != null;
         completedAt.remove(orderId);
         if (removed) setDirty();
@@ -163,23 +171,23 @@ public class ProductionOrderManager extends SavedData {
         ProductionOrderManager mgr = get(server);
         int orderId = mgr.freshOrderId();
         // Pattern (produced) tasks first, then the in-stock real items as already-DONE tasks for display.
-        List<ProductionTask> produced = new ArrayList<>();
+        List<Task> produced = new ArrayList<>();
         int linkIndex = inStock.isEmpty() ? 0 : 1;   // link 0 reserved for the instant in-stock package
         for (BigItemStack b : patterns) {
             ProductionTarget t = ProductionPatternItem.getTarget(b.stack);
             if (t == null || b.count <= 0) continue;
-            produced.add(new ProductionTask(t.network(), t.patternId(),
+            produced.add(new Task(t.network(), t.patternId(),
                 t.display().copy(), b.count, address, orderId, linkIndex++, false));
         }
         if (produced.isEmpty()) return false;   // patterns present but none resolvable → let normal dispatch run
                                                  // (inStock items still ship; the dead patterns just produce nothing)
         produced.get(produced.size() - 1).finalLink = true;
 
-        List<ProductionTask> tasks = new ArrayList<>(produced);
+        List<Task> tasks = new ArrayList<>(produced);
         // In-stock items: bundled into the order as immediately-DONE display tasks (link 0, shipped below).
         for (BigItemStack b : inStock)
             if (b.count > 0)
-                tasks.add(ProductionTask.completed(network, b.stack.copy(), b.count, address, orderId, 0, false));
+                tasks.add(Task.completed(network, b.stack.copy(), b.count, address, orderId, 0, false));
 
         mgr.addOrder(new ProductionOrder(orderId, network, address, server.overworld().getGameTime(), tasks));
 
@@ -199,7 +207,7 @@ public class ProductionOrderManager extends SavedData {
         int sum = 0;
         for (ProductionOrder o : orders.values())
             if (o.network().equals(network))
-                for (ProductionTask r : o.tasks())
+                for (Task r : o.tasks())
                     if (r.isActive() && patternId.equals(r.patternId)) sum += r.amount;
         return sum;
     }
@@ -220,11 +228,10 @@ public class ProductionOrderManager extends SavedData {
         List<Integer> completed = new ArrayList<>();
 
         for (ProductionOrder order : orders.values()) {
-            for (ProductionTask req : order.tasks()) {
-                if (req.isTerminal()) continue;
-                // Permanent removal (gauge gone / no longer orderable) is handled explicitly via abortTasksFor.
-                // Otherwise the task just keeps demanding + monitoring stock, shipping whatever the network has —
-                // freshly produced or already in stock — regardless of whether the producing gauge is loaded.
+            for (Task req : order.tasks()) {
+                if (req.state == Task.State.SENT) continue;   // already shipped — nothing more to do
+                // Active tasks create demand (elsewhere) and ship from network stock; INVALID_PATTERN tasks no
+                // longer demand anything but are still monitored here and ship (→ SENT) if enough stock exists.
 
                 if (req.timer > 0) {
                     req.timer--;
@@ -236,7 +243,7 @@ public class ProductionOrderManager extends SavedData {
                 if (stock < req.amount) continue;   // not produced yet — keep demanding + monitoring
 
                 if (dispatch(req)) {
-                    req.state = ProductionTask.State.DONE;
+                    req.state = Task.State.SENT;
                     dirty = true;
                 }
             }
@@ -253,6 +260,14 @@ public class ProductionOrderManager extends SavedData {
         if (dirty || !completed.isEmpty()) setDirty();
     }
 
+    /** Total amount of {@code stack} currently promised on {@code network} (shared across all gauges producing it).
+     *  Read-only: {@code -1} expiry means no promises are removed. */
+    private static int networkPromisedOf(UUID network, ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(network);
+        return promises == null ? 0 : promises.getTotalPromisedAndRemoveExpired(stack, -1);
+    }
+
     private static int networkStockOf(UUID network, ItemStack stack) {
         if (stack.isEmpty()) return 0;
         return FluidCompat.isFluidFilter(stack)
@@ -261,7 +276,7 @@ public class ProductionOrderManager extends SavedData {
     }
 
     /** Ships {@code req}'s produced item to its address as its assigned link of the shared order (item 9). */
-    private boolean dispatch(ProductionTask req) {
+    private boolean dispatch(Task req) {
         PackageOrderWithCrafts order =
             PackageOrderWithCrafts.simple(List.of(new BigItemStack(req.item.copy(), req.amount)));
         return dispatchWithOrderId(req.network, RequestType.RESTOCK, order, req.address, req.orderId,

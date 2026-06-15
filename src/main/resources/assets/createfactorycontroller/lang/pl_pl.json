@@ -35,9 +35,11 @@
   "createfactorycontroller.gui.no_production_orders": "No open production orders",
   "createfactorycontroller.gui.production_tooltip_request": "Request: ",
   "createfactorycontroller.gui.production_tooltip_status": "Status: ",
+  "createfactorycontroller.gui.production_status_waiting": "Waiting",
   "createfactorycontroller.gui.production_status_processing": "Processing",
+  "createfactorycontroller.gui.production_status_ready": "Ready to Sent",
   "createfactorycontroller.gui.production_status_sent": "Sent",
-  "createfactorycontroller.gui.production_status_aborted": "Aborted",
+  "createfactorycontroller.gui.production_status_invalid_pattern": "Invalid Pattern",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Przełącz tryb ścieżek strzałek",

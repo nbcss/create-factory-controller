@@ -20,7 +20,7 @@ import io.github.nbcss.content.factorycontroller.packet.RemoveProductionOrderPac
 import io.github.nbcss.content.factorycontroller.packet.RequestProductionOrdersPacket;
 import io.github.nbcss.content.factorycontroller.production.ProductionOrderView;
 import io.github.nbcss.content.factorycontroller.production.ProductionOrdersClient;
-import io.github.nbcss.content.factorycontroller.production.ProductionTask;
+import io.github.nbcss.content.factorycontroller.production.ProductionOrder.Task;
 import io.github.nbcss.content.factorycontroller.render.SpriteNumbersRender;
 import net.minecraft.ChatFormatting;
 import net.createmod.catnip.animation.AnimationTickHolder;
@@ -255,20 +255,15 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             cancelButtons.add(new int[]{btnX, btnY, btnX + btnW, btnY + btnH, order.orderId()});
 
         // Age timer (mm:ss, or hh:mm:ss past an hour) just left of the cancel button, with the clock glyph. While the
-        // order is active it counts up; once complete the timer freezes (server-synced) and turns green if every
-        // task was sent, red if any task was aborted.
-        Completion done = completion(order);
-        int ageTicks = done == Completion.OPEN ? ProductionOrdersClient.ageTicksNow(order) : order.ageTicks();
+        // order is unfinished it counts up; once every task is sent the timer freezes (server-synced) and turns green.
+        boolean sent = allSent(order);
+        int ageTicks = sent ? order.ageTicks() : ProductionOrdersClient.ageTicksNow(order);
         String timer = formatTime(ageTicks);
         int timerW = font.width(timer);
         int timerX = btnX - 4 - timerW;
         int timerY = oy + 4;
         int clockX = timerX - 9;
-        int timerColor = switch (done) {
-            case ALL_SENT -> 0x55FF55;
-            case HAS_ABORT -> 0xFF5555;
-            default -> 0xF5F5E9;
-        };
+        int timerColor = sent ? 0x55FF55 : 0xF5F5E9;
         gfx.blit(TEX, clockX, timerY, 0, 49f, 154f, 7, 7, 256, 256);
         gfx.drawString(font, timer, timerX, lineY, timerColor, true);
 
@@ -318,17 +313,11 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         AllGuiTextures.STOCK_KEEPER_REQUEST_SCROLL_BOT.render(gfx, barX, barY + barSize - 5);
     }
 
-    private enum Completion { OPEN, ALL_SENT, HAS_ABORT }
-
-    /** Whether the order is finished (no ACTIVE task) and, if so, whether any task was aborted. */
-    private static Completion completion(ProductionOrderView order) {
-        boolean anyAborted = false;
-        for (ProductionOrderView.RequestView r : order.requests()) {
-            ProductionTask.State st = r.stateEnum();
-            if (st == ProductionTask.State.ACTIVE) return Completion.OPEN;
-            if (st == ProductionTask.State.ABORTED) anyAborted = true;
-        }
-        return anyAborted ? Completion.HAS_ABORT : Completion.ALL_SENT;
+    /** True once every task has been sent — the order is then complete (timer freezes + turns green). */
+    private static boolean allSent(ProductionOrderView order) {
+        for (ProductionOrderView.RequestView r : order.requests())
+            if (r.stateEnum() != Task.State.SENT) return false;
+        return true;
     }
 
     private static String formatTime(int ticks) {
@@ -412,21 +401,17 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         List<Component> lines = new ArrayList<>();
         lines.add(r.display().getHoverName().copy().withColor(0xFBDC7D));
 
-        ProductionTask.State state = r.stateEnum();
-        String value = state == ProductionTask.State.ACTIVE
-            ? r.inStock() + "/" + r.amount()   // processing: current network stock toward the request
+        Task.State state = r.stateEnum();
+        boolean active = state.isActive();
+        String value = active
+            ? r.inStock() + "/" + r.amount()   // in progress: current network stock toward the request
             : String.valueOf(r.amount());
         lines.add(Component.translatable("createfactorycontroller.gui.production_tooltip_request")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal(value).withStyle(ChatFormatting.WHITE)));
 
-        Component status = switch (state) {
-            case DONE     -> Component.translatable("createfactorycontroller.gui.production_status_sent").withStyle(ChatFormatting.GREEN);
-            case ABORTED  -> Component.translatable("createfactorycontroller.gui.production_status_aborted").withStyle(ChatFormatting.RED);
-            default       -> Component.translatable("createfactorycontroller.gui.production_status_processing").withStyle(ChatFormatting.DARK_GREEN);
-        };
         lines.add(Component.translatable("createfactorycontroller.gui.production_tooltip_status")
-            .withStyle(ChatFormatting.GRAY).append(status));
+            .withStyle(ChatFormatting.GRAY).append(state.getComponent()));
         return lines;
     }
 

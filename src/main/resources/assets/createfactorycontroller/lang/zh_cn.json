@@ -35,9 +35,11 @@
   "createfactorycontroller.gui.no_production_orders": "无进行中生产订单",
   "createfactorycontroller.gui.production_tooltip_request": "需求：",
   "createfactorycontroller.gui.production_tooltip_status": "状态：",
+  "createfactorycontroller.gui.production_status_waiting": "Waiting",
   "createfactorycontroller.gui.production_status_processing": "生产中",
+  "createfactorycontroller.gui.production_status_ready": "Ready to Sent",
   "createfactorycontroller.gui.production_status_sent": "已发送",
-  "createfactorycontroller.gui.production_status_aborted": "已取消",
+  "createfactorycontroller.gui.production_status_invalid_pattern": "Invalid Pattern",
 
   "key.categories.createfactorycontroller": "机械动力: 工厂控制台",
   "key.createfactorycontroller.cycle_arrow": "循环箭头路径模式",
