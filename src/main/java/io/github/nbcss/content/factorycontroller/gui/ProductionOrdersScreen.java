@@ -250,7 +250,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         int btnY = oy + 3;
         boolean hovered = mouseX >= btnX && mouseX < btnX + btnW && mouseY >= btnY && mouseY < btnY + btnH
             && mouseY >= viewTop() && mouseY < viewBottom();
-        gfx.blit(TEX, btnX, btnY, 0, hovered ? 92f : 82f, 153f, btnW, btnH, 256, 256);
+        gfx.blit(TEX, btnX, btnY, 0, hovered ? 69f : 59f, 153f, btnW, btnH, 256, 256);
         if (btnY >= viewTop() - btnH && btnY < viewBottom())
             cancelButtons.add(new int[]{btnX, btnY, btnX + btnW, btnY + btnH, order.orderId()});
 
@@ -280,17 +280,30 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         List<ProductionOrderView.RequestView> reqs = order.requests();
         for (int i = 0; i < reqs.size() && i < 9; i++) {
             int sx = sx0 + i * 20;
-            AllGuiTextures.STOCK_KEEPER_REQUEST_SLOT.render(gfx, sx, sy);
+            gfx.blit(TEX, sx, sy, 0, 39f, 165f, 18, 18, 256, 256);   // slot background (from our texture)
             ProductionOrderView.RequestView r = reqs.get(i);
             ItemStack stack = r.display();
             gfx.renderItem(stack, sx + 1, sy + 1);
             if (sy + 1 >= viewTop() && sy + 1 < viewBottom())
                 slotTips.add(new SlotTip(sx + 1, sy + 1, sx + 17, sy + 17, r));
             gfx.pose().pushPose();
-            gfx.pose().translate(0, 0, 200);   // count sprite above the item model
+            gfx.pose().translate(0, 0, 200);   // count sprite + state symbol above the item model
             SpriteNumbersRender.drawCount(gfx, SpriteNumbersRender.abbreviate(r.amount()), sx + 2, sy);
+            drawStateSymbol(gfx, r.stateEnum(), sx, sy);
             gfx.pose().popPose();
         }
+    }
+
+    /** Renders the per-state symbol (from our texture) in the slot's top-right; nothing for WAITING / READY. */
+    private void drawStateSymbol(GuiGraphics gfx, Task.State state, int sx, int sy) {
+        int u, v, w, h;
+        switch (state) {
+            case SENT            -> { u = 80;  v = 155; w = 7; h = 6; }   // tick
+            case INVALID_PATTERN -> { u = 88;  v = 154; w = 7; h = 7; }   // cross
+            case PROCESSING      -> { u = 103; v = 155; w = 7; h = 5; }   // up arrow
+            default              -> { return; }
+        }
+        gfx.blit(TEX, sx + 19 - w, sy, 0, (float) u, (float) v, w, h, 256, 256);
     }
 
     private void renderScrollbar(GuiGraphics gfx, float currentScroll) {

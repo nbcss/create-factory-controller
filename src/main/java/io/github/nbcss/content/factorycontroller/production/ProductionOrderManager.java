@@ -91,14 +91,18 @@ public class ProductionOrderManager extends SavedData {
         for (ProductionOrder o : getOrdersForNetwork(network)) {
             List<ProductionOrderView.RequestView> rs = new ArrayList<>();
             for (Task r : o.tasks()) {
-                int stock = r.isActive() ? networkStockOf(r.network, r.item) : 0;
+                int stock = networkStockOf(r.network, r.item);
                 // For an active task, refine the displayed state: WAITING while the network holds no promise for the
                 // item yet, PROCESSING once it does (promises are shared per-network/per-item). Terminal tasks keep
                 // their stored SENT/ABORTED.
                 Task.State display = r.state;
-                if (r.isActive()) {
-                    if (stock >= r.amount) display = Task.State.READY;   // enough in stock — about to ship
-                    else display = networkPromisedOf(r.network, r.item) > 0 ? Task.State.PROCESSING : Task.State.WAITING;
+                if (display != Task.State.SENT && display != Task.State.INVALID_PATTERN) {
+                    if (stock >= r.amount)
+                        display = Task.State.READY;
+                    else if (networkPromisedOf(r.network, r.item) > 0)
+                        display = Task.State.PROCESSING;
+                    else
+                        display = Task.State.WAITING;
                 }
                 rs.add(new ProductionOrderView.RequestView(r.item.copy(), r.amount, stock, display.ordinal()));
             }
@@ -114,7 +118,7 @@ public class ProductionOrderManager extends SavedData {
      *  — used when a gauge is removed or stops being orderable. Such a task no longer creates demand, but the
      *  manager still ships it (→ SENT) if the network happens to have enough stock; otherwise it keeps the order
      *  open until the player removes it. */
-    public void abortTasksFor(UUID network, UUID patternId) {
+    public void invalidateTasksFor(UUID network, UUID patternId) {
         boolean changed = false;
         for (ProductionOrder o : orders.values())
             if (o.network().equals(network))
@@ -127,9 +131,9 @@ public class ProductionOrderManager extends SavedData {
     }
 
     /** Static convenience for controllers (server side only). */
-    public static void abortTasksFor(Level level, UUID network, UUID patternId) {
+    public static void invalidateTasksFor(Level level, UUID network, UUID patternId) {
         ProductionOrderManager m = get(level);
-        if (m != null) m.abortTasksFor(network, patternId);
+        if (m != null) m.invalidateTasksFor(network, patternId);
     }
 
     /**

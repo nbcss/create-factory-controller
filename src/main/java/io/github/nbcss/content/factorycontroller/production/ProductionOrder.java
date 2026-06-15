@@ -56,37 +56,22 @@ public record ProductionOrder(int orderId,
             tag.getLong("CreatedGameTime"), tasks);
     }
 
-    /**
-     * One line-item of an order: a standing task to produce {@code amount} of {@link #item} from a specific
-     * orderable gauge and ship it to {@link #address}. While active it contributes external demand to its gauge
-     * (so the gauge produces) and is monitored against network stock; once enough of the item is available in the
-     * network (whether freshly produced or already in stock) it ships as a package (sharing the order's
-     * {@code orderId}) and goes {@link State#SENT}. It is {@link State#ABORTED} when its gauge is gone (removed /
-     * no longer orderable).
-     *
-     * <p>A task with a {@code null} {@link #patternId} represents a real, already-in-stock item bundled into the
-     * same keeper order: it ships instantly (via Create's normal dispatch) and is recorded here purely so it shows
-     * in the order entry as immediately {@link State#SENT}.</p>
-     */
     public static class Task {
 
         public enum State {
-            WAITING("createfactorycontroller.gui.production_status_waiting", ChatFormatting.WHITE, true),
-            PROCESSING("createfactorycontroller.gui.production_status_processing", ChatFormatting.YELLOW, true),
-            READY("createfactorycontroller.gui.production_status_ready", ChatFormatting.DARK_GREEN, true),
-            SENT("createfactorycontroller.gui.production_status_sent", ChatFormatting.GREEN, false),
-            INVALID_PATTERN("createfactorycontroller.gui.production_status_invalid_pattern", ChatFormatting.RED, false);
+            WAITING("createfactorycontroller.gui.production_status_waiting", ChatFormatting.WHITE),
+            PROCESSING("createfactorycontroller.gui.production_status_processing", ChatFormatting.YELLOW),
+            READY("createfactorycontroller.gui.production_status_ready", ChatFormatting.DARK_GREEN),
+            INVALID_PATTERN("createfactorycontroller.gui.production_status_invalid_pattern", ChatFormatting.RED),
+            SENT("createfactorycontroller.gui.production_status_sent", ChatFormatting.GREEN);
             private final String translationKey;
             private final ChatFormatting format;
-            private final boolean active;
-            State(String translationKey, ChatFormatting format, boolean active){
+            State(String translationKey, ChatFormatting format){
                 this.translationKey = translationKey;
                 this.format = format;
-                this.active = active;
             }
-            /** WAITING / PROCESSING / READY are active (not yet shipped); SENT / ABORTED are terminal. */
             public boolean isActive() {
-                return active;
+                return this != SENT;
             }
             public Component getComponent() {
                 return Component.translatable(translationKey).withStyle(format);
@@ -157,12 +142,11 @@ public record ProductionOrder(int orderId,
                 ItemStack.parseOptional(registries, tag.getCompound("Item")),
                 tag.getInt("Amount"), tag.getString("Address"),
                 tag.getInt("OrderId"), tag.getInt("LinkIndex"), tag.getBoolean("FinalLink"));
-            r.state = switch (tag.getString("State")) {
-                default -> {
-                    try { yield State.valueOf(tag.getString("State")); }
-                    catch (IllegalArgumentException e) { yield State.PROCESSING; }
-                }
-            };
+            try {
+                r.state = State.valueOf(tag.getString("State"));
+            } catch (IllegalArgumentException e) {
+                r.state = State.PROCESSING;
+            }
             r.timer = tag.getInt("Timer");
             return r;
         }

@@ -35,9 +35,9 @@
   "createfactorycontroller.gui.no_production_orders": "No open production orders",
   "createfactorycontroller.gui.production_tooltip_request": "Request: ",
   "createfactorycontroller.gui.production_tooltip_status": "Status: ",
-  "createfactorycontroller.gui.production_status_waiting": "Waiting",
+  "createfactorycontroller.gui.production_status_waiting": "Waiting for ",
   "createfactorycontroller.gui.production_status_processing": "Processing",
-  "createfactorycontroller.gui.production_status_ready": "Ready to Sent",
+  "createfactorycontroller.gui.production_status_ready": "Ready to Send",
   "createfactorycontroller.gui.production_status_sent": "Sent",
   "createfactorycontroller.gui.production_status_invalid_pattern": "Invalid Pattern",
 

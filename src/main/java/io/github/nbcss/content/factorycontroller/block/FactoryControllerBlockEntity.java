@@ -187,7 +187,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (eligible && g.patternId == null) {
             g.patternId = java.util.UUID.randomUUID();
         } else if (!eligible && g.patternId != null) {
-            ProductionOrderManager.abortTasksFor(level, g.networkId, g.patternId);
+            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
             g.patternId = null;
         }
     }
@@ -260,7 +260,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         // The gauge is gone → abort any production tasks targeting it.
         if (behaviour instanceof VirtualGaugeBehaviour g && g.patternId != null && level != null)
-            ProductionOrderManager.abortTasksFor(level, g.networkId, g.patternId);
+            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
 
         behaviour.disconnectAll();
 
@@ -591,7 +591,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         for (VirtualComponentBehaviour b : components.values()) {
             // The controller is being destroyed → its gauges are gone; abort their production tasks.
             if (b instanceof VirtualGaugeBehaviour g && g.patternId != null)
-                ProductionOrderManager.abortTasksFor(level, g.networkId, g.patternId);
+                ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
             ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(b.getItemId()));
             if (!stack.isEmpty())
                 Block.popResource(level, getBlockPos(), stack);
