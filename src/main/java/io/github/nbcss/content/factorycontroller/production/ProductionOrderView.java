@@ -9,15 +9,18 @@ import java.util.List;
 
 /**
  * Client-facing snapshot of a {@link ProductionOrder} for the monitoring tab (item 8): the order id, its address,
- * and each request's promised item + amount + state. Synced from the server; carries no gauge internals.
+ * how long ago it was created (for the mm:ss timer), and each request's promised item + amount + state. Synced
+ * from the server; carries no gauge internals.
  */
-public record ProductionOrderView(int orderId, String address, List<RequestView> requests) {
+public record ProductionOrderView(int orderId, String address, int ageTicks, List<RequestView> requests) {
 
-    /** One request line: the promised item, how much, and {@link ProductionTask.State} as an ordinal. */
-    public record RequestView(ItemStack display, int amount, int state) {
+    /** One request line: the promised item, how much, how much is currently in network stock (for a processing
+     *  task's progress display), and {@link ProductionTask.State} as an ordinal. */
+    public record RequestView(ItemStack display, int amount, int inStock, int state) {
         public static final StreamCodec<RegistryFriendlyByteBuf, RequestView> STREAM_CODEC = StreamCodec.composite(
             ItemStack.OPTIONAL_STREAM_CODEC, RequestView::display,
             ByteBufCodecs.VAR_INT, RequestView::amount,
+            ByteBufCodecs.VAR_INT, RequestView::inStock,
             ByteBufCodecs.VAR_INT, RequestView::state,
             RequestView::new);
 
@@ -30,6 +33,7 @@ public record ProductionOrderView(int orderId, String address, List<RequestView>
     public static final StreamCodec<RegistryFriendlyByteBuf, ProductionOrderView> STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.VAR_INT, ProductionOrderView::orderId,
         ByteBufCodecs.STRING_UTF8, ProductionOrderView::address,
+        ByteBufCodecs.VAR_INT, ProductionOrderView::ageTicks,
         RequestView.STREAM_CODEC.apply(ByteBufCodecs.list()), ProductionOrderView::requests,
         ProductionOrderView::new);
 }

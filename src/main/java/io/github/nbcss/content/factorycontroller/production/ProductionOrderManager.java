@@ -42,9 +42,13 @@ public class ProductionOrderManager extends SavedData {
     private static final String FILE_ID = "createfactorycontroller_production_orders";
     /** Re-check / dispatch throttle, matching the spirit of the gauge's request timer. */
     private static final int DISPATCH_INTERVAL_TICKS = 20;
+    /** How long a fully-finished order lingers in the GUI before it is removed (5s). */
+    private static final int LINGER_TICKS = 100;
 
     /** Orders keyed by their shared orderId. */
     private final Map<Integer, ProductionOrder> orders = new LinkedHashMap<>();
+    /** Game time at which an order first became all-terminal — transient, drives the {@link #LINGER_TICKS} grace. */
+    private final Map<Integer, Long> completedAt = new java.util.HashMap<>();
 
     public ProductionOrderManager() {}
 
@@ -77,14 +81,20 @@ public class ProductionOrderManager extends SavedData {
         return out;
     }
 
-    /** Client-facing snapshots of all open orders on {@code network} (for the monitoring tab). */
-    public List<ProductionOrderView> viewsForNetwork(UUID network) {
+    /** Client-facing snapshots of all open orders on {@code network} (for the monitoring tab). {@code now} is the
+     *  current server game time, used to fill each order's age for the mm:ss timer. */
+    public List<ProductionOrderView> viewsForNetwork(UUID network, long now) {
         List<ProductionOrderView> out = new ArrayList<>();
         for (ProductionOrder o : getOrdersForNetwork(network)) {
             List<ProductionOrderView.RequestView> rs = new ArrayList<>();
-            for (ProductionTask r : o.tasks())
-                rs.add(new ProductionOrderView.RequestView(r.item.copy(), r.amount, r.state.ordinal()));
-            out.add(new ProductionOrderView(o.orderId(), o.address(), rs));
+            for (ProductionTask r : o.tasks()) {
+                int stock = r.isActive() ? networkStockOf(r.network, r.item) : 0;
+                rs.add(new ProductionOrderView.RequestView(r.item.copy(), r.amount, stock, r.state.ordinal()));
+            }
+            // A finished order's timer freezes at the moment it completed; an open one keeps counting.
+            long endTime = o.isComplete() ? completedAt.getOrDefault(o.orderId(), now) : now;
+            int age = (int) Math.max(0, endTime - o.createdGameTime());
+            out.add(new ProductionOrderView(o.orderId(), o.address(), age, rs));
         }
         return out;
     }
@@ -96,7 +106,7 @@ public class ProductionOrderManager extends SavedData {
         for (ProductionOrder o : orders.values())
             if (o.network().equals(network))
                 for (ProductionTask t : o.tasks())
-                    if (!t.isTerminal() && t.patternId.equals(patternId)) {
+                    if (!t.isTerminal() && patternId.equals(t.patternId)) {
                         t.state = ProductionTask.State.ABORTED;
                         changed = true;
                     }
@@ -110,10 +120,17 @@ public class ProductionOrderManager extends SavedData {
     }
 
     /**
-     * Player-initiated removal of a whole order (from the monitoring tab).
+     * Player-initiated cancel of a whole order (the entry's abort button): every still-incomplete task is marked
+     * {@link ProductionTask.State#ABORTED} (so it stops demanding/shipping) and the order is dropped immediately,
+     * bypassing the {@link #LINGER_TICKS} grace.
      */
     public void removeOrder(int orderId) {
+        ProductionOrder o = orders.get(orderId);
+        if (o != null)
+            for (ProductionTask t : o.tasks())
+                if (!t.isTerminal()) t.state = ProductionTask.State.ABORTED;
         boolean removed = orders.remove(orderId) != null;
+        completedAt.remove(orderId);
         if (removed) setDirty();
     }
 
@@ -145,18 +162,26 @@ public class ProductionOrderManager extends SavedData {
 
         ProductionOrderManager mgr = get(server);
         int orderId = mgr.freshOrderId();
-        List<ProductionTask> tasks = new ArrayList<>();
+        // Pattern (produced) tasks first, then the in-stock real items as already-DONE tasks for display.
+        List<ProductionTask> produced = new ArrayList<>();
         int linkIndex = inStock.isEmpty() ? 0 : 1;   // link 0 reserved for the instant in-stock package
         for (BigItemStack b : patterns) {
             ProductionTarget t = ProductionPatternItem.getTarget(b.stack);
             if (t == null || b.count <= 0) continue;
-            tasks.add(new ProductionTask(t.network(), t.patternId(),
+            produced.add(new ProductionTask(t.network(), t.patternId(),
                 t.display().copy(), b.count, address, orderId, linkIndex++, false));
         }
-        if (tasks.isEmpty()) return false;   // patterns present but none resolvable → let normal dispatch run
+        if (produced.isEmpty()) return false;   // patterns present but none resolvable → let normal dispatch run
                                                  // (inStock items still ship; the dead patterns just produce nothing)
-        tasks.get(tasks.size() - 1).finalLink = true;
-        mgr.addOrder(new ProductionOrder(orderId, network, address, tasks));
+        produced.get(produced.size() - 1).finalLink = true;
+
+        List<ProductionTask> tasks = new ArrayList<>(produced);
+        // In-stock items: bundled into the order as immediately-DONE display tasks (link 0, shipped below).
+        for (BigItemStack b : inStock)
+            if (b.count > 0)
+                tasks.add(ProductionTask.completed(network, b.stack.copy(), b.count, address, orderId, 0, false));
+
+        mgr.addOrder(new ProductionOrder(orderId, network, address, server.overworld().getGameTime(), tasks));
 
         if (!inStock.isEmpty()) {
             // Instant in-stock items = link 0 of the order, NOT the final link, so the Re-Packager holds them and
@@ -175,7 +200,7 @@ public class ProductionOrderManager extends SavedData {
         for (ProductionOrder o : orders.values())
             if (o.network().equals(network))
                 for (ProductionTask r : o.tasks())
-                    if (r.isActive() && r.patternId.equals(patternId)) sum += r.amount;
+                    if (r.isActive() && patternId.equals(r.patternId)) sum += r.amount;
         return sum;
     }
 
@@ -215,10 +240,16 @@ public class ProductionOrderManager extends SavedData {
                     dirty = true;
                 }
             }
-            if (order.isComplete()) completed.add(order.orderId());
+            // Linger: once every task is terminal, keep the entry visible for LINGER_TICKS before removing it.
+            if (order.isComplete()) {
+                long since = completedAt.computeIfAbsent(order.orderId(), id -> now);
+                if (now - since >= LINGER_TICKS) completed.add(order.orderId());
+            } else if (completedAt.remove(order.orderId()) != null) {
+                dirty = true;   // re-opened (e.g. a task added) — cancel any pending linger
+            }
         }
 
-        for (int id : completed) orders.remove(id);
+        for (int id : completed) { orders.remove(id); completedAt.remove(id); }
         if (dirty || !completed.isEmpty()) setDirty();
     }
 

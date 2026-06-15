@@ -33,8 +33,9 @@ public record RequestProductionOrdersPacket(BlockPos keeperPos) implements Custo
             if (!(player.level().getBlockEntity(packet.keeperPos()) instanceof StockTickerBlockEntity keeper)) return;
             UUID network = keeper.behaviour == null ? null : keeper.behaviour.freqId;
             if (network == null) return;
+            long now = player.getServer().overworld().getGameTime();
             PacketDistributor.sendToPlayer(player, new SyncProductionOrdersPacket(
-                ProductionOrderManager.get(player.serverLevel()).viewsForNetwork(network)));
+                ProductionOrderManager.get(player.serverLevel()).viewsForNetwork(network, now)));
         });
     }
 }

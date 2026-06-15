@@ -34,8 +34,10 @@ public record RemoveProductionOrderPacket(BlockPos keeperPos, int orderId) imple
             mgr.removeOrder(packet.orderId());
             if (player.level().getBlockEntity(packet.keeperPos()) instanceof StockTickerBlockEntity keeper) {
                 UUID network = keeper.behaviour == null ? null : keeper.behaviour.freqId;
-                if (network != null)
-                    PacketDistributor.sendToPlayer(player, new SyncProductionOrdersPacket(mgr.viewsForNetwork(network)));
+                if (network != null) {
+                    long now = player.getServer().overworld().getGameTime();
+                    PacketDistributor.sendToPlayer(player, new SyncProductionOrdersPacket(mgr.viewsForNetwork(network, now)));
+                }
             }
         });
     }

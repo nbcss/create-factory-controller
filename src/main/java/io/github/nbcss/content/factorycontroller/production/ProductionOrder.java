@@ -18,10 +18,11 @@ import java.util.UUID;
 public record ProductionOrder(int orderId,
                               UUID network,
                               String address,
+                              long createdGameTime,
                               List<ProductionTask> tasks) {
 
     /**
-     * True once every task is terminal (DONE/ABORTED); a PAUSED task keeps the order open.
+     * True once every task is terminal (DONE/ABORTED).
      */
     public boolean isComplete() {
         for (ProductionTask r : tasks)
@@ -34,6 +35,7 @@ public record ProductionOrder(int orderId,
         tag.putInt("OrderId", orderId);
         tag.putUUID("Network", network);
         tag.putString("Address", address);
+        tag.putLong("CreatedGameTime", createdGameTime);
         ListTag list = new ListTag();
         for (ProductionTask r : tasks) list.add(r.save(registries));
         tag.put("Tasks", list);
@@ -45,6 +47,7 @@ public record ProductionOrder(int orderId,
         ListTag list = tag.getList("Tasks", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++)
             tasks.add(ProductionTask.load(list.getCompound(i), registries));
-        return new ProductionOrder(tag.getInt("OrderId"), tag.getUUID("Network"), tag.getString("Address"), tasks);
+        return new ProductionOrder(tag.getInt("OrderId"), tag.getUUID("Network"), tag.getString("Address"),
+            tag.getLong("CreatedGameTime"), tasks);
     }
 }

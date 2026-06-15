@@ -14,6 +14,7 @@ import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import io.github.nbcss.content.factorycontroller.render.FluidGuiRender;
+import io.github.nbcss.content.factorycontroller.render.SpriteNumbersRender;
 import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.CreateFactoryController;
@@ -71,11 +72,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final ResourceLocation PANEL_TEX =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/configure_recipe.png");
     private static final int PANEL_W = 200, PANEL_H = 184;
-
-    // Stock-keeper number font (create:textures/gui/stock_keeper.png, NUMBERS region 48,176 5x8).
-    private static final ResourceLocation NUMBERS_TEX =
-        ResourceLocation.fromNamespaceAndPath("create", "textures/gui/stock_keeper.png");
-    private static final int NUM_SX = 48, NUM_SY = 176, NUM_W = 5, NUM_H = 8;
 
     // Threshold-row geometry (filter slot x24-40, count box x48-112, unit box x118-167, band y≈128-144).
     /** The input arrangement is a 3×3 grid, so at most 9 slots (incl. repeats) can be shown. */
@@ -1072,25 +1068,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * CreateFluidLogistic uses for fluid amounts; we just map it on the same sheet rather than calling its renderer.
      */
     private void drawSpriteCount(GuiGraphics gfx, String text, int itemX, int itemY) {
-        if (text.isBlank()) return;
-        int x = (int) Math.floor(-text.length() * 2.5);
-        for (char raw : text.toCharArray()) {
-            char c = Character.toLowerCase(raw);
-            int xOffset = (c - '0') * 6;
-            int spriteWidth = NUM_W;
-            switch (c) {
-                case ' ': x += 4; continue;
-                case '.': spriteWidth = 3; xOffset = 60; break;
-                case 'k': xOffset = 64; break;
-                case 'm': spriteWidth = 7; xOffset = 70; break;
-                case 'b': xOffset = 78; break;
-                case '+': spriteWidth = 9; xOffset = 84; break;
-                default: break;
-            }
-            RenderSystem.enableBlend();
-            gfx.blit(NUMBERS_TEX, itemX + 13 + x, itemY + 10, 0, NUM_SX + xOffset, NUM_SY, spriteWidth, NUM_H, 256, 256);
-            x += spriteWidth - 1;
-        }
+        SpriteNumbersRender.drawCount(gfx, text, itemX, itemY);
     }
 
     private void drawSlotCount(GuiGraphics gfx, String text, int slotX, int slotY) {
