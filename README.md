@@ -22,12 +22,12 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 
 ## Dependencies
 
-| Dependency | Version |
-|---|---|
-| Minecraft | 1.21.1 |
+| Dependency | Version  |
+|---|----------|
+| Minecraft | 1.21.1   |
 | NeoForge | 21.1.227 |
-| Create | 6.0.11-292 |
-| Deployer | 0.1.2 |
+| Create | 6.0.10   |
+| Deployer | 0.1.2    |
 
 ## Credits
 

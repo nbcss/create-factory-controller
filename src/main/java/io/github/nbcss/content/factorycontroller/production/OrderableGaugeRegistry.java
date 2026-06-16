@@ -6,8 +6,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,9 +31,15 @@ public final class OrderableGaugeRegistry {
     /** One orderable gauge: its network, stable id, and produced (display) item. */
     public record Entry(UUID network, UUID patternId, ItemStack display) {}
 
-    private record Bucket(List<Entry> entries, long lastSeen) {}
+    /** The dimension + position of the controller that owns a gauge (for resolving its live recipe graph). */
+    public record Located(ResourceKey<Level> dim, BlockPos pos) {}
+
+    private record Bucket(ResourceKey<Level> dim, BlockPos pos, List<Entry> entries, long lastSeen) {}
 
     private static final Map<String, Bucket> BY_CONTROLLER = new ConcurrentHashMap<>();
+    /** Reverse index patternId → owning controller key, so {@link #locate} is O(1) instead of scanning every
+     *  controller's entries. Kept in sync with {@link #BY_CONTROLLER} by the mutators below. */
+    private static final Map<UUID, String> BY_PATTERN = new ConcurrentHashMap<>();
 
     private OrderableGaugeRegistry() {}
 
@@ -41,25 +49,40 @@ public final class OrderableGaugeRegistry {
 
     /** Controller heartbeat: replaces this controller's orderable gauges and refreshes its freshness (empty = drop). */
     public static void heartbeat(ResourceKey<Level> dim, BlockPos pos, List<Entry> entries, long now) {
-        if (entries.isEmpty()) BY_CONTROLLER.remove(key(dim, pos));
-        else BY_CONTROLLER.put(key(dim, pos), new Bucket(List.copyOf(entries), now));
+        String k = key(dim, pos);
+        Bucket old = entries.isEmpty() ? BY_CONTROLLER.remove(k)
+                                       : BY_CONTROLLER.put(k, new Bucket(dim, pos, List.copyOf(entries), now));
+        // Reverse-index upkeep: drop patternIds this controller no longer publishes, (re)add current ones.
+        Set<UUID> current = new HashSet<>();
+        for (Entry e : entries) current.add(e.patternId());
+        if (old != null)
+            for (Entry e : old.entries())
+                if (!current.contains(e.patternId())) BY_PATTERN.remove(e.patternId(), k);
+        for (UUID id : current) BY_PATTERN.put(id, k);
     }
 
     /** Promptly drop a controller's entries (on unload/break); the TTL prune is the fallback if this is missed. */
     public static void remove(ResourceKey<Level> dim, BlockPos pos) {
-        BY_CONTROLLER.remove(key(dim, pos));
+        String k = key(dim, pos);
+        Bucket b = BY_CONTROLLER.remove(k);
+        if (b != null) for (Entry e : b.entries()) BY_PATTERN.remove(e.patternId(), k);
     }
 
     /** Evicts every controller whose heartbeat is stale (or whose timestamp is in the future, e.g. after a
      *  per-world game-time reset). Driven once per server tick by the order manager so dead controllers — including
      *  ones removed in ways that bypass {@link #remove} — never accumulate. */
     public static void pruneStale(long now) {
-        BY_CONTROLLER.values().removeIf(b -> !fresh(b, now));
+        BY_CONTROLLER.entrySet().removeIf(en -> {
+            if (fresh(en.getValue(), now)) return false;
+            for (Entry e : en.getValue().entries()) BY_PATTERN.remove(e.patternId(), en.getKey());
+            return true;
+        });
     }
 
     /** Drops everything — called on server stop so this static index never bleeds across worlds in one JVM. */
     public static void clear() {
         BY_CONTROLLER.clear();
+        BY_PATTERN.clear();
     }
 
     private static boolean fresh(Bucket b, long now) {
@@ -76,5 +99,18 @@ public final class OrderableGaugeRegistry {
                 for (Entry e : b.entries())
                     if (e.network().equals(network)) out.add(e);
         return out;
+    }
+
+    /** The loaded controller owning gauge {@code network}+{@code patternId}, or null if no fresh controller has it
+     *  (unloaded / removed). O(1) via the reverse index, then a verify against the (small) bucket. */
+    public static Located locate(UUID network, UUID patternId, long now) {
+        String k = BY_PATTERN.get(patternId);
+        if (k == null) return null;
+        Bucket b = BY_CONTROLLER.get(k);
+        if (b == null || !fresh(b, now)) return null;
+        for (Entry e : b.entries())   // confirm the (possibly slightly stale) index still matches
+            if (e.patternId().equals(patternId) && e.network().equals(network))
+                return new Located(b.dim(), b.pos());
+        return null;
     }
 }

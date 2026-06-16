@@ -40,6 +40,9 @@
   "createfactorycontroller.gui.production_status_ready": "已就绪",
   "createfactorycontroller.gui.production_status_sent": "已发送",
   "createfactorycontroller.gui.production_status_invalid_pattern": "样板失效",
+  "createfactorycontroller.gui.ingredients_sufficient": "原材料充足",
+  "createfactorycontroller.gui.ingredients_warning": "原材料不足",
+  "createfactorycontroller.gui.ingredients_pattern_missing": "存在失效样板",
 
   "key.categories.createfactorycontroller": "机械动力: 工厂控制台",
   "key.createfactorycontroller.cycle_arrow": "循环箭头路径模式",
@@ -52,6 +55,8 @@
   "createfactorycontroller.config.max_components.tooltip": "单个工厂控制台可容纳的最大组件数量。数值越高，控制台的存档数据和界面同步数据包越大。",
   "createfactorycontroller.config.max_craft_grid": "合成器最大尺寸",
   "createfactorycontroller.config.max_craft_grid.tooltip": "配方界面中，配方可选择的最大动力合成器尺寸。",
+  "createfactorycontroller.config.check_ingredients": "[Experimental] Check Ingredients on Send",
+  "createfactorycontroller.config.check_ingredients.tooltip": "Show whether the network has enough ingredients to produce an order when hovering the Stock Keeper's Send button. Requires both the client and server config enabled.",
 
   "createfactorycontroller.network.default": "网络 #%1$s",
   "createfactorycontroller.network.none": "无网络",

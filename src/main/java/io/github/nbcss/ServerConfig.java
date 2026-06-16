@@ -11,6 +11,7 @@ public final class ServerConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.IntValue MAX_COMPONENTS;
     public static final ModConfigSpec.IntValue MAX_CRAFT_GRID_SIZE;
+    public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -23,6 +24,12 @@ public final class ServerConfig {
                 .comment("Largest square mechanical-crafter grid a recipe may be laid out into in the recipe screen")
                 .translation("createfactorycontroller.config.max_craft_grid")
                 .defineInRange("maxCraftGridSize", 10, 3, 32);
+        CHECK_INGREDIENTS_ON_SEND = builder
+                .comment("When hovering the Stock Keeper's Send button over an order containing Production Patterns,",
+                        "compute and show whether the network has enough ingredients to produce the order.",
+                        "Must also be enabled in the client config to show. Disable to skip the server-side computation.")
+                .translation("createfactorycontroller.config.check_ingredients")
+                .define("checkIngredientsOnSend", false);
         SPEC = builder.build();
     }
 
@@ -34,5 +41,9 @@ public final class ServerConfig {
 
     public static int maxCraftGridSize() {
         return MAX_CRAFT_GRID_SIZE.get();
+    }
+
+    public static boolean checkIngredientsOnSend() {
+        return CHECK_INGREDIENTS_ON_SEND.get();
     }
 }

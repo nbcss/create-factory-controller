@@ -2,6 +2,7 @@ package io.github.nbcss.content.factorycontroller.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllItems;
 import com.simibubi.create.AllRecipeTypes;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.kinetics.crafter.MechanicalCraftingRecipe;
@@ -234,10 +235,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         passiveModeButton.withCallback(this::togglePassiveMode);
         addWidget(passiveModeButton);
 
-        // "Add Order in Stock Keeper" toggle — passive mode only. Icon: a logistics package box.
         stockKeeperButton = null;
         if (requestMode.isPassive()) {
-            ScreenElement boxIcon = (gfx, x, y) -> gfx.renderItem(PackageStyles.getDefaultBox(), x, y);
+            ScreenElement boxIcon = (gfx, x, y) -> gfx.renderItem(AllItems.SHOPPING_LIST.asStack(), x, y);
             stockKeeperButton = new IconButton(panelX + STOCK_BTN_X, panelY + THRESH_TOP - 1, boxIcon);
             stockKeeperButton.green = requestMode.allowsOrder();
             stockKeeperButton.withCallback(this::toggleStockKeeper);

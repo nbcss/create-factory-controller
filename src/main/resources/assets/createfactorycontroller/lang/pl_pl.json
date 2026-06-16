@@ -40,6 +40,9 @@
   "createfactorycontroller.gui.production_status_ready": "Ready to Send",
   "createfactorycontroller.gui.production_status_sent": "Sent",
   "createfactorycontroller.gui.production_status_invalid_pattern": "Invalid Pattern",
+  "createfactorycontroller.gui.ingredients_sufficient": "Sufficient ingredients",
+  "createfactorycontroller.gui.ingredients_warning": "No sufficient ingredients",
+  "createfactorycontroller.gui.ingredients_pattern_missing": "Invalid pattern found",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Przełącz tryb ścieżek strzałek",
@@ -52,6 +55,8 @@
   "createfactorycontroller.config.max_components.tooltip": "Maximum number of components a single Factory Controller may hold. Higher values increase the controller's saved data and its GUI sync packet size.",
   "createfactorycontroller.config.max_craft_grid": "Maks. rozmiar siatki rzemiosła",
   "createfactorycontroller.config.max_craft_grid.tooltip": "Largest mechanical-crafter grid a recipe may be selected in the recipe configuration screen.",
+  "createfactorycontroller.config.check_ingredients": "[Experimental] Check Ingredients on Send",
+  "createfactorycontroller.config.check_ingredients.tooltip": "Show whether the network has enough ingredients to produce an order when hovering the Stock Keeper's Send button. Requires both the client and server config enabled.",
 
   "createfactorycontroller.network.default": "Sieć #%1$s",
   "createfactorycontroller.network.none": "Brak sieci",
