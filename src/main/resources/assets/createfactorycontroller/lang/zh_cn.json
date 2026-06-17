@@ -1,7 +1,6 @@
 {
   "itemGroup.createfactorycontroller": "机械动力: 工厂控制台",
   "block.createfactorycontroller.factory_controller": "工厂控制台",
-
   "createfactorycontroller.gui.in_stock": "库存: %1$s",
   "createfactorycontroller.gui.promised": "承诺: %1$s",
   "createfactorycontroller.gui.capacity": "容量: %1$s/%2$s",
@@ -47,12 +46,10 @@
   "createfactorycontroller.gui.ingredients_sufficient": "原材料充足",
   "createfactorycontroller.gui.ingredients_warning": "原材料不足",
   "createfactorycontroller.gui.ingredients_pattern_missing": "存在失效样板",
-
   "key.categories.createfactorycontroller": "机械动力: 工厂控制台",
   "key.createfactorycontroller.cycle_arrow": "循环箭头路径模式",
   "key.createfactorycontroller.pan_view": "移动视角（拖拽）",
   "key.createfactorycontroller.toggle_full_overlay": "切换完整信息模式",
-
   "createfactorycontroller.config.full_overlay": "完整信息模式",
   "createfactorycontroller.config.full_overlay.tooltip": "在控制台界面中显示所有仪表的数量标签，而非仅显示鼠标悬停的仪表。",
   "createfactorycontroller.config.max_components": "控制台最大组件数量",
@@ -61,10 +58,8 @@
   "createfactorycontroller.config.max_craft_grid.tooltip": "配方界面中，配方可选择的最大动力合成器尺寸。",
   "createfactorycontroller.config.check_ingredients": "[Experimental] Check Ingredients on Send",
   "createfactorycontroller.config.check_ingredients.tooltip": "Show whether the network has enough ingredients to produce an order when hovering the Stock Keeper's Send button. Requires both the client and server config enabled.",
-
   "createfactorycontroller.network.default": "网络 #%1$s",
   "createfactorycontroller.network.none": "无网络",
-
   "createfactorycontroller.subtitle.controller.open": "打开工厂控制台",
   "createfactorycontroller.subtitle.controller.close": "关闭工厂控制台",
   "createfactorycontroller.subtitle.gauge.open": "打开仪表盘",

@@ -1,7 +1,6 @@
 {
   "itemGroup.createfactorycontroller": "Create: Factory Controller",
   "block.createfactorycontroller.factory_controller": "Kontroler fabryki",
-
   "createfactorycontroller.gui.in_stock": "W magazynie: %1$s",
   "createfactorycontroller.gui.promised": "Oczekiwane: %1$s",
   "createfactorycontroller.gui.capacity": "Pojemność: %1$s/%2$s",
@@ -19,9 +18,6 @@
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Przewiń, aby dostroić",
   "createfactorycontroller.gui.action_remove_component": "Shift+Kliknięcie, aby usunąć",
   "createfactorycontroller.gui.threshold.auto_managed": "Automatyczne zarządzanie na żądanie",
-  "createfactorycontroller.gui.passive_mode": "Pasywne żądanie",
-  "createfactorycontroller.gui.passive_mode_tip_1": "Automatycznie dostosuj docelową ilość",
-  "createfactorycontroller.gui.passive_mode_tip_2": "na podstawie aktywnego popytu",
   "createfactorycontroller.gui.prompt.no_selected_network": "Nie wybrano sieci",
   "createfactorycontroller.gui.prompt.selected_network": "Wybrano %1$s",
   "createfactorycontroller.gui.prompt.no_first_network": "Brak sieci — najpierw postaw dostrojony miernik",
@@ -50,12 +46,10 @@
   "createfactorycontroller.gui.ingredients_sufficient": "Sufficient ingredients",
   "createfactorycontroller.gui.ingredients_warning": "No sufficient ingredients",
   "createfactorycontroller.gui.ingredients_pattern_missing": "Invalid pattern found",
-
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Przełącz tryb ścieżek strzałek",
   "key.createfactorycontroller.pan_view": "Przesuń widok (przeciągnij)",
   "key.createfactorycontroller.toggle_full_overlay": "Przełącz pełną nakładkę",
-
   "createfactorycontroller.config.full_overlay": "Pełna nakładka",
   "createfactorycontroller.config.full_overlay.tooltip": "Show the count label on every gauge in the controller overlay, instead of only the hovered gauge.",
   "createfactorycontroller.config.max_components": "Pojemność kontrolera",
@@ -64,10 +58,8 @@
   "createfactorycontroller.config.max_craft_grid.tooltip": "Largest mechanical-crafter grid a recipe may be selected in the recipe configuration screen.",
   "createfactorycontroller.config.check_ingredients": "[Experimental] Check Ingredients on Send",
   "createfactorycontroller.config.check_ingredients.tooltip": "Show whether the network has enough ingredients to produce an order when hovering the Stock Keeper's Send button. Requires both the client and server config enabled.",
-
   "createfactorycontroller.network.default": "Sieć #%1$s",
   "createfactorycontroller.network.none": "Brak sieci",
-
   "createfactorycontroller.subtitle.controller.open": "Kontroler fabryki otwiera się",
   "createfactorycontroller.subtitle.controller.close": "Kontroler fabryki zamyka się",
   "createfactorycontroller.subtitle.gauge.open": "Panel miernika otwiera się",
