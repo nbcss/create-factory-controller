@@ -98,6 +98,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      *  width/height), Ctrl-scrollable up to {@link ServerConfig#maxCraftGridSize()}. 0 until a recipe loads. */
     private int craftDimension = 0;
     private int thresholdCount = 0;
+    /** Click-to-type editing of the count box (non-passive only): true while typing, with the in-progress digits. */
+    private boolean countEditing = false;
+    private String countEdit = "";
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
     private RequestMode requestMode = RequestMode.NORMAL;
     /** True when the gauge's filter is a fluid filter: the threshold/output amounts are then
@@ -1019,7 +1022,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             displayCount = Math.max(0, behaviour.count);
         }
         // Count box is a plain integer (fluid threshold is whole units of the unit box; items are whole items).
-        String countStr = displayCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(displayCount);
+        // While typing (non-passive only) show the live buffer + a blinking caret; "/" only represents 0 when idle.
+        String countStr;
+        if (countEditing && !requestMode.isPassive()) {
+            countStr = (countEdit.isEmpty() ? "" : countEdit) + ((System.currentTimeMillis() / 400) % 2 == 0 ? "_" : "");
+        } else {
+            countStr = displayCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(displayCount);
+        }
         int countColor = requestMode.isPassive() ? 0xFF9ECFFC : 0xFFFFFFFF;
         gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
         // unit
@@ -1113,6 +1122,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (getFocused() != null && !getFocused().isMouseOver(mouseX, mouseY))
             setFocused(null);
 
+        // Count box click-to-type (non-passive). Clicking elsewhere commits any in-progress edit.
+        boolean onCountBox = in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H);
+        if (countEditing && !onCountBox) commitCountEdit();
+        if (onCountBox && (button == 0 || button == 1) && !requestMode.isPassive()) {
+            countEditing = true;
+            countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
+            setFocused(null);   // blur the address box while typing the count
+            playClickSound();
+            return true;
+        }
+
         // Right-click the address field → clear it.
         if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
             addressBox.setValue("");
@@ -1160,6 +1180,49 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    private int getEditCountValue(String editString) {
+        try {
+            int value = editString.isEmpty() ? 0 : Integer.parseInt(editString);
+            int cap = fluidMode ? fluidCountCap() : MAX_THRESHOLD_COUNT;
+            return Mth.clamp(value, 0, cap);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** Commits the typed count, clamped to the valid range, and leaves edit mode. */
+    private void commitCountEdit() {
+        if (!countEditing) return;
+        thresholdCount = getEditCountValue(countEdit);
+        countEditing = false;
+        countEdit = "";
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (countEditing) {
+            if (codePoint >= '0' && codePoint <= '9')
+                countEdit = String.valueOf(getEditCountValue(countEdit + codePoint));
+            return true;
+        }
+        return super.charTyped(codePoint, modifiers);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (countEditing) {
+            switch (keyCode) {
+                case 257, 335, 256 -> commitCountEdit();   // Enter / numpad Enter / Escape → commit + leave edit
+                case 259 -> {                              // Backspace
+                    if (!countEdit.isEmpty()) countEdit = countEdit.substring(0, countEdit.length() - 1);
+                }
+                default -> { }
+            }
+            return true;   // capture all keys while typing so screen shortcuts (e.g. inventory) don't fire
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         // Let the address suggestion list consume scrolling first (matches FactoryPanelScreen).
@@ -1204,6 +1267,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         // Threshold count box
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
+            if (countEditing) commitCountEdit();
             if (!requestMode.isPassive()) {
                 // Fluid threshold is a whole number in the unit box's unit.
                 int fluidCountStep = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;

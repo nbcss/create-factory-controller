@@ -43,10 +43,10 @@
   "createfactorycontroller.gui.production_status_waiting": "Waiting for ingredients",
   "createfactorycontroller.gui.production_status_processing": "Processing...",
   "createfactorycontroller.gui.production_status_sent": "Sent",
-  "createfactorycontroller.gui.production_status_invalid_pattern": "Invalid Pattern",
+  "createfactorycontroller.gui.production_status_invalid_pattern": "Invalid gauge",
   "createfactorycontroller.gui.ingredients_sufficient": "Sufficient ingredients",
   "createfactorycontroller.gui.ingredients_warning": "No sufficient ingredients",
-  "createfactorycontroller.gui.ingredients_pattern_missing": "Invalid pattern found",
+  "createfactorycontroller.gui.ingredients_pattern_missing": "Source gauge not found",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
