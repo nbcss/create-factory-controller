@@ -1,5 +1,10 @@
 ## 0.1.2
+Features:
 - Allow to type number to set gauge request amount
+- Allow to change controller background texture (client setting)
+
+Changes:
+- Default background texture is cardboard_block_side now
 
 ## 0.1.1
 - Introduced Follow Demand and Order mode in gauge

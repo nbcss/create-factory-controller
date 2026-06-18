@@ -105,7 +105,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Edit-name cue drawn after the controller name when idle (indicator only). 9×9 sprite.
     private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
     private static final int RENAME_BUTTON_SIZE = 9;
-    private static final ResourceLocation DEFAULT_BACKGROUND_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/background/create_bricks.png");
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
     private static final int INV_TEX_W         = 176;
     private static final int INV_TEX_H         = 108;
@@ -225,6 +224,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 ? Component.translatable("createfactorycontroller.gui.prompt.no_selected_network")
                 : Component.translatable("createfactorycontroller.gui.prompt.selected_network", menu.networkName(network));
         setTimedPrompt(message.withStyle(ChatFormatting.WHITE), 3000);
+    }
+
+    private ResourceLocation getBackgroundTexture() {
+        return ResourceLocation.fromNamespaceAndPath("createfactorycontroller",
+                "textures/gui/controller_background/" + ClientConfig.getControllerBackground() + ".png");
     }
 
     /** Re-tunes the carried component item (selector scroll): optimistic client update + server packet. */
@@ -401,7 +405,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
         int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
         int bgEndY   = Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-        TiledSpriteRenderer.create(DEFAULT_BACKGROUND_TEX, 0, 0, new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
+        TiledSpriteRenderer.create(getBackgroundTexture(), 0, 0,
+                        new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
         for (VirtualGaugeWidget gauge : gaugeWidgets.values())
