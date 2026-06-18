@@ -1,9 +1,14 @@
 package io.github.nbcss.createfactorycontroller;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.simibubi.create.foundation.item.ItemDescription;
+import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
+import io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersTab;
+import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -16,6 +21,7 @@ import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.liukrast.deployer.lib.helper.ClientRegisterHelpers;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 
@@ -62,9 +68,14 @@ public class CreateFactoryControllerClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() ->
-            net.liukrast.deployer.lib.helper.ClientRegisterHelpers.registerStockKeeperTab(
-                io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersTab::new));
+        event.enqueueWork(() -> {
+            ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
+            // Shift/Ctrl item summary for the controller, driven by Create's tooltip pipeline (reads the
+            // <item>.tooltip.summary / .condition*/.behaviour* lang keys). Reuses Create's ItemDescription.
+            Item controllerItem = CreateFactoryController.FACTORY_CONTROLLER_ITEM.get();
+            TooltipModifier.REGISTRY.register(controllerItem,
+                new ItemDescription.Modifier(controllerItem, FontHelper.Palette.STANDARD_CREATE));
+        });
     }
 
     @SubscribeEvent

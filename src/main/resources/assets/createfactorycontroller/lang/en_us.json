@@ -1,6 +1,9 @@
 {
   "itemGroup.createfactorycontroller": "Create: Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
+  "block.createfactorycontroller.factory_controller.tooltip.summary": "Manage large amount of gauges in one single block.",
+  "block.createfactorycontroller.factory_controller.tooltip.condition1": "When powered by redstone",
+  "block.createfactorycontroller.factory_controller.tooltip.behaviour1": "_Disable_ all managed gauges.",
 
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",
   "createfactorycontroller.gui.promised": "Promised: %1$s",

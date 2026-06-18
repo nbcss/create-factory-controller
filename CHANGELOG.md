@@ -5,6 +5,8 @@ Features:
 
 Changes:
 - Default background texture is cardboard_block_side now
+- Increase the hardness of Factory Controller block
+- Add Summary to Factory Controller item
 
 ## 0.1.1
 - Introduced Follow Demand and Order mode in gauge

@@ -338,6 +338,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         GuiGameElement.of(new ItemStack(CreateFactoryController.FACTORY_CONTROLLER_ITEM.get()))
                 .scale(CONTROLLER_MODEL_SCALE)
                 .render(graphics, leftPos - 74, topPos + imageHeight - 80);
+        graphics.flush();
+        RenderSystem.clear(256, Minecraft.ON_OSX);
 
         // Inventory panel + its expand button, lifted above canvas gauge icons.
         RenderSystem.disableDepthTest();
