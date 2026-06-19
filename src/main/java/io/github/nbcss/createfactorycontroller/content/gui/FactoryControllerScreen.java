@@ -6,9 +6,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
-import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.CreateFactoryControllerClient;
@@ -99,8 +97,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private Button expandButton = null;
 
     // Settings button (top-right of the board); opens the client-side background-picker overlay.
-    private static final int SETTINGS_BTN_SIZE = 18;
-    @Nullable private IconButton settingsButton = null;
+    private static final int SETTINGS_BTN_W = 23;
+    private static final int SETTINGS_BTN_H = 24;
+    private static final ResourceLocation SETTINGS_BTN_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings");
+    private static final ResourceLocation SETTINGS_BTN_HOVER_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings_hover");
+    @Nullable private TexturedButton settingsButton = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
     private static final int CONTROLLER_MODEL_SCALE = 4;
@@ -195,13 +198,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Settings button, top-right corner of the board. Event-only (rendered manually in renderBoard);
         // its area is excluded from the canvas hit-test so clicks reach the widget instead of panning.
         if (settingsButton != null) removeWidget(settingsButton);
-        settingsButton = new IconButton(settingsButtonX(), settingsButtonY(), AllIcons.I_CONFIG_OPEN);
-        settingsButton.withCallback(() -> Minecraft.getInstance().setScreen(new ControllerSettingScreen(this)));
-        settingsButton.setToolTip(Component.translatable("createfactorycontroller.gui.controller_settings"));
+        settingsButton = new TexturedButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
+                SETTINGS_BTN_SPRITE, SETTINGS_BTN_HOVER_SPRITE,
+                () -> Minecraft.getInstance().setScreen(new ControllerSettingScreen(this)))
+            .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
-        int selectorY = topPos + CANVAS_TOP_PADDING + 8;
+        int selectorY = topPos + CANVAS_TOP_PADDING + 6;
         if (networkSelector == null)
             networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
         else
@@ -274,11 +278,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private int settingsButtonX() {
-        return leftPos + imageWidth - CANVAS_SIDE_PADDING - SETTINGS_BTN_SIZE - 2;
+        return leftPos + imageWidth - CANVAS_SIDE_PADDING - SETTINGS_BTN_W - 8;
     }
 
     private int settingsButtonY() {
-        return topPos + CANVAS_TOP_PADDING + 2;
+        return topPos + CANVAS_TOP_PADDING + 8;
     }
 
     private int expandButtonX() {
@@ -362,6 +366,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.capacity"), mouseX, mouseY);
             else if (inBounds(zoomLabelBounds, mouseX, mouseY))
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.zoom"), mouseX, mouseY);
+            // Drawn here (after super.render) rather than by the button itself, so it stacks above the board
+            // frame and JEI's item overlay instead of being painted under them during renderBg.
+            else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY)
+                    && settingsButton.getTooltipText() != null)
+                graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
         }
     }
 
@@ -923,8 +932,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (networkSelector.isMouseOver(x, y)) return false;
 
         // Settings button — let its click reach the widget (via super.mouseClicked) instead of panning.
-        if (settingsButton != null && x >= settingsButtonX() && x < settingsButtonX() + SETTINGS_BTN_SIZE
-                && y >= settingsButtonY() && y < settingsButtonY() + SETTINGS_BTN_SIZE) return false;
+        if (settingsButton != null && x >= settingsButtonX() && x < settingsButtonX() + SETTINGS_BTN_W
+                && y >= settingsButtonY() && y < settingsButtonY() + SETTINGS_BTN_H) return false;
 
         return true;
     }
