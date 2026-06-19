@@ -11,6 +11,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.ConfigValue<String> CONTROLLER_BACKGROUND;
     public static final ModConfigSpec.BooleanValue FULL_OVERLAY;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
+    public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -27,6 +28,12 @@ public final class ClientConfig {
                         "an order containing Production Patterns. Must also be enabled in the server config.")
                 .translation("createfactorycontroller.config.check_ingredients")
                 .define("checkIngredientsOnSend", false);
+        ORDER_FROM_MATERIAL_LIST = builder
+                .comment("When right-clicking a Stock Keeper with a material list (clipboard), request a Production",
+                        "Order for any listed item that is short in stock but producible by an orderable gauge on the",
+                        "network — instead of only requesting the in-stock amount.")
+                .translation("createfactorycontroller.config.order_from_material_list")
+                .define("orderFromMaterialList", true);
         SPEC = builder.build();
     }
 
@@ -38,6 +45,10 @@ public final class ClientConfig {
 
     public static boolean checkIngredientsOnSend() {
         return CHECK_INGREDIENTS_ON_SEND.get();
+    }
+
+    public static boolean orderFromMaterialList() {
+        return ORDER_FROM_MATERIAL_LIST.get();
     }
 
     public static String getControllerBackground() {

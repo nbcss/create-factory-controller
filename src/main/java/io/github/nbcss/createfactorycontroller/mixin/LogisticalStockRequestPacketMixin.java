@@ -1,13 +1,10 @@
 package io.github.nbcss.createfactorycontroller.mixin;
 
-import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.stockTicker.StockCheckingBlockEntity;
 import com.simibubi.create.content.logistics.stockTicker.LogisticalStockRequestPacket;
 import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
-import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
-import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
+import io.github.nbcss.createfactorycontroller.content.production.OrderableStockAugment;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -34,14 +30,10 @@ public abstract class LogisticalStockRequestPacketMixin {
         if (network == null) return;
 
         long now = level.getServer().overworld().getGameTime();
-        List<OrderableGaugeRegistry.Entry> patterns = OrderableGaugeRegistry.patternFor(network, now);
-        if (patterns.isEmpty()) return;   // nothing to add → let the vanilla response proceed
+        InventorySummary recent = be.getRecentSummary();
+        InventorySummary summary = OrderableStockAugment.augment(recent, network, now);
+        if (summary == recent) return;   // no orderable gauges → let the vanilla response proceed
 
-        InventorySummary summary = be.getRecentSummary().copy();
-        for (OrderableGaugeRegistry.Entry e : patterns) {
-            ProductionTarget target = new ProductionTarget(e.network(), e.patternId(), e.display());
-            summary.add(new BigItemStack(ProductionPatternItem.of(target), BigItemStack.INF));
-        }
         summary.divideAndSendTo(player, be.getBlockPos());
         ci.cancel();
     }
