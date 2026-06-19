@@ -6,7 +6,9 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
+import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import com.simibubi.create.foundation.gui.widget.IconButton;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.CreateFactoryControllerClient;
@@ -95,6 +97,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private int invHotbarY;
     private boolean inventoryExpanded = false;
     @Nullable private Button expandButton = null;
+
+    // Settings button (top-right of the board); opens the client-side background-picker overlay.
+    private static final int SETTINGS_BTN_SIZE = 18;
+    @Nullable private IconButton settingsButton = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
     private static final int CONTROLLER_MODEL_SCALE = 4;
@@ -186,6 +192,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Event-only: rendered manually in renderBg at the inventory panel's elevated z.
         addWidget(expandButton);
 
+        // Settings button, top-right corner of the board. Event-only (rendered manually in renderBoard);
+        // its area is excluded from the canvas hit-test so clicks reach the widget instead of panning.
+        if (settingsButton != null) removeWidget(settingsButton);
+        settingsButton = new IconButton(settingsButtonX(), settingsButtonY(), AllIcons.I_CONFIG_OPEN);
+        settingsButton.withCallback(() -> Minecraft.getInstance().setScreen(new ControllerSettingScreen(this)));
+        settingsButton.setToolTip(Component.translatable("createfactorycontroller.gui.controller_settings"));
+        addWidget(settingsButton);
+
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
         int selectorY = topPos + CANVAS_TOP_PADDING + 8;
         if (networkSelector == null)
@@ -257,6 +271,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_CLOSE.get(), 1f));
         super.onClose();
+    }
+
+    private int settingsButtonX() {
+        return leftPos + imageWidth - CANVAS_SIDE_PADDING - SETTINGS_BTN_SIZE - 2;
+    }
+
+    private int settingsButtonY() {
+        return topPos + CANVAS_TOP_PADDING + 2;
     }
 
     private int expandButtonX() {
@@ -506,6 +528,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 ZOOM_ICON_SIZE, ZOOM_ICON_SIZE);
         graphics.drawString(font, zoomStr, zoomTextX, row1Y, 0xFFE2E2E2, true);
         zoomLabelBounds = new int[]{labelX, row1Y, zoomTextX + font.width(zoomStr), row1Y + font.lineHeight};
+
+        // Settings button, top-right corner (event-only widget; drawn here over the board frame).
+        if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
 
         // Reset depth for network icons & helper text
         graphics.flush();
@@ -896,6 +921,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (x >= invLeft && x < invLeft + INV_TEX_W && y >= invTop && y < invBot) return false;
 
         if (networkSelector.isMouseOver(x, y)) return false;
+
+        // Settings button — let its click reach the widget (via super.mouseClicked) instead of panning.
+        if (settingsButton != null && x >= settingsButtonX() && x < settingsButtonX() + SETTINGS_BTN_SIZE
+                && y >= settingsButtonY() && y < settingsButtonY() + SETTINGS_BTN_SIZE) return false;
 
         return true;
     }

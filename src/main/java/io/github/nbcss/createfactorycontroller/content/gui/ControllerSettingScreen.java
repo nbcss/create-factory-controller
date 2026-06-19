@@ -1,0 +1,250 @@
+package io.github.nbcss.createfactorycontroller.content.gui;
+
+import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.foundation.gui.AllIcons;
+import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import com.simibubi.create.foundation.gui.widget.IconButton;
+import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.ClientConfig;
+import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Client-only overlay for picking the controller's board background texture. Mirrors {@link ConfigureRecipeScreen}'s
+ * structure — shares the controller's {@link FactoryControllerMenu} (no container swap) and draws the live board as a
+ * dimmed backdrop — but configures only the client-side {@link ClientConfig#CONTROLLER_BACKGROUND} value.
+ *
+ * <p>The middle of the panel is a single-slot scroll selector (modelled on {@link NetworkSelectorWidget}): the current
+ * texture's name is shown, scrolling the box cycles the available options, and hovering shows a windowed list tooltip.
+ * A 16×16 preview slot left of it shows the selected texture. Selection takes effect <b>immediately</b> (the controller
+ * re-reads the config each frame), so the tick button just returns to the controller; Reset restores the config default.</p>
+ */
+@OnlyIn(Dist.CLIENT)
+public class ControllerSettingScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
+
+    private static final ResourceLocation PANEL_TEX =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/settings.png");
+    private static final int PANEL_W = 205, PANEL_H = 88;
+
+    /** The resource folder (under assets/<namespace>/) scanned for background textures. */
+    private static final String BACKGROUND_DIR = "textures/gui/controller_background";
+
+    // Selector box + preview slot geometry (panel-relative), derived from the settings.png recesses.
+    private static final int PREVIEW_X = 22, PREVIEW_Y = 28;
+    private static final int SELECTOR_X = 46, SELECTOR_Y = 29, SELECTOR_W = 138, SELECTOR_H = 16;
+
+    private final FactoryControllerScreen controller;
+
+    /** Available background names (no path prefix / .png suffix), sorted; gathered once on open. */
+    private final List<String> options = new ArrayList<>();
+    private int selected = 0;
+
+    private int panelX, panelY;
+    private IconButton closeButton;
+    private IconButton resetButton;
+
+    public ControllerSettingScreen(FactoryControllerScreen controller) {
+        super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
+              Component.translatable("createfactorycontroller.gui.controller_settings"));
+        this.controller = controller;
+        scanOptions();
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+    }
+
+    /** Lists the .png files under {@link #BACKGROUND_DIR} in our namespace, stripping path + extension. */
+    private void scanOptions() {
+        options.clear();
+        Minecraft.getInstance().getResourceManager().listResources(BACKGROUND_DIR, loc ->
+                loc.getNamespace().equals(CreateFactoryController.MODID) && loc.getPath().endsWith(".png"))
+            .keySet().stream()
+            .map(ResourceLocation::getPath)
+            .map(p -> p.substring(BACKGROUND_DIR.length() + 1, p.length() - ".png".length()))
+            .sorted()
+            .forEach(options::add);
+        selected = Math.max(0, options.indexOf(ClientConfig.getControllerBackground()));
+    }
+
+    @Override
+    protected void init() {
+        setWindowSize(controller.guiWidth(), controller.guiHeight());
+        setWindowOffset(0, 0);
+        super.init();
+
+        // No inventory on this overlay — push all shared-menu slots off-screen (like ConfigureRecipeScreen).
+        menu.repositionSlots(-10000, -10000, false);
+
+        panelX = leftPos + (imageWidth - PANEL_W) / 2;
+        panelY = topPos + (imageHeight - PANEL_H) / 2;
+
+        // Reset (left) then close/confirm (right), bottom-right of the panel.
+        resetButton = new IconButton(panelX + 158, panelY + 64, AllIcons.I_CONFIG_RESET);
+        resetButton.withCallback(this::resetToDefault);
+        resetButton.setToolTip(CreateLang.translate("gui.factory_panel.reset").component());
+        addWidget(resetButton);
+
+        closeButton = new IconButton(panelX + 180, panelY + 64, AllIcons.I_CONFIRM);
+        closeButton.withCallback(this::returnToController);
+        closeButton.setToolTip(CommonComponents.GUI_DONE);
+        addWidget(closeButton);
+    }
+
+    @Override
+    public void resize(@NotNull Minecraft minecraft, int width, int height) {
+        controller.resize(minecraft, width, height);
+        super.resize(minecraft, width, height);
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        controller.tickBulbs();   // keep the background board's indicator bulbs animating
+    }
+
+    // ── Selection ─────────────────────────────────────────────────────────────
+
+    private ResourceLocation textureOf(String name) {
+        return ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID,
+            BACKGROUND_DIR + "/" + name + ".png");
+    }
+
+    /** Applies the current index to the live config (immediate effect on the board behind us). */
+    private void applySelection() {
+        if (selected >= 0 && selected < options.size())
+            ClientConfig.setControllerBackground(options.get(selected));
+    }
+
+    /** Scroll the selector: up → previous, down → next, clamped (no wrap), with Create's scroll chime. */
+    private void scrollSelection(double scrollY) {
+        if (options.isEmpty()) return;
+        int next = Mth.clamp(selected - (int) Math.signum(scrollY), 0, options.size() - 1);
+        if (next == selected) return;
+        selected = next;
+        applySelection();
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
+    }
+
+    private void resetToDefault() {
+        String def = ClientConfig.defaultControllerBackground();
+        int idx = options.indexOf(def);
+        if (idx >= 0) selected = idx;
+        ClientConfig.setControllerBackground(def);
+    }
+
+    private void returnToController() {
+        Minecraft.getInstance().setScreen(controller);
+    }
+
+    private boolean overSelector(double mx, double my) {
+        return mx >= panelX + SELECTOR_X && mx < panelX + SELECTOR_X + SELECTOR_W
+            && my >= panelY + SELECTOR_Y && my < panelY + SELECTOR_Y + SELECTOR_H;
+    }
+
+    /**
+     * Windowed option list for the hover tooltip — header, a centred window of entries with the selected one
+     * marked {@code "-> "} (others {@code "> "}), {@code "> ..."} rows for hidden entries, and a scroll hint.
+     * Mirrors {@link NetworkSelectorWidget#getTooltipLines()}.
+     */
+    private List<Component> selectorTooltip() {
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.translatable("createfactorycontroller.gui.controller_settings")
+            .withColor(ScrollInput.HEADER_RGB.getRGB()));
+
+        // Fixed-height centred window with "> ..." markers for hidden rows (see ScrollListWindow).
+        for (int i : ScrollListWindow.rows(options.size(), selected)) {
+            if (i == ScrollListWindow.MARKER) {
+                lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+                continue;
+            }
+            boolean sel = i == selected;
+            lines.add(Component.literal(sel ? "-> " : "> ").append(options.get(i))
+                .withStyle(sel ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+        }
+
+        lines.add(CreateLang.translate("gui.scrollInput.scrollToSelect")
+            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        return lines;
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────────
+
+    @Override
+    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+        super.render(gfx, mouseX, mouseY, partialTick);
+        if (overSelector(mouseX, mouseY) && !options.isEmpty())
+            gfx.renderComponentTooltip(font, selectorTooltip(), mouseX, mouseY);
+        renderTooltip(gfx, mouseX, mouseY);   // button tooltips
+    }
+
+    @Override
+    protected void renderBg(@NotNull GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
+        controller.renderBoard(gfx, -1, -1, partialTick, true);
+
+        gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
+
+        // Preview of the current selection (textures are 16px; drawn 16×16 into the slot).
+        if (!options.isEmpty())
+            gfx.blit(textureOf(options.get(selected)), panelX + PREVIEW_X, panelY + PREVIEW_Y, 0, 0, 16, 16, 16, 16);
+
+        // Current option name, centred in the selector box.
+        gfx.enableScissor(panelX + SELECTOR_X, panelY + SELECTOR_Y,
+                panelX + SELECTOR_X + SELECTOR_W - 4, panelY + SELECTOR_Y + SELECTOR_H);
+        String name = options.isEmpty() ? "—" : options.get(selected);
+        int textY = panelY + SELECTOR_Y + (SELECTOR_H - font.lineHeight) / 2 + 1;
+        gfx.drawString(font, name, panelX + SELECTOR_X + 4, textY, 0xFFFFFF, true);
+        gfx.disableScissor();
+
+        resetButton.render(gfx, mouseX, mouseY, partialTick);
+        closeButton.render(gfx, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        // Title centred in the header strip (dark text on the light bar).
+        Component title = getTitle();
+        gfx.drawString(font, title, panelX + PANEL_W / 2 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
+        super.renderForeground(gfx, mouseX, mouseY, partialTicks);
+    }
+
+    @Override
+    protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {}   // no default container labels
+
+    // ── Input ────────────────────────────────────────────────────────────────
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (overSelector(mouseX, mouseY)) {
+            scrollSelection(scrollY);
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public void onClose() {
+        returnToController();   // return to the controller without closing the shared container
+    }
+
+    @Override
+    public void removed() {
+        Minecraft.getInstance().getSoundManager().play(
+            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        super.removed();
+    }
+}

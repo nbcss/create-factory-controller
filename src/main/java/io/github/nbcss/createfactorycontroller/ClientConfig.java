@@ -44,6 +44,16 @@ public final class ClientConfig {
         return CONTROLLER_BACKGROUND.get();
     }
 
+    /** The spec's default background name (used by the settings screen's Reset button). */
+    public static String defaultControllerBackground() {
+        return CONTROLLER_BACKGROUND.getDefault();
+    }
+
+    /** Sets and persists the background selection; takes effect immediately (the controller reads it each frame). */
+    public static void setControllerBackground(String name) {
+        CONTROLLER_BACKGROUND.set(name);
+    }
+
     /** Flips the setting and persists it; returns the new value. Safe to call only once the config is loaded. */
     public static boolean toggleFullOverlay() {
         boolean next = !FULL_OVERLAY.get();

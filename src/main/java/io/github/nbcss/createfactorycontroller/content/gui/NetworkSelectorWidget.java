@@ -47,9 +47,6 @@ import java.util.UUID;
 public class NetworkSelectorWidget extends AbstractWidget {
 
     private static final int NEW_PLUS_COLOR = 0xFF55FF55;   // green "+"
-    private static final int WINDOW_BACK    = 2;
-    private static final int WINDOW_FWD     = 2;
-    private static final int WINDOW_RESERVE = 7;
     /** Neutral slot fill for the "no network" entry (its icon carries no per-network colour). */
     private static final int NO_NETWORK_COLOR = 0xFF6e6e6e;
     /** Contrast fills chosen against the icon's luminance so a tinted icon always stays legible. */
@@ -213,21 +210,17 @@ public class NetworkSelectorWidget extends AbstractWidget {
         syncSelection();
         List<Entry> entries = buildEntries();
         int state = selectedIndex(entries);
-        int min = 0, max = entries.size();
 
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable("createfactorycontroller.gui.network_selector")
                 .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
-        // Centred window, clamped so WINDOW_RESERVE rows always remain from each edge (keeps the count fixed).
-        int start = Math.max(Math.min(max - WINDOW_RESERVE, state - WINDOW_BACK), min);
-        int end   = Math.min(Math.max(min + WINDOW_RESERVE, state + WINDOW_FWD), max);
-
-        if (start == min + 1) start--;          // a single hidden row above → show it instead of "> ..."
-        if (start > min)
-            lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
-        if (end == max - 1) end++;              // a single hidden row below → show it instead of "> ..."
-        for (int i = start; i < end; i++) {
+        // Fixed-height centred window with "> ..." markers for hidden rows (see ScrollListWindow).
+        for (int i : ScrollListWindow.rows(entries.size(), state)) {
+            if (i == ScrollListWindow.MARKER) {
+                lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+                continue;
+            }
             Entry e = entries.get(i);
             boolean selected = i == state;
             // The "new network" entry is coloured green for the whole line (it would create a fresh network);
@@ -236,8 +229,6 @@ public class NetworkSelectorWidget extends AbstractWidget {
                     : selected ? ChatFormatting.WHITE : ChatFormatting.GRAY;
             lines.add(Component.literal(selected ? "-> " : "> ").append(entryName(e)).withStyle(color));
         }
-        if (end < max)
-            lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
 
         if (heldComponent().isEmpty()) {
             lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_highlight_tip")

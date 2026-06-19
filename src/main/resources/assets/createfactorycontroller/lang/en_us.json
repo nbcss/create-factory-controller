@@ -18,6 +18,7 @@
   "createfactorycontroller.gui.crafting_scroll_dim": "Scroll to change grid size",
   "createfactorycontroller.gui.unit_fluid_mb": "mB",
   "createfactorycontroller.gui.unit_fluid_bucket": "B",
+  "createfactorycontroller.gui.controller_settings": "Controller Background Setting",
   "createfactorycontroller.gui.network_selector": "Network Selector",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
