@@ -3,7 +3,7 @@ Features:
 - Allow to type number to set gauge request amount
 - Allow to change controller background texture (client setting)
 - When Controller block breaks, it will now store the virtual board data in dropped item (configurable).
-- Provide material list of Stock Keeper can now create production order for missing items (configurable).
+- Provide material list to Stock Keeper can now create production order for missing items (configurable).
 
 Changes:
 - Default background texture is cardboard_block_side now
