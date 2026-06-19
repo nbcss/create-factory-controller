@@ -12,6 +12,7 @@ public final class ServerConfig {
     public static final ModConfigSpec.IntValue MAX_COMPONENTS;
     public static final ModConfigSpec.IntValue MAX_CRAFT_GRID_SIZE;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
+    public static final ModConfigSpec.BooleanValue PRESERVE_CONTROLLER_DATA;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -30,6 +31,12 @@ public final class ServerConfig {
                         "Must also be enabled in the client config to show. Disable to skip the server-side computation.")
                 .translation("createfactorycontroller.config.check_ingredients")
                 .define("checkIngredientsOnSend", false);
+        PRESERVE_CONTROLLER_DATA = builder
+                .comment("Preserve a Factory Controller's board setup (gauge connections, request amounts and modes)",
+                        "on the dropped controller item when the block is broken, restoring it when re-placed.",
+                        "When off, the controller drops empty and its gauges drop as separate items instead.")
+                .translation("createfactorycontroller.config.preserve_controller_data")
+                .define("preserveControllerData", true);
         SPEC = builder.build();
     }
 
@@ -45,5 +52,9 @@ public final class ServerConfig {
 
     public static boolean checkIngredientsOnSend() {
         return CHECK_INGREDIENTS_ON_SEND.get();
+    }
+
+    public static boolean preserveControllerData() {
+        return PRESERVE_CONTROLLER_DATA.get();
     }
 }

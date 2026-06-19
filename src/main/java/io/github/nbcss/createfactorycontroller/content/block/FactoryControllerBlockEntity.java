@@ -552,22 +552,83 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Component drops ─────────────────────────────────────────────────────
 
-    /**
-     * Drops every attached component as its own item at the controller. Called when the controller
-     * block is destroyed: the board configuration is <b>not</b> stored on the dropped controller item,
-     * so the gauges are returned to the world instead.
-     */
-    public void dropComponents() {
+    /** Aborts the open production tasks of every orderable gauge (called when the controller is destroyed —
+     *  whether the board is dropped as items or preserved on the controller item). */
+    public void abortAllTasks() {
         if (level == null || level.isClientSide()) return;
-        for (VirtualComponentBehaviour b : components.values()) {
-            // The controller is being destroyed → its gauges are gone; abort their production tasks.
+        for (VirtualComponentBehaviour b : components.values())
             if (b instanceof VirtualGaugeBehaviour g && g.patternId != null)
                 ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
-            ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(b.getItemId()));
-            if (!stack.isEmpty())
-                Block.popResource(level, getBlockPos(), stack);
+    }
+
+    // ── Setup preservation (controller item carries the board on break) ─────────
+
+    /** True when there is any configured board state worth carrying on the dropped item. */
+    public boolean hasSetup() {
+        return !components.isEmpty() || !networks.isEmpty() || !customName.isBlank();
+    }
+
+    /**
+     * The minimal board setup to persist on a dropped controller item: each component's config with the
+     * runtime/bulb state and the runtime-minted {@code PatternId} stripped, plus the tuned networks and name.
+     */
+    public CompoundTag writeSetup(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        if (!customName.isBlank()) tag.putString("CustomName", customName);
+
+        ListTag gaugeList = new ListTag();
+        for (VirtualComponentBehaviour b : components.values()) {
+            gaugeList.add(b.toItemNBT(registries));
         }
+        tag.put("Components", gaugeList);
+
+        ListTag networkList = new ListTag();
+        for (UUID id : networks) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("Id", id);
+            String nick = networkNicknames.get(id);
+            if (nick != null && !nick.isBlank()) entry.putString("Name", nick);
+            networkList.add(entry);
+        }
+        tag.put("Networks", networkList);
+        return tag;
+    }
+
+    /** Restores a board from {@link #writeSetup} onto a freshly placed controller (server side). */
+    public void applySetup(CompoundTag tag, HolderLookup.Provider registries) {
+        if (level == null || level.isClientSide()) return;
+
+        customName = tag.getString("CustomName");
+
         components.clear();
+        ListTag componentList = tag.getList("Components", Tag.TAG_COMPOUND);
+        for (int i = 0; i < componentList.size(); i++) {
+            VirtualComponentBehaviour b = ComponentRegistry.fromNBT(this, componentList.getCompound(i), registries);
+            if (b != null) {
+                components.put(b.position(), b);
+                if (b instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.allowsOrder())
+                    updateGaugeOrderable(gauge);
+            }
+        }
+
+        networks.clear();
+        networkNicknames.clear();
+        ListTag networkList = tag.getList("Networks", Tag.TAG_COMPOUND);
+        for (int i = 0; i < networkList.size(); i++) {
+            CompoundTag entry = networkList.getCompound(i);
+            UUID id = entry.getUUID("Id");
+            networks.add(id);
+            if (entry.contains("Name")) networkNicknames.put(id, entry.getString("Name"));
+        }
+        setChanged();
+        sendData();
+        markOrderableDirty();
+    }
+
+    /** Stamps the controller's setup onto {@code stack} (if any) — used when it's dropped on break. */
+    public void writeSetupToItem(ItemStack stack) {
+        if (level == null || !hasSetup()) return;
+        stack.set(CreateFactoryController.CONTROLLER_SETUP.get(), writeSetup(level.registryAccess()));
     }
 
     @Override

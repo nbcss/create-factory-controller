@@ -49,15 +49,17 @@ public class CreateFactoryController {
         BLOCKS.register("factory_controller", () ->
             new FactoryControllerBlock(BlockBehaviour.Properties.of()
                 .mapColor(MapColor.TERRACOTTA_YELLOW)
-                .strength(300.0f, 1200.0f)
+                .strength(30.0f, 1200.0f)
                 .sound(SoundType.WOOD)
                 .requiresCorrectToolForDrops()
                 .noOcclusion()));
 
     // ── Items ──────────────────────────────────────────────────────────────
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
-    public static final DeferredItem<net.minecraft.world.item.BlockItem> FACTORY_CONTROLLER_ITEM =
-        ITEMS.registerSimpleBlockItem("factory_controller", FACTORY_CONTROLLER);
+    public static final DeferredItem<io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem> FACTORY_CONTROLLER_ITEM =
+        ITEMS.register("factory_controller", () ->
+            new io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem(
+                FACTORY_CONTROLLER.get(), new Properties()));
 
     /** Virtual, unobtainable Promise Blueprint — intentionally NOT added to any creative tab. */
     public static final DeferredItem<ProductionPatternItem> PRODUCTION_PATTERN =
@@ -72,6 +74,15 @@ public class CreateFactoryController {
             DataComponentType.<ProductionTarget>builder()
                 .persistent(ProductionTarget.CODEC)
                 .networkSynchronized(ProductionTarget.STREAM_CODEC)
+                .build());
+
+    /** Minimal board setup (connections / request amounts / modes) carried by a broken controller item so it
+     *  restores on placement. Holds the stripped-down BE NBT (no runtime/bulb state, no patternId). */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<net.minecraft.nbt.CompoundTag>> CONTROLLER_SETUP =
+        DATA_COMPONENTS.register("controller_setup", () ->
+            DataComponentType.<net.minecraft.nbt.CompoundTag>builder()
+                .persistent(net.minecraft.nbt.CompoundTag.CODEC)
+                .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.COMPOUND_TAG)
                 .build());
 
     // ── Block Entity Types ─────────────────────────────────────────────────

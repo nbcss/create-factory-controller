@@ -24,6 +24,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -547,6 +548,17 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     @Override
+    public CompoundTag toItemNBT(HolderLookup.Provider registries) {
+        CompoundTag tags = super.toItemNBT(registries);
+        tags.remove("PatternId");
+        tags.remove("Satisfied");
+        tags.remove("PromisedSatisfied");
+        tags.remove("Waiting");
+        tags.remove("Timer");
+        return tags;
+    }
+
+    @Override
     public CompoundTag toClientNBT(net.minecraft.core.HolderLookup.Provider registries) {
         // Only what the canvas needs: identity/texture, filter (icon + set-item check), status
         // (indicator colour + gating), the address (status `isMissingAddress`), and incoming
@@ -567,7 +579,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
         tag.putBoolean("Waiting", waitingForNetwork);
-        tag.putBoolean("ControllerPowered", controllerPowered);
+        //tag.putBoolean("ControllerPowered", controllerPowered);
         tag.putString("RecipeAddress", recipeAddress);
         // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
         // current values without a separate on-demand fetch.
@@ -596,8 +608,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         UUID networkId = tag.getUUID("Network");
 
         VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItemId);
-        if (tag.hasUUID("PatternId"))
-            b.patternId = tag.getUUID("PatternId");
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         b.count = tag.getInt("Count");
         b.unit = ThresholdUnit.fromName(tag.getString("Unit"));
@@ -606,6 +616,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         else   // legacy migration from the old Passive boolean
             b.requestMode = tag.getBoolean("Passive")
                 ? RequestMode.PASSIVE : RequestMode.NORMAL;
+        if (tag.hasUUID("PatternId"))
+            b.patternId = tag.getUUID("PatternId");
         b.stockLevel = tag.getInt("Stock");
         b.promisedCount = tag.getInt("Promised");
         b.lastRequestTick = tag.getLong("LastRequestTick");

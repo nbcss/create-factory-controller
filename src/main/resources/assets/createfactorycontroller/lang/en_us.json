@@ -4,6 +4,7 @@
   "block.createfactorycontroller.factory_controller.tooltip.summary": "Manage large amount of gauges in one single block.",
   "block.createfactorycontroller.factory_controller.tooltip.condition1": "When powered by redstone",
   "block.createfactorycontroller.factory_controller.tooltip.behaviour1": "_Disable_ all managed gauges.",
+  "createfactorycontroller.tooltip.configured_controller": "Controller configured",
 
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",
   "createfactorycontroller.gui.promised": "Promised: %1$s",
@@ -66,6 +67,8 @@
   "createfactorycontroller.config.max_craft_grid.tooltip": "Largest mechanical-crafter grid a recipe may be selected in the recipe configuration screen.",
   "createfactorycontroller.config.check_ingredients": "[Experimental] Check Ingredients on Send",
   "createfactorycontroller.config.check_ingredients.tooltip": "Show whether the network has enough ingredients to produce an order when hovering the Stock Keeper's Send button. Requires both the client and server config enabled.",
+  "createfactorycontroller.config.preserve_controller_data": "Preserve controller data in item",
+  "createfactorycontroller.config.preserve_controller_data.tooltip": "Keep a Factory Controller's board setup on the dropped item when broken, and restore it when re-placed. When off, the controller drops empty and its gauges drop as separate items.",
 
   "createfactorycontroller.network.default": "Network #%1$s",
   "createfactorycontroller.network.none": "No network",

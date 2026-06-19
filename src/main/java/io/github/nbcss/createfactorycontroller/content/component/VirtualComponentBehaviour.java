@@ -73,4 +73,8 @@ public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
     default CompoundTag toClientNBT(HolderLookup.Provider registries) {
         return toNBT(registries);
     }
+
+    default CompoundTag toItemNBT(HolderLookup.Provider registries) {
+        return toNBT(registries);
+    }
 }
