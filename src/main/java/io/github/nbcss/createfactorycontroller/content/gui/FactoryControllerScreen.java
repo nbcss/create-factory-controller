@@ -105,6 +105,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Edit-name cue drawn after the controller name when idle (indicator only). 9×9 sprite.
     private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
     private static final int RENAME_BUTTON_SIZE = 9;
+    // Top-left status icons: capacity (count/max) and zoom (xN), drawn right of the network selector.
+    private static final ResourceLocation CAPACITY_ICON = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/capacity_icon");
+    private static final int CAPACITY_ICON_SIZE = 8;
+    private static final ResourceLocation ZOOM_ICON = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/zoom_icon");
+    private static final int ZOOM_ICON_SIZE = 10;
     private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
     private static final int INV_TEX_W         = 176;
     private static final int INV_TEX_H         = 108;
@@ -133,6 +138,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // Network selector widget
     private NetworkSelectorWidget networkSelector;
+
+    // Hover bounds (screen coords) of the top-left status labels, refreshed each renderBoard so render()
+    // can show their one-line tooltips. {x0, y0, x1, y1}; null until first drawn.
+    @Nullable private int[] capacityLabelBounds = null;
+    @Nullable private int[] zoomLabelBounds = null;
 
     // Inline, station-style rename field shown in the title bar. Blank ⇒ the default block name is
     // drawn instead (see the title section of renderBoard). Edits commit on Enter / screen close.
@@ -326,7 +336,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(menu), mouseX, mouseY);
             else if (networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
+            else if (inBounds(capacityLabelBounds, mouseX, mouseY))
+                graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.capacity"), mouseX, mouseY);
+            else if (inBounds(zoomLabelBounds, mouseX, mouseY))
+                graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.zoom"), mouseX, mouseY);
         }
+    }
+
+    /** True if {@code (mx, my)} lies within a cached {x0, y0, x1, y1} label box (null box ⇒ false). */
+    private static boolean inBounds(@Nullable int[] b, double mx, double my) {
+        return b != null && mx >= b[0] && mx < b[2] && my >= b[1] && my < b[3];
     }
 
     @Override
@@ -459,20 +478,34 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
 
-        // Component count
+        // Status labels, left-aligned just right of the network selector: an icon followed by a value,
+        // capacity on top and zoom below. Each label's icon+text bounds is cached for the hover tooltip.
+        int labelX = networkSelector.getX() + networkSelector.getWidth() + 3;
+        int row0Y = networkSelector.getY() + 2;
+        int row1Y = row0Y + font.lineHeight + 2;
+
+        // Capacity: "<count>/<max>", reddened when full.
         int count = menu.components.size();
         int max = FactoryControllerBlockEntity.maxComponents();   // server config value (synced to client)
-        Component countText = Component.translatable("createfactorycontroller.gui.capacity", count, max);
-        int countColor = count >= max ? 0xFFFF5555 : 0xFFFFFFFF;
-        graphics.drawString(font, countText, x1 - font.width(countText) - 4, y0 + 4, countColor, true);
+        String capacityStr = count + "/" + max;
+        int capacityColor = count >= max ? 0xFFFF5555 : 0xFFE2E2E2;
+        int capTextX = labelX + CAPACITY_ICON_SIZE + 3;
+        graphics.blitSprite(CAPACITY_ICON, labelX, row0Y + (font.lineHeight - CAPACITY_ICON_SIZE) / 2,
+                CAPACITY_ICON_SIZE, CAPACITY_ICON_SIZE);
+        graphics.drawString(font, capacityStr, capTextX, row0Y, capacityColor, true);
+        capacityLabelBounds = new int[]{labelX, row0Y, capTextX + font.width(capacityStr), row0Y + font.lineHeight};
 
-        // Zoom factor just below it. The world-pixel scale is twice this displayed value, so we halve
-        // it (e.g. the default 2.0 zoom shows "x1"); fractional levels show up to 2 trimmed decimals.
+        // Zoom: "x<factor>". The world-pixel scale is twice this displayed value, so we halve it (e.g. the
+        // default 2.0 zoom shows "x1"); fractional levels show up to 2 trimmed decimals.
         double zoom = getZoomFactor() / 2.0;
         String zoomStr = String.format(java.util.Locale.ROOT, "%.2f", zoom);
         if (zoomStr.contains(".")) zoomStr = zoomStr.replaceAll("0+$", "").replaceAll("\\.$", "");
-        Component zoomText = Component.translatable("createfactorycontroller.gui.zoom", zoomStr);
-        graphics.drawString(font, zoomText, x1 - font.width(zoomText) - 4, y0 + 6 + font.lineHeight, 0xFFFFFFFF, true);
+        zoomStr = "x" + zoomStr;
+        int zoomTextX = labelX + ZOOM_ICON_SIZE + 1;
+        graphics.blitSprite(ZOOM_ICON, labelX, row1Y + (font.lineHeight - ZOOM_ICON_SIZE) / 2,
+                ZOOM_ICON_SIZE, ZOOM_ICON_SIZE);
+        graphics.drawString(font, zoomStr, zoomTextX, row1Y, 0xFFE2E2E2, true);
+        zoomLabelBounds = new int[]{labelX, row1Y, zoomTextX + font.width(zoomStr), row1Y + font.lineHeight};
 
         // Reset depth for network icons & helper text
         graphics.flush();
