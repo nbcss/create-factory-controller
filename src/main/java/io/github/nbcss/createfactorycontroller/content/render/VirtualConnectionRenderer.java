@@ -1,8 +1,11 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import net.createmod.catnip.animation.AnimationTickHolder;
@@ -14,6 +17,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -75,21 +79,33 @@ public final class VirtualConnectionRenderer {
      */
     public static void renderConnections(GuiGraphics gfx, FactoryControllerMenu menu) {
         Set<VirtualPanelPosition> occupied = new HashSet<>();
-        for (VirtualComponentBehaviour c : menu.components) occupied.add(c.position());
+        Map<VirtualPanelPosition, VirtualComponentBehaviour> byPos = new HashMap<>();
+        for (VirtualComponentBehaviour c : menu.components) { occupied.add(c.position()); byPos.put(c.position(), c); }
         for (VirtualComponentBehaviour target : menu.components) {
             VirtualPanelPosition toPos = target.position();
             for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : target.targetedBy().entrySet()) {
-                drawConnection(gfx, e.getKey(), toPos, e.getValue(), target, occupied);
+                drawConnection(gfx, e.getKey(), toPos, e.getValue(), target, byPos.get(e.getKey()), occupied);
             }
         }
     }
 
-    /** Draws one grid-following connection. Flow is {@code from → to}; the arrowhead enters {@code to}. */
+    /**
+     * Draws one grid-following connection. For gauge sources the arrowhead enters {@code to} (the consumer). For a
+     * redstone-link source the direction follows the link's mode: RECEIVE keeps link → gauge (arrow into the gauge),
+     * SEND reverses to gauge → link (arrow into the link).
+     */
     private static void drawConnection(GuiGraphics gfx,
                                        VirtualPanelPosition from, VirtualPanelPosition to,
                                        VirtualPanelConnection conn, VirtualComponentBehaviour target,
+                                       VirtualComponentBehaviour source,
                                        Set<VirtualPanelPosition> occupied) {
         if (from.equals(to)) return;
+
+        // The path is built in the stable storage direction (from = source, to = target) and its bend uses the stored
+        // arrowBendMode, so toggling a redstone link's send/receive never re-routes it (matches Create: the path is
+        // fixed, only the arrowhead end moves). A RECEIVE link points the arrow back into the gauge, which we do by
+        // reversing the cell ORDER (identical shape) so the arrowhead lands on the source end instead of the target.
+        boolean reverse = target instanceof VirtualRedstoneLinkBehaviour link && link.receive;
 
         // Resolve the bend mode. Auto (-1) mirrors Create: try the four modes in order and use the
         // first whose path runs through no other component cell; if all are blocked, fall to V→H.
@@ -104,10 +120,14 @@ public final class VirtualConnectionRenderer {
         }
 
         int[][] cells = buildCellPath(from, to, mode);
+        if (reverse)
+            for (int i = 0, j = cells.length - 1; i < j; i++, j--) { int[] t = cells[i]; cells[i] = cells[j]; cells[j] = t; }
 
         int color = 0x888898;
         boolean flowing = false;
-        if (target instanceof VirtualGaugeBehaviour gauge) {
+        if (target instanceof VirtualRedstoneLinkBehaviour link && conn instanceof RedstoneConnection rc) {
+            color = linkConnectionColor(link, rc, source);
+        } else if (target instanceof VirtualGaugeBehaviour gauge) {
             color = gauge.getConnectionColor();
             flowing = !gauge.isMissingAddress() && !gauge.waitingForNetwork
                     && !gauge.satisfied && !gauge.redstonePowered;
@@ -118,7 +138,8 @@ public final class VirtualConnectionRenderer {
                 float glow = Mth.clamp(1f - age / FLASH_DECAY, 0f, 1f);
                 if (glow > 0f) {
                     float p = 1f - (1f - glow) * (1f - glow);
-                    color = Color.mixColors(color, conn.success ? FLASH_OK : FLASH_FAIL, p);
+                    boolean success = conn instanceof LogisticsConnection lc && lc.success;
+                    color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
                 }
             }
         }
@@ -236,6 +257,23 @@ public final class VirtualConnectionRenderer {
             }
         }
         return true;
+    }
+
+    // Redstone-link connection colours — exact values from Create's FactoryPanelRenderer.renderPath (redstone-link
+    // branch): gray 0x888898 (no target), red 0xEF0000 (powered), dark red 0x580101 (valid but unpowered).
+    private static final int LINK_INVALID = 0x888898;
+    private static final int LINK_POWERED = 0xEF0000;
+    private static final int LINK_UNPOWERED = 0x580101;
+
+    /**
+     * Connection colour for a redstone-link source. Gray only when the link is in SEND mode and its connected gauge
+     * has no target amount (an invalid drive); otherwise light-red while the link is powered, dark-red while idle.
+     */
+    private static int linkConnectionColor(VirtualRedstoneLinkBehaviour link, RedstoneConnection conn,
+                                           VirtualComponentBehaviour source) {
+        boolean gaugeHasTarget = source instanceof VirtualGaugeBehaviour g && g.count != 0;
+        if (!link.receive && !gaugeHasTarget) return LINK_INVALID;   // SEND with no driving target
+        return conn.powered ? LINK_POWERED : LINK_UNPOWERED;
     }
 
     /** Blits an atlas sub-rect {@code {u,v,w,h}}, stretched into the given (world) rectangle. */

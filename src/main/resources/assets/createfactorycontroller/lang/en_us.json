@@ -19,6 +19,10 @@
   "createfactorycontroller.gui.unit_fluid_mb": "mB",
   "createfactorycontroller.gui.unit_fluid_bucket": "B",
   "createfactorycontroller.gui.controller_settings": "Controller Background Setting",
+  "createfactorycontroller.gui.redstone_link_settings": "Redstone Link Settings",
+  "createfactorycontroller.gui.redstone_link.mode": "Mode: %1$s",
+  "createfactorycontroller.gui.redstone_link.mode.send": "Send",
+  "createfactorycontroller.gui.redstone_link.mode.receive": "Receive",
   "createfactorycontroller.gui.network_selector": "Network Selector",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
@@ -54,7 +58,7 @@
   "createfactorycontroller.gui.ingredients_pattern_missing": "Source gauge not found",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
-  "key.createfactorycontroller.cycle_arrow": "Cycle Arrow Pathing Mode",
+  "key.createfactorycontroller.interact": "Interact with Component",
   "key.createfactorycontroller.pan_view": "Pan View (drag)",
   "key.createfactorycontroller.toggle_full_overlay": "Toggle Full Overlay",
 

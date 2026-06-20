@@ -10,6 +10,10 @@ Changes:
 - Increase the hardness of Factory Controller block
 - Add Summary to Factory Controller item
 
+Bugfixes:
+- Fixed orderable items are not show up in Stock Keeper immediately when open GUI
+- Fixed network selector tooltip list items incorrectly when network count > 7
+
 ## 0.1.1
 - Introduced Follow Demand and Order mode in gauge
 - Introduced Production Order system

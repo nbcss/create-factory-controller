@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.production;
 
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
+import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
@@ -147,12 +147,12 @@ public final class IngredientDemandResolver {
             outputPerCraft.set(id, Math.max(1, source.recipeOutput) * batch);
 
             for (var e : source.targetedBy().entrySet()) {
-                VirtualPanelConnection conn = e.getValue();
+                if (!(e.getValue() instanceof LogisticsConnection conn)) continue;   // ingredient wires only
                 VirtualGaugeBehaviour src = controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour gg ? gg : null;
                 ItemStack ingredient = src == null ? ItemStack.EMPTY : src.filter;
                 if (ingredient.isEmpty()) continue;
                 int childId = intern(ingredient);
-                edges.get(id).add(new long[]{childId, (long) conn.totalAmount() * batch});
+                edges.get(id).add(new long[]{childId, (long) conn.amount() * batch});
                 explore(childId, src, controller, false);
             }
         }

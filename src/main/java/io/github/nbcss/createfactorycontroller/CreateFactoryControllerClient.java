@@ -31,11 +31,11 @@ import org.lwjgl.glfw.GLFW;
 public class CreateFactoryControllerClient {
 
     /**
-     * Cycles a hovered gauge's outgoing arrow-bend mode (the in-GUI action that used to be hard-wired
-     * to R). Rebindable from Options ▸ Controls; defaults to R.
+     * Interacts with the hovered component in the controller GUI: a gauge cycles its outgoing arrow-bend mode, a
+     * redstone link toggles Send/Receive. Rebindable from Options ▸ Controls; defaults to R.
      */
-    public static final KeyMapping CYCLE_ARROW = new KeyMapping(
-            "key.createfactorycontroller.cycle_arrow",
+    public static final KeyMapping INTERACT = new KeyMapping(
+            "key.createfactorycontroller.interact",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,
             "key.categories.createfactorycontroller");
 
@@ -80,7 +80,7 @@ public class CreateFactoryControllerClient {
 
     @SubscribeEvent
     static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(CYCLE_ARROW);
+        event.register(INTERACT);
         event.register(PAN_VIEW);
         event.register(TOGGLE_FULL_OVERLAY);
     }

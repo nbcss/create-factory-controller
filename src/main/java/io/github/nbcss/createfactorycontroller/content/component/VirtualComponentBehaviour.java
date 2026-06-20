@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * A component that can be placed in the controller's virtual panel.
  */
-public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
+public interface VirtualComponentBehaviour {
 
     // ── Identity & placement ────────────────────────────────────────────────
 
@@ -58,8 +58,7 @@ public interface VirtualComponentBehaviour extends VirtualProvidesConnection {
     /** Removes this component from the graph entirely (called before removal). */
     void disconnectAll();
 
-    /** Cycles the arrow-bend rendering mode of all outgoing connections. */
-    void cycleArrowBend();
+    void onInteract();
 
     // ── Persistence ─────────────────────────────────────────────────────────
 

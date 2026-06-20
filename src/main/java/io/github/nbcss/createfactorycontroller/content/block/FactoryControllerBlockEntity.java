@@ -9,8 +9,10 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
+import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
@@ -99,7 +101,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
-
+        // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot, so a multi-stage production
+        // chain's demand all derives from the same state, before any gauge ticks/requests. (The redstone-link power +
+        // gauge gate are refreshed on the lazy tick — see lazyTick — like Create's redstone links.)
         for (VirtualComponentBehaviour component : components.values())
             if (component instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.isPassive())
                 gauge.computeDemand();
@@ -124,6 +128,17 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (level != null && !level.isClientSide()) {
             updateRedstonePower();
             heartbeatOrderableGauges();   // 20t heartbeat keeps this controller's gauges "live" in the registry
+
+            // Redstone-link power + the gauge gate it drives refresh on the lazy tick (like Create's redstone links).
+            // Links first, then gauges, so each gauge reads freshly-updated link power.
+            for (VirtualComponentBehaviour component : components.values())
+                if (component instanceof VirtualRedstoneLinkBehaviour link) {
+                    link.addToNetwork();   // lazy (re)registration after load; no-op once registered
+                    link.updatePower();
+                }
+            for (VirtualComponentBehaviour component : components.values())
+                if (component instanceof VirtualGaugeBehaviour gauge)
+                    gauge.redstonePowered = gauge.isGatedByLink();
         }
     }
 
@@ -168,8 +183,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         super.invalidate();
         // Called from setRemoved() on both block break and chunk unload — drop our entries promptly (the
         // registry's TTL is the fallback). On reload, the first tick/lazyTick heartbeats again.
-        if (level != null && !level.isClientSide())
+        if (level != null && !level.isClientSide()) {
             OrderableGaugeRegistry.remove(level.dimension(), getBlockPos());
+            // Unregister every link from Create's frequency network (re-registered lazily on reload's first tick).
+            for (VirtualComponentBehaviour c : components.values())
+                if (c instanceof VirtualRedstoneLinkBehaviour link) link.removeFromNetwork();
+        }
     }
 
     private void updateRedstonePower() {
@@ -198,20 +217,25 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // board full — bounds NBT/packet size
         if (components.size() >= maxComponents()) return;
 
-        UUID networkId;
-        if (LogisticallyLinkedBlockItem.isTuned(carried)) {
-            networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
-            if (networkId == null) return;
-            networks.add(networkId);
-        } else {
-            if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
-                return;
+        UUID networkId = null;
+        if (ComponentRegistry.needsNetwork(itemId)) {
+            if (LogisticallyLinkedBlockItem.isTuned(carried)) {
+                networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
+                if (networkId == null) return;
+                networks.add(networkId);
+            } else {
+                if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
+                    return;
+                }
+                networkId = selectedNetwork;
             }
-            networkId = selectedNetwork;
         }
 
-        VirtualGaugeBehaviour behaviour = new VirtualGaugeBehaviour(this, pos, networkId, itemId);
-        behaviour.controllerPowered = redstonePowered;   // inherit the live redstone state
+        VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, itemId, networkId);
+        if (behaviour instanceof VirtualGaugeBehaviour gauge)
+            gauge.controllerPowered = redstonePowered;   // inherit the live redstone state
+        else if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
+            link.addToNetwork();                          // join Create's frequency network
         components.put(pos, behaviour);
 
         if (!player.isCreative())
@@ -232,6 +256,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // The gauge is gone → abort any production tasks targeting it.
         if (behaviour instanceof VirtualGaugeBehaviour g && g.patternId != null && level != null)
             ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
+        // A link is gone → leave Create's frequency network.
+        if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
+            link.removeFromNetwork();
 
         behaviour.disconnectAll();
 
@@ -328,7 +355,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput, int craftBatch,
                                 int craftDimension, int promiseInterval, int count, ThresholdUnit mode,
                                 RequestMode requestMode,
-                                Map<VirtualPanelPosition, List<Integer>> inputAmounts,
+                                Map<VirtualPanelPosition, Integer> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
 
@@ -361,14 +388,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.requestMode = requestMode;
         if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
-        for (Map.Entry<VirtualPanelPosition, List<Integer>> e : inputAmounts.entrySet()) {
-            VirtualPanelConnection conn = gauge.targetedBy().get(e.getKey());
-            if (conn == null) continue;
-            List<Integer> amts = new ArrayList<>();
-            for (int a : e.getValue()) amts.add(Math.max(1, a));
-            if (amts.isEmpty()) amts.add(1);
-            conn.amounts = amts;
-        }
+        for (Map.Entry<VirtualPanelPosition, Integer> e : inputAmounts.entrySet())
+            if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
+                conn.amount = Math.max(1, e.getValue());
         if (clearPromises) gauge.requestClearPromises();
         updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible → mint/abort patternId
         markOrderableDirty();   // request mode / filter / address may have changed
@@ -376,13 +398,24 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
+    public VirtualComponentBehaviour componentAt(VirtualPanelPosition pos) {
+        return components.get(pos);
+    }
+
     // ── Connections ────────────────────────────────────────────────────────
 
     public void addConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
         VirtualComponentBehaviour target = components.get(to);
-        if (!components.containsKey(from) || target == null || from.equals(to)) {
+        VirtualComponentBehaviour source = components.get(from);
+        if (source == null || target == null || from.equals(to)) {
             playDenySound();
             return;
+        }
+        // Gauge↔link connections are always stored on the link (link.targetedBy[gauge]), regardless of which side
+        // was clicked, so the gauge's targetedBy stays ingredient-only and the gauge's R-cycle owns the arrow bend.
+        if (target instanceof VirtualGaugeBehaviour && source instanceof VirtualRedstoneLinkBehaviour) {
+            VirtualPanelPosition swap = from; from = to; to = swap;
+            target = components.get(to);
         }
         int before = target.targetedBy().size();
         target.addConnection(from);
@@ -399,10 +432,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         target.removeConnection(from);
     }
 
-    public void cycleArrowBend(VirtualPanelPosition pos) {
+    /** The interact (R) key: a gauge cycles its arrow-bend mode; a redstone link toggles Send/Receive. */
+    public void interactComponent(VirtualPanelPosition pos) {
         VirtualComponentBehaviour behaviour = components.get(pos);
-        if (behaviour == null) return;
-        behaviour.cycleArrowBend();
+        if (behaviour != null) behaviour.onInteract();
     }
 
     // ── Rename ───────────────────────────────────────────────────────────────
@@ -549,8 +582,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         markOrderableDirty();   // republish to the registry on the next server tick (level is set by then)
     }
-
-    // ── Component drops ─────────────────────────────────────────────────────
 
     /** Aborts the open production tasks of every orderable gauge (called when the controller is destroyed —
      *  whether the board is dropped as items or preserved on the controller item). */

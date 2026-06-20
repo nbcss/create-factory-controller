@@ -18,6 +18,9 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.packet.ComponentInteractPacket;
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
 import net.createmod.catnip.animation.LerpedFloat;
@@ -26,7 +29,6 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.AttachComponentPacket;
-import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowBendPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RenameControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RetuneCarriedPacket;
@@ -129,7 +131,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Interaction state
     @Nullable private VirtualPanelPosition hoveredPosition = null;
 
-    private final Map<VirtualPanelPosition, VirtualGaugeWidget> gaugeWidgets = new LinkedHashMap<>();
+    private final Map<VirtualPanelPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
 
     private final Map<VirtualPanelPosition, LerpedFloat> bulbs = new HashMap<>();
     private final Map<VirtualPanelPosition, Long> bulbSeenRequest = new HashMap<>();
@@ -324,8 +326,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      * parent's {@code containerTick} never runs and the bulbs freeze.</p>
      */
     public void tickBulbs() {
-        for (VirtualGaugeWidget w : gaugeWidgets.values()) {
-            VirtualGaugeBehaviour g = w.behaviour();
+        for (VirtualComponentWidget w : componentWidgets.values()) {
+            if (!(w.behaviour() instanceof VirtualGaugeBehaviour g)) continue;   // only gauges have bulbs
             VirtualPanelPosition pos = g.position();
             boolean firstSeen = !bulbSeenRequest.containsKey(pos);
             float steady = g.satisfied || g.redstonePowered ? 1 : 0;
@@ -340,8 +342,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             bulb.updateChaseTarget(steady);
             bulb.tickChaser();
         }
-        bulbs.keySet().removeIf(p -> !gaugeWidgets.containsKey(p));
-        bulbSeenRequest.keySet().removeIf(p -> !gaugeWidgets.containsKey(p));
+        bulbs.keySet().removeIf(p -> !componentWidgets.containsKey(p));
+        bulbSeenRequest.keySet().removeIf(p -> !componentWidgets.containsKey(p));
     }
 
     /** Current interpolated bulb glow [0,1] for the gauge at {@code pos} (0 if none). */
@@ -356,10 +358,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         super.render(graphics, mouseX, mouseY, partialTick);
-        VirtualGaugeWidget hovered = gaugeWidget(hoveredPosition);
+        VirtualComponentWidget hovered = componentWidgetAt(hoveredPosition);
         if (pendingConnectionTarget == null && pendingRelocateTarget == null) {
             if (hovered != null)
-                graphics.renderComponentTooltip(font, hovered.getGaugeTooltip(menu), mouseX, mouseY);
+                graphics.renderComponentTooltip(font, hovered.getTooltip(menu), mouseX, mouseY);
             else if (networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
             else if (inBounds(capacityLabelBounds, mouseX, mouseY))
@@ -461,15 +463,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
-        for (VirtualGaugeWidget gauge : gaugeWidgets.values())
-            gauge.renderBack(graphics);
+        for (VirtualComponentWidget component : componentWidgets.values())
+            component.renderBack(graphics);
 
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
         boolean fullOverlay = ClientConfig.fullOverlay();
-        for (VirtualGaugeWidget gauge : gaugeWidgets.values())
-            gauge.renderFront(graphics, bulbGlow(gauge.position(), partialTick),
-                    fullOverlay || gauge.position().equals(hoveredPosition));
+        for (VirtualComponentWidget component : componentWidgets.values())
+            component.renderFront(graphics, mouseX, mouseY, bulbGlow(component.position(), partialTick),
+                    fullOverlay || component.position().equals(hoveredPosition));
 
         renderSelectedNetworkMask(graphics);
         renderHoverTarget(graphics);
@@ -578,9 +580,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void renderSelectedNetworkMask(GuiGraphics graphics) {
         UUID selected = networkSelector.getSelectedNetwork();
         if (selected == null) return;
-        for (VirtualGaugeWidget gauge : gaugeWidgets.values())
-            if (selected.equals(gauge.behaviour().networkId))
-                renderTarget(graphics, gauge.position(), TARGET_BLUE);
+        for (VirtualComponentWidget component : componentWidgets.values())
+            if (component.behaviour() instanceof VirtualGaugeBehaviour g && selected.equals(g.networkId))
+                renderTarget(graphics, component.position(), TARGET_BLUE);
     }
 
     private void renderHoverTarget(GuiGraphics graphics) {
@@ -589,29 +591,40 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (source != null) renderTarget(graphics, source, TARGET_GREEN);
 
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
-        boolean hoverHasGauge = findGauge(hoveredPosition) != null;
+        boolean hoverHasGauge = componentAt(hoveredPosition) != null;
         ItemStack carried = menu.getCarried();
 
         if (pendingConnectionTarget != null) {
-            // Connect mode: only gauges are valid targets — white if connectable, red otherwise.
-            if (hoverHasGauge) {
-                VirtualComponentBehaviour target = findGauge(pendingConnectionTarget);
-                boolean valid = target != null
-                        && !hoveredPosition.equals(pendingConnectionTarget)
-                        && !target.targetedBy().containsKey(hoveredPosition);
+            // Connect mode: hovering another component shows white if it can be wired, red otherwise. A gauge
+            // ingredient is blocked when it's a duplicate or the initiating gauge already holds the max inputs; a
+            // redstone link is only blocked when this gauge is already wired to it (the link is uncapped).
+            if (hoverHasGauge && !hoveredPosition.equals(pendingConnectionTarget)) {
+                VirtualComponentBehaviour initiator = componentAt(pendingConnectionTarget);
+                VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
+                boolean valid;
+                if (hovered instanceof VirtualRedstoneLinkBehaviour link) {
+                    valid = !link.targetedBy().containsKey(pendingConnectionTarget);
+                } else {
+                    valid = initiator != null
+                            && !initiator.targetedBy().containsKey(hoveredPosition)
+                            && initiator.targetedBy().size() < VirtualGaugeBehaviour.MAX_INGREDIENTS;
+                }
                 renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
             }
         } else if (pendingRelocateTarget != null) {
             // Relocate mode: white over a valid (empty) destination, red over an occupied cell.
             renderTarget(graphics, hoveredPosition, hoverHasGauge ? TARGET_RED : TARGET_WHITE);
         } else if (ComponentRegistry.containsItem(carried)) {
-            // Holding a gauge: white over an empty cell (valid placement), red over an occupied cell —
-            // or red anywhere if placement would fail for lack of a network.
-            boolean noNetwork = networkForAttaching(carried) == null;
+            // Holding a component: white over an empty cell (valid placement), red over an occupied cell —
+            // or red anywhere if a gauge placement would fail for lack of a network (links need none).
+            boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
+            boolean noNetwork = needsNet && networkForAttaching(carried) == null;
             renderTarget(graphics, hoveredPosition, (hoverHasGauge || noNetwork) ? TARGET_RED : TARGET_WHITE);
         } else if (!carried.isEmpty()) {
-            // Holding a non-gauge item: white over an unconfigured gauge (clicking sets its filter).
-            if (findGauge(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
+            // Holding a non-component item: white over an unconfigured gauge (sets filter) or any link (sets frequency).
+            if (componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
+                renderTarget(graphics, hoveredPosition, TARGET_WHITE);
+            else if (componentAt(hoveredPosition) instanceof VirtualRedstoneLinkBehaviour)
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         } else {
             // Empty cursor: white over a hovered gauge.
@@ -704,7 +717,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerY = (y0 + y1) / 2;
             VirtualPanelPosition clicked = at(mouseX, mouseY, centerX, centerY);
             ItemStack carried = menu.getCarried();
-            VirtualGaugeWidget widget = gaugeWidget(clicked);
+            VirtualComponentWidget widget = componentWidgetAt(clicked);
             boolean leftOrRight = button == 0 || button == 1;
 
             // Shift + left/right-click a gauge → remove it from the board (server refunds if survival).
@@ -724,23 +737,44 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                             .style(ChatFormatting.WHITE).component(), 3000);
                     return true;
                 }
-                VirtualGaugeBehaviour input = widget.behaviour();
-                VirtualComponentBehaviour targetComp = findGauge(target);
-                if (input.filter.isEmpty()) {
+                VirtualComponentBehaviour input = widget.behaviour();
+                VirtualComponentBehaviour targetComp = componentAt(target);
+                boolean toLink = input instanceof VirtualRedstoneLinkBehaviour;
+                // Duplicate either way: gauge↔gauge stores on the consumer; gauge↔link stores on the link.
+                boolean already = (targetComp != null && targetComp.targetedBy().containsKey(clicked))
+                        || input.targetedBy().containsKey(target);
+                // Ingredient cap applies only to gauge↔gauge wires (a link is uncapped).
+                boolean atCap = !toLink && targetComp != null
+                        && targetComp.targetedBy().size() >= VirtualGaugeBehaviour.MAX_INGREDIENTS;
+                // A gauge source with no filter can't be wired; a redstone-link source always can.
+                if (input instanceof VirtualGaugeBehaviour ig && ig.filter.isEmpty()) {
                     setTimedPrompt(CreateLang.translate("factory_panel.no_item")
                             .style(ChatFormatting.RED).component(), 3000);
                     playDenySound();
-                } else if (targetComp != null && targetComp.targetedBy().containsKey(clicked)) {
+                } else if (already) {
                     setTimedPrompt(CreateLang.translate("factory_panel.already_connected")
+                            .style(ChatFormatting.RED).component(), 3000);
+                    playDenySound();
+                } else if (atCap) {
+                    setTimedPrompt(CreateLang.translate("factory_panel.cannot_add_more_inputs")
                             .style(ChatFormatting.RED).component(), 3000);
                     playDenySound();
                 } else {
                     PacketDistributor.sendToServer(new AddConnectionPacket(
                             menu.controllerPos, clicked, target));
+                    if (!(input instanceof VirtualGaugeBehaviour ig)) {
+                        String outputName = new ItemStack(BuiltInRegistries.ITEM.get(input.getItemId()))
+                                .getHoverName().getString();
+                        setTimedPrompt(CreateLang.translate("factory_panel.link_connected",
+                                        outputName)
+                                .style(ChatFormatting.GREEN).component(), 3000);
+                        return true;
+                    }
+                    Component inputName = FluidCompat.filterName(ig.filter);
                     Component outputName = targetComp instanceof VirtualGaugeBehaviour tg
                             ? FluidCompat.filterName(tg.filter) : Component.empty();
                     setTimedPrompt(CreateLang.translate("factory_panel.panels_connected",
-                            input.filter.getHoverName(), outputName)
+                            inputName, outputName)
                             .style(ChatFormatting.GREEN).component(), 3000);
                 }
                 return true;
@@ -773,9 +807,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     playDenySound();
                     return true;
                 }
-                UUID network = networkForAttaching(carried);
-                // No usable network → surface the requirement as a 3s board prompt, don't send.
-                if (network == null) {
+                boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
+                UUID network = needsNet ? networkForAttaching(carried) : null;
+                // A gauge with no usable network → surface the requirement as a 3s board prompt, don't send.
+                if (needsNet && network == null) {
                     setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() ?
                             "createfactorycontroller.gui.prompt.no_first_network" :
                             "createfactorycontroller.gui.prompt.no_network_tuned")
@@ -790,7 +825,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Click an existing gauge → its own interaction (set item / configure). Pass the button so an
             // empty gauge can take a fluid filter on right-click (with a fluid addon) vs an item on left.
             if (leftOrRight && widget != null)
-                return widget.onClick(this, carried, button);
+                return widget.onClick(this, carried, mouseX, mouseY, button);
 
             // Pan-view button (rebindable, middle mouse by default) → start a drag-pan.
             if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
@@ -981,9 +1016,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        // The cycle-arrow key on a hovered gauge cycles its outgoing connection bend mode
-        if (CreateFactoryControllerClient.CYCLE_ARROW.matches(keyCode, scanCode)
-                && hoveredPosition != null && findGauge(hoveredPosition) != null) {
+        // The interact key over a hovered redstone link toggles its Send/Receive mode (via onInteract, like a gauge's
+        // arrow-bend cycle) — the same unified ComponentInteractPacket path.
+        if (CreateFactoryControllerClient.INTERACT.matches(keyCode, scanCode)
+                && componentAt(hoveredPosition) instanceof VirtualRedstoneLinkBehaviour) {
+            PacketDistributor.sendToServer(new ComponentInteractPacket(menu.controllerPos, hoveredPosition));
+            return true;
+        }
+
+        // The interact key on a hovered gauge cycles its outgoing connection bend mode
+        if (CreateFactoryControllerClient.INTERACT.matches(keyCode, scanCode)
+                && hoveredPosition != null && componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour) {
             // Optimistically reflect the new mode (server cycles to (mode+1)%4) as a fading prompt,
             // reusing Create's "Cycled arrow pathing mode □□□□" message with the active mode filled.
             Integer mode = outgoingArrowBendMode(hoveredPosition);
@@ -993,7 +1036,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
                         .style(ChatFormatting.WHITE).component(), 3000);
             }
-            PacketDistributor.sendToServer(new CycleArrowBendPacket(menu.controllerPos, hoveredPosition));
+            PacketDistributor.sendToServer(new ComponentInteractPacket(menu.controllerPos, hoveredPosition));
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -1012,23 +1055,27 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return null;
     }
 
-    /** Rebuilds the position→widget index from the synced component list. */
+    /** Rebuilds the position→widget index from the synced component list (one widget per component type). */
     private void rebuildGaugeWidgets() {
-        gaugeWidgets.clear();
-        for (VirtualComponentBehaviour b : menu.components)
+        componentWidgets.clear();
+        for (VirtualComponentBehaviour b : menu.components) {
             if (b instanceof VirtualGaugeBehaviour gauge)
-                gaugeWidgets.put(gauge.position(), new VirtualGaugeWidget(gauge));
+                componentWidgets.put(gauge.position(), new VirtualGaugeWidget(gauge));
+            else if (b instanceof VirtualRedstoneLinkBehaviour link)
+                componentWidgets.put(link.position(), new VirtualRedstoneLinkWidget(link));
+        }
     }
 
     /** The widget at {@code pos}, or {@code null} if the cell is empty (O(1)). */
     @Nullable
-    VirtualGaugeWidget gaugeWidget(@Nullable VirtualPanelPosition pos) {
-        return pos == null ? null : gaugeWidgets.get(pos);
+    VirtualComponentWidget componentWidgetAt(@Nullable VirtualPanelPosition pos) {
+        return pos == null ? null : componentWidgets.get(pos);
     }
 
+    /** The component at {@code pos} (any type), or {@code null} if the cell is empty. */
     @Nullable
-    private VirtualComponentBehaviour findGauge(@Nullable VirtualPanelPosition pos) {
-        VirtualGaugeWidget w = gaugeWidget(pos);
+    private VirtualComponentBehaviour componentAt(@Nullable VirtualPanelPosition pos) {
+        VirtualComponentWidget w = componentWidgetAt(pos);
         return w == null ? null : w.behaviour();
     }
 }

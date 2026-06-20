@@ -35,7 +35,7 @@ import java.util.List;
  * {@code CELL} world px at {@code (position * CELL)} and this class never deals with zoom/pan.</p>
  */
 @OnlyIn(Dist.CLIENT)
-public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
+public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements VirtualComponentWidget {
 
     private static final int CELL = 16;
 
@@ -67,6 +67,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * Back layer: the gauge's {@code back} sprite. Rendered before connections so the arrows
      * (whose heads tuck into the cell) sit above the back but below the front.
      */
+    @Override
     public void renderBack(GuiGraphics gfx) {
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
@@ -78,7 +79,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * Rendered after connections so the front frame covers the arrowheads. (Hover feedback is the
      * {@code target} reticle drawn by the screen.)
      */
-    public void renderFront(GuiGraphics gfx, float glow, boolean showCount) {
+    @Override
+    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow, boolean showCount) {
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
@@ -145,7 +147,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * item to set" until a filter exists, then "Click to configure" — and, when inactive, the red
      * reason (no target amount / missing address), matching {@code FactoryPanelBehaviour#getLabel}.
      */
-    public List<Component> getGaugeTooltip(FactoryControllerMenu menu) {
+    @Override
+    public List<Component> getTooltip(FactoryControllerMenu menu) {
         List<Component> lines = new ArrayList<>();
         lines.add(behaviour.filter.isEmpty()
                 ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
@@ -188,7 +191,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
      * opens the set-item overlay with an empty cursor); a configured gauge opens the recipe overlay
      * with an empty cursor. Always consumes the click.
      */
-    public boolean onClick(FactoryControllerScreen screen, ItemStack carried, int button) {
+    @Override
+    public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
         FactoryControllerMenu menu = screen.getMenu();
         if (behaviour.filter.isEmpty()) {
             if (carried.isEmpty())

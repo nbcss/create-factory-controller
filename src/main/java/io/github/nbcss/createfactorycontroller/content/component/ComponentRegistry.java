@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
 import com.simibubi.create.AllBlocks;
+import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -9,6 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,10 +35,35 @@ public final class ComponentRegistry {
     private static final Set<ResourceLocation> ITEM_IDS = new HashSet<>();
     private static final Map<ResourceLocation, ComponentFactory> TYPE_FACTORIES = new HashMap<>();
 
+    /** Item ids that don't require a logistics network to attach (e.g. the redstone link). */
+    private static final Set<ResourceLocation> NETWORKLESS_ITEMS = new HashSet<>();
+
     static {
         // Create's factory gauge → virtual gauge component.
         ITEM_IDS.add(AllBlocks.FACTORY_GAUGE.getId());
         registerType(VirtualGaugeBehaviour.TYPE_ID, VirtualGaugeBehaviour::fromNBT);
+
+        // Create's redstone link → virtual redstone-link component (no logistics network required).
+        ITEM_IDS.add(AllBlocks.REDSTONE_LINK.getId());
+        NETWORKLESS_ITEMS.add(AllBlocks.REDSTONE_LINK.getId());
+        registerType(VirtualRedstoneLinkBehaviour.TYPE_ID, VirtualRedstoneLinkBehaviour::fromNBT);
+    }
+
+    /** Whether attaching {@code itemId} needs a controller logistics network (gauges do; redstone links don't). */
+    public static boolean needsNetwork(ResourceLocation itemId) {
+        return !NETWORKLESS_ITEMS.contains(itemId);
+    }
+
+    /**
+     * Builds a fresh component for a freshly-placed item. {@code networkId} is the resolved logistics network for
+     * gauges (ignored by networkless components).
+     */
+    public static VirtualComponentBehaviour createFromItem(FactoryControllerBlockEntity controller,
+                                                           VirtualPanelPosition pos, ResourceLocation itemId,
+                                                           @Nullable UUID networkId) {
+        if (AllBlocks.REDSTONE_LINK.getId().equals(itemId))
+            return new VirtualRedstoneLinkBehaviour(controller, pos, itemId);
+        return new VirtualGaugeBehaviour(controller, pos, networkId, itemId);
     }
 
     // ── Item acceptance ───────────────────────────────────────────────────────

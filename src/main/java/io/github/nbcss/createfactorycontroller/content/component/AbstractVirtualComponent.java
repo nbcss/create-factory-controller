@@ -3,7 +3,6 @@ package io.github.nbcss.createfactorycontroller.content.component;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnection;
 import net.liukrast.deployer.lib.logistics.board.connection.PanelConnectionBuilder;
 import net.minecraft.resources.ResourceLocation;
@@ -26,9 +25,6 @@ import java.util.function.Supplier;
  */
 public abstract class AbstractVirtualComponent implements VirtualComponentBehaviour {
 
-    /** Max incoming connections, matching Create's factory panel limit. */
-    protected static final int MAX_INCOMING = 9;
-
     protected final FactoryControllerBlockEntity controller; // null on the client snapshot
     protected VirtualPanelPosition position;
     protected final ResourceLocation itemId;
@@ -37,16 +33,11 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     protected final Map<VirtualPanelPosition, VirtualPanelConnection> targetedBy = new LinkedHashMap<>();
     protected final Set<VirtualPanelPosition> targeting = new LinkedHashSet<>();
 
-    // Reused Deployer connection model (filled once via addConnections)
-    protected final Map<PanelConnection<?>, Supplier<?>> outputs = new LinkedHashMap<>();
-    protected final Set<PanelConnection<?>> inputs = new LinkedHashSet<>();
-
     protected AbstractVirtualComponent(FactoryControllerBlockEntity controller,
                                        VirtualPanelPosition position, ResourceLocation itemId) {
         this.controller = controller;
         this.position = position;
         this.itemId = itemId;
-        addConnections(new PanelConnectionBuilder(outputs, inputs));
     }
 
     // ── Identity ─────────────────────────────────────────────────────────────
@@ -55,43 +46,32 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     @Override public void setPosition(VirtualPanelPosition pos) { this.position = pos; }
     @Override public ResourceLocation getItemId() { return itemId; }
 
-    // ── Connection declarations (Deployer-compatible) ─────────────────────────
-
-    /** Default: declares nothing. Subclasses register their I/O types. */
-    @Override public void addConnections(PanelConnectionBuilder builder) {}
-
-    @Override public Set<PanelConnection<?>> getInputConnections() { return inputs; }
-    @Override public Set<PanelConnection<?>> getOutputConnections() { return outputs.keySet(); }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> Optional<T> getConnectionValue(PanelConnection<T> connection) {
-        Supplier<?> supplier = outputs.get(connection);
-        return supplier == null ? Optional.empty() : Optional.ofNullable((T) supplier.get());
-    }
-
     // ── Connection graph ──────────────────────────────────────────────────────
 
     @Override public Map<VirtualPanelPosition, VirtualPanelConnection> targetedBy() { return targetedBy; }
     @Override public Set<VirtualPanelPosition> targeting() { return targeting; }
 
+    /**
+     * Adds an incoming connection from {@code fromPos}. Uncapped at this level — only {@link VirtualGaugeBehaviour}
+     * limits its ingredient inputs (a redstone link holds unlimited gauge connections).
+     */
     @Override
     public void addConnection(VirtualPanelPosition fromPos) {
         if (targetedBy.containsKey(fromPos)) return;
-        if (targetedBy.size() >= MAX_INCOMING) return;
 
         VirtualComponentBehaviour source = controller.components.get(fromPos);
         if (source == null) return;
 
-        // A fluid ingredient is measured in millibuckets, so start it at one bucket (1000 mB) like the output
-        // default; item ingredients start at 1.
-        int defaultAmount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter)
-            ? 1000 : 1;
         source.targeting().add(position);
-        targetedBy.put(fromPos, new VirtualPanelConnection(fromPos, defaultAmount));
+        targetedBy.put(fromPos, createConnection(fromPos, source));
         controller.setChanged();
         controller.sendData();
     }
+
+    /** Creates the connection kind this component holds (a gauge → {@code LogisticsConnection}, a redstone link →
+     *  {@code RedstoneConnection}). {@code source} is the wired-in component (for kind-specific defaults). */
+    protected abstract VirtualPanelConnection createConnection(VirtualPanelPosition from,
+                                                               VirtualComponentBehaviour source);
 
     @Override
     public void removeConnection(VirtualPanelPosition fromPos) {
@@ -124,7 +104,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     }
 
     @Override
-    public void cycleArrowBend() {
+    public void onInteract() {
         int sharedMode = -1;
         for (VirtualPanelPosition targetPos : targeting) {
             VirtualComponentBehaviour target = controller.components.get(targetPos);

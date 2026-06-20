@@ -46,6 +46,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/factory_gauge");
 
+    /** Max ingredient (gauge → gauge) inputs, matching Create's factory-panel limit. Redstone-link wires are stored
+     *  on the link and don't count toward this. */
+    public static final int MAX_INGREDIENTS = 9;
+
     // Identity
     public final UUID networkId;
     public UUID patternId = null;
@@ -68,6 +72,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public boolean satisfied = false;
     public boolean promisedSatisfied = false;
     public boolean waitingForNetwork = false;
+    /** Driven by a powered RECEIVE-mode redstone link wired to this gauge — recomputed each controller pre-pass. */
     public boolean redstonePowered = false;
     public boolean controllerPowered = false;
 
@@ -122,6 +127,21 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return TEXTURE;
     }
 
+    @Override
+    protected VirtualPanelConnection createConnection(VirtualPanelPosition from, VirtualComponentBehaviour source) {
+        // A fluid ingredient is measured in millibuckets, so start it at one bucket (1000 mB); items start at 1.
+        int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;
+        return new LogisticsConnection(from, amount);
+    }
+
+    /** A gauge caps its ingredient inputs at {@link #MAX_INGREDIENTS}; its {@code targetedBy} only ever holds those
+     *  (redstone-link wires live on the link), so the map size is the ingredient count. */
+    @Override
+    public void addConnection(VirtualPanelPosition fromPos) {
+        if (!targetedBy().containsKey(fromPos) && targetedBy().size() >= MAX_INGREDIENTS) return;
+        super.addConnection(fromPos);
+    }
+
     // ── Status ───────────────────────────────────────────────────────────────
 
     /** The configured target threshold (Create's {@code count}). */
@@ -145,12 +165,30 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     /**
-     * Whether this gauge needs a restock address but has none — an active target with incoming
-     * connections (or restocker role) but a blank {@link #recipeAddress}. Mirrors Create's check
-     * (minus the packager-block-entity part, which has no virtual-board equivalent).
+     * Whether this gauge needs a restock address but has none — an active target with incoming connections
+     * (or restocker role) but a blank {@link #recipeAddress}. Mirrors Create's check (minus the packager-block-entity
+     * part). Redstone-link connections are stored on the link, so {@link #targetedBy()} holds only ingredient gauges.
      */
     public boolean isMissingAddress() {
         return !targetedBy().isEmpty() && isActive() && recipeAddress.isBlank();
+    }
+
+    /** SEND-mode redstone-link power source: an active target ({@code count != 0}) that is currently in stock. */
+    public boolean powersLink() {
+        return count != 0 && satisfied;
+    }
+
+    /**
+     * Whether a powered RECEIVE-mode redstone link is wired to this gauge (which gates its requests via
+     * {@link #redstonePowered}). The link holds the connection ({@code link.targetedBy[gauge]}), so this gauge's
+     * {@link #targeting} lists the link. Server-only ({@code controller} is null on the client snapshot).
+     */
+    public boolean isGatedByLink() {
+        if (controller == null) return false;
+        for (VirtualPanelPosition linkPos : targeting)
+            if (controller.components.get(linkPos) instanceof VirtualRedstoneLinkBehaviour link && link.gatesGauge())
+                return true;
+        return false;
     }
 
     /**
@@ -211,10 +249,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (VirtualPanelPosition parentPos : targeting) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
-            VirtualPanelConnection conn = parent.targetedBy().get(position);
-            if (conn == null) continue;
+            if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
             int parentBatch = parent.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, parent.craftBatch);
-            demand += conn.totalAmount() * parentBatch;
+            demand += conn.amount() * parentBatch;
         }
         // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
         // order acts like another downstream consumer, so the passive gauge produces to satisfy it too. Only
@@ -381,9 +418,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
         for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : targetedBy().entrySet()) {
             if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
+            if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
             ItemStack ingredient = source.filter;
             if (ingredient.isEmpty()) continue;
-            int needed = e.getValue().totalAmount() * batch;   // sum across the connection's repeated slots
+            int needed = conn.amount() * batch;
             List<BigItemStack> demands = demandByNetwork.computeIfAbsent(source.networkId, k -> new ArrayList<>());
             BigItemStack existing = null;
             for (BigItemStack b : demands)
@@ -463,7 +501,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     private void setConnectionsSuccess(boolean value) {
         boolean changed = false;
         for (VirtualPanelConnection conn : targetedBy().values())
-            if (conn.success != value) { conn.success = value; changed = true; }
+            if (conn instanceof LogisticsConnection lc && lc.success != value) { lc.success = value; changed = true; }
         if (changed) {
             controller.setChanged();
             controller.sendData();
@@ -579,6 +617,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putBoolean("Satisfied", satisfied);
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
         tag.putBoolean("Waiting", waitingForNetwork);
+        tag.putBoolean("RedstonePowered", redstonePowered);   // link-driven; synced for the gray path + bulb
         //tag.putBoolean("ControllerPowered", controllerPowered);
         tag.putString("RecipeAddress", recipeAddress);
         // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
@@ -626,6 +665,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.satisfied = tag.getBoolean("Satisfied");
         b.promisedSatisfied = tag.getBoolean("PromisedSatisfied");
         b.waitingForNetwork = tag.getBoolean("Waiting");
+        b.redstonePowered = tag.getBoolean("RedstonePowered");
         b.controllerPowered = tag.getBoolean("ControllerPowered");
         b.timer = tag.getInt("Timer");
         b.recipeAddress = tag.getString("RecipeAddress");
@@ -636,7 +676,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         ListTag targetedByList = tag.getList("TargetedBy", Tag.TAG_COMPOUND);
         for (int i = 0; i < targetedByList.size(); i++) {
-            VirtualPanelConnection conn = VirtualPanelConnection.fromNBT(targetedByList.getCompound(i));
+            LogisticsConnection conn = LogisticsConnection.fromNBT(targetedByList.getCompound(i));
             b.targetedBy.put(conn.from, conn);
         }
 

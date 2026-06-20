@@ -63,8 +63,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
               Component.translatable("createfactorycontroller.gui.controller_settings"));
         this.controller = controller;
         scanOptions();
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
     }
 
     /** Lists the .png files under {@link #BACKGROUND_DIR} in our namespace, stripping path + extension. */
@@ -239,12 +237,5 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void onClose() {
         returnToController();   // return to the controller without closing the shared container
-    }
-
-    @Override
-    public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
-        super.removed();
     }
 }

@@ -22,6 +22,7 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
@@ -187,14 +188,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         newInputButton = new IconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
         newInputButton.withCallback(() -> {
-            if (layoutInputSlots().size() >= MAX_INPUT_SLOTS) {
-                sendConfig(false, false);   // save current edits before leaving
-                controller.denyWithMessage(
-                    CreateLang.translate("factory_panel.cannot_add_more_inputs")
-                            .style(ChatFormatting.RED).component(), 3000);
-                Minecraft.getInstance().setScreen(controller);
-                return;
-            }
             sendConfig(false, false);   // commit edits before leaving the screen
             controller.beginConnectionMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
@@ -288,6 +281,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * partial last slot (so no slot exceeds the item's stack size), its slots contiguous, connections packed
      * in order — capped at {@link #MAX_INPUT_SLOTS}. Recomputed wherever the grid is drawn or hit-tested.
      */
+    //FIXME check
     private List<InputSlot> layoutInputSlots() {
         List<InputSlot> slots = new ArrayList<>();
         for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
@@ -492,9 +486,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (!fluidMode && mode.fluid) mode = ThresholdUnit.ITEMS;
         if (fluidMode && outputCount <= 1) outputCount = 1000;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
-            // Collapse the stored per-slot breakdown into one total; the canonical slot layout (full
-            // stacks first, one partial last) is re-derived on render/scroll/send.
-            int total = conn.totalAmount();
+            // A gauge holds only logistics (ingredient) wires; the UI re-derives the slot layout from this total.
+            if (!(conn instanceof LogisticsConnection lc)) continue;
+            int total = lc.amount();
             inputConnections.add(conn.from);
             inputTotals.add(total);
             inputConfig.add(new BigItemStack(ingredientOf(conn.from), total));
@@ -1325,9 +1319,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 amounts.add(Math.max(1, c));
             }
         } else {
-            for (InputSlot slot : layoutInputSlots()) {
-                positions.add(inputConnections.get(slot.connectionIndex()));
-                amounts.add(Math.max(1, slot.amount()));
+            // One total per connection — the model stores a single amount and the UI re-derives the slot split.
+            for (int c = 0; c < inputConnections.size(); c++) {
+                positions.add(inputConnections.get(c));
+                amounts.add(Math.max(1, inputTotals.get(c)));
             }
         }
 

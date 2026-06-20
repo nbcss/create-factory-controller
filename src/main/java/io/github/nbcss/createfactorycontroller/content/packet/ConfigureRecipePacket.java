@@ -99,13 +99,11 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            // Group per-slot amounts by connection, preserving order: a connection repeated across
-            // several slots arrives as the same position multiple times → one list entry per slot.
-            Map<VirtualPanelPosition, List<Integer>> inputs = new LinkedHashMap<>();
+            // One amount per connection (the UI owns the slot split). Last write wins if a position repeats.
+            Map<VirtualPanelPosition, Integer> inputs = new LinkedHashMap<>();
             int n = Math.min(packet.inputPositions().size(), packet.inputAmounts().size());
             for (int i = 0; i < n; i++)
-                inputs.computeIfAbsent(packet.inputPositions().get(i), k -> new ArrayList<>())
-                      .add(packet.inputAmounts().get(i));
+                inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
                 packet.craftDimension(), packet.promiseInterval(), packet.count(), packet.mode(),
                 packet.requestMode(), inputs, packet.craftingArrangement(),

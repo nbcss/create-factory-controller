@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.compat.jei;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.gui.ConfigureRedstoneLinkScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.SetItemScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -47,6 +48,26 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
                 return screen.extraGuiAreas();
             }
         });
+        registration.addGhostIngredientHandler(ConfigureRedstoneLinkScreen.class, new RedstoneLinkGhostHandler());
+    }
+
+    /** Offers the two frequency slots (Red/Blue) of the redstone-link config screen as JEI drop targets.
+     *  Items only — redstone-link frequencies are plain items (no fluid-filter conversion). */
+    private static class RedstoneLinkGhostHandler implements IGhostIngredientHandler<ConfigureRedstoneLinkScreen> {
+        @Override
+        public <I> List<Target<I>> getTargetsTyped(ConfigureRedstoneLinkScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+            List<Target<I>> targets = new ArrayList<>();
+            Optional<ItemStack> stack = ingredient.getItemStack();
+            if (stack.isPresent() && !stack.get().isEmpty()) {
+                ItemStack freq = stack.get();
+                targets.add(dropTarget(screen.redSlotArea(), () -> screen.setRedFromJei(freq)));
+                targets.add(dropTarget(screen.blueSlotArea(), () -> screen.setBlueFromJei(freq)));
+            }
+            return targets;
+        }
+
+        @Override
+        public void onComplete() {}
     }
 
     /**
