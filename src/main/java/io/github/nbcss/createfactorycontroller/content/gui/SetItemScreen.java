@@ -204,11 +204,12 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         super.render(gfx, mouseX, mouseY, partialTick);
         renderTooltip(gfx, mouseX, mouseY);
         // Draw the icon-button tooltips LAST so the menu slots/items (drawn after renderBg) can't cover them.
-        if (relocateButton.isHoveredOrFocused())
+        // Use isMouseOver (not isHoveredOrFocused) so a focused-but-not-hovered button doesn't trail the cursor.
+        if (relocateButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
-        else if (respectDataButton.visible && respectDataButton.isHoveredOrFocused())
+        else if (respectDataButton.visible && respectDataButton.isMouseOver(mouseX, mouseY))
             gfx.renderComponentTooltip(font, dataButtonTooltip(respectDataName, respectDataDesc), mouseX, mouseY);
-        else if (ignoreDataButton.visible && ignoreDataButton.isHoveredOrFocused())
+        else if (ignoreDataButton.visible && ignoreDataButton.isMouseOver(mouseX, mouseY))
             gfx.renderComponentTooltip(font, dataButtonTooltip(ignoreDataName, ignoreDataDesc), mouseX, mouseY);
     }
 
