@@ -175,8 +175,6 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
         else if (behaviour.redstonePowered)
             lines.add(Component.translatable("createfactorycontroller.gui.gauge_status.redstone_link_paused").withStyle(ChatFormatting.RED));
-        else if (behaviour.controllerPowered)
-            lines.add(Component.translatable("createfactorycontroller.gui.gauge_status.controller_paused").withStyle(ChatFormatting.RED));
         return lines;
     }
 

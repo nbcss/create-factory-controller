@@ -618,7 +618,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putBoolean("PromisedSatisfied", promisedSatisfied);
         tag.putBoolean("Waiting", waitingForNetwork);
         tag.putBoolean("RedstonePowered", redstonePowered);   // link-driven; synced for the gray path + bulb
-        //tag.putBoolean("ControllerPowered", controllerPowered);
+        //tag.putBoolean("ControllerPowered", true);
         tag.putString("RecipeAddress", recipeAddress);
         // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
         // current values without a separate on-demand fetch.
