@@ -73,6 +73,9 @@ public interface VirtualComponentBehaviour {
         return toNBT(registries);
     }
 
+    /**
+     * Used when sync data to item, should not include data which is runtime-determined.
+     */
     default CompoundTag toItemNBT(HolderLookup.Provider registries) {
         return toNBT(registries);
     }

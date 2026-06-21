@@ -237,6 +237,14 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     // ── NBT ────────────────────────────────────────────────────────────────────
 
+
+    @Override
+    public CompoundTag toItemNBT(HolderLookup.Provider registries) {
+        CompoundTag tag = super.toItemNBT(registries);
+        tag.remove("Powered");
+        return tag;
+    }
+
     @Override
     public CompoundTag toNBT(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
