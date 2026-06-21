@@ -4,6 +4,7 @@ Features:
 - Allow to change controller background texture (client setting)
 - When Controller block breaks, it will now store the virtual board data in dropped item (configurable)
 - Provide material list to Stock Keeper can now create production order for missing items (configurable)
+- Controller GUI saves last view position & zoom, and restore when re-open controller GUI.
 - Redstone Link is now an allowed component in Factory Controller
 - Added Ignore Data setting to gauge:
   - Once enabled, the gauge monitor all items for given type, ignore NBT data.

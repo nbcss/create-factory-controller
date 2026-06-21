@@ -86,6 +86,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private double viewY = 0;
     private int zoomLevel = 0;
 
+    /** Session-only (never serialized) per-controller camera memory: reopening a controller restores its last
+     *  pan/zoom. Keyed by dimension + block position (see {@link #viewKey()}); cleared on disconnect / restart. */
+    private record ViewState(double x, double y, int zoom) {}
+    private static final Map<String, ViewState> VIEW_CACHE = new HashMap<>();
+
+    /** Drops all cached camera views — called on disconnect so a different world/server starts clean. */
+    public static void clearViewCache() {
+        VIEW_CACHE.clear();
+    }
+
+    /** Session-cache key: dimension id + controller position (e.g. {@code minecraft:overworld@10, 64, -20}). */
+    private String viewKey() {
+        var level = Minecraft.getInstance().level;
+        String dim = level != null ? level.dimension().location().toString() : "?";
+        return dim + "@" + menu.controllerPos.toShortString();
+    }
+
     // Inventory panel state — all in menu-relative coords (relative to leftPos/topPos).
     private static final int INV_BOTTOM_MARGIN = 28;
     private static final int HOTBAR_H = 18;
@@ -162,6 +179,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     public FactoryControllerScreen(FactoryControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
+        // Restore this controller's last-session pan/zoom (clampView in init() re-fits it to the window).
+        ViewState saved = VIEW_CACHE.get(viewKey());
+        if (saved != null) { viewX = saved.x(); viewY = saved.y(); zoomLevel = saved.zoom(); }
         // Play controller UI open SFX when the screen is constructed.
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_OPEN.get(), 1f));
@@ -950,6 +970,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         double halfViewH = (imageHeight - CANVAS_TOP_PADDING - CANVAS_BOTTOM_PADDING) / 2.0 / zoom;
         viewX = clampAxis(viewX, halfViewW);
         viewY = clampAxis(viewY, halfViewH);
+        // Remember this controller's camera for the session so reopening it restores the same view.
+        VIEW_CACHE.put(viewKey(), new ViewState(viewX, viewY, zoomLevel));
     }
 
     private static double clampAxis(double view, double halfView) {

@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
+import io.github.nbcss.createfactorycontroller.content.gui.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersTab;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;
@@ -16,6 +17,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
@@ -76,6 +78,12 @@ public class CreateFactoryControllerClient {
             TooltipModifier.REGISTRY.register(controllerItem,
                 new ItemDescription.Modifier(controllerItem, FontHelper.Palette.STANDARD_CREATE));
         });
+    }
+
+    @SubscribeEvent
+    static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        // Drop the session-only controller camera cache when leaving a world/server.
+        FactoryControllerScreen.clearViewCache();
     }
 
     @SubscribeEvent
