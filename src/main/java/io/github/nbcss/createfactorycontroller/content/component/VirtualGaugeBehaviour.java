@@ -381,9 +381,16 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (stack.isEmpty()) return 0;
         if (FluidCompat.isFluidFilter(stack))
             return LogisticsManager.getStockOf(networkId, stack, null);
-        // Ignore-data: count every variant of this item type, not just the exact-component match.
-        if (ignoreData)
-            return getRelevantSummary().getTotalOfMatching(s -> s.is(stack.getItem()));
+        // Ignore-data: count every variant of this item type. Sum only this item's bucket (getItemMap is keyed
+        // by Item) rather than getTotalOfMatching, which would scan the WHOLE summary every tick — this keeps
+        // the cost at O(variants of the item), the same class as getCountOf.
+        if (ignoreData) {
+            List<BigItemStack> variants = getRelevantSummary().getItemMap().get(stack.getItem());
+            if (variants == null) return 0;
+            int total = 0;
+            for (BigItemStack b : variants) total += b.count;
+            return total;
+        }
         return getRelevantSummary().getCountOf(stack);
     }
 
