@@ -18,7 +18,7 @@ public final class ClientConfig {
         CONTROLLER_BACKGROUND = builder
                 .comment("Background texture path of Controller Screen. The texture file must locate in 'createfactorycontroller/textures/gui/controller_background/' path, and in 16 pixel resolution.")
                 .translation("createfactorycontroller.config.controller_background")
-                .define("controllerBackground", "cardboard_block_side");
+                .define("controllerBackground", "plain_cardboard");
         FULL_OVERLAY = builder
                 .comment("Show the count label on every gauge in the controller overlay (on), or only the hovered gauge (off).")
                 .translation("createfactorycontroller.config.full_overlay")
