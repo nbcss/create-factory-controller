@@ -48,7 +48,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      * Status indicator light, drawn top-right within the cell and tinted by gauge state.
      */
     private static final ResourceLocation INDICATOR =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/gauge_indicator");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/factory_gauge/indicator");
 
     // Indicator bulb colours (Create's factory_panel light models): green normally, red when the gauge
     // is misconfigured (missing address) or redstone-powered. Brightness tracks the bulb glow, never
