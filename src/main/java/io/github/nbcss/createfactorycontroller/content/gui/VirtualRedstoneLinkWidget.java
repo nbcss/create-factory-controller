@@ -90,7 +90,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         String modeKey = behaviour.receive
             ? "createfactorycontroller.gui.redstone_link.mode.receive"
             : "createfactorycontroller.gui.redstone_link.mode.send";
-        lines.add(Component.translatable("createfactorycontroller.gui.redstone_link.mode",
+        lines.add(Component.translatable("createfactorycontroller.gui.redstone_link.mode_prefix",
                 Component.translatable(modeKey).withStyle(ChatFormatting.WHITE))
             .withStyle(ChatFormatting.GRAY));
         lines.add(CreateLang.translate("factory_panel.click_to_configure").style(ChatFormatting.GRAY).component());

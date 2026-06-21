@@ -7,6 +7,7 @@ import com.simibubi.create.content.redstone.link.RedstoneLinkBlock;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
+import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
@@ -15,6 +16,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstone
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.gui.element.ScreenElement;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
@@ -155,9 +157,18 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         else if (overBlue(mouseX, mouseY) && !blue.isEmpty())
             gfx.renderTooltip(font, blue, mouseX, mouseY);
         else if (modeButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, Component.translatable(receive
-                ? "createfactorycontroller.gui.redstone_link.mode.receive"
-                : "createfactorycontroller.gui.redstone_link.mode.send"), mouseX, mouseY);
+            gfx.renderTooltip(font, List.of(Component.translatable("createfactorycontroller.gui.redstone_link.mode")
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB()))
+                    .getVisualOrderText(),
+                    Component.literal(receive ? "-> " : "> ")
+                            .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.receive"))
+                            .withStyle(receive ? ChatFormatting.WHITE : ChatFormatting.GRAY).getVisualOrderText(),
+                    Component.literal(!receive ? "-> " : "> ")
+                            .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.send"))
+                            .withStyle(!receive ? ChatFormatting.WHITE : ChatFormatting.GRAY).getVisualOrderText(),
+                    Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
+                            .getVisualOrderText()), mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
     }
 

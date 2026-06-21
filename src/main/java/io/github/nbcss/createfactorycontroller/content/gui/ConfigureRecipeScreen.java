@@ -72,8 +72,6 @@ import java.util.stream.Collectors;
  */
 @OnlyIn(Dist.CLIENT)
 public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
-    private static final int MAX_THRESHOLD_COUNT = 100;
-
     private static final ResourceLocation PANEL_TEX =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/configure_recipe.png");
     private static final int PANEL_W = 200, PANEL_H = 184;
@@ -991,14 +989,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** The fluid output slot is always capped at 10 B (10000 mB), independent of the threshold unit box. */
     private static final int FLUID_OUTPUT_CAP_MB = 10_000;
 
-    /**
-     * Largest threshold value the selected fluid unit allows, in that unit: 10000 (mB unit) / 100 (B unit). The
-     * count box value is a plain integer in the unit box's unit (not millibuckets).
-     */
-    private int fluidCountCap() {
-        return mode == ThresholdUnit.FLUID_BUCKET ? 100 : 10_000;
-    }
-
     private static int adjustFluidAmount(int cur, int dir, boolean shift, boolean ctrl, int min, int max) {
         int next = cur + dir * (ctrl ? 1 : shift ? 10 : 1000);
         if (!shift && !ctrl && cur % 1000 != 0) {           // 1-bucket step from an off-boundary value
@@ -1202,8 +1192,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private int getEditCountValue(String editString) {
         try {
             int value = editString.isEmpty() ? 0 : Integer.parseInt(editString);
-            int cap = fluidMode ? fluidCountCap() : MAX_THRESHOLD_COUNT;
-            return Mth.clamp(value, 0, cap);
+            return Mth.clamp(value, 0, mode.getMaxRequestCount());
         } catch (NumberFormatException e) {
             return 0;
         }
@@ -1249,10 +1238,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int step = hasShiftDown() ? 10 : 1;
         int dir = (int) Math.signum(scrollY);
 
-        // Inputs. Outside crafting mode, scrolling any slot of a connection changes that connection's
-        // shared total: plain ±1, shift ±10 (snapping at stack boundaries), ctrl ±1 stack. In crafting
-        // mode the inputs are the fixed 3×3 recipe, so scrolling anywhere over them tunes the batch —
-        // identical to scrolling the output slot.
         if (!craftingActive) {
             List<InputSlot> slots = layoutInputSlots();
             for (int i = 0; i < slots.size(); i++) {
@@ -1289,10 +1274,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             if (countEditing) commitCountEdit();
             if (!requestMode.isPassive()) {
                 // Fluid threshold is a whole number in the unit box's unit.
-                int fluidCountStep = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
-                thresholdCount = fluidMode
-                    ? Mth.clamp(thresholdCount + dir * fluidCountStep, 0, fluidCountCap())
-                    : Mth.clamp(thresholdCount + dir * step, 0, MAX_THRESHOLD_COUNT);
+                step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
+                thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
                 playScrollSound();
             }
             return true;
@@ -1369,8 +1352,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private void setMode(ThresholdUnit newMode) {
         mode = newMode;
-        if (fluidMode) {   // keep the threshold within the new unit's cap (mB unit allows 10000, B unit 100)
-            thresholdCount = Mth.clamp(thresholdCount, 0, fluidCountCap());
+        thresholdCount = Mth.clamp(thresholdCount, 0, mode.getMaxRequestCount());
+        if (fluidMode) {
             outputCount = Mth.clamp(outputCount, 1, FLUID_OUTPUT_CAP_MB);
         }
         playScrollSound();
@@ -1384,8 +1367,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         boolean nowPassive = next.isPassive();
         if (wasPassive && !nowPassive) {
             VirtualGaugeBehaviour behaviour = gauge();
-            thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0,
-                fluidMode ? fluidCountCap() : MAX_THRESHOLD_COUNT);
+            thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0, mode.getMaxRequestCount());
         } else if (!wasPassive && nowPassive) {
             thresholdCount = 0;
         }

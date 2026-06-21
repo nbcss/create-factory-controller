@@ -31,7 +31,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in millibuckets (1 mB = the unit value). Only valid for a fluid filter. */
-    FLUID_MB("mB", Type.FLUID, 10000) {
+    FLUID_MB("mB", Type.FLUID, 10_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -57,12 +57,16 @@ public enum ThresholdUnit {
     public final String suffix;
     /** Whether this unit measures a fluid (mB/B) rather than items; fluid and item units never mix. */
     public final Type type;
-    public final int maxValue;
+    public final int maxRequestCount;
 
-    ThresholdUnit(String suffix, Type type, int maxValue) {
+    ThresholdUnit(String suffix, Type type, int maxRequestCount) {
         this.suffix = suffix;
         this.type = type;
-        this.maxValue = maxValue;
+        this.maxRequestCount = maxRequestCount;
+    }
+
+    public int getMaxRequestCount() {
+        return maxRequestCount;
     }
 
     public boolean isFluid() {
