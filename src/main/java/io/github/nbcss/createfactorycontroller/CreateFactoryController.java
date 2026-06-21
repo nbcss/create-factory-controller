@@ -49,7 +49,7 @@ public class CreateFactoryController {
         BLOCKS.register("factory_controller", () ->
             new FactoryControllerBlock(BlockBehaviour.Properties.of()
                 .mapColor(MapColor.TERRACOTTA_YELLOW)
-                .strength(30.0f, 1200.0f)
+                .strength(300.0f, 1200.0f)
                 .sound(SoundType.WOOD)
                 .requiresCorrectToolForDrops()
                 .noOcclusion()));

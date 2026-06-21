@@ -833,6 +833,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (int i = 0; i < targetingList.size(); i++)
             b.targeting.add(VirtualPanelPosition.fromNBT(targetingList.getCompound(i)));
 
+        // Server-side load (placement via setup, or chunk reload): delay the first request by a full interval.
+        // A freshly loaded gauge's network stock summary can read 0 for a tick or two before it populates, and
+        // with timer==0 (setup strips it) tickRequests would fire immediately even though stock is sufficient.
+        // Throttling the first attempt gives tickStorageMonitor time to read real stock and mark it satisfied.
+        // (controller is null only on the client snapshot, which never ticks — leave its timer as-is.)
+        if (controller != null) b.timer = b.getConfigRequestIntervalInTicks();
+
         return b;
     }
 }
