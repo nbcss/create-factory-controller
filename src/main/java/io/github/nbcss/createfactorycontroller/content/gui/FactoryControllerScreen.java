@@ -202,7 +202,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (settingsButton != null) removeWidget(settingsButton);
         settingsButton = new TexturedButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
                 SETTINGS_BTN_SPRITE, SETTINGS_BTN_HOVER_SPRITE,
-                () -> Minecraft.getInstance().setScreen(new ControllerSettingScreen(this)))
+                () -> {
+                    Minecraft.getInstance().setScreen(new ControllerSettingScreen(this));
+                    return true;
+                })
             .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
 
@@ -264,7 +267,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Re-tunes the carried component item (selector scroll): optimistic client update + server packet. */
     private void retuneCarried(boolean clear, @Nullable UUID network) {
         ItemStack carried = menu.getCarried();
-        if (!ComponentRegistry.containsItem(carried)) return;
+        if (!ComponentRegistry.containsNetworkItem(carried)) return;   // networkless items (links) carry no frequency
         RetuneCarriedPacket.apply(carried, clear ? null : network);   // immediate cursor feedback
         menu.setCarried(carried);
         PacketDistributor.sendToServer(new RetuneCarriedPacket(clear, network));
@@ -469,8 +472,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualConnectionRenderer.renderConnections(graphics, menu);
 
         boolean fullOverlay = ClientConfig.fullOverlay();
+        // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
+        double worldMouseX = viewX + (mouseX - centerX) / getZoomFactor();
+        double worldMouseY = viewY + (mouseY - centerY) / getZoomFactor();
         for (VirtualComponentWidget component : componentWidgets.values())
-            component.renderFront(graphics, mouseX, mouseY, bulbGlow(component.position(), partialTick),
+            component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick),
                     fullOverlay || component.position().equals(hoveredPosition));
 
         renderSelectedNetworkMask(graphics);
@@ -822,10 +828,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Click an existing gauge → its own interaction (set item / configure). Pass the button so an
-            // empty gauge can take a fluid filter on right-click (with a fluid addon) vs an item on left.
-            if (leftOrRight && widget != null)
-                return widget.onClick(this, carried, mouseX, mouseY, button);
+            // Click an existing component → its own interaction. Pass the cursor in canvas-world coords (so a widget
+            // can hit-test sub-regions, e.g. the link's top/bottom frequency halves) and the button.
+            if (leftOrRight && widget != null) {
+                double worldX = viewX + (mouseX - centerX) / getZoomFactor();
+                double worldY = viewY + (mouseY - centerY) / getZoomFactor();
+                return widget.onClick(this, carried, worldX, worldY, button);
+            }
 
             // Pan-view button (rebindable, middle mouse by default) → start a drag-pan.
             if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {

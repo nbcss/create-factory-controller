@@ -171,6 +171,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public void onInteract() {
         configure(!receive, redFreq, blueFreq);
+        if (controller != null)
+            controller.playWrenchRotateSound();
     }
 
     // ── IRedstoneLinkable ──────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
+import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -23,12 +24,15 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -482,8 +486,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Fluid filter: amounts are millibuckets. Coerce the unit into the fluid group,
         // and default a fresh gauge's output to 1000 mB (one bucket).
         fluidMode = FluidCompat.isFluidFilter(g.filter);
-        if (fluidMode && !mode.fluid) mode = ThresholdUnit.FLUID_BUCKET;
-        if (!fluidMode && mode.fluid) mode = ThresholdUnit.ITEMS;
+        if (fluidMode && !mode.isFluid()) mode = ThresholdUnit.FLUID_BUCKET;
+        if (!fluidMode && mode.isFluid()) mode = ThresholdUnit.ITEMS;
         if (fluidMode && outputCount <= 1) outputCount = 1000;
         for (VirtualPanelConnection conn : g.targetedBy().values()) {
             // A gauge holds only logistics (ingredient) wires; the UI re-derives the slot layout from this total.
@@ -906,6 +910,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         String label = state == -1 ? " /" : state == 0 ? "30s" : state + "m";
         gfx.drawString(font, label, promiseExpiration.getX() + 3, promiseExpiration.getY() + 4, 0xFFEEEEEE, true);
 
+        // Redstone-link reset slot (bottom-left), shown only when a redstone link is wired to this gauge; clicking it
+        // disconnects them all (mirrors Create's FactoryPanelScreen).
+        if (hasLinkConnections()) {
+            int itemX = panelX + 9, itemY = panelY + PANEL_H - 24;
+            AllGuiTextures.FROGPORT_SLOT.render(gfx, itemX - 1, itemY - 1);
+            gfx.renderItem(AllBlocks.REDSTONE_LINK.asStack(), itemX, itemY);
+            if (in(mouseX, mouseY, itemX, itemY, 16, 16))
+                tooltip = List.of(
+                    CreateLang.translate("gui.factory_panel.has_link_connections").color(ScrollInput.HEADER_RGB).component(),
+                    CreateLang.translate("gui.factory_panel.left_click_disconnect")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        }
+
         // Count box tooltip
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H))
             tooltip = requestMode.isPassive()
@@ -1147,6 +1164,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
+        // Click the redstone-link reset slot → disconnect every link wired to this gauge (Create's redstone reset).
+        // A dedicated packet (like the ingredient disconnect) so it doesn't commit any pending recipe-config edits.
+        if (hasLinkConnections() && in(mouseX, mouseY, panelX + 9, panelY + PANEL_H - 24, 16, 16)) {
+            PacketDistributor.sendToServer(new DisconnectLinksPacket(menu.controllerPos, gaugePos));
+            playClickSound();
+            return true;
+        }
+
         if (!craftingActive) {
             List<InputSlot> slots = layoutInputSlots();
             for (int i = 0; i < slots.size(); i++) {
@@ -1332,6 +1357,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
             promiseExpiration.getState(), thresholdCount, mode, requestMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
+    }
+
+    /** True if any redstone link on the board is wired to this gauge (its connection is held on the link). */
+    private boolean hasLinkConnections() {
+        for (VirtualComponentBehaviour c : menu.components)
+            if (c instanceof VirtualRedstoneLinkBehaviour link && link.targetedBy().containsKey(gaugePos))
+                return true;
+        return false;
     }
 
     private void setMode(ThresholdUnit newMode) {

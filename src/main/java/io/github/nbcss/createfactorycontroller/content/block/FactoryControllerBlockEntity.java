@@ -338,8 +338,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // correctly immediately, before the recipe screen is ever opened: a fluid filter defaults to B,
         // an item filter to items. Only switch when crossing groups, so a later mB/B (or stacks) choice survives.
         boolean fluid = FluidCompat.isFluidFilter(gauge.filter);
-        if (fluid && !gauge.unit.fluid) gauge.unit = ThresholdUnit.FLUID_BUCKET;
-        else if (!fluid && gauge.unit.fluid) gauge.unit = ThresholdUnit.ITEMS;
+        if (fluid && !gauge.unit.isFluid()) gauge.unit = ThresholdUnit.FLUID_BUCKET;
+        else if (!fluid && gauge.unit.isFluid()) gauge.unit = ThresholdUnit.ITEMS;
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible → mint/abort patternId
         markOrderableDirty();   // filter (the blueprint's display item) changed
         setChanged();
@@ -430,6 +430,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         VirtualComponentBehaviour target = components.get(to);
         if (target == null) return;
         target.removeConnection(from);
+    }
+
+    /** Disconnects every redstone link wired to the gauge at {@code gaugePos} (Create's "redstone reset"). The wires
+     *  live on the links ({@code link.targetedBy[gauge]}); removing them clears the gauge's targeting and ungates it.
+     *  Does not touch the gauge's recipe config. */
+    public void disconnectLinks(VirtualPanelPosition gaugePos) {
+        if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour gauge)) return;
+        // The gauge already tracks what it's wired to in its `targeting` set — iterate that (copied, since
+        // removeConnection mutates it) rather than scanning the whole board, keeping only the redstone-link wires.
+        for (VirtualPanelPosition pos : new ArrayList<>(gauge.targeting()))
+            if (components.get(pos) instanceof VirtualRedstoneLinkBehaviour link)
+                link.removeConnection(gaugePos);
+        gauge.redstonePowered = gauge.isGatedByLink();
     }
 
     /** The interact (R) key: a gauge cycles its arrow-bend mode; a redstone link toggles Send/Receive. */

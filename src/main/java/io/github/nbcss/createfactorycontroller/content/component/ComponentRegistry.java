@@ -82,6 +82,17 @@ public final class ComponentRegistry {
         return contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
     }
 
+    /**
+     * A stack is a <i>network</i> component if it is a registered component that attaches to a logistics
+     * network (a gauge) — i.e. not a networkless item like the redstone link. The network selector only
+     * tunes / highlights for these, so a held redstone link is left alone.
+     */
+    public static boolean containsNetworkItem(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return contains(id) && needsNetwork(id);
+    }
+
     // ── Type dispatch ─────────────────────────────────────────────────────────
 
     public static void registerType(ResourceLocation typeId, ComponentFactory factory) {

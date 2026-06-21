@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
  * box can cycle between states.
  */
 public enum ThresholdUnit {
-    ITEMS("", false) {
+    ITEMS("", Type.ITEM, 100) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -20,7 +20,7 @@ public enum ThresholdUnit {
             return CreateLang.translate("schedule.condition.threshold.items").component();
         }
     },
-    STACKS("▤", false) {
+    STACKS("▤", Type.ITEM, 100) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return Math.max(1, stack.getMaxStackSize());
@@ -31,7 +31,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in millibuckets (1 mB = the unit value). Only valid for a fluid filter. */
-    FLUID_MB("mB", true) {
+    FLUID_MB("mB", Type.FLUID, 10000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -42,7 +42,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in buckets (1 B = 1000 mB). Only valid for a fluid filter. */
-    FLUID_BUCKET("B", true) {
+    FLUID_BUCKET("B", Type.FLUID, 100) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1000;
@@ -52,14 +52,21 @@ public enum ThresholdUnit {
             return Component.translatable("createfactorycontroller.gui.unit_fluid_bucket");
         }
     };
+    public enum Type { ITEM, FLUID }
 
     public final String suffix;
     /** Whether this unit measures a fluid (mB/B) rather than items; fluid and item units never mix. */
-    public final boolean fluid;
+    public final Type type;
+    public final int maxValue;
 
-    ThresholdUnit(String suffix, boolean fluid) {
+    ThresholdUnit(String suffix, Type type, int maxValue) {
         this.suffix = suffix;
-        this.fluid = fluid;
+        this.type = type;
+        this.maxValue = maxValue;
+    }
+
+    public boolean isFluid() {
+        return type == Type.FLUID;
     }
 
     /** Next mode in the cycle, advancing by {@code dir} (±1) but staying within the same item/fluid group. */
@@ -69,7 +76,7 @@ public enum ThresholdUnit {
         int i = ordinal();
         do {
             i = Math.floorMod(i + step, vals.length);
-        } while (vals[i].fluid != this.fluid);
+        } while (vals[i].type != this.type);
         return vals[i];
     }
 

@@ -104,8 +104,10 @@ public class NetworkSelectorWidget extends AbstractWidget {
     // ── Model ─────────────────────────────────────────────────────────────────
 
     private ItemStack heldComponent() {
+        // Only network-bound components (gauges) drive the selector; a held redstone link is networkless,
+        // so it must NOT be re-tuned by scroll or trigger a "network selected" prompt when picked up.
         ItemStack carried = menu.getCarried();
-        return ComponentRegistry.containsItem(carried) ? carried : ItemStack.EMPTY;
+        return ComponentRegistry.containsNetworkItem(carried) ? carried : ItemStack.EMPTY;
     }
 
     @Nullable

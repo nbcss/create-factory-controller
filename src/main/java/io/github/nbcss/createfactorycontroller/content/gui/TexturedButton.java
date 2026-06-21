@@ -10,6 +10,8 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.function.Supplier;
+
 /**
  * A minimal sprite-backed button: draws {@code normal} normally and {@code hover} while the cursor is over it,
  * running {@code onPress} on click. It does <b>not</b> draw its own tooltip — the host screen renders that in its
@@ -21,15 +23,15 @@ public class TexturedButton extends AbstractWidget {
 
     private final ResourceLocation normal;
     private final ResourceLocation hover;
-    private final Runnable onPress;
+    private final Supplier<Boolean> onClick;
     @Nullable private Component tooltip;
 
     public TexturedButton(int x, int y, int width, int height,
-                          ResourceLocation normal, ResourceLocation hover, Runnable onPress) {
+                          ResourceLocation normal, ResourceLocation hover, Supplier<Boolean> onClick) {
         super(x, y, width, height, Component.empty());
         this.normal = normal;
         this.hover = hover;
-        this.onPress = onPress;
+        this.onClick = onClick;
     }
 
     public TexturedButton withTooltip(@Nullable Component tooltip) {
@@ -49,8 +51,9 @@ public class TexturedButton extends AbstractWidget {
     }
 
     @Override
-    public void onClick(double mouseX, double mouseY) {
-        onPress.run();
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!isValidClickButton(button) || !clicked(mouseX, mouseY)) return false;
+        return onClick.get();
     }
 
     @Override

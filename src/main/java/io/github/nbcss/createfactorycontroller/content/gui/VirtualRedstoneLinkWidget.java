@@ -22,9 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A redstone link on the canvas. Renders the {@code base} sprite with a {@code receiver} overlay in RECEIVE mode and
- * a {@code power} overlay while powered, plus the two channel frequency icons (Red/Blue). Left/right-click with an item
- * sets the Red/Blue frequency; the empty-hand click is a no-op until the link gets its own GUI.
+ * A redstone link on the canvas. Renders the {@code base}/{@code front} sprites with mode/power overlays, plus the two
+ * channel frequency icons (Red/Blue). Clicking the <b>top</b> half with an item sets the Red frequency, the
+ * <b>bottom</b> half sets Blue (either mouse button, item not consumed); an empty-hand click opens the full-config GUI.
+ * While holding an item, the hovered half is highlighted to show which channel a click will set.
  */
 @OnlyIn(Dist.CLIENT)
 public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) implements VirtualComponentWidget {
@@ -63,6 +64,14 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         // The two channel frequency icons (half-size): Red top-left, Blue bottom-right.
         renderFreqIcon(gfx, behaviour.redFreq, x0 + 6, y0 + 3);
         renderFreqIcon(gfx, behaviour.blueFreq, x0 + 6, y0 + 9);
+
+        // While holding an item, cover the hovered half (top = Red, bottom = Blue) to show which channel a click sets.
+        ItemStack cursor = Minecraft.getInstance().player.containerMenu.getCarried();
+        if (!cursor.isEmpty() && mouseX >= x0 && mouseX < x0 + CELL && mouseY >= y0 && mouseY < y0 + CELL) {
+            boolean top = mouseY < y0 + CELL / 2.0;
+            int hy = top ? y0 : y0 + CELL / 2;
+            gfx.fill(x0, hy, x0 + CELL, hy + CELL / 2, top ? 0x80FF5555 : 0x805599FF);
+        }
     }
 
     private static void renderFreqIcon(GuiGraphics gfx, ItemStack stack, int x, int y) {
@@ -77,7 +86,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     @Override
     public List<Component> getTooltip(FactoryControllerMenu menu) {
         List<Component> lines = new ArrayList<>();
-        lines.add(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(0xFBDC7D).component());
+        lines.add(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(0xFC8068).component());
         String modeKey = behaviour.receive
             ? "createfactorycontroller.gui.redstone_link.mode.receive"
             : "createfactorycontroller.gui.redstone_link.mode.send";
@@ -95,10 +104,10 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
             Minecraft.getInstance().setScreen(new ConfigureRedstoneLinkScreen(screen, behaviour.position()));
             return true;
         }
-        boolean red = mouseY < position().y() + (double) CELL / 2;
-        System.out.println(red);
-        ItemStack newRed = red ? carried.copy() : behaviour.redFreq;
-        ItemStack newBlue = red ? behaviour.blueFreq : carried.copy();
+        // Top half sets Red, bottom half sets Blue (either mouse button); the cursor item isn't consumed.
+        boolean top = mouseY < position().y() * CELL + CELL / 2.0;
+        ItemStack newRed = top ? carried.copy() : behaviour.redFreq;
+        ItemStack newBlue = top ? behaviour.blueFreq : carried.copy();
         PacketDistributor.sendToServer(new ConfigureRedstoneLinkPacket(
             screen.getMenu().controllerPos, behaviour.position(), behaviour.receive, newRed, newBlue));
         return true;

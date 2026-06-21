@@ -1,7 +1,7 @@
 {
   "itemGroup.createfactorycontroller": "Create: Factory Controller",
   "block.createfactorycontroller.factory_controller": "Factory Controller",
-  "block.createfactorycontroller.factory_controller.tooltip.summary": "Manage large amount of gauges in one single block.",
+  "block.createfactorycontroller.factory_controller.tooltip.summary": "Centralized Factory Gauge management with a virtual board and advanced logistics control.",
   "block.createfactorycontroller.factory_controller.tooltip.condition1": "When powered by redstone",
   "block.createfactorycontroller.factory_controller.tooltip.behaviour1": "_Disable_ all managed gauges.",
   "createfactorycontroller.tooltip.configured_controller": "Controller configured",

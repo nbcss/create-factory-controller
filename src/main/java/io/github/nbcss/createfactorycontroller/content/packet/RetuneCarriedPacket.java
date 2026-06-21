@@ -52,7 +52,7 @@ public record RetuneCarriedPacket(boolean clear, @Nullable UUID network) impleme
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             ItemStack carried = player.containerMenu.getCarried();
-            if (!ComponentRegistry.containsItem(carried)) return;
+            if (!ComponentRegistry.containsNetworkItem(carried)) return;   // never retune a networkless item (link)
             apply(carried, packet.clear ? null : packet.network);
             player.containerMenu.setCarried(carried);
             player.containerMenu.broadcastChanges();   // sync the modified cursor item back
