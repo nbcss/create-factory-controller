@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.2.1
 Features:
 - Allow to type number to set gauge request amount
 - Allow to change controller background texture (client setting)
