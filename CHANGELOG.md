@@ -18,11 +18,13 @@ Changes:
 - Increase the hardness of Factory Controller block
 - Add Summary to Factory Controller item
 - Fluid System Compatibility: Bucket Unit can set request up to 1000B fluid now
+- Deployer API is now a soft-dependency (but recommended)
 - Updated gauge bulb texture
 
 Bugfixes:
 - Fixed orderable items are not show up in Stock Keeper immediately when open GUI
 - Fixed network selector tooltip list items incorrectly when network count > 7
+- Fixed Large Crafting may not work when missing dependency
 
 ## 0.1.1
 - Introduced Follow Demand and Order mode in gauge

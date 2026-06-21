@@ -2,11 +2,13 @@
   "required": true,
   "minVersion": "0.8",
   "package": "io.github.nbcss.createfactorycontroller.mixin",
+  "plugin": "io.github.nbcss.createfactorycontroller.mixin.CfcMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "InventorySummaryMixin",
     "LogisticalStockRequestPacketMixin",
     "LogisticsGenericManagerMixin",
+    "PackageRepackageHelperMixin",
     "PackagerBlockEntityMixin",
     "RequestPromiseQueueMixin",
     "StockTickerBlockEntityMixin",

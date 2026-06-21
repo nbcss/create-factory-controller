@@ -3,8 +3,6 @@ package io.github.nbcss.createfactorycontroller.content.component;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import net.liukrast.deployer.lib.logistics.board.connection.PanelConnection;
-import net.liukrast.deployer.lib.logistics.board.connection.PanelConnectionBuilder;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.LinkedHashMap;
@@ -19,7 +17,7 @@ import java.util.function.Supplier;
  * gauges, links, and any future component — plus the reused-from-Deployer connection wiring.
  *
  * <p>Mirrors the role {@code AbstractPanelBehaviour}/{@code AbstractPanelSupportBehaviour} play in
- * Deployer (both fill a {@link PanelConnectionBuilder} in their constructor), but binds to a
+ * Deployer (both fill a {@code PanelConnectionBuilder} in their constructor), but binds to a
  * {@link FactoryControllerBlockEntity} + {@link VirtualPanelPosition} instead of a block entity +
  * slot, and never touches a world.</p>
  */

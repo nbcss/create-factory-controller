@@ -72,6 +72,11 @@ def createFluidJar = fileTree(dir: "lib", include: ["fluid-*.jar"])
 def repackagedJar = fileTree(dir: "lib", include: ["repackaged-*.jar"])
 def fluidRuntime = (project.findProperty('fluidRuntime') ?: 'none').toString().toLowerCase()
 
+// Deployer is a SOFT dependency. By default it's on the dev runtime; pass -PnoDeployer (see the
+// "runClient (No Deployer)" run config) to launch the client without it and exercise the no-Deployer code paths
+// (mixin plugin skips the Deployer mixin, keeper tab is replaced by the in-GUI button, etc.).
+def withDeployer = !project.hasProperty('noDeployer')
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
@@ -158,7 +163,9 @@ dependencies {
     compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
     localRuntime "com.simibubi.create:create-1.21.1:${create_version}"
 
-    // Deployer (hard dependency — custom gauge registry).
+    // Deployer (soft dependency — adds the Stock Keeper tab system + generic order dispatch the Production Orders
+    // feature hooks into; every reference is guarded by DeployerCompat.isLoaded() / the mixin plugin, so the mod
+    // loads and runs without it). We always COMPILE against it; it's on the dev runtime unless -PnoDeployer is set.
     // Consume as a plain jar (transitive = false): Deployer's published runtimeElements variant
     // declares a messy dependency graph (create:slim — which has no NeoForge 1.21.1 artifact —
     // plus curse.maven:* and mezz.jei optional compat from unconfigured repos). IntelliJ's
@@ -166,7 +173,9 @@ dependencies {
     // dependency wiring (every external import goes red). Its real transitives (Create, Registrate,
     // Ponder, Flywheel) already come from the explicit Create dependency above.
     compileOnly("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
-    localRuntime("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
+    if (withDeployer) {
+        localRuntime("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
+    }
 
     // JEI (optional): compile against the API only; run the full mod in dev for testing.
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"

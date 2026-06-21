@@ -146,6 +146,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private void returnToController() {
+        ClientConfig.save();   // persist the background selection to disk (set() only updates memory) before leaving
         Minecraft.getInstance().setScreen(controller);
     }
 

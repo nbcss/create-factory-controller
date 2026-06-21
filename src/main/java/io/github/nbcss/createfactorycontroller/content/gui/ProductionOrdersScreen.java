@@ -14,6 +14,7 @@ import com.simibubi.create.content.processing.burner.BlazeBurnerBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerRenderer;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveProductionOrderPacket;
@@ -27,12 +28,12 @@ import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.data.Iterate;
+import net.createmod.catnip.gui.element.ScreenElement;
 import net.createmod.catnip.math.AngleHelper;
 import net.createmod.catnip.render.CachedBuffers;
-import net.liukrast.deployer.lib.logistics.packager.screen.TabsWidget;
+import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -45,7 +46,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -60,8 +60,10 @@ import java.util.List;
  * (header 36, body rows 20) but with a footer that is 3 body-rows shorter; to keep the overall frame the same
  * height (so the borrowed tab strip and keeper entity stay aligned) we draw 3 extra body rows before the short
  * footer. Each open {@link ProductionOrderView} renders as a framed entry: address + age timer + cancel button,
- * with a row of up to 9 task slots below. Borrows the host {@link StockKeeperRequestScreen}'s {@code TabsWidget}
- * for navigation. Opened from {@link ProductionOrdersTab}.</p>
+ * with a row of up to 9 task slots below. When Deployer is installed, navigation borrows the host
+ * {@link StockKeeperRequestScreen}'s tab strip (via {@link ProductionOrdersStrip}) and the page is opened from
+ * {@link ProductionOrdersTab}; when it's absent there is no strip, so the page is opened by a gutter button on the
+ * Stock Keeper ({@code StockKeeperRequestScreenMixin}) and a matching gutter button here goes back.</p>
  */
 public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKeeperRequestMenu> {
 
@@ -87,6 +89,9 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     // Vertical pixel scroll of the order list (Create-style smooth chaser).
     private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
     private boolean scrollHandleActive;
+
+    /** Green gutter button that returns to the Stock Keeper; only present (and only built) when Deployer is absent. */
+    private IconButton backButton;
 
     // The keeper sitting beside the Stock Ticker (rendered at the panel's left), mirroring Create's screen.
     private WeakReference<LivingEntity> stockKeeper = new WeakReference<>(null);
@@ -128,6 +133,16 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         // Re-layout the (inactive) host so its borrowed tab strip recentres to match our panel after a resize.
         if (minecraft != null) host.resize(minecraft, width, height);
         findKeeper();
+
+        // Without Deployer there's no tab strip — add a green gutter button that returns to the Stock Keeper.
+        backButton = null;
+        if (!DeployerCompat.isLoaded()) {
+            backButton = new IconButton(gutterButtonX(leftPos), gutterButtonY(topPos), PRODUCTION_ORDER_ICON);
+            backButton.green = true;   // green = currently on the Production Orders page
+            backButton.withCallback(() -> { if (minecraft != null) minecraft.setScreen(host); });
+            backButton.setToolTip(Component.translatable("createfactorycontroller.gui.production_orders"));
+            addWidget(backButton);
+        }
     }
 
     /** Locates the seated keeper / blaze burner beside the Stock Ticker, replicating StockKeeperRequestScreen#init. */
@@ -149,13 +164,18 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             }
     }
 
-    /** The host's Deployer tab strip (same instance as the host's field), or null if absent. */
-    @Nullable
-    private TabsWidget<?> tabStrip() {
-        for (GuiEventListener c : host.children())
-            if (c instanceof TabsWidget<?> t) return t;
-        return null;
-    }
+    // ── Gutter button (Deployer-absent navigation) ───────────────────────────
+    // When Deployer is installed it draws a tab strip in the keeper's left gutter to switch pages; without it we put a
+    // single Create IconButton there instead — on the Stock Keeper it opens this page (white; see
+    // StockKeeperRequestScreenMixin), and here it goes back to the keeper (green = currently on this page). Both reuse
+    // this geometry and the same Production Pattern icon drawn onto Create's button texture.
+
+    private static final ItemStack GUTTER_ICON = new ItemStack(CreateFactoryController.PRODUCTION_PATTERN.get());
+    /** The Production Pattern item drawn as a Create IconButton icon (16×16). */
+    public static final ScreenElement PRODUCTION_ORDER_ICON = (gfx, x, y) -> gfx.renderItem(GUTTER_ICON, x, y);
+
+    public static int gutterButtonX(int guiLeft) { return guiLeft - 14; }
+    public static int gutterButtonY(int guiTop)  { return guiTop + 24; }
 
     // ── Layout helpers ──────────────────────────────────────────────────────
 
@@ -398,14 +418,16 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     @Override
     protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
-        TabsWidget<?> strip = tabStrip();
-        if (strip != null) strip.render(gfx, mouseX, mouseY, partialTicks);
+        if (DeployerCompat.isLoaded())
+            ProductionOrdersStrip.render(host, gfx, mouseX, mouseY, partialTicks);
+        else if (backButton != null)
+            backButton.render(gfx, mouseX, mouseY, partialTicks);   // draws the button + its own hover tooltip
 
         if (mouseY >= viewTop() && mouseY < viewBottom())
             for (SlotTip tip : slotTips)
                 if (tip.contains(mouseX, mouseY)) {
                     gfx.renderComponentTooltip(font, slotTooltip(tip.req()), mouseX, mouseY);
-                    break;
+                    return;
                 }
     }
 
@@ -450,12 +472,16 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
                 dragScrollTo(mouseY);
                 return true;
             }
+            // Back-to-keeper button (only present without Deployer's tab strip); delegates hit-test + callback.
+            if (backButton != null && backButton.mouseClicked(mouseX, mouseY, button)) return true;
         }
-        TabsWidget<?> strip = tabStrip();
-        if (strip != null && strip.mouseClicked(mouseX, mouseY, button)) {
-            if (!(strip.getSelected() instanceof ProductionOrdersTab))
+        if (DeployerCompat.isLoaded()) {
+            int result = ProductionOrdersStrip.mouseClicked(host, mouseX, mouseY, button);
+            if (result == ProductionOrdersStrip.GO_BACK) {
                 Minecraft.getInstance().setScreen(host);   // selection moved off our tab → back to the keeper
-            return true;
+                return true;
+            }
+            if (result == ProductionOrdersStrip.STAY) return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }

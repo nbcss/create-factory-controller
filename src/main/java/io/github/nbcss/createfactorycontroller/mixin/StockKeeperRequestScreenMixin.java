@@ -7,18 +7,25 @@ import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
 import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
+import com.simibubi.create.foundation.gui.widget.IconButton;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
+import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.IngredientCheckClient;
+import io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
@@ -90,5 +97,37 @@ public abstract class StockKeeperRequestScreenMixin {
         if (mouseX < cx || mouseX >= cx + 78 || mouseY < cy || mouseY >= cy + 18) return;
         BlockPos keeperPos = self.getMenu().contentHolder.getBlockPos();
         IngredientCheckClient.onSendHover(keeperPos, itemsToOrder, graphics, mouseX, mouseY);
+    }
+
+    /** The Production Orders gutter button, present only when Deployer is absent. White (vs. green on the orders page). */
+    @Unique private IconButton cfc$ordersButton;
+
+    /**
+     * When Deployer is absent there's no keeper tab strip, so place a Create IconButton in the gutter (the spot
+     * Deployer's tabs would occupy) that opens the standalone {@link ProductionOrdersScreen}. It carries the Production
+     * Pattern icon and stays white here (green marks the orders page). With Deployer installed its tab provides this
+     * entry instead, so the button is suppressed to avoid a duplicate.
+     */
+    @Inject(method = "renderForeground(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("TAIL"))
+    private void cfc$renderProductionOrdersButton(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
+        if (DeployerCompat.isLoaded()) return;
+        StockKeeperRequestScreen self = (StockKeeperRequestScreen) (Object) this;
+        if (cfc$ordersButton == null) {
+            cfc$ordersButton = new IconButton(0, 0, ProductionOrdersScreen.PRODUCTION_ORDER_ICON);
+            cfc$ordersButton.setToolTip(Component.translatable("createfactorycontroller.gui.production_orders"));
+            cfc$ordersButton.withCallback(() ->
+                Minecraft.getInstance().setScreen(new ProductionOrdersScreen(self, self.getMenu())));
+        }
+        cfc$ordersButton.setX(ProductionOrdersScreen.gutterButtonX(self.getGuiLeft()));   // reposition after resize
+        cfc$ordersButton.setY(ProductionOrdersScreen.gutterButtonY(self.getGuiTop()));
+        cfc$ordersButton.render(graphics, mouseX, mouseY, partialTicks);   // draws the button + its own hover tooltip
+    }
+
+    /** Opens the Production Orders page when the gutter button (Deployer-absent entry point) is clicked. */
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    private void cfc$openProductionOrders(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        if (DeployerCompat.isLoaded()) return;
+        if (cfc$ordersButton != null && cfc$ordersButton.mouseClicked(mouseX, mouseY, button))
+            cir.setReturnValue(true);
     }
 }

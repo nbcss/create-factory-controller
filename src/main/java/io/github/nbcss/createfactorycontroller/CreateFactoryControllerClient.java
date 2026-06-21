@@ -23,6 +23,7 @@ import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
 import net.liukrast.deployer.lib.helper.ClientRegisterHelpers;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
@@ -71,7 +72,11 @@ public class CreateFactoryControllerClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
+            // Deployer is optional: only register the keeper TAB when it's present (this also keeps the JVM from
+            // loading ProductionOrdersTab, which extends a Deployer class). Without Deployer the Production Orders
+            // page is reached via a button on the Stock Keeper instead — see StockKeeperRequestScreenMixin.
+            if (DeployerCompat.isLoaded())
+                ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
             // Shift/Ctrl item summary for the controller, driven by Create's tooltip pipeline (reads the
             // <item>.tooltip.summary / .condition*/.behaviour* lang keys). Reuses Create's ItemDescription.
             Item controllerItem = CreateFactoryController.FACTORY_CONTROLLER_ITEM.get();

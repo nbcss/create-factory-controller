@@ -97,8 +97,8 @@ config="${mod_id}.mixins.json"
 
 [[dependencies.${mod_id}]]
     modId="deployer"
-    type="required"
-    reason="Provides the panel-connection board library this mod's virtual gauges are built on."
+    type="optional"
+    reason="Adds the Stock Keeper tab system and generic order dispatch this mod's Production Orders feature hooks into. When absent, Production Orders are reached via an in-GUI button instead."
     versionRange="[${deployer_version},)"
     ordering="AFTER"
     side="BOTH"
