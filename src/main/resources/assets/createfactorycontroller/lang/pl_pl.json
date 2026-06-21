@@ -29,7 +29,7 @@
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Przewiń, aby dostroić",
   "createfactorycontroller.gui.action_remove_component": "Shift+Kliknięcie, aby usunąć",
   "createfactorycontroller.gui.threshold.auto_managed": "Automatyczne zarządzanie na żądanie",
-  "createfactorycontroller.gui.unable_to_change": "Unable to change",
+  "createfactorycontroller.gui.unable_to_change": "Nie można zmienić",
   "createfactorycontroller.gui.prompt.no_selected_network": "Nie wybrano sieci",
   "createfactorycontroller.gui.prompt.selected_network": "Wybrano %1$s",
   "createfactorycontroller.gui.prompt.no_first_network": "Brak sieci — najpierw postaw dostrojony miernik",

@@ -29,7 +29,7 @@
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Прокрутите, чтобы настроить",
   "createfactorycontroller.gui.action_remove_component": "Shift+клик для удаления",
   "createfactorycontroller.gui.threshold.auto_managed": "Автоматическое управление по запросу",
-  "createfactorycontroller.gui.unable_to_change": "Unable to change",
+  "createfactorycontroller.gui.unable_to_change": "Невозможно изменить",
   "createfactorycontroller.gui.prompt.no_selected_network": "Сеть не выбрана",
   "createfactorycontroller.gui.prompt.selected_network": "Выбрана %1$s",
   "createfactorycontroller.gui.prompt.no_first_network": "Нет сети — сначала установите настроенный контроллер",
