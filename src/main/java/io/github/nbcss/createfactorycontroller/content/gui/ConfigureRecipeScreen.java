@@ -358,6 +358,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return Math.max(1, MAX_CRAFT_OUTPUT / Math.max(1, outputCount));
     }
 
+    /** Crafts per request actually used: forced to 1 when an ignore-data ingredient disables batching. */
+    private int effectiveBatch() {
+        return craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
+    }
+
     /** Crafting mode: change crafts-per-request, capped so the produced output stays within one stack. */
     private void adjustCraftBatch(int delta) {
         int next = Mth.clamp(craftBatch + delta, 1, maxCraftBatch());
@@ -419,7 +424,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         List<Integer> cells = new ArrayList<>();
         craftingTypeAggregate(types, cells);
         List<CraftSlot> slots = new ArrayList<>();
-        int batch = Math.max(1, craftBatch);
+        int batch = effectiveBatch();
         for (int t = 0; t < types.size() && slots.size() < MAX_INPUT_SLOTS; t++)
             slots.add(new CraftSlot(types.get(t), cells.get(t) * batch));
         return slots;
@@ -453,7 +458,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      *  and capped at the configured maximum. Valid even before crafting is toggled on (defaults to min). */
     private int effectiveCraftDimension() {
         int minDim = minCraftDim();
+        if (craftingUsesIgnoreData()) return minDim;   // grid resizing is disabled with an ignore-data ingredient
         return Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
+    }
+
+    /** Inserts a gold "Ignore Data" line directly below the header line of a slot tooltip when the relevant
+     *  gauge ignores item data (reuses Create's filter lang key — no new key needed). */
+    private static List<Component> withIgnoreDataLine(List<Component> base, boolean ignoreData) {
+        if (!ignoreData) return base;
+        List<Component> out = new ArrayList<>(base);
+        out.add(1, CreateLang.translate("gui.filter.ignore_data").style(ChatFormatting.GOLD).component());
+        return out;
     }
 
     /** The crafting toggle's tooltip: the activate hint, plus the current N×N grid size. Rendered last (in
@@ -517,8 +532,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         if (!craftingActive) return;
         lockOutputToRecipe();
-        int minDim = minCraftDim();
-        craftDimension = Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
+        craftDimension = effectiveCraftDimension();   // 0 (unset) → minDim; forced to minDim with ignore-data
         craftingIngredients = buildSquareArrangement(craftDimension);
         if (!craftingFitsPackage()) {
             craftingActive = false;
@@ -601,6 +615,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             RecipeType<MechanicalCraftingRecipe> mechanical = AllRecipeTypes.MECHANICAL_CRAFTING.getType();
             availableCraftingRecipe = matchCraftingRecipe(level, output, itemsToUse, mechanical);
         }
+        // Ignore-data ingredients are resolved to concrete variants per request, which works in a fixed 3×3
+        // grid but not a resizable larger one — so hide the toggle for a >3×3 recipe that uses one.
+        if (craftingIsLarge() && craftingUsesIgnoreData()) availableCraftingRecipe = null;
+    }
+
+    /** Whether any wired ingredient ignores item data — disables crafting batch & crafter-grid resizing. */
+    private boolean craftingUsesIgnoreData() {
+        for (VirtualPanelPosition pos : inputConnections)
+            if (menu.getComponent(pos) instanceof VirtualGaugeBehaviour s && s.ignoreData) return true;
+        return false;
     }
 
     /**
@@ -776,13 +800,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     ? craftingIngredients.get(idx).stack : ItemStack.EMPTY;
                 gfx.renderItem(stack, ix, iy);
                 // With a batch > 1 each grid slot consumes (slot amount × batch) of its item — show it.
-                if (!stack.isEmpty() && craftBatch > 1)
+                int dispBatch = effectiveBatch();
+                if (!stack.isEmpty() && dispBatch > 1)
                     gfx.renderItemDecorations(font, stack, ix, iy,
-                        String.valueOf(Math.max(1, stack.getCount()) * craftBatch));
+                        String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
             }
             if (hovering) {
-                if (hasControlDown())
+                boolean ignoreData = craftingUsesIgnoreData();   // grid resizing & Ctrl popup disabled then
+                if (hasControlDown() && !ignoreData)
                     patternHovered = true;
                 else if (dim > 3)
                     tooltip = List.of(
@@ -790,12 +816,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                             Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
                             Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
                             Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
-                else
-                    tooltip = List.of(
-                            CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                            CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component(),
-                            CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component(),
-                            Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
+                else {
+                    List<Component> t = new ArrayList<>();
+                    t.add(CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component());
+                    t.add(CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component());
+                    t.add(CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component());
+                    if (!ignoreData)   // no grid resizing → omit the "hold Ctrl to change grid size" hint
+                        t.add(Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
+                                .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
+                    tooltip = t;
+                }
             }
         } else {
             List<InputSlot> slots = layoutInputSlots();
@@ -814,19 +844,22 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
                     int total = Math.max(1, inputTotals.get(slot.connectionIndex()));
                     String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
+                    boolean srcIgnore = menu.getComponent(inputConnections.get(slot.connectionIndex()))
+                            instanceof VirtualGaugeBehaviour s && s.ignoreData;
                     tooltip = stack.isEmpty()
                         ? List.of(
                             CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
                             Component.translatable("createfactorycontroller.gui.action_disconnect")
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
-                        : List.of(
+                        : withIgnoreDataLine(List.of(
                             CreateLang.translate("gui.factory_panel.sending_item",
                                 FluidCompat.filterName(stack).getString() + " x" + totalLabel)
                                 .color(ScrollInput.HEADER_RGB).component(),
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
                             CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()),
+                            srcIgnore);
                 }
             }
             if (inputConnections.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
@@ -840,22 +873,30 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // (per-craft yield × craft count); a single package carries every craft.
         if (g != null && !g.filter.isEmpty()) {
             int ox = panelX + 160, oy = panelY + 48;
-            int producedCount = craftingActive ? outputCount * Math.max(1, craftBatch) : outputCount;
+            int producedCount = craftingActive ? outputCount * effectiveBatch() : outputCount;
             // Output is always magnitude-scaled (mB/B) regardless of the unit box: short ≤1-dp label, full tooltip.
             String producedBox = fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount);
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
             if (fluidMode) drawSlotCount(gfx, producedBox, ox, oy);
             else gfx.renderItemDecorations(font, g.filter, ox, oy, producedBox);
-            if (in(mouseX, mouseY, ox, oy, 16, 16))
-                tooltip = List.of(
+            if (in(mouseX, mouseY, ox, oy, 16, 16)) {
+                // The output scroll changes batch in crafting mode / the output count otherwise; both are
+                // disabled when an ignore-data ingredient is present, so the last line reflects that.
+                Component scrollLine = craftingActive && craftingUsesIgnoreData()
+                    ? Component.translatable("createfactorycontroller.gui.unable_to_change")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
+                    : CreateLang.translate("gui.factory_panel.expected_output_tip_2")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
+                tooltip = withIgnoreDataLine(List.of(
                     CreateLang.translate("gui.factory_panel.expected_output",
                         FluidCompat.filterName(g.filter).getString() + " x" + producedTip)
                         .color(ScrollInput.HEADER_RGB).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.expected_output_tip_2")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    scrollLine),
+                    g.ignoreData);
+            }
         }
 
         renderThreshold(gfx, g);
@@ -1251,15 +1292,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
         } else if (in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58)) {
             // Ctrl over the recipe's ingredients resizes the square crafter grid; otherwise tune the batch.
-            if (hasControlDown()) adjustCraftDimension(dir);
-            else adjustCraftBatch(dir * step);
+            // Both are disabled when an ignore-data ingredient is present (fixed 3×3, no batching).
+            if (!craftingUsesIgnoreData()) {
+                if (hasControlDown()) adjustCraftDimension(dir);
+                else adjustCraftBatch(dir * step);
+            }
             return true;
         }
         // Output slot. Outside crafting mode this is the free output count; in crafting mode the
         // per-craft yield is fixed, so scrolling instead changes how many crafts ride one request.
         if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
             if (craftingActive) {
-                adjustCraftBatch(dir * step);
+                if (!craftingUsesIgnoreData()) adjustCraftBatch(dir * step);   // batching disabled with ignore-data
             } else if (fluidMode) {
                 outputCount = adjustFluidAmount(outputCount, dir, hasShiftDown(), hasControlDown(), 1, FLUID_OUTPUT_CAP_MB);
                 playScrollSound();
@@ -1334,7 +1378,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
         }
 
-        int batch = craftingActive ? Math.max(1, craftBatch) : 1;
+        int batch = craftingActive ? effectiveBatch() : 1;
         int dimension = craftingActive ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,

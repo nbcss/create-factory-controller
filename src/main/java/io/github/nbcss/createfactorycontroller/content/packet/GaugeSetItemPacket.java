@@ -13,7 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 /** Sets a gauge's filter item (the produced output) from the set-item overlay or a carried item. */
-public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter)
+public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter, boolean ignoreData)
     implements CustomPacketPayload {
 
     public static final Type<GaugeSetItemPacket> TYPE =
@@ -31,6 +31,7 @@ public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, It
             BlockPos.STREAM_CODEC, GaugeSetItemPacket::pos,
             POS_CODEC, GaugeSetItemPacket::panelPos,
             ItemStack.OPTIONAL_STREAM_CODEC, GaugeSetItemPacket::filter,
+            ByteBufCodecs.BOOL, GaugeSetItemPacket::ignoreData,
             GaugeSetItemPacket::new
         );
 
@@ -41,7 +42,7 @@ public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, It
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.setComponentItem(packet.panelPos(), packet.filter());
+            be.setComponentItem(packet.panelPos(), packet.filter(), packet.ignoreData());
         });
     }
 }

@@ -42,7 +42,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in buckets (1 B = 1000 mB). Only valid for a fluid filter. */
-    FLUID_BUCKET("B", Type.FLUID, 100) {
+    FLUID_BUCKET("B", Type.FLUID, 1_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1000;

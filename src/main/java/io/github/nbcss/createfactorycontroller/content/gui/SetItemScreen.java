@@ -6,10 +6,13 @@ import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
+import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.foundation.utility.CreateLang;
+import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -29,6 +32,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,6 +59,17 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     private IconButton confirm;
     private IconButton relocateButton;
+    /** Two-button mode toggle (an exact copy of Create's brass-filter respect/ignore-data buttons): respect
+     *  vs ignore the filter item's NBT/data. Hidden entirely for a fluid filter. */
+    private IconButton respectDataButton;
+    private IconButton ignoreDataButton;
+    /** Whether the gauge should monitor/consume the filter item ignoring its NBT/components. */
+    private boolean ignoreData;
+    // Tooltip text reused verbatim from Create's FilterScreen (same lang keys).
+    private final Component respectDataName = CreateLang.translateDirect("gui.filter.respect_data");
+    private final Component respectDataDesc = CreateLang.translateDirect("gui.filter.respect_data.description");
+    private final Component ignoreDataName = CreateLang.translateDirect("gui.filter.ignore_data");
+    private final Component ignoreDataDesc = CreateLang.translateDirect("gui.filter.ignore_data.description");
     private List<Rect2i> extraAreas = Collections.emptyList();
     // Set-item panel top-left, and the player-inventory background top-left — centered in the GUI rect.
     private int panelX, panelY;
@@ -66,6 +81,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
               CreateLang.translate("gui.factory_panel.place_item_to_monitor").component());
         this.controller = controller;
         this.gaugePos = gaugePos;
+        this.ignoreData = false;
         this.menu.setGhostFilter(ItemStack.EMPTY);
         /** Chime when the overlay opens — played client-side for this player only. */
         Minecraft.getInstance().getSoundManager().play(
@@ -94,29 +110,65 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
         menu.showGhostSlot(filterX() - leftPos, filterY() - topPos, originX, hotbarY);
 
+        int buttonY = panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25;
+
         // Real confirm button (like Create's set-item screen) instead of a hit-tested icon.
-        confirm = new IconButton(panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40
-                , panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25, AllIcons.I_CONFIRM);
+        confirm = new IconButton(panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40,
+                buttonY, AllIcons.I_CONFIRM);
         confirm.withCallback(this::returnToController);
         addWidget(confirm);
 
         // Relocate button, left of the filter slot — commits the chosen item (so a placed selection
         // isn't lost), then hands off to the controller's relocate mode where the next empty cell
         // clicked becomes this gauge's new position. Mirrors ConfigureRecipeScreen's relocate button.
-        relocateButton = new IconButton(panelX + 3,
-                panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25, AllIcons.I_MOVE_GAUGE);
+        relocateButton = new IconButton(panelX + 3, buttonY, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             PacketDistributor.sendToServer(new GaugeSetItemPacket(
-                    menu.controllerPos, gaugePos, menu.getGhostFilter().copy()));
+                    menu.controllerPos, gaugePos, menu.getGhostFilter().copy(), ignoreData));
             menu.setGhostFilter(ItemStack.EMPTY);
             controller.beginRelocateMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
-        relocateButton.setToolTip(CreateLang.translate("gui.factory_panel.relocate").component());
+        // No self-tooltip (it would draw during renderBg and be covered by the slots/items); drawn last in render().
         addWidget(relocateButton);
+
+        // Respect-/ignore-data toggle (reuses Create's brass-filter icons), in the bottom button row.
+        int ignoreDataX = panelX + 25;
+        respectDataButton = new IconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
+        respectDataButton.withCallback(() -> { ignoreData = false; updateIgnoreDataButtons(); });
+        addWidget(respectDataButton);
+        ignoreDataButton = new IconButton(ignoreDataX + 18, buttonY, AllIcons.I_IGNORE_NBT);
+        ignoreDataButton.withCallback(() -> { ignoreData = true; updateIgnoreDataButtons(); });
+        addWidget(ignoreDataButton);
+        updateIgnoreDataButtons();
 
         extraAreas = List.of(new Rect2i(panelX + bg.getWidth(),
                 panelY + bg.getHeight() - 30, 40, 20));
+    }
+
+    /** Refreshes the data-toggle buttons on a filter/mode change: hidden for a fluid filter (ignore-data is
+     *  moot there), otherwise the current mode glows green. The tooltips are NOT stored on the buttons (that
+     *  would self-render during renderBg and be covered by the slots/items drawn afterwards); they're drawn
+     *  last in {@link #render} instead. */
+    private void updateIgnoreDataButtons() {
+        boolean fluid = FluidCompat.isFluidFilter(menu.getGhostFilter());
+        if (fluid) ignoreData = false;   // fluids can't ignore data; the server clamps this too
+        respectDataButton.visible = !fluid;
+        ignoreDataButton.visible = !fluid;
+        // green highlights the current mode (Create's handleIndicators: green = !isButtonEnabled).
+        respectDataButton.green = !fluid && !ignoreData;
+        ignoreDataButton.green = !fluid && ignoreData;
+    }
+
+    /** Create's filter-button tooltip: name line + hold-shift hint, with the cut description appended while
+     *  Shift is held (mirrors {@code AbstractFilterScreen#handleTooltips}/{@code fillToolTip}). */
+    private List<Component> dataButtonTooltip(Component name, Component desc) {
+        boolean shift = hasShiftDown();
+        List<Component> tip = new ArrayList<>();
+        tip.add(name);
+        tip.add(TooltipHelper.holdShift(FontHelper.Palette.YELLOW, shift));
+        if (shift) tip.addAll(TooltipHelper.cutTextComponent(desc, FontHelper.Palette.ALL_GRAY));
+        return tip;
     }
 
     @Override
@@ -151,6 +203,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
         renderTooltip(gfx, mouseX, mouseY);
+        // Draw the icon-button tooltips LAST so the menu slots/items (drawn after renderBg) can't cover them.
+        if (relocateButton.isHoveredOrFocused())
+            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
+        else if (respectDataButton.visible && respectDataButton.isHoveredOrFocused())
+            gfx.renderComponentTooltip(font, dataButtonTooltip(respectDataName, respectDataDesc), mouseX, mouseY);
+        else if (ignoreDataButton.visible && ignoreDataButton.isHoveredOrFocused())
+            gfx.renderComponentTooltip(font, dataButtonTooltip(ignoreDataName, ignoreDataDesc), mouseX, mouseY);
     }
 
     @Override
@@ -164,6 +223,8 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
         confirm.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
+        respectDataButton.render(gfx, mouseX, mouseY, partialTick);
+        ignoreDataButton.render(gfx, mouseX, mouseY, partialTick);
 
         // Decorative gauge model; the configured filter shows in the real ghost slot (vanilla-drawn).
         GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack()).scale(3)
@@ -212,10 +273,12 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         if (slotId == menu.ghostSlotIndex()) {
             if (type == ClickType.QUICK_MOVE) menu.setGhostFilter(ItemStack.EMPTY);
             else menu.setGhostFilter(filterFromCarried(menu.getCarried(), mouseButton));
+            updateIgnoreDataButtons();   // filter may have become (non-)fluid → refresh the toggle
             return;
         }
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
             menu.setGhostFilter(slot.getItem());   // shift-click an inventory item → set the filter
+            updateIgnoreDataButtons();
             return;
         }
         super.slotClicked(slot, slotId, mouseButton, type);
@@ -236,7 +299,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     private void returnToController() {
         PacketDistributor.sendToServer(new GaugeSetItemPacket(
-                menu.controllerPos, gaugePos, menu.getGhostFilter().copy()));
+                menu.controllerPos, gaugePos, menu.getGhostFilter().copy(), ignoreData));
         menu.setGhostFilter(ItemStack.EMPTY);
         Minecraft.getInstance().setScreen(controller);
     }
@@ -256,7 +319,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     // ── JEI hooks (used by the handlers registered on this screen) ──
     public Rect2i ghostSlotArea() { return new Rect2i(filterX(), filterY(), 16, 16); }
-    public void setGhostFromJei(ItemStack stack) { menu.setGhostFilter(stack); }
+    public void setGhostFromJei(ItemStack stack) { menu.setGhostFilter(stack); updateIgnoreDataButtons(); }
 
     public List<Rect2i> extraGuiAreas() {
         return extraAreas;

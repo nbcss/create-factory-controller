@@ -34,6 +34,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
+    /** When true the gauge matches the {@link #filter}'s item type only, ignoring NBT/components: stock and
+     *  promise counts sum every data-variant, and a downstream recipe wired to this gauge may consume any
+     *  variant. Never set for a fluid filter (the set-item screen disables the toggle there). */
+    public boolean ignoreData = false;
     /** Target threshold (Create's {@code count}); 0 means the gauge is inactive.*/
     public int count = 0;
     /** How the threshold is measured (items or stacks). Replaces Create's {@code upTo}. */
@@ -106,15 +111,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public int craftBatch = 1;
     public int craftDimension = 0;
     public int promiseClearingInterval = -1;
-    public RequestPromiseQueue restockerPromises;
 
     public VirtualGaugeBehaviour(FactoryControllerBlockEntity controller, VirtualPanelPosition position,
                                  UUID networkId, ResourceLocation gaugeItemId) {
         super(controller, position, gaugeItemId);
         this.networkId = networkId;
-        // controller is null on the client (menu snapshot); avoid binding a method ref to null.
-        Runnable onChanged = controller == null ? () -> {} : controller::setChanged;
-        this.restockerPromises = new RequestPromiseQueue(onChanged);
     }
 
     @Override
@@ -134,12 +135,42 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return new LogisticsConnection(from, amount);
     }
 
-    /** A gauge caps its ingredient inputs at {@link #MAX_INGREDIENTS}; its {@code targetedBy} only ever holds those
-     *  (redstone-link wires live on the link), so the map size is the ingredient count. */
+    /** A gauge caps its ingredient inputs at {@link #MAX_INGREDIENTS} grid <em>slots</em> (redstone-link wires
+     *  live on the link and don't count). A single ingredient whose amount exceeds its stack size occupies
+     *  several slots, so the cap is on {@link #usedInputSlots} — not the connection count — and a new
+     *  connection (≥1 slot) is rejected once the grid is already full. */
     @Override
     public void addConnection(VirtualPanelPosition fromPos) {
-        if (!targetedBy().containsKey(fromPos) && targetedBy().size() >= MAX_INGREDIENTS) return;
+        if (!targetedBy().containsKey(fromPos)
+                && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS) return;
         super.addConnection(fromPos);
+    }
+
+    /** The filter of the gauge at {@code pos} (server-side, via the controller), or empty. */
+    private ItemStack filterAt(VirtualPanelPosition pos) {
+        return controller != null && controller.components.get(pos) instanceof VirtualGaugeBehaviour g
+            ? g.filter : ItemStack.EMPTY;
+    }
+
+    /**
+     * Total grid slots a gauge's ingredient connections occupy. Mirrors the recipe screen's slot layout
+     * ({@code ConfigureRecipeScreen#layoutInputSlots}): a fluid ingredient is one slot; an item ingredient
+     * takes {@code ceil(amount / stackSize)} slots. The grid is capped at {@link #MAX_INGREDIENTS} slots, so
+     * an ingredient whose amount exceeds its stack size consumes several — counting connections alone would
+     * let the grid overflow. {@code filterResolver} maps a source position to its ingredient (server: via the
+     * controller; client: via the menu snapshot), letting both sides share this logic.
+     */
+    public static int usedInputSlots(Map<VirtualPanelPosition, VirtualPanelConnection> connections,
+                                     java.util.function.Function<VirtualPanelPosition, ItemStack> filterResolver) {
+        int used = 0;
+        for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : connections.entrySet()) {
+            if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
+            ItemStack src = filterResolver.apply(e.getKey());
+            if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
+            int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
+            used += (lc.amount() + ss - 1) / ss;   // ceil
+        }
+        return used;
     }
 
     // ── Status ───────────────────────────────────────────────────────────────
@@ -348,9 +379,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      */
     private int networkStockOf(ItemStack stack) {
         if (stack.isEmpty()) return 0;
-        return FluidCompat.isFluidFilter(stack)
-            ? LogisticsManager.getStockOf(networkId, stack, null)
-            : getRelevantSummary().getCountOf(stack);
+        if (FluidCompat.isFluidFilter(stack))
+            return LogisticsManager.getStockOf(networkId, stack, null);
+        // Ignore-data: count every variant of this item type, not just the exact-component match.
+        if (ignoreData)
+            return getRelevantSummary().getTotalOfMatching(s -> s.is(stack.getItem()));
+        return getRelevantSummary().getCountOf(stack);
     }
 
 
@@ -362,7 +396,24 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (filter.isEmpty()) return 0;
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
         if (promises == null) return 0;
-        return promises.getTotalPromisedAndRemoveExpired(filter, getPromiseExpiryTimeInTicks());
+        int expiry = getPromiseExpiryTimeInTicks();
+        if (!ignoreData || FluidCompat.isFluidFilter(filter))
+            return promises.getTotalPromisedAndRemoveExpired(filter, expiry);
+        // Ignore-data: sum the promises of every distinct variant of this item type. The queue matches by
+        // exact components, so total each distinct variant separately (which also expires them per-variant).
+        List<ItemStack> variants = new ArrayList<>();
+        for (RequestPromise p : promises.flatten(false)) {
+            ItemStack s = p.promisedStack.stack;
+            if (!s.is(filter.getItem())) continue;
+            boolean known = false;
+            for (ItemStack v : variants)
+                if (ItemStack.isSameItemSameComponents(v, s)) { known = true; break; }
+            if (!known) variants.add(s);
+        }
+        int total = 0;
+        for (ItemStack v : variants)
+            total += promises.getTotalPromisedAndRemoveExpired(v, expiry);
+        return total;
     }
 
     /**
@@ -412,22 +463,59 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (recipeAddress.isBlank()) return;            // recipe mode needs a packager address
 
         // A single request can carry several crafts in one package (crafter mode only); the per-craft
-        // ingredient demand and the produced output are both multiplied by this batch count.
-        int batch = activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, craftBatch);
+        // ingredient demand and the produced output are both multiplied by this batch count. Batching is
+        // forced off when an ignore-data ingredient is involved (its pattern cells resolve per request).
+        boolean crafting = !activeCraftingArrangement.isEmpty();
+        int batch = crafting && !craftingUsesIgnoreData() ? Math.max(1, craftBatch) : 1;
 
         Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
-        for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : targetedBy().entrySet()) {
-            if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
-            if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
-            ItemStack ingredient = source.filter;
-            if (ingredient.isEmpty()) continue;
-            int needed = conn.amount() * batch;
-            List<BigItemStack> demands = demandByNetwork.computeIfAbsent(source.networkId, k -> new ArrayList<>());
-            BigItemStack existing = null;
-            for (BigItemStack b : demands)
-                if (ItemStack.isSameItemSameComponents(b.stack, ingredient)) { existing = b; break; }
-            if (existing != null) existing.count += needed;
-            else demands.add(new BigItemStack(ingredient.copy(), needed));
+        // The crafting pattern actually dispatched. For an ignore-data ingredient the stored pattern holds the
+        // pure-form item, but the package must carry (and the crafter pattern must match) concrete in-stock
+        // variants — so resolve those cells against live stock on every request.
+        List<ItemStack> craftPattern = crafting ? new ArrayList<>(activeCraftingArrangement.size()) : null;
+
+        if (crafting) {
+            Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools = new HashMap<>();
+            for (ItemStack cell : activeCraftingArrangement) {
+                if (cell.isEmpty()) { craftPattern.add(ItemStack.EMPTY); continue; }
+                VirtualGaugeBehaviour source = findIngredientSource(cell);
+                if (source != null && source.ignoreData && !FluidCompat.isFluidFilter(source.filter)) {
+                    List<BigItemStack> pool = variantPools.computeIfAbsent(source, this::variantPool);
+                    ItemStack chosen = takeVariant(pool, batch);
+                    if (chosen.isEmpty()) { setConnectionsSuccess(false); return; }  // no single variant has enough
+                    craftPattern.add(chosen.copyWithCount(1));
+                    addDemand(demandByNetwork, source.networkId, chosen, batch);
+                } else {
+                    craftPattern.add(cell.copyWithCount(1));
+                    if (source != null) addDemand(demandByNetwork, source.networkId, cell, batch);
+                }
+            }
+        } else {
+            for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : targetedBy().entrySet()) {
+                if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
+                if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
+                ItemStack ingredient = source.filter;
+                if (ingredient.isEmpty()) continue;
+                int needed = conn.amount();
+                // An ignore-data ingredient may be served by any variant of its item type: resolve the demand
+                // into the concrete in-stock variants (Create's request/extraction matches exact components), so
+                // the recipe consumes whatever is actually on the network. Insufficient total → flash red, abort.
+                if (source.ignoreData && !FluidCompat.isFluidFilter(ingredient)) {
+                    InventorySummary summary = LogisticsManager.getSummaryOfNetwork(source.networkId, true);
+                    List<BigItemStack> variants = summary.getItemMap().get(ingredient.getItem());
+                    int remaining = needed;
+                    if (variants != null) for (BigItemStack v : variants) {
+                        if (remaining <= 0) break;
+                        int take = Math.min(remaining, v.count);
+                        if (take <= 0) continue;
+                        addDemand(demandByNetwork, source.networkId, v.stack, take);
+                        remaining -= take;
+                    }
+                    if (remaining > 0) { setConnectionsSuccess(false); return; }
+                } else {
+                    addDemand(demandByNetwork, source.networkId, ingredient, needed);
+                }
+            }
         }
         if (demandByNetwork.isEmpty()) return;
 
@@ -446,11 +534,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             }
         }
 
-        List<PackageOrderWithCrafts.CraftingEntry> crafts = activeCraftingArrangement.isEmpty()
+        List<PackageOrderWithCrafts.CraftingEntry> crafts = !crafting
             ? PackageOrderWithCrafts.empty().orderedCrafts()
-            // CraftingEntry.count is the number of times to run this 3×3 pattern — i.e. the batch.
+            // CraftingEntry.count is the number of times to run this 3×3 pattern — i.e. the batch. The pattern
+            // is the per-request-resolved one (concrete variants for any ignore-data cells).
             : List.of(new PackageOrderWithCrafts.CraftingEntry(
-                new PackageOrder(activeCraftingArrangement.stream()
+                new PackageOrder(craftPattern.stream()
                     .map(s -> new BigItemStack(s.copyWithCount(1)))
                     .toList()),
                 batch));
@@ -488,8 +577,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         setConnectionsSuccess(true);   // ingredients were dispatched → flash white
 
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-        if (promises != null)
-            promises.add(new RequestPromise(new BigItemStack(filter.copy(), Math.max(1, recipeOutput) * batch)));
+        if (promises != null) {
+            ItemStack promiseStack = filter.copy();
+            // Ignore-data: mark the promise so the queue clears it when ANY variant of the item type arrives
+            // (the produced output may carry data the pure-form filter doesn't). See RequestPromiseQueueMixin.
+            if (ignoreData) promiseStack.set(CreateFactoryController.FUZZY_PROMISE.get(), true);
+            promises.add(new RequestPromise(new BigItemStack(promiseStack, Math.max(1, recipeOutput) * batch)));
+        }
         controller.setChanged();
     }
 
@@ -506,6 +600,51 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             controller.setChanged();
             controller.sendData();
         }
+    }
+
+    /** Whether any wired-in ingredient is an (item) ignore-data gauge — disables crafting batch & grid resize. */
+    private boolean craftingUsesIgnoreData() {
+        for (VirtualPanelPosition p : targetedBy().keySet())
+            if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
+                    && s.ignoreData && !FluidCompat.isFluidFilter(s.filter)) return true;
+        return false;
+    }
+
+    /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
+    private VirtualGaugeBehaviour findIngredientSource(ItemStack cell) {
+        for (VirtualPanelPosition p : targetedBy().keySet())
+            if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
+                    && !s.filter.isEmpty() && ItemStack.isSameItemSameComponents(s.filter, cell))
+                return s;
+        return null;
+    }
+
+    /** A mutable snapshot of {@code source}'s in-stock variants of its item type (count-1 stack templates). */
+    private List<BigItemStack> variantPool(VirtualGaugeBehaviour source) {
+        InventorySummary summary = LogisticsManager.getSummaryOfNetwork(source.networkId, true);
+        List<BigItemStack> variants = summary.getItemMap().get(source.filter.getItem());
+        List<BigItemStack> pool = new ArrayList<>();
+        if (variants != null) for (BigItemStack b : variants)
+            pool.add(new BigItemStack(b.stack.copyWithCount(1), b.count));
+        return pool;
+    }
+
+    /** Takes {@code amount} of a single variant from the pool (the first variant with enough), returning its
+     *  stack template; empty if no single variant can cover the amount. */
+    private static ItemStack takeVariant(List<BigItemStack> pool, int amount) {
+        for (BigItemStack b : pool)
+            if (b.count >= amount) { b.count -= amount; return b.stack; }
+        return ItemStack.EMPTY;
+    }
+
+    /** Adds {@code count} of {@code stack} to a network's demand list, merging into an existing exact-component
+     *  entry so repeated/equivalent ingredients collapse into one {@link BigItemStack}. */
+    private static void addDemand(Map<UUID, List<BigItemStack>> demandByNetwork, UUID network,
+                                  ItemStack stack, int count) {
+        List<BigItemStack> demands = demandByNetwork.computeIfAbsent(network, k -> new ArrayList<>());
+        for (BigItemStack b : demands)
+            if (ItemStack.isSameItemSameComponents(b.stack, stack)) { b.count += count; return; }
+        demands.add(new BigItemStack(stack.copyWithCount(1), count));
     }
 
     private void resetTimer() {
@@ -536,6 +675,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (patternId != null) tag.putUUID("PatternId", patternId);   // only orderable gauges carry an id
 
         tag.put("Filter", filter.saveOptional(registries));
+        tag.putBoolean("IgnoreData", ignoreData);
         tag.putInt("Count", count);
         tag.putString("Unit", unit.name());
         tag.putString("RequestMode", requestMode.name());
@@ -610,6 +750,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // patternId is server-only — clients never need it.
 
         tag.put("Filter", filter.saveOptional(registries));
+        tag.putBoolean("IgnoreData", ignoreData);
         tag.putInt("Count", count);
         tag.putString("Unit", unit.name());
         tag.putString("RequestMode", requestMode.name());
@@ -648,6 +789,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItemId);
         b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
+        b.ignoreData = tag.getBoolean("IgnoreData");
         b.count = tag.getInt("Count");
         b.unit = ThresholdUnit.fromName(tag.getString("Unit"));
         if (tag.contains("RequestMode"))

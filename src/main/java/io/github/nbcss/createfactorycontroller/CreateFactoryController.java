@@ -85,6 +85,16 @@ public class CreateFactoryController {
                 .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.COMPOUND_TAG)
                 .build());
 
+    /** Marker placed on an ignore-data gauge's request promise so the promise queue clears it by item type
+     *  (fuzzy), not exact components — the produced output may arrive as any data-variant of the item.
+     *  Used only on the internal promise stack; see {@code RequestPromiseQueueMixin}. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> FUZZY_PROMISE =
+        DATA_COMPONENTS.register("fuzzy_promise", () ->
+            DataComponentType.<Boolean>builder()
+                .persistent(com.mojang.serialization.Codec.BOOL)
+                .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.BOOL)
+                .build());
+
     // ── Block Entity Types ─────────────────────────────────────────────────
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);

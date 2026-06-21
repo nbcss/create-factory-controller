@@ -30,6 +30,7 @@
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
   "createfactorycontroller.gui.threshold.auto_managed": "Auto managed on demand",
+  "createfactorycontroller.gui.unable_to_change": "Unable to change",
   "createfactorycontroller.gui.prompt.no_selected_network": "No network selected",
   "createfactorycontroller.gui.prompt.selected_network": "Selected %1$s",
   "createfactorycontroller.gui.prompt.no_first_network": "No network — place a tuned gauge first",

@@ -331,13 +331,17 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Configure panel ────────────────────────────────────────────────────
 
-    public void setComponentItem(VirtualPanelPosition pos, ItemStack filter) {
+    public void setComponentItem(VirtualPanelPosition pos, ItemStack filter, boolean ignoreData) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
-        gauge.filter = filter.copy();
+        boolean fluid = FluidCompat.isFluidFilter(filter);
+        // Ignore-data never applies to a fluid filter (the set-item screen hides the toggle there).
+        gauge.ignoreData = ignoreData && !fluid;
+        // With ignore-data on, store the filter as a "pure" item (a fresh stack with no NBT/components) so
+        // its identity is the item type alone — matching the type-only stock/promise/ingredient matching.
+        gauge.filter = gauge.ignoreData ? new ItemStack(filter.getItem()) : filter.copy();
         // Keep the threshold unit in the right group for the new filter so the count label/tooltip read
         // correctly immediately, before the recipe screen is ever opened: a fluid filter defaults to B,
         // an item filter to items. Only switch when crossing groups, so a later mB/B (or stacks) choice survives.
-        boolean fluid = FluidCompat.isFluidFilter(gauge.filter);
         if (fluid && !gauge.unit.isFluid()) gauge.unit = ThresholdUnit.FLUID_BUCKET;
         else if (!fluid && gauge.unit.isFluid()) gauge.unit = ThresholdUnit.ITEMS;
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible → mint/abort patternId

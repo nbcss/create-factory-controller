@@ -613,7 +613,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 } else {
                     valid = initiator != null
                             && !initiator.targetedBy().containsKey(hoveredPosition)
-                            && initiator.targetedBy().size() < VirtualGaugeBehaviour.MAX_INGREDIENTS;
+                            && usedInputSlots(initiator) < VirtualGaugeBehaviour.MAX_INGREDIENTS;
                 }
                 renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
             }
@@ -746,12 +746,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 VirtualComponentBehaviour input = widget.behaviour();
                 VirtualComponentBehaviour targetComp = componentAt(target);
                 boolean toLink = input instanceof VirtualRedstoneLinkBehaviour;
-                // Duplicate either way: gauge↔gauge stores on the consumer; gauge↔link stores on the link.
+                // Duplicate detection. A gauge↔gauge wire is stored on the consumer, so a duplicate is only
+                // "target already has clicked as an input" — the REVERSE wire (target→clicked) is a different,
+                // allowed connection (two gauges may feed each other). A gauge↔link wire is always stored on
+                // the link regardless of click direction, so when the source is a link also treat its own
+                // existing wire to the target as a duplicate.
                 boolean already = (targetComp != null && targetComp.targetedBy().containsKey(clicked))
-                        || input.targetedBy().containsKey(target);
-                // Ingredient cap applies only to gauge↔gauge wires (a link is uncapped).
+                        || (toLink && input.targetedBy().containsKey(target));
+                // Ingredient cap applies only to gauge↔gauge wires (a link is uncapped). It's a grid-SLOT cap:
+                // an ingredient whose amount exceeds its stack size spans several slots, so count slots, not wires.
                 boolean atCap = !toLink && targetComp != null
-                        && targetComp.targetedBy().size() >= VirtualGaugeBehaviour.MAX_INGREDIENTS;
+                        && usedInputSlots(targetComp) >= VirtualGaugeBehaviour.MAX_INGREDIENTS;
                 // A gauge source with no filter can't be wired; a redstone-link source always can.
                 if (input instanceof VirtualGaugeBehaviour ig && ig.filter.isEmpty()) {
                     setTimedPrompt(CreateLang.translate("factory_panel.no_item")
@@ -1086,5 +1091,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private VirtualComponentBehaviour componentAt(@Nullable VirtualPanelPosition pos) {
         VirtualComponentWidget w = componentWidgetAt(pos);
         return w == null ? null : w.behaviour();
+    }
+
+    /** Grid slots {@code comp}'s ingredient connections occupy (client view), resolving each source's filter via
+     *  the menu. Shared slot-counting logic lives in {@link VirtualGaugeBehaviour#usedInputSlots}. */
+    private int usedInputSlots(VirtualComponentBehaviour comp) {
+        return VirtualGaugeBehaviour.usedInputSlots(comp.targetedBy(), pos ->
+            menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY);
     }
 }

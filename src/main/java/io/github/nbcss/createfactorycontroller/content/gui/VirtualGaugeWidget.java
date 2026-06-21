@@ -150,9 +150,16 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     @Override
     public List<Component> getTooltip(FactoryControllerMenu menu) {
         List<Component> lines = new ArrayList<>();
-        lines.add(behaviour.filter.isEmpty()
-                ? CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component()
-                : CreateLang.text(FluidCompat.filterName(behaviour.filter).getString()).color(0xFBDC7D).component());
+        if (behaviour.filter.isEmpty()) {
+            lines.add(CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component());
+        }else{
+            var title = CreateLang.text(FluidCompat.filterName(behaviour.filter).getString()).color(0xFBDC7D);
+            if (behaviour.ignoreData) {
+                String label = " (" + CreateLang.translate("gui.filter.ignore_data").string() + ")";
+                title.add(Component.literal(label));
+            }
+            lines.add(title.component());
+        }
         if (!behaviour.filter.isEmpty()) {
             lines.add(Component.translatable("createfactorycontroller.gui.in_stock",
                             Component.literal(behaviour.isInfiniteStock() ? "∞" : formatAmount(behaviour.stockLevel))
@@ -201,7 +208,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
                 Minecraft.getInstance().setScreen(new SetItemScreen(screen, behaviour.position()));
             else
                 PacketDistributor.sendToServer(
-                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), filterFromCarried(carried, button)));
+                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), filterFromCarried(carried, button), false));
         } else if (carried.isEmpty()) {
             Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(screen, behaviour.position()));
         }

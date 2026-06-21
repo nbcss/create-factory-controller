@@ -110,17 +110,17 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
             controller.beginRelocateMode(linkPos);
             Minecraft.getInstance().setScreen(controller);   // commit happens in removed()
         });
-        relocateButton.setToolTip(CreateLang.translate("gui.factory_panel.relocate").component());
+        // No self-tooltip (it would draw during renderBg and be covered by the slots/items); drawn last in render().
         addWidget(relocateButton);
 
         ScreenElement modeIcon = (gfx, x, y) -> gfx.blitSprite(receive ? WIRELESS_RECEIVE : WIRELESS_TRANSMIT, x, y, 16, 16);
-        modeButton = new IconButton(panelX + 138, panelY + 79, modeIcon);
+        modeButton = new IconButton(panelX + 30, panelY + 79, modeIcon);
         modeButton.withCallback(() -> receive = !receive);   // staged; icon lambda reads it live
         addWidget(modeButton);
 
         confirmButton = new IconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
         confirmButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));
-        confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
+        // No self-tooltip (drawn last in render() so the slots/items can't cover it).
         addWidget(confirmButton);
     }
 
@@ -169,6 +169,11 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
                     Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
                             .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
                             .getVisualOrderText()), mouseX, mouseY);
+        // Icon-button tooltips drawn here (last) so the slots/items from super.render can't cover them.
+        else if (relocateButton.isMouseOver(mouseX, mouseY))
+            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
+        else if (confirmButton.isMouseOver(mouseX, mouseY))
+            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
     }
 
