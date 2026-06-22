@@ -61,6 +61,17 @@ public class CreateFactoryControllerClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT,
             "key.categories.createfactorycontroller");
 
+    /**
+     * Held (not toggled) to put the controller GUI into "selection mode": rubber-band drag selects components and
+     * left-clicking a component toggles its selection. Polled directly from the window (like {@link #PAN_VIEW}'s
+     * keyboard companions) since {@link KeyMapping#isDown()} doesn't update while a screen is open. Rebindable from
+     * Options ▸ Controls; defaults to Left Control.
+     */
+    public static final KeyMapping SELECTION_MODE = new KeyMapping(
+            "key.createfactorycontroller.selection_mode",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL,
+            "key.categories.createfactorycontroller");
+
     public CreateFactoryControllerClient(ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
         // The config screen is accessed by going to the Mods screen > clicking on your mod > clicking on config.
@@ -96,6 +107,7 @@ public class CreateFactoryControllerClient {
         event.register(INTERACT);
         event.register(PAN_VIEW);
         event.register(TOGGLE_FULL_OVERLAY);
+        event.register(SELECTION_MODE);
     }
 
     @SubscribeEvent

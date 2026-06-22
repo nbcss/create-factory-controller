@@ -329,6 +329,67 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
+    /**
+     * Batch-relocates {@code sources} by a uniform cell delta {@code (dx, dy)} — the Selection-Mode relocate.
+     * <b>Atomic</b>: commits only if EVERY moving component lands on an in-board cell that is either empty or vacated
+     * by another moving component; otherwise nothing moves (deny blip). Connection references to any moved cell are
+     * remapped through {@code f(p) = moving ? p+delta : p}, so wires survive whether one or both endpoints moved.
+     */
+    public void moveComponents(List<VirtualPanelPosition> sources, int dx, int dy) {
+        if (dx == 0 && dy == 0) return;
+
+        // Live moving set (skip stale positions sent by the client).
+        Set<VirtualPanelPosition> moving = new LinkedHashSet<>();
+        for (VirtualPanelPosition p : sources)
+            if (components.containsKey(p)) moving.add(p);
+        if (moving.isEmpty()) return;
+
+        // Validate ALL destinations first (atomic): in-board, and not occupied by a NON-moving component.
+        for (VirtualPanelPosition p : moving) {
+            VirtualPanelPosition to = new VirtualPanelPosition(p.x() + dx, p.y() + dy);
+            if (isOutBoard(to) || (components.containsKey(to) && !moving.contains(to))) {
+                playDenySound();
+                return;
+            }
+        }
+
+        java.util.function.Function<VirtualPanelPosition, VirtualPanelPosition> remap = p ->
+            moving.contains(p) ? new VirtualPanelPosition(p.x() + dx, p.y() + dy) : p;
+
+        // Rewire every component's connection references (incoming keys + conn.from, and outgoing entries).
+        for (VirtualComponentBehaviour comp : components.values()) {
+            Map<VirtualPanelPosition, VirtualPanelConnection> in = comp.targetedBy();
+            Map<VirtualPanelPosition, VirtualPanelConnection> newIn = new LinkedHashMap<>();
+            for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : in.entrySet()) {
+                VirtualPanelConnection conn = e.getValue();
+                conn.from = remap.apply(conn.from);
+                newIn.put(remap.apply(e.getKey()), conn);
+            }
+            in.clear();
+            in.putAll(newIn);
+
+            Set<VirtualPanelPosition> out = comp.targeting();
+            Set<VirtualPanelPosition> newOut = new LinkedHashSet<>();
+            for (VirtualPanelPosition t : out) newOut.add(remap.apply(t));
+            out.clear();
+            out.addAll(newOut);
+        }
+
+        // Move the components themselves: re-key the map and update each stored position.
+        List<VirtualComponentBehaviour> movers = new ArrayList<>();
+        for (VirtualPanelPosition p : moving) movers.add(components.remove(p));
+        for (VirtualComponentBehaviour mover : movers) {
+            VirtualPanelPosition to = new VirtualPanelPosition(mover.position().x() + dx, mover.position().y() + dy);
+            mover.setPosition(to);
+            components.put(to, mover);
+        }
+
+        playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
+        markOrderableDirty();
+        setChanged();
+        sendData();
+    }
+
     // ── Configure panel ────────────────────────────────────────────────────
 
     public void setComponentItem(VirtualPanelPosition pos, ItemStack filter, boolean ignoreData) {

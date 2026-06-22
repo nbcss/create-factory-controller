@@ -1,3 +1,7 @@
+## 0.2.2
+Features:
+- Allow drag-to-select components and perform batch relocate & remove.
+
 ## 0.2.1
 Features:
 - Allow to type number to set gauge request amount

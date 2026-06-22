@@ -29,6 +29,7 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.AttachComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.BatchMoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RenameControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RetuneCarriedPacket;
@@ -53,10 +54,13 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
@@ -164,6 +168,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Pan drag state (middle mouse)
     private boolean isDragging = false;
 
+    // ── Selection mode (client-only) ─────────────────────────────────────────
+    /** Components currently marked "selected" (gold reticle). Client-only; never serialized or synced. */
+    private final Set<VirtualPanelPosition> selected = new LinkedHashSet<>();
+    // Rubber-band drag (only while the Selection-Mode key is held): screen-space start/current + a moved flag that
+    // distinguishes a drag (rectangle select) from a click (toggle / clear).
+    private boolean rubberBanding = false;
+    private boolean rubberMoved = false;
+    private boolean rubberCtrl = false;   // was the Selection-Mode key held when the rubber-band started?
+    private double rubberStartX, rubberStartY, rubberCurX, rubberCurY;
+    // Batch relocate drag (normal mode, started by pressing a selected component): the press cell + the live cell delta.
+    private boolean batchRelocating = false;
+    @Nullable private VirtualPanelPosition batchAnchor = null;
+    private int batchDx = 0, batchDy = 0;
+
     // Network selector widget
     private NetworkSelectorWidget networkSelector;
 
@@ -223,6 +241,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         settingsButton = new TexturedButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
                 SETTINGS_BTN_SPRITE, SETTINGS_BTN_HOVER_SPRITE,
                 () -> {
+                    clearSelection();   // entering an overlay clears the selection
                     Minecraft.getInstance().setScreen(new ControllerSettingScreen(this));
                     return true;
                 })
@@ -382,9 +401,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         super.render(graphics, mouseX, mouseY, partialTick);
         VirtualComponentWidget hovered = componentWidgetAt(hoveredPosition);
-        if (pendingConnectionTarget == null && pendingRelocateTarget == null) {
+        // No hover tooltips while a selection drag (rubber-band rectangle or batch relocate) is in progress.
+        boolean selectionDragging = rubberBanding || batchRelocating;
+        if (pendingConnectionTarget == null && pendingRelocateTarget == null && !selectionDragging) {
             if (hovered != null)
-                graphics.renderComponentTooltip(font, hovered.getTooltip(menu), mouseX, mouseY);
+                graphics.renderComponentTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
             else if (networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
             else if (inBounds(capacityLabelBounds, mouseX, mouseY))
@@ -423,12 +444,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         // Action prompt above the inventory: an active mode (white) or a fading chime (tan). Each
         // component carries its own colour; we only modulate the fade alpha here.
-        Component prompt = actionPrompt;
+        // The Selection-Mode status line (persistent, yellow) takes precedence over the transient/mode action prompt;
+        // the action prompt still ticks/expires underneath so it reappears once the selection status clears.
+        Component selectionStatus = selectionStatusPrompt();
+        Component prompt;
         int alpha = 255;
-        if (prompt != null) {
-            long remaining = actionPromptExpiry - Util.getMillis();
-            if (remaining <= 0) { actionPrompt = null; prompt = null; }
-            else alpha = (int) (Mth.clamp(remaining / 1000f, 0f, 1f) * 255f);
+        if (selectionStatus != null) {
+            prompt = selectionStatus;
+        } else {
+            prompt = actionPrompt;
+            if (prompt != null) {
+                long remaining = actionPromptExpiry - Util.getMillis();
+                if (remaining <= 0) { actionPrompt = null; prompt = null; }
+                else alpha = (int) (Mth.clamp(remaining / 1000f, 0f, 1f) * 255f);
+            }
         }
         if (prompt != null && alpha > 4) {
             int invTop = topPos + invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0) - INV_TEX_TITLE_H;
@@ -501,6 +530,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         renderSelectedNetworkMask(graphics);
         renderHoverTarget(graphics);
+        renderSelectionTargets(graphics);
 
         graphics.pose().popPose();
         graphics.disableScissor();
@@ -573,6 +603,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
+        // Rubber-band selection rectangle (screen space, translucent green), clipped to the canvas.
+        if (rubberBanding && rubberMoved) {
+            int rx0 = (int) Math.min(rubberStartX, rubberCurX);
+            int ry0 = (int) Math.min(rubberStartY, rubberCurY);
+            int rx1 = (int) Math.max(rubberStartX, rubberCurX);
+            int ry1 = (int) Math.max(rubberStartY, rubberCurY);
+            graphics.enableScissor(x0, y0, x1, y1);
+            graphics.fill(rx0, ry0, rx1, ry1, 0x3333CC33);          // body
+            graphics.fill(rx0, ry0, rx1, ry0 + 1, 0xAA33CC33);      // top border
+            graphics.fill(rx0, ry1 - 1, rx1, ry1, 0xAA33CC33);      // bottom
+            graphics.fill(rx0, ry0, rx0 + 1, ry1, 0xAA33CC33);      // left
+            graphics.fill(rx1 - 1, ry0, rx1, ry1, 0xAA33CC33);      // right
+            graphics.disableScissor();
+        }
+
         if (inOverlay) {
             graphics.fill(x0, y0, x1, y1, 0xB0101010);
         }
@@ -599,7 +644,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Reticle tints.
     private static final int TARGET_WHITE = 0xFFFFFF;
     private static final int TARGET_RED   = 0xFF3333;
-    private static final int TARGET_GREEN = 0x33CC33;
+    private static final int TARGET_GREEN = 0x33CC33;   // also the selected-component mark
     private static final int TARGET_BLUE  = 0x55AAFF;
 
     /** Blue reticle over every component on the network currently selected in the network selector. */
@@ -669,6 +714,135 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.disableBlend();
     }
 
+    // ── Selection mode ───────────────────────────────────────────────────────
+
+    /** Drops all selected components (and any in-progress selection drag). Client-only; called when a controller
+     *  overlay opens (per the feature spec) and on a left-click on empty space. */
+    public void clearSelection() {
+        selected.clear();
+        rubberBanding = false;
+        batchRelocating = false;
+    }
+
+    /** Removes every selected component from the board (one remove packet each), then clears the selection. */
+    private void removeSelected() {
+        for (VirtualPanelPosition p : new ArrayList<>(selected)) {
+            VirtualComponentWidget w = componentWidgetAt(p);
+            if (w != null) w.remove(this);
+        }
+        clearSelection();
+    }
+
+    /** The canvas cell a screen position falls into (computes the board centre itself). */
+    private VirtualPanelPosition cellAt(double posX, double posY) {
+        int x0 = leftPos + CANVAS_SIDE_PADDING;
+        int y0 = topPos + CANVAS_TOP_PADDING;
+        int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
+        int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
+        return at(posX, posY, (x0 + x1) / 2, (y0 + y1) / 2);
+    }
+
+    /** Whether a batch relocate by the current delta would put {@code to} on a valid cell (in-board and not onto a
+     *  non-selected component). Mirrors the server's {@code moveComponents} validation for the drag ghosts. */
+    private boolean batchDestValid(VirtualPanelPosition to) {
+        boolean occupiedByOther = componentWidgets.containsKey(to) && !selected.contains(to);
+        return !FactoryControllerBlockEntity.isOutBoard(to) && !occupiedByOther;
+    }
+
+    /** The inclusive {minX, minY, maxX, maxY} cell box spanned by the current rubber-band rectangle. */
+    private int[] rubberCellBox() {
+        VirtualPanelPosition a = cellAt(rubberStartX, rubberStartY);
+        VirtualPanelPosition b = cellAt(rubberCurX, rubberCurY);
+        return new int[]{Math.min(a.x(), b.x()), Math.min(a.y(), b.y()), Math.max(a.x(), b.x()), Math.max(a.y(), b.y())};
+    }
+
+    private static boolean inBox(int[] box, VirtualPanelPosition p) {
+        return p.x() >= box[0] && p.x() <= box[2] && p.y() >= box[1] && p.y() <= box[3];
+    }
+
+    /** Green mark on selected components; white/red ghosts during a batch drag; and a live green preview of every
+     *  component currently inside the rubber-band rectangle while drag-selecting. */
+    private void renderSelectionTargets(GuiGraphics graphics) {
+        // Green selected marks first...
+        for (VirtualPanelPosition p : selected)
+            if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
+        if (rubberBanding && rubberMoved) {   // live preview: components the drag would select show the mark too
+            int[] box = rubberCellBox();
+            for (VirtualPanelPosition p : componentWidgets.keySet())
+                if (inBox(box, p)) renderTarget(graphics, p, TARGET_GREEN);
+        }
+        // ...then the batch-relocate ghosts ON TOP, so a white/red target landing on a still-present selected gauge
+        // (one that is itself moving away) draws over its green mark instead of being hidden behind it.
+        if (batchRelocating && (batchDx != 0 || batchDy != 0)) {
+            for (VirtualPanelPosition p : selected) {
+                if (!componentWidgets.containsKey(p)) continue;
+                VirtualPanelPosition to = new VirtualPanelPosition(p.x() + batchDx, p.y() + batchDy);
+                renderTarget(graphics, to, batchDestValid(to) ? TARGET_WHITE : TARGET_RED);
+            }
+        }
+    }
+
+    /** Adds every component whose cell lies within the rubber-band rectangle to the selection (additive). */
+    private void selectInRect() {
+        int[] box = rubberCellBox();
+        for (VirtualPanelPosition p : componentWidgets.keySet())
+            if (inBox(box, p)) selected.add(p);
+    }
+
+    /** The persistent (yellow) "Selected N components" status line, or {@code null} when nothing is selected. During a
+     *  drag-select the count includes the components currently inside the rubber-band rectangle. */
+    @Nullable
+    private Component selectionStatusPrompt() {
+        int count = effectiveSelectedCount();
+        return count > 0
+            ? Component.translatable("createfactorycontroller.gui.selection.count", count).withStyle(ChatFormatting.GREEN)
+            : null;
+    }
+
+    /** The selection count, including the live rubber-band rectangle contents while drag-selecting. */
+    private int effectiveSelectedCount() {
+        if (!rubberBanding || !rubberMoved) return selected.size();
+        Set<VirtualPanelPosition> union = new LinkedHashSet<>(selected);
+        int[] box = rubberCellBox();
+        for (VirtualPanelPosition p : componentWidgets.keySet())
+            if (inBox(box, p)) union.add(p);
+        return union.size();
+    }
+
+    /** A selection-mode click that didn't drag: toggle the component under the cursor, or clear all on empty space. */
+    private void toggleOrClearAt(double mx, double my) {
+        VirtualPanelPosition cell = cellAt(mx, my);
+        if (componentWidgets.containsKey(cell)) {
+            if (!selected.remove(cell)) selected.add(cell);
+        } else {
+            clearSelection();
+        }
+    }
+
+    /** Commits the batch relocate on release: validates ALL destinations (mirroring the server), sends the packet,
+     *  and optimistically re-anchors the selection at the new positions. A zero-delta release is a no-op. */
+    private void commitBatchRelocate() {
+        if (batchDx == 0 && batchDy == 0) return;
+        List<VirtualPanelPosition> sources = new ArrayList<>();
+        for (VirtualPanelPosition p : selected)
+            if (componentWidgets.containsKey(p)) sources.add(p);
+        if (sources.isEmpty()) return;
+
+        for (VirtualPanelPosition p : sources)
+            if (!batchDestValid(new VirtualPanelPosition(p.x() + batchDx, p.y() + batchDy))) {
+                playDenySound();
+                return;
+            }
+
+        PacketDistributor.sendToServer(new BatchMoveComponentPacket(menu.controllerPos, sources, batchDx, batchDy));
+        // Keep the selection, re-anchored at the new positions (server validated identically, so this matches).
+        Set<VirtualPanelPosition> moved = new LinkedHashSet<>();
+        for (VirtualPanelPosition p : selected)
+            moved.add(new VirtualPanelPosition(p.x() + batchDx, p.y() + batchDy));
+        selected.clear();
+        selected.addAll(moved);
+    }
+
     // ── Mouse interaction ──────────────────────────────────────────────────
 
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
@@ -716,6 +890,28 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return LogisticallyLinkedBlockItem.isTuned(stack) ? LogisticallyLinkedBlockItem.networkFromStack(stack) : null;
     }
 
+    /** Attaches a carried component at the empty {@code cell} (board-full / network checks, then the packet). No-op
+     *  when not carrying a component. Reached from the rubber-band release path (every empty-cell press starts one). */
+    private void attachCarriedAt(VirtualPanelPosition cell, ItemStack carried) {
+        if (!ComponentRegistry.containsItem(carried) || componentWidgetAt(cell) != null) return;
+        if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
+            setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
+                    FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
+            playDenySound();
+            return;
+        }
+        boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
+        UUID network = needsNet ? networkForAttaching(carried) : null;
+        if (needsNet && network == null) {   // a gauge with no usable network → surface the requirement, don't send
+            setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() ?
+                    "createfactorycontroller.gui.prompt.no_first_network" :
+                    "createfactorycontroller.gui.prompt.no_network_tuned").withStyle(ChatFormatting.RED), 3000);
+            playDenySound();
+            return;
+        }
+        PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, cell, network));
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Name field (title bar): clicking it begins editing with all text selected (mirrors Create's
@@ -746,9 +942,35 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualComponentWidget widget = componentWidgetAt(clicked);
             boolean leftOrRight = button == 0 || button == 1;
 
-            // Shift + left/right-click a gauge → remove it from the board (server refunds if survival).
+            // Start a rubber-band selection. With the Selection-Mode key held it can begin on ANY cell; otherwise it
+            // begins only on an EMPTY cell — so a plain left-drag from blank space selects, while a drag from a
+            // component still configures/relocates. The click-vs-drag outcome is decided in mouseReleased.
+            boolean ctrl = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
+            if (button == 0 && pendingConnectionTarget == null && pendingRelocateTarget == null
+                    && (ctrl || widget == null)) {
+                rubberBanding = true;
+                rubberMoved = false;
+                rubberCtrl = ctrl;
+                rubberStartX = rubberCurX = mouseX;
+                rubberStartY = rubberCurY = mouseY;
+                return true;
+            }
+
+            // Shift + left/right-click a gauge → remove it from the board (server refunds if survival). Shift-removing
+            // a SELECTED component removes the entire selection at once.
             if (hasShiftDown() && leftOrRight && widget != null) {
-                widget.remove(this);
+                if (selected.contains(clicked)) removeSelected();
+                else widget.remove(this);
+                return true;
+            }
+
+            // Normal mode: pressing a SELECTED component starts a batch relocate drag of the whole selection
+            // (this is what makes selected components no longer "click to configure"). Committed in mouseReleased.
+            if (button == 0 && widget != null && selected.contains(clicked)
+                    && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+                batchRelocating = true;
+                batchAnchor = clicked;
+                batchDx = batchDy = 0;
                 return true;
             }
 
@@ -828,30 +1050,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Left-click an EMPTY cell with a carried gauge → attach it there (occupied cells fall through
-            // to the gauge's own click handler below, so left-click sets its filter just like right-click).
-            if (button == 0 && widget == null && ComponentRegistry.containsItem(carried)) {
-                // Board full (placing on an empty cell would add a component) → prompt, don't send.
-                if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
-                    setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
-                            FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
-                    playDenySound();
-                    return true;
-                }
-                boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
-                UUID network = needsNet ? networkForAttaching(carried) : null;
-                // A gauge with no usable network → surface the requirement as a 3s board prompt, don't send.
-                if (needsNet && network == null) {
-                    setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() ?
-                            "createfactorycontroller.gui.prompt.no_first_network" :
-                            "createfactorycontroller.gui.prompt.no_network_tuned")
-                            .withStyle(ChatFormatting.RED), 3000);
-                    playDenySound();
-                    return true;
-                }
-                PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, clicked, network));
-                return true;
-            }
+            // (Left-clicks on an empty cell — attach a carried component, or drop the selection — are handled via the
+            // rubber-band release path, since every empty-cell left-press starts a rubber-band first.)
 
             // Click an existing component → its own interaction. Pass the cursor in canvas-world coords (so a widget
             // can hit-test sub-regions, e.g. the link's top/bottom frequency halves) and the button.
@@ -872,6 +1072,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        // Rubber-band: track the current corner; a few pixels of travel promotes the click to a drag.
+        if (button == 0 && rubberBanding) {
+            rubberCurX = mouseX;
+            rubberCurY = mouseY;
+            if (Math.abs(mouseX - rubberStartX) > 3 || Math.abs(mouseY - rubberStartY) > 3) rubberMoved = true;
+            return true;
+        }
+        // Batch relocate: the live cell delta from the anchor drives the ghost reticles.
+        if (button == 0 && batchRelocating && batchAnchor != null) {
+            VirtualPanelPosition cell = cellAt(mouseX, mouseY);
+            batchDx = cell.x() - batchAnchor.x();
+            batchDy = cell.y() - batchAnchor.y();
+            return true;
+        }
         if (isDragging && CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
             viewX -= deltaX / getZoomFactor();
             viewY -= deltaY / getZoomFactor();
@@ -883,6 +1097,24 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && rubberBanding) {
+            rubberBanding = false;
+            if (rubberMoved) {
+                selectInRect();                     // a drag → additive rectangle select
+            } else if (rubberCtrl) {
+                toggleOrClearAt(mouseX, mouseY);    // a Ctrl click → toggle the component, or clear on empty
+            } else {
+                // a normal-mode click on empty space → drop the selection, then place a carried component if any
+                clearSelection();
+                attachCarriedAt(cellAt(mouseX, mouseY), menu.getCarried());
+            }
+            return true;
+        }
+        if (button == 0 && batchRelocating) {
+            batchRelocating = false;
+            commitBatchRelocate();
+            return true;
+        }
         if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) isDragging = false;
         return super.mouseReleased(mouseX, mouseY, button);
     }
@@ -1100,6 +1332,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             else if (b instanceof VirtualRedstoneLinkBehaviour link)
                 componentWidgets.put(link.position(), new VirtualRedstoneLinkWidget(link));
         }
+        // Drop selected cells that no longer hold a component (removed, or relocated away — possibly by another
+        // player), so the selection count and marks stay in sync with the board.
+        selected.retainAll(componentWidgets.keySet());
     }
 
     /** The widget at {@code pos}, or {@code null} if the cell is empty (O(1)). */

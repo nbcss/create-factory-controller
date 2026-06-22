@@ -28,7 +28,8 @@ public interface VirtualComponentWidget {
     /** Front layer (over the arrows). {@code glow} is the indicator chase value; {@code showCount} the overlay flag. */
     void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow, boolean showCount);
 
-    List<Component> getTooltip(FactoryControllerMenu menu);
+    /** Hover tooltip. When {@code selected}, the "Click to configure" hint is replaced with "Drag to relocate". */
+    List<Component> getTooltip(FactoryControllerMenu menu, boolean selected);
 
     /** Handles a left/right click on this component with the given cursor stack. Returns true if consumed. */
     boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button);

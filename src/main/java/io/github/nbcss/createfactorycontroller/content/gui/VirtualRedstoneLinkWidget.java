@@ -84,7 +84,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     }
 
     @Override
-    public List<Component> getTooltip(FactoryControllerMenu menu) {
+    public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();
         lines.add(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(0xFC8068).component());
         String modeKey = behaviour.receive
@@ -93,7 +93,9 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         lines.add(Component.translatable("createfactorycontroller.gui.redstone_link.mode_prefix",
                 Component.translatable(modeKey).withStyle(ChatFormatting.WHITE))
             .withStyle(ChatFormatting.GRAY));
-        lines.add(CreateLang.translate("factory_panel.click_to_configure").style(ChatFormatting.GRAY).component());
+        lines.add(selected
+            ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
+            : CreateLang.translate("factory_panel.click_to_configure").style(ChatFormatting.GRAY).component());
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component").withStyle(ChatFormatting.DARK_GRAY));
         return lines;
     }
@@ -101,6 +103,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     @Override
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
         if (carried.isEmpty()) {                   // empty hand → open the full-config GUI
+            screen.clearSelection();   // entering an overlay clears the selection
             Minecraft.getInstance().setScreen(new ConfigureRedstoneLinkScreen(screen, behaviour.position()));
             return true;
         }

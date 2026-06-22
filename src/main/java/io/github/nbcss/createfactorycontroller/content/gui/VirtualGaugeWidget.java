@@ -148,7 +148,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      * reason (no target amount / missing address), matching {@code FactoryPanelBehaviour#getLabel}.
      */
     @Override
-    public List<Component> getTooltip(FactoryControllerMenu menu) {
+    public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();
         if (behaviour.filter.isEmpty()) {
             lines.add(CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component());
@@ -170,10 +170,12 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
                                     .withStyle(behaviour.promisedCount > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
                     .withStyle(ChatFormatting.GRAY));
         }
-        lines.add((behaviour.filter.isEmpty()
-                ? CreateLang.translate("logistics.filter.click_to_set")
-                : CreateLang.translate("factory_panel.click_to_configure"))
-                .style(ChatFormatting.GRAY).component());
+        lines.add(selected
+                ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
+                : (behaviour.filter.isEmpty()
+                        ? CreateLang.translate("logistics.filter.click_to_set")
+                        : CreateLang.translate("factory_panel.click_to_configure"))
+                        .style(ChatFormatting.GRAY).component());
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
                 .withStyle(ChatFormatting.DARK_GRAY));
         if (!behaviour.targetedBy().isEmpty() && !behaviour.isActive())
@@ -204,12 +206,14 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
         FactoryControllerMenu menu = screen.getMenu();
         if (behaviour.filter.isEmpty()) {
-            if (carried.isEmpty())
+            if (carried.isEmpty()) {
+                screen.clearSelection();   // entering an overlay clears the selection
                 Minecraft.getInstance().setScreen(new SetItemScreen(screen, behaviour.position()));
-            else
+            } else
                 PacketDistributor.sendToServer(
                         new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), filterFromCarried(carried, button), false));
         } else if (carried.isEmpty()) {
+            screen.clearSelection();   // entering an overlay clears the selection
             Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(screen, behaviour.position()));
         }
         return true;
