@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.mixin;
 
-import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.simibubi.create.content.equipment.clipboard.ClipboardEntry;
 import com.simibubi.create.content.logistics.BigItemStack;
@@ -10,9 +11,11 @@ import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
+import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.IngredientCheckClient;
 import io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
+import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -43,14 +46,22 @@ public abstract class StockKeeperRequestScreenMixin {
     @Shadow @Nullable List<List<ClipboardEntry>> clipboardItem;
     @Shadow StockTickerBlockEntity blockEntity;
 
-    @WrapWithCondition(method = "renderItemEntry", at = @At(value = "INVOKE",
+    @WrapOperation(method = "renderItemEntry", at = @At(value = "INVOKE",
         target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;drawItemCount(Lnet/minecraft/client/gui/GuiGraphics;II)V"))
-    private boolean cfc$hideBlueprintStockCount(StockKeeperRequestScreen self, GuiGraphics graphics, int count,
-                                                int customCount,
-                                                @Local(argsOnly = true) BigItemStack entry,
-                                                @Local(argsOnly = true, ordinal = 1) boolean isRenderingOrders) {
-        // Skip only the stock-list count for blueprints; keep it for the order preview.
-        return isRenderingOrders || !ProductionPatternItem.isPattern(entry.stack);
+    private void cfc$blueprintCount(StockKeeperRequestScreen self, GuiGraphics graphics, int count, int customCount,
+                                    Operation<Void> original,
+                                    @Local(argsOnly = true) BigItemStack entry,
+                                    @Local(argsOnly = true, ordinal = 1) boolean isRenderingOrders) {
+        if (ProductionPatternItem.isPattern(entry.stack)) {
+            if (!isRenderingOrders) return;   // stock-list blueprint: infinite supply, no count
+            // A fluid order is counted in buckets — draw the count with a "b" suffix at drawItemCount's own
+            // (pose-relative) bottom-right placement, which SpriteNumbersRender mirrors.
+            if (FluidCompat.isFluidFilter(ProductionPatternItem.displayOf(entry.stack))) {
+                SpriteNumbersRender.drawCount(graphics, SpriteNumbersRender.abbreviate(customCount) + "b", 0, 0);
+                return;
+            }
+        }
+        original.call(self, graphics, count, customCount);
     }
 
     /**

@@ -80,13 +80,25 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
             List<Target<I>> targets = new ArrayList<>();
             Rect2i area = screen.ghostSlotArea();
 
+            // A fluid gauge accepts ONLY a dragged fluid (converted to the generic fluid-filter token); item drags
+            // are not offered.
+            if (screen.isFluidGauge()) {
+                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
+                if (fluid.isPresent() && !fluid.get().isEmpty()) {
+                    ItemStack filter = FluidCompat.makeGenericFluidFilter(fluid.get());
+                    if (!filter.isEmpty())
+                        targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
+                }
+                return targets;
+            }
+
             Optional<ItemStack> stack = ingredient.getItemStack();
             if (stack.isPresent()) {
                 ItemStack filter = stack.get();
                 targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
                 return targets;
             }
-            // Fluid ghost → fluid filter, only when a fluid-logistics addon is present.
+            // Fluid ghost → addon fluid filter (item gauge), only when a fluid-logistics addon is present.
             if (FluidCompat.isLoaded()) {
                 Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
                 if (fluid.isPresent() && !fluid.get().isEmpty()) {

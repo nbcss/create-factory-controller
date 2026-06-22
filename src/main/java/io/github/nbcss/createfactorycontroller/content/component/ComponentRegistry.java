@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.component;
 import com.simibubi.create.AllBlocks;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -11,12 +12,11 @@ import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Central registry for virtual components.
@@ -38,8 +38,12 @@ public final class ComponentRegistry {
     /** Item ids that don't require a logistics network to attach (e.g. the redstone link). */
     private static final Set<ResourceLocation> NETWORKLESS_ITEMS = new HashSet<>();
 
+    /** Per-gauge-item stock type. Absent ⇒ {@link GaugeType#ITEM} (Create's factory gauge); only the optional
+     *  fluid/energy gauges register a non-item type. */
+    private static final Map<ResourceLocation, GaugeType> GAUGE_TYPES = new HashMap<>();
+
     static {
-        // Create's factory gauge → virtual gauge component.
+        // Create's factory gauge → virtual gauge component (item stock).
         ITEM_IDS.add(AllBlocks.FACTORY_GAUGE.getId());
         registerType(VirtualGaugeBehaviour.TYPE_ID, VirtualGaugeBehaviour::fromNBT);
 
@@ -47,6 +51,19 @@ public final class ComponentRegistry {
         ITEM_IDS.add(AllBlocks.REDSTONE_LINK.getId());
         NETWORKLESS_ITEMS.add(AllBlocks.REDSTONE_LINK.getId());
         registerType(VirtualRedstoneLinkBehaviour.TYPE_ID, VirtualRedstoneLinkBehaviour::fromNBT);
+
+        // Create: Repackaged's Fluid Gauge → a virtual gauge with FLUID stock type. Registered only when the addon is
+        // present; it's a network-tuned gauge, so it stays network-requiring. Reuses the gauge component (and its
+        // TYPE_ID factory) — the stock type is derived from the item id via typeOf().
+        if (RepackagedCompat.isLoaded()) {
+            ITEM_IDS.add(RepackagedCompat.FLUID_GAUGE);
+            GAUGE_TYPES.put(RepackagedCompat.FLUID_GAUGE, GaugeType.FLUID);
+        }
+    }
+
+    /** The stock type a placed gauge of {@code itemId} manages (defaults to {@link GaugeType#ITEM}). */
+    public static GaugeType typeOf(ResourceLocation itemId) {
+        return GAUGE_TYPES.getOrDefault(itemId, GaugeType.ITEM);
     }
 
     /** Whether attaching {@code itemId} needs a controller logistics network (gauges do; redstone links don't). */
@@ -67,10 +84,6 @@ public final class ComponentRegistry {
     }
 
     // ── Item acceptance ───────────────────────────────────────────────────────
-
-    public static void register(ResourceLocation id) {
-        ITEM_IDS.add(id);
-    }
 
     public static boolean contains(ResourceLocation id) {
         return ITEM_IDS.contains(id);

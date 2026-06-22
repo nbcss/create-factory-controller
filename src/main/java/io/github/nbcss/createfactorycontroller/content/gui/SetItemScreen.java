@@ -12,6 +12,7 @@ import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.GaugeType;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
@@ -56,6 +57,10 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     private final FactoryControllerScreen controller;
     private final VirtualPanelPosition gaugePos;
+    /** The stock type of the gauge being configured (item / fluid / energy). */
+    private final GaugeType gaugeType;
+    /** A fluid gauge accepts only a fluid filter (any filled container → the chosen fluid); non-fluids are rejected. */
+    private final boolean fluidGauge;
 
     private IconButton confirm;
     private IconButton relocateButton;
@@ -81,6 +86,9 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
               CreateLang.translate("gui.factory_panel.place_item_to_monitor").component());
         this.controller = controller;
         this.gaugePos = gaugePos;
+        this.gaugeType = controller.getMenu().getComponent(gaugePos) instanceof VirtualGaugeBehaviour g
+                ? g.type : GaugeType.ITEM;
+        this.fluidGauge = gaugeType == GaugeType.FLUID;
         this.ignoreData = false;
         this.menu.setGhostFilter(ItemStack.EMPTY);
         /** Chime when the overlay opens — played client-side for this player only. */
@@ -151,13 +159,15 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
      *  would self-render during renderBg and be covered by the slots/items drawn afterwards); they're drawn
      *  last in {@link #render} instead. */
     private void updateIgnoreDataButtons() {
-        boolean fluid = FluidCompat.isFluidFilter(menu.getGhostFilter());
-        if (fluid) ignoreData = false;   // fluids can't ignore data; the server clamps this too
-        respectDataButton.visible = !fluid;
-        ignoreDataButton.visible = !fluid;
+        // Ignore-data is an item-gauge concept; hide it for any non-item gauge (fluid/energy have no NBT variants),
+        // and for an item gauge once its chosen filter is a fluid.
+        boolean noIgnoreData = gaugeType != GaugeType.ITEM || FluidCompat.isFluidFilter(menu.getGhostFilter());
+        if (noIgnoreData) ignoreData = false;   // can't ignore data; the server clamps this too
+        respectDataButton.visible = !noIgnoreData;
+        ignoreDataButton.visible = !noIgnoreData;
         // green highlights the current mode (Create's handleIndicators: green = !isButtonEnabled).
-        respectDataButton.green = !fluid && !ignoreData;
-        ignoreDataButton.green = !fluid && ignoreData;
+        respectDataButton.green = !noIgnoreData && !ignoreData;
+        ignoreDataButton.green = !noIgnoreData && ignoreData;
     }
 
     /** Create's filter-button tooltip: name line + hold-shift hint, with the cut description appended while
@@ -273,12 +283,15 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
         if (slotId == menu.ghostSlotIndex()) {
             if (type == ClickType.QUICK_MOVE) menu.setGhostFilter(ItemStack.EMPTY);
+            else if (fluidGauge) applyFluidFilter(menu.getCarried(), true);   // empty hand clears, non-container refused
             else menu.setGhostFilter(filterFromCarried(menu.getCarried(), mouseButton));
             updateIgnoreDataButtons();   // filter may have become (non-)fluid → refresh the toggle
             return;
         }
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
-            menu.setGhostFilter(slot.getItem());   // shift-click an inventory item → set the filter
+            // shift-click an inventory item → set the filter (a fluid gauge takes only its fluid's container).
+            if (fluidGauge) applyFluidFilter(slot.getItem(), false);   // non-container shift-click → ignored
+            else menu.setGhostFilter(slot.getItem());
             updateIgnoreDataButtons();
             return;
         }
@@ -310,7 +323,27 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
      * right-click (mouseButton 1) on a filled fluid container uses its stored fluid as a fluid filter instead.
      * Without an addon, or on left-click, the container item is the filter (requirement: both clicks set item).
      */
+    /**
+     * Sets the ghost filter from {@code source} for a fluid gauge: a filled fluid container becomes the generic fluid
+     * filter, an empty hand clears it (only when {@code allowClear}), and any non-container item is <b>refused</b> —
+     * the current filter is left unchanged. Used for both the cursor and shift-click / JEI paths.
+     */
+    private void applyFluidFilter(ItemStack source, boolean allowClear) {
+        if (source.isEmpty()) {
+            if (allowClear) menu.setGhostFilter(ItemStack.EMPTY);
+            return;
+        }
+        ItemStack fluidFilter = filterFromCarried(source, 0);
+        if (!fluidFilter.isEmpty()) menu.setGhostFilter(fluidFilter);   // non-container → refused, keep current
+    }
+
     private ItemStack filterFromCarried(ItemStack carried, int mouseButton) {
+        // A fluid gauge holds only a fluid: any filled fluid container (either click) becomes the generic fluid
+        // filter; a non-fluid item yields EMPTY (the caller decides whether that clears or is refused).
+        if (fluidGauge) {
+            FluidStack fluid = FluidCompat.fluidInContainer(carried);
+            return fluid.isEmpty() ? ItemStack.EMPTY : FluidCompat.makeGenericFluidFilter(fluid);
+        }
         if (FluidCompat.isLoaded() && mouseButton == 1) {
             FluidStack fluid = FluidCompat.fluidInContainer(carried);
             if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
@@ -320,7 +353,16 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     // ── JEI hooks (used by the handlers registered on this screen) ──
     public Rect2i ghostSlotArea() { return new Rect2i(filterX(), filterY(), 16, 16); }
-    public void setGhostFromJei(ItemStack stack) { menu.setGhostFilter(stack); updateIgnoreDataButtons(); }
+    /** Whether this screen configures a fluid gauge (filter restricted to fluids). Used by the JEI ghost handler. */
+    public boolean isFluidGauge() { return fluidGauge; }
+    /** JEI drop. For a fluid gauge the handler passes an already-built fluid-filter token (from a dragged fluid); set
+     *  it only if it's a valid fluid filter (a stray item drop is refused). An item gauge takes the stack directly. */
+    public void setGhostFromJei(ItemStack stack) {
+        if (fluidGauge) {
+            if (FluidCompat.isFluidFilter(stack)) menu.setGhostFilter(stack);
+        } else menu.setGhostFilter(stack);
+        updateIgnoreDataButtons();
+    }
 
     public List<Rect2i> extraGuiAreas() {
         return extraAreas;

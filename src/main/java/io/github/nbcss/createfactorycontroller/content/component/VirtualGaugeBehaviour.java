@@ -54,6 +54,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     // Identity
     public final UUID networkId;
     public UUID patternId = null;
+    /** The stock type this gauge manages (item / fluid / energy), derived from its gauge item id. Gates the item-only
+     *  features (mechanical crafting, {@link #ignoreData}) and selects the stock backend. */
+    public final GaugeType type;
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
@@ -116,6 +119,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                                  UUID networkId, ResourceLocation gaugeItemId) {
         super(controller, position, gaugeItemId);
         this.networkId = networkId;
+        this.type = ComponentRegistry.typeOf(gaugeItemId);
     }
 
     @Override
@@ -320,7 +324,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
         // Apply a pending player-forced clear (side effect only). Its promised drop is absorbed by the hold
         // below exactly like a settlement or an expiry — no per-cause disambiguation is needed any more.
-        consumeForceClear();
+        if (forceClearPromises){
+            type.forceClearPromise(networkId, filter);
+            timer = getConfigRequestIntervalInTicks() / 2;
+            forceClearPromises = false;
+        }
 
         // The loose cache returns a NEW summary instance when it recomputes, so reference identity is the
         // precise "stock reading just refreshed (authoritative)" signal.
@@ -379,6 +387,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      */
     private int networkStockOf(ItemStack stack) {
         if (stack.isEmpty()) return 0;
+        // A FLUID gauge reads its stock (mB) from Repackaged's Deployer-backed fluid system — its generic fluid
+        // filter rides no Create item logistics. Isolated behind FluidCompat so this class never hard-links Deployer
+        // (item gauges load it on installs without Deployer); the branch only runs when a fluid gauge exists.
+        if (type == GaugeType.FLUID)
+            return FluidCompat.repackagedFluidStock(networkId, stack);
         if (FluidCompat.isFluidFilter(stack))
             return LogisticsManager.getStockOf(networkId, stack, null);
         // Ignore-data: count every variant of this item type. Sum only this item's bucket (getItemMap is keyed
@@ -401,6 +414,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     public int getPromised() {
         if (filter.isEmpty()) return 0;
+        if (type == GaugeType.FLUID)
+            return FluidCompat.repackagedFluidPromised(networkId, filter, getPromiseExpiryTimeInTicks());
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
         if (promises == null) return 0;
         int expiry = getPromiseExpiryTimeInTicks();
@@ -421,17 +436,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (ItemStack v : variants)
             total += promises.getTotalPromisedAndRemoveExpired(v, expiry);
         return total;
-    }
-
-    /**
-     * Applies a pending player-forced promise clear (clears the queue for this item, halves the throttle).
-     */
-    private void consumeForceClear() {
-        if (!forceClearPromises) return;
-        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-        if (promises != null) promises.forceClear(filter);
-        timer = getConfigRequestIntervalInTicks() / 2;
-        forceClearPromises = false;
     }
 
     private int getUnloadedLinks() {
@@ -529,11 +533,17 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
             for (BigItemStack need : netEntry.getValue()) {
-                // Fluid ingredients read their stock via getStockOf (per-link), like the storage monitor — the
-                // merged accurate summary may not carry the virtual tanks; items use the accurate summary.
-                int available = FluidCompat.isFluidFilter(need.stack)
-                    ? LogisticsManager.getStockOf(netEntry.getKey(), need.stack, null)
-                    : summary.getCountOf(need.stack);
+                // A Repackaged generic fluid filter rides Deployer's fluid logistics, so its stock (mB) must be read
+                // there — Create's item logistics knows nothing about it (would read 0 → always flash red).
+                // CFL/CreateFluid fluid filters read via getStockOf (per-link), like the storage monitor — the merged
+                // accurate summary may not carry the virtual tanks; items use the accurate summary.
+                int available;
+                if (FluidCompat.isGenericFluidFilter(need.stack))
+                    available = FluidCompat.repackagedFluidStock(netEntry.getKey(), need.stack);
+                else if (FluidCompat.isFluidFilter(need.stack))
+                    available = LogisticsManager.getStockOf(netEntry.getKey(), need.stack, null);
+                else
+                    available = summary.getCountOf(need.stack);
                 if (available < need.count) {        // insufficient → flash red
                     setConnectionsSuccess(false);
                     return;
@@ -552,9 +562,25 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                 batch));
 
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
-        List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();
+        List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
-            // A virtual fluid tank ingredient must be dispatched via broadcastPackageRequest (CFL routing) — see below.
+            // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order (its items +
+            // fluids), so Repackaged's Package Shelf groups the resulting fragments under a single orderId. The fluids
+            // ride Deployer's logistics; the items ride Create's — broadcastAllPackageRequest spans both with a shared
+            // orderId, which dispatching them separately would not.
+            List<BigItemStack> repackagedFluids = netEntry.getValue().stream()
+                .filter(b -> FluidCompat.isGenericFluidFilter(b.stack)).toList();
+            if (!repackagedFluids.isEmpty()) {
+                List<BigItemStack> items = netEntry.getValue().stream()
+                    .filter(b -> !FluidCompat.isGenericFluidFilter(b.stack)).toList();
+                PackageOrderWithCrafts itemOrder = new PackageOrderWithCrafts(new PackageOrder(items), crafts);
+                if (!FluidCompat.broadcastRepackagedRecipe(netEntry.getKey(), itemOrder, repackagedFluids, recipeAddress)) {
+                    setConnectionsSuccess(false);
+                    return;
+                }
+                continue;
+            }
+            // A virtual fluid tank ingredient (CFL/CreateFluid) must be dispatched via broadcastPackageRequest — see below.
             if (netEntry.getValue().stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
                 fluidNetworks.add(netEntry);
                 continue;
@@ -582,15 +608,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
             LogisticsManager.performPackageRequests(req);
         setConnectionsSuccess(true);   // ingredients were dispatched → flash white
-
-        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-        if (promises != null) {
-            ItemStack promiseStack = filter.copy();
-            // Ignore-data: mark the promise so the queue clears it when ANY variant of the item type arrives
-            // (the produced output may carry data the pure-form filter doesn't). See RequestPromiseQueueMixin.
-            if (ignoreData) promiseStack.set(CreateFactoryController.FUZZY_PROMISE.get(), true);
-            promises.add(new RequestPromise(new BigItemStack(promiseStack, Math.max(1, recipeOutput) * batch)));
-        }
+        type.addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch);
         controller.setChanged();
     }
 

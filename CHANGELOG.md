@@ -1,6 +1,12 @@
-## 0.2.2
+## 0.3.0
 Features:
 - Allow drag-to-select components and perform batch relocate & remove.
+
+Compatibility:
+- Allow Fluid Gauge from Repackaged mod to be used in Factory Controller.
+
+Bugfixes:
+- Fixed fluid cannot properly work to create production order
 
 ## 0.2.1
 Features:

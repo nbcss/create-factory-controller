@@ -205,6 +205,22 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     @Override
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
         FactoryControllerMenu menu = screen.getMenu();
+        // Fluid/energy gauges: a carried fluid container sets the fluid filter directly (mirrors an item gauge taking
+        // a held item); an empty hand opens the set-item screen (unconfigured) or recipe screen (configured); a
+        // non-container item is ignored. The fluid filter is the generic token (no item logistics).
+        if (behaviour.type != io.github.nbcss.createfactorycontroller.content.component.GaugeType.ITEM) {
+            ItemStack fluidFilter = FluidCompat.makeGenericFluidFilter(FluidCompat.fluidInContainer(carried));
+            if (!fluidFilter.isEmpty()) {
+                PacketDistributor.sendToServer(
+                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), fluidFilter, false));
+            } else if (carried.isEmpty()) {
+                screen.clearSelection();
+                Minecraft.getInstance().setScreen(behaviour.filter.isEmpty()
+                    ? new SetItemScreen(screen, behaviour.position())
+                    : new ConfigureRecipeScreen(screen, behaviour.position()));
+            }
+            return true;
+        }
         if (behaviour.filter.isEmpty()) {
             if (carried.isEmpty()) {
                 screen.clearSelection();   // entering an overlay clears the selection

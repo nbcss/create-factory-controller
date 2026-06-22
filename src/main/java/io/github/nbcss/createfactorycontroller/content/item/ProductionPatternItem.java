@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.item;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -52,7 +53,9 @@ public class ProductionPatternItem extends Item {
     @Override
     public @NotNull Component getName(@NotNull ItemStack stack) {
         ItemStack display = displayOf(stack);
-        return display.isEmpty() ? super.getName(stack) : display.getHoverName();
+        // A fluid filter names/draws itself as a wrapper item ("Fluid Filter"/addon wrapper); source the clean fluid
+        // name instead (filterName falls back to the item's name for non-fluids), so fluid patterns read correctly.
+        return display.isEmpty() ? super.getName(stack) : FluidCompat.filterName(display);
     }
 
     @Override
@@ -64,7 +67,14 @@ public class ProductionPatternItem extends Item {
         tooltip.add(Component.translatable("item.createfactorycontroller.production_pattern")
             .withStyle(ChatFormatting.GRAY));
         ItemStack display = displayOf(stack);
-        if (!display.isEmpty())
+        if (display.isEmpty()) return;
+        if (FluidCompat.isFluidFilter(display)) {
+            // Fluid filter: the wrapper item's own tooltip is noise; show the fluid's lines (id when advanced + source
+            // mod), skipping the leading name line which is already the tooltip title (getName).
+            List<Component> lines = FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(display), flag.isAdvanced());
+            for (int i = 1; i < lines.size(); i++) tooltip.add(lines.get(i));
+        } else {
             display.getItem().appendHoverText(display, context, tooltip, flag);
+        }
     }
 }

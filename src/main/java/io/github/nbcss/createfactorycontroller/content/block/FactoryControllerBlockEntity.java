@@ -394,6 +394,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     public void setComponentItem(VirtualPanelPosition pos, ItemStack filter, boolean ignoreData) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
+        // A fluid gauge holds only a fluid filter — reject any (non-empty) item filter (the screen already prevents
+        // this; defensive against a crafted packet).
+        if (gauge.type == io.github.nbcss.createfactorycontroller.content.component.GaugeType.FLUID
+                && !filter.isEmpty() && !FluidCompat.isFluidFilter(filter)) return;
         boolean fluid = FluidCompat.isFluidFilter(filter);
         // Ignore-data never applies to a fluid filter (the set-item screen hides the toggle there).
         gauge.ignoreData = ignoreData && !fluid;
