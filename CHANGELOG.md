@@ -14,7 +14,7 @@ Features:
   - Warning: the feature does have performance cost, so only enable Ignore Data when needed.
 
 Changes:
-- Default background texture is cardboard_block_side now
+- Default background texture is plain_cardboard now
 - Increase the hardness of Factory Controller block
 - Add Summary to Factory Controller item
 - Fluid System Compatibility: Bucket Unit can set request up to 1000B fluid now

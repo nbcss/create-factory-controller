@@ -12,10 +12,12 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 - **Quick Tune**: When holding a gauge item on cursor and scroll the Network Selector component in GUI (or just Shift+Scroll), you can directly tune the gauge to a known network.
 - **JEI/EMI Integration**: Allow to set gauge filter without to actually have the item in inventory.
 - **Redstone Control**: When controller block is powered by redstone signal, all of stored gauges will temporarily stop sending new requests.
+- **Redstone Link Support**: Redstone Link could be used in controller as well, it is as large as gauge in controller's grid.
 - **Improved Factory Gauges**: Gauges in virtual board (not include the gauges in game world) receive the following new features:
   - **Batch Crafting**: You can modify batch size in crafting mode gauge now. The gauge will attempt to send out multiple set of ingredients in **one single package**, and **re-packager** can split the package to multiple single-craft packages.
   - **Larger Crafting Grid**: You can now use larger than 3x3 recipes in the crafting mode gauge, as long as a single package can fit the crafting ingredients. Compatible with Batch Crafting feature.
   - **Larger Ingredient Amount per Connection**: Each connected ingredient no longer only able to have up to 64 items. You can continue to scroll & increase the request amount exceed 64, as long as you have non-occupied slots to use.
+  - **Ignore Item Data**: You can turn on "Ignore Data" when set item to gauge now. While this option is enabled, the gauge will monitor all items for specified type. Due to internal limitation, batch crafting and large crafting is disabled if any ingredient is in ignore data mode.
   - **Follow Demand Mode**: You cannot manually set request amount of the Passive mode gauge. Instead, the request amount is automatically set when connected gauges need the item for their craft, so you do not need to keep intermediate items in stock. Chain multiple passive mode gauges is also supported.
   - **Follow Demand and Order**: Beyond automatically set request amount, the recipe of the gauge would be added to Stock Keeper GUI to allow manually initialize production orders. You can also track ongoing production order in Stock Keeper now.
 - **Mod Compatibility**: The mod "replicate" a new gauge system, so it should not conflict with other gauge related mods, but also cannot receive other mod's modification unless implement dedicate support. The compatibility with following mods are supported:
@@ -23,12 +25,12 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 
 ## Dependencies
 
-| Dependency | Version  |
-|---|----------|
-| Minecraft | 1.21.1   |
-| NeoForge | 21.1.227 |
-| Create | 6.0.10   |
-| Deployer | 0.1.2    |
+| Dependency             | Version  |
+|------------------------|----------|
+| Minecraft              | 1.21.1   |
+| NeoForge               | 21.1.227 |
+| Create                 | 6.0.10   |
+| Deployer (Recommended) | 0.1.2    |
 
 ## Credits
 
