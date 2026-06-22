@@ -1276,7 +1276,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         // Let the address suggestion list consume scrolling first (matches FactoryPanelScreen).
         if (addressBox.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
-        int step = hasShiftDown() ? 10 : 1;
+        int step = hasControlDown() ? 100 : (hasShiftDown() ? 10 : 1);
         int dir = (int) Math.signum(scrollY);
 
         if (!craftingActive) {
