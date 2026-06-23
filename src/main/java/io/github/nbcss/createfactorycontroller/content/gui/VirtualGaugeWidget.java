@@ -80,7 +80,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      * {@code target} reticle drawn by the screen.)
      */
     @Override
-    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow, boolean showCount) {
+    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
@@ -105,25 +105,31 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
             gfx.setColor(1f, 1f, 1f, 1f);
         }
+    }
 
-        // Count overlay — shown for every gauge in "full overlay" mode, otherwise only for the hovered one.
+    /**
+     * Count overlay — shown for every gauge in "full overlay" mode, otherwise only for the hovered one. Drawn in the
+     * top-most pass (after the hover/selection target marks) so the reticle never covers the number.
+     */
+    @Override
+    public void renderOverlay(GuiGraphics gfx, boolean showCount) {
         Component label = showCount ? behaviour.getCountLabel() : Component.empty();
-        if (!label.getString().isEmpty()) {
-            Font font = Minecraft.getInstance().font;
-            int w = font.width(label);
-            float scale = 0.5f;
+        if (label.getString().isEmpty()) return;
+        int x0 = behaviour.position().x() * CELL;
+        int y0 = behaviour.position().y() * CELL;
+        Font font = Minecraft.getInstance().font;
+        int w = font.width(label);
 
-            gfx.pose().pushPose();
-            gfx.pose().translate(x0 + CELL - 1, y0 + CELL - 1, 200);
-            gfx.pose().scale(scale, scale, 1);
-            // Full 8-direction outline, like Create's in-world value-box labels (not a drop shadow).
-            Matrix4f matrix = gfx.pose().last().pose();
-            font.drawInBatch8xOutline(label.getVisualOrderText(), -w, -font.lineHeight,
-                    0xFFFFFFFF, 0x000000,
-                    matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
-            gfx.flush();
-            gfx.pose().popPose();
-        }
+        gfx.pose().pushPose();
+        gfx.pose().translate(x0 + CELL - 1, y0 + CELL - 1, 200);
+        gfx.pose().scale(0.5f, 0.5f, 1);
+        // Full 8-direction outline, like Create's in-world value-box labels (not a drop shadow).
+        Matrix4f matrix = gfx.pose().last().pose();
+        font.drawInBatch8xOutline(label.getVisualOrderText(), -w, -font.lineHeight,
+                0xFFFFFFFF, 0x000000,
+                matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
+        gfx.flush();
+        gfx.pose().popPose();
     }
 
     // ── Tooltip ──────────────────────────────────────────────────────────────

@@ -2,6 +2,9 @@
 Features:
 - Allow drag-to-select components and perform batch relocate & remove.
 
+Optimization:
+- Controller GUI will not render out-of-board components now.
+
 Compatibility:
 - Allow Fluid Gauge from Repackaged mod to be used in Factory Controller.
 

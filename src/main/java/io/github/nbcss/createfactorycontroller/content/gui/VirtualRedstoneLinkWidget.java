@@ -51,7 +51,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     }
 
     @Override
-    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow, boolean showCount) {
+    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         RenderSystem.enableBlend();
         gfx.blitSprite(sprite("front"), x0, y0, CELL, CELL);

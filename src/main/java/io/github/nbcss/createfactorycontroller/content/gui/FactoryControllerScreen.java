@@ -74,6 +74,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     static final int CANVAS_TOP_PADDING = 16;
     static final int CANVAS_BOTTOM_PADDING = 9;
     private static final int CANVAS_COMPONENT_SIZE = 16;
+    /** Off-screen render-cull slack (canvas-world px) around a component's own cell: a gauge's count label is anchored
+     *  at the cell's bottom-right and can extend a few cells left/up beyond it, so cull a little loosely to never drop
+     *  a component whose label still reaches the viewport. Everything is scissor-clipped, so this only gates draws. */
+    private static final int COMPONENT_CULL_MARGIN = CANVAS_COMPONENT_SIZE;
 
     private static final int BOARD_MIN_PX = -FactoryControllerBlockEntity.BOARD_LIMIT * CANVAS_COMPONENT_SIZE;
     private static final int BOARD_MAX_PX = (FactoryControllerBlockEntity.BOARD_LIMIT + 1) * CANVAS_COMPONENT_SIZE;
@@ -515,22 +519,30 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
+        // Cull components and connections that fall outside the visible canvas rectangle (a large board may hold far
+        // more than fit the viewport); everything drawn is still scissor-clipped, this just skips the off-screen draws.
         for (VirtualComponentWidget component : componentWidgets.values())
-            component.renderBack(graphics);
+            if (isCellVisible(component.position(), minX, minY, maxX, maxY))
+                component.renderBack(graphics);
 
-        VirtualConnectionRenderer.renderConnections(graphics, menu);
+        VirtualConnectionRenderer.renderConnections(graphics, menu, minX, minY, maxX, maxY);
 
         boolean fullOverlay = ClientConfig.fullOverlay();
         // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
         double worldMouseX = viewX + (mouseX - centerX) / getZoomFactor();
         double worldMouseY = viewY + (mouseY - centerY) / getZoomFactor();
         for (VirtualComponentWidget component : componentWidgets.values())
-            component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick),
-                    fullOverlay || component.position().equals(hoveredPosition));
+            if (isCellVisible(component.position(), minX, minY, maxX, maxY))
+                component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
 
         renderSelectedNetworkMask(graphics);
         renderHoverTarget(graphics);
         renderSelectionTargets(graphics);
+
+        // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
+        for (VirtualComponentWidget component : componentWidgets.values())
+            if (isCellVisible(component.position(), minX, minY, maxX, maxY))
+                component.renderOverlay(graphics, fullOverlay || component.position().equals(hoveredPosition));
 
         graphics.pose().popPose();
         graphics.disableScissor();
@@ -701,6 +713,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Empty cursor: white over a hovered gauge.
             if (hoverHasGauge) renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         }
+    }
+
+    /** Whether a component at {@code cell} could contribute any pixel to the visible canvas rectangle
+     *  {@code [minX,maxX]×[minY,maxY]} (canvas-world px), within {@link #COMPONENT_CULL_MARGIN} slack for its label. */
+    private static boolean isCellVisible(VirtualPanelPosition cell, int minX, int minY, int maxX, int maxY) {
+        int x0 = cell.x() * CANVAS_COMPONENT_SIZE - COMPONENT_CULL_MARGIN;
+        int y0 = cell.y() * CANVAS_COMPONENT_SIZE - COMPONENT_CULL_MARGIN;
+        int x1 = (cell.x() + 1) * CANVAS_COMPONENT_SIZE + COMPONENT_CULL_MARGIN;
+        int y1 = (cell.y() + 1) * CANVAS_COMPONENT_SIZE + COMPONENT_CULL_MARGIN;
+        return x0 < maxX && x1 > minX && y0 < maxY && y1 > minY;
     }
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
@@ -945,14 +967,25 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Start a rubber-band selection. With the Selection-Mode key held it can begin on ANY cell; otherwise it
             // begins only on an EMPTY cell — so a plain left-drag from blank space selects, while a drag from a
             // component still configures/relocates. The click-vs-drag outcome is decided in mouseReleased.
+            // Never while carrying an item: a held cursor item is for placing/configuring, not selecting, regardless
+            // of the Selection-Mode key (placement is handled directly below, not via the rubber-band release path).
             boolean ctrl = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
-            if (button == 0 && pendingConnectionTarget == null && pendingRelocateTarget == null
+            if (button == 0 && carried.isEmpty() && pendingConnectionTarget == null && pendingRelocateTarget == null
                     && (ctrl || widget == null)) {
                 rubberBanding = true;
                 rubberMoved = false;
                 rubberCtrl = ctrl;
                 rubberStartX = rubberCurX = mouseX;
                 rubberStartY = rubberCurY = mouseY;
+                return true;
+            }
+
+            // Carrying an item + left-click on an empty cell → place it (the rubber-band path above is skipped while
+            // carrying, so do the placement here, mirroring the old rubber-band release behaviour).
+            if (button == 0 && !carried.isEmpty() && widget == null
+                    && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+                clearSelection();
+                attachCarriedAt(clicked, carried);
                 return true;
             }
 
@@ -1050,8 +1083,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // (Left-clicks on an empty cell — attach a carried component, or drop the selection — are handled via the
-            // rubber-band release path, since every empty-cell left-press starts a rubber-band first.)
+            // (Empty-cursor left-clicks on an empty cell — drop the selection — are handled via the rubber-band
+            // release path, since an empty-cursor empty-cell left-press starts a rubber-band first. Carried-item
+            // placement on an empty cell is handled directly above.)
 
             // Click an existing component → its own interaction. Pass the cursor in canvas-world coords (so a widget
             // can hit-test sub-regions, e.g. the link's top/bottom frequency halves) and the button.

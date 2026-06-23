@@ -25,8 +25,12 @@ public interface VirtualComponentWidget {
     /** Back layer, drawn before the connection arrows. */
     void renderBack(GuiGraphics gfx);
 
-    /** Front layer (over the arrows). {@code glow} is the indicator chase value; {@code showCount} the overlay flag. */
-    void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow, boolean showCount);
+    /** Front layer (over the arrows). {@code glow} is the indicator chase value. */
+    void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow);
+
+    /** Top-most overlay (the gauge's count label), drawn AFTER the hover/selection target marks so those never cover
+     *  it. {@code showCount} gates the label (full-overlay mode, or this is the hovered cell). Default: nothing. */
+    default void renderOverlay(GuiGraphics gfx, boolean showCount) {}
 
     /** Hover tooltip. When {@code selected}, the "Click to configure" hint is replaced with "Drag to relocate". */
     List<Component> getTooltip(FactoryControllerMenu menu, boolean selected);

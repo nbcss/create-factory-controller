@@ -93,17 +93,33 @@ public final class VirtualConnectionRenderer {
     /**
      * Draws every incoming connection in the panel. Call inside the canvas scissor, before the
      * components are drawn, so the gauge icons sit on top of the line ends.
+     *
+     * <p>A connection whose source/target cells span a rectangle that doesn't overlap the visible canvas rectangle
+     * {@code [minX,maxX]×[minY,maxY]} (canvas-world px) is skipped — its whole grid path (any bend included) stays
+     * inside that rectangle, so it can contribute nothing on screen.</p>
      */
-    public static void renderConnections(GuiGraphics gfx, FactoryControllerMenu menu) {
+    public static void renderConnections(GuiGraphics gfx, FactoryControllerMenu menu,
+                                         int minX, int minY, int maxX, int maxY) {
         Set<VirtualPanelPosition> occupied = new HashSet<>();
         Map<VirtualPanelPosition, VirtualComponentBehaviour> byPos = new HashMap<>();
         for (VirtualComponentBehaviour c : menu.components) { occupied.add(c.position()); byPos.put(c.position(), c); }
         for (VirtualComponentBehaviour target : menu.components) {
             VirtualPanelPosition toPos = target.position();
             for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : target.targetedBy().entrySet()) {
+                if (!spanVisible(e.getKey(), toPos, minX, minY, maxX, maxY)) continue;
                 drawConnection(gfx, e.getKey(), toPos, e.getValue(), target, byPos.get(e.getKey()), occupied);
             }
         }
+    }
+
+    /** Whether the cell-bounding rectangle of the two connection ends overlaps the visible canvas rectangle. */
+    private static boolean spanVisible(VirtualPanelPosition a, VirtualPanelPosition b,
+                                       int minX, int minY, int maxX, int maxY) {
+        int x0 = Math.min(a.x(), b.x()) * CELL;
+        int y0 = Math.min(a.y(), b.y()) * CELL;
+        int x1 = (Math.max(a.x(), b.x()) + 1) * CELL;
+        int y1 = (Math.max(a.y(), b.y()) + 1) * CELL;
+        return x0 < maxX && x1 > minX && y0 < maxY && y1 > minY;
     }
 
     /**
