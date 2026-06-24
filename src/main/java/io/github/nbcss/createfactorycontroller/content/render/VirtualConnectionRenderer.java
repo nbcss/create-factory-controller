@@ -17,8 +17,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
+import org.joml.Vector2i;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,27 +43,45 @@ public final class VirtualConnectionRenderer {
 
     private static final int CELL = 16;
 
-    // Create's connection sprite (16×16). The blocks resolve under assets/create/textures/...
-    private static final ResourceLocation TEX =
+    // Create's connection sprite (16×16).
+    private static final ResourceLocation TEX_STATIC =
             ResourceLocation.fromNamespaceAndPath("create", "textures/block/factory_panel_connections.png");
-    private static final int TEX_SIZE = 16;
-    /** Connection line width (world px); the sprite line strip is 4px wide. */
-    private static final int THICKNESS = 4;
-    /** Arrowhead length along its pointing axis (world px). */
-    private static final int ARROW_LEN = 2;
+    private static final ResourceLocation TEX_ANIMATED =
+            ResourceLocation.fromNamespaceAndPath("create", "textures/block/factory_panel_connections_animated.png");
 
-    // Atlas sub-rects {u, v, w, h}. Create's connection models apply rotation:180 to every face,
-    // which we can't replicate with a plain blit — so each strip's raw pixels point OPPOSITE its
-    // model name. The constants below are named by the direction they actually point when blitted
-    // raw: ARROW_N = the rect that visually points up (Create's "south" rect), etc.
-    private static final int[] LINE_V  = {4, 0, 4, 8};   // vertical line   (4w × 8h)
-    private static final int[] LINE_H  = {0, 8, 8, 4};   // horizontal line (8w × 4h)
-    private static final int[] ARROW_N = {8, 3, 4, 2};   // points up    (model "south" rect)
-    private static final int[] ARROW_S = {12, 3, 4, 2};  // points down  (model "north" rect)
-    private static final int[] ARROW_E = {11, 12, 2, 4};  // points right (model "west" rect)
-    private static final int[] ARROW_W = {11, 8, 2, 4};   // points left  (model "east" rect)
+    private static final int FRAME_SIZE = 16; // pixels
+    private static final float FRAME_TIME = 2f; // ticks per frame
+    private static final int N_FRAMES = 8;
 
-    private VirtualConnectionRenderer() {}
+    private enum Direction { UP, DOWN, LEFT, RIGHT }
+
+    // Subtexture rect coordinates in a frame. 
+    // (ox, oy) = origin which is aligned with the center of a cell
+    // t = starting frame
+    // LINE_*_0 = line that fills the earlier half of the cell in this direction
+    // LINE_*_1 = line that fills the latter half of the cell in this direction
+    private record Subtexture(int u, int v, int w, int h, int ox, int oy, int t) {
+        public static final Subtexture LINE_UP_0    = of( 0,  0,  4,  8,  2,  0, 0);
+        public static final Subtexture LINE_UP_1    = of( 0,  0,  4,  8,  2,  8, 0);
+        public static final Subtexture LINE_DOWN_0  = of( 4,  0,  4,  8,  2,  8, 0);
+        public static final Subtexture LINE_DOWN_1  = of( 4,  0,  4,  8,  2,  0, 0);
+        public static final Subtexture LINE_LEFT_0  = of( 0,  8,  8,  4,  0,  2, 0);
+        public static final Subtexture LINE_LEFT_1  = of( 0,  8,  8,  4,  8,  2, 0);
+        public static final Subtexture LINE_RIGHT_0 = of( 0, 12,  8,  4,  8,  2, 0);
+        public static final Subtexture LINE_RIGHT_1 = of( 0, 12,  8,  4,  0,  2, 0);
+        public static final Subtexture HEAD_UP      = of( 8,  3,  4,  2,  2, -6, 4);
+        public static final Subtexture HEAD_DOWN    = of(12,  3,  4,  2,  2,  8, 4);
+        public static final Subtexture HEAD_LEFT    = of(11,  8,  2,  4, -6,  2, 4);
+        public static final Subtexture HEAD_RIGHT   = of(11, 12,  2,  4,  8,  2, 4);
+        public static final Subtexture TAIL_UP      = of( 0,  0,  4,  2,  2,  8, 0);
+        public static final Subtexture TAIL_DOWN    = of( 4,  6,  4,  2,  2, -6, 0);
+        public static final Subtexture TAIL_LEFT    = of( 0,  8,  2,  4,  8,  2, 0);
+        public static final Subtexture TAIL_RIGHT   = of( 6, 12,  2,  4, -6,  2, 0);
+
+        public static Subtexture of(int u, int v, int w, int h, int ox, int oy, int t) {
+            return new Subtexture(u, v, w, h, ox, oy, t);
+        }
+    }
 
     // Flash mix targets (Create's renderPath): on each request attempt the line flashes toward whitish
     // if the source can supply, or red if it can't. The flash decays over FLASH_DECAY ticks from the
@@ -66,12 +89,6 @@ public final class VirtualConnectionRenderer {
     private static final int FLASH_OK   = 0xEAF2EC;
     private static final int FLASH_FAIL = 0xE5654B;
     private static final float FLASH_DECAY = 8f;   // ticks for the attempt flash to fade out
-
-    // The flowing animation scrolls the flat line strip ({@link #LINE_V}/{@link #LINE_H}) toward the
-    // target — a moving brightness wave along a flat line (the strip's own 8-px-period ripple), not
-    // marching chevrons. Idle connections draw the same strip without scrolling.
-    private static final int SCROLL_PERIOD = 8;       // strip length (world px)
-    private static final float SCROLL_SPEED = 0.4f;   // px per render tick
 
     /**
      * Draws every incoming connection in the panel. Call inside the canvas scissor, before the
@@ -119,19 +136,20 @@ public final class VirtualConnectionRenderer {
             mode = conn.arrowBendMode % 4;
         }
 
-        int[][] cells = buildCellPath(from, to, mode);
-        if (reverse)
-            for (int i = 0, j = cells.length - 1; i < j; i++, j--) { int[] t = cells[i]; cells[i] = cells[j]; cells[j] = t; }
+        List<Vector2i> path = new ArrayList<>(buildCellPath(from, to, mode));
+        if (reverse) Collections.reverse(path);
+
+        assert Minecraft.getInstance().level != null;
 
         int color = 0x888898;
-        boolean flowing = false;
+        boolean animated = false;
         if (target instanceof VirtualRedstoneLinkBehaviour link && conn instanceof RedstoneConnection rc) {
             color = linkConnectionColor(link, rc, source);
         } else if (target instanceof VirtualGaugeBehaviour gauge) {
             color = gauge.getConnectionColor();
-            flowing = !gauge.isMissingAddress() && !gauge.waitingForNetwork
+            animated = !gauge.isMissingAddress() && !gauge.waitingForNetwork
                     && !gauge.satisfied && !gauge.redstonePowered;
-            if (flowing) {
+            if (animated) {
                 // Flash once per request attempt, decaying from the gauge's last-attempt tick.
                 float age = Minecraft.getInstance().level.getGameTime() - gauge.lastRequestTick
                         + AnimationTickHolder.getPartialTicks();
@@ -145,67 +163,78 @@ public final class VirtualConnectionRenderer {
         }
         gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
 
-        // World-pixel waypoints (cell centres); pull the last one back to the target's edge so the
-        // arrowhead fills the remaining half-cell.
-        float[][] pts = new float[cells.length][2];
-        for (int i = 0; i < cells.length; i++)
-            pts[i] = new float[] { cellCenter(cells[i][0]), cellCenter(cells[i][1]) };
+        // Walk every line of the path and blit.
+        for (int i = 0; i < path.size() - 1; i++) {
+            Vector2i a = path.get(i), b = path.get(i + 1);
+            int length = (int) a.gridDistance(b);
 
-        int n = pts.length;
-        float[] corner = pts[n - 2];
-        float tx = pts[n - 1][0], ty = pts[n - 1][1];
-        boolean approachVertical = Math.abs(corner[0] - tx) < 0.5f;
-        float half = CELL * 0.5f;
-        pts[n - 1] = approachVertical
-                ? new float[] { tx, ty + (ty < corner[1] ? half : -half) }
-                : new float[] { tx + (tx < corner[0] ? half : -half), ty };
+            Direction direction;
+            if      (a.y > b.y) direction = Direction.UP;
+            else if (a.y < b.y) direction = Direction.DOWN;
+            else if (a.x > b.x) direction = Direction.LEFT;
+            else if (a.x < b.x) direction = Direction.RIGHT;
+            else continue;
 
-        // The line: plain strip when idle, or the scrolling chevron strip while flowing.
-        for (int i = 0; i < n - 1; i++)
-            drawLineSegment(gfx, pts[i], pts[i + 1], flowing);
+            // Walk cell by cell along this line, blitting the body strip in each cell.
+            for (int j = 0; j <= length; j++) {
+                Vector2i cell = switch (direction) {
+                    case UP    -> new Vector2i(a.x,     a.y - j);
+                    case DOWN  -> new Vector2i(a.x,     a.y + j);
+                    case LEFT  -> new Vector2i(a.x - j, a.y    );
+                    case RIGHT -> new Vector2i(a.x + j, a.y    );
+                };
 
-        // Arrowhead entering the target cell.
-        if (approachVertical) {
-            boolean destAbove = ty < corner[1];
-            float arrowTop = destAbove ? pts[n - 1][1] - ARROW_LEN : pts[n - 1][1];
-            blit(gfx, destAbove ? ARROW_N : ARROW_S, Math.round(tx) - THICKNESS / 2, Math.round(arrowTop), THICKNESS, ARROW_LEN);
-        } else {
-            boolean destLeft = tx < corner[0];
-            float arrowLeft = destLeft ? pts[n - 1][0] - ARROW_LEN : pts[n - 1][0];
-            blit(gfx, destLeft ? ARROW_W : ARROW_E, Math.round(arrowLeft), Math.round(ty) - THICKNESS / 2, ARROW_LEN, THICKNESS);
+                // Earlier half of the cell in the current direction
+                if (j != 0) {
+                    var st0 = (i == path.size() - 2 && j == length)
+                    ? switch (direction) {
+                        case UP    -> Subtexture.HEAD_UP;
+                        case DOWN  -> Subtexture.HEAD_DOWN;
+                        case LEFT  -> Subtexture.HEAD_LEFT;
+                        case RIGHT -> Subtexture.HEAD_RIGHT;
+                    } : switch (direction) {
+                        case UP    -> Subtexture.LINE_UP_0;
+                        case DOWN  -> Subtexture.LINE_DOWN_0;
+                        case LEFT  -> Subtexture.LINE_LEFT_0;
+                        case RIGHT -> Subtexture.LINE_RIGHT_0;
+                    };
+                    drawSegment(gfx, st0, animated, cell.x, cell.y);
+                }
+                // Latter half of the cell in the current direction
+                if (j != length) {
+                    var st1 = (i == 0 && j == 0)
+                    ? switch (direction) {
+                        case UP    -> Subtexture.TAIL_UP;
+                        case DOWN  -> Subtexture.TAIL_DOWN;
+                        case LEFT  -> Subtexture.TAIL_LEFT;
+                        case RIGHT -> Subtexture.TAIL_RIGHT;
+                    } : switch (direction) {
+                        case UP    -> Subtexture.LINE_UP_1;
+                        case DOWN  -> Subtexture.LINE_DOWN_1;
+                        case LEFT  -> Subtexture.LINE_LEFT_1;
+                        case RIGHT -> Subtexture.LINE_RIGHT_1;
+                    };
+                    drawSegment(gfx, st1, animated, cell.x, cell.y);
+                }
+            }
         }
+
         gfx.setColor(1f, 1f, 1f, 1f);
     }
 
     /**
-     * Draws one axis-aligned line segment {@code a → b} in the current tint by tiling the flat line
-     * strip over its 8-px period. While flowing, the strip scrolls toward the target so its ripple
-     * reads as a progressing wave along a flat line; idle, it is static.
+     * Draw a single segment of arrow graphics. Align sprite origin with cell center.
+     * @param x Cell x coordinate.
+     * @param y Cell y coordinate.
      */
-    private static void drawLineSegment(GuiGraphics gfx, float[] a, float[] b, boolean flowing) {
-        boolean horizontal = a[1] == b[1];
-        int dir = (int) Math.signum(horizontal ? b[0] - a[0] : b[1] - a[1]);
-        // Scroll so the ripple advances toward the target; integer px keeps the pixel art crisp.
-        int off = flowing ? -dir * Math.round(AnimationTickHolder.getRenderTime() * SCROLL_SPEED) : 0;
-        if (horizontal) {
-            int y = Math.round(a[1]) - THICKNESS / 2;
-            int xa = Math.round(Math.min(a[0], b[0])), xb = Math.round(Math.max(a[0], b[0]));
-            for (int x = xa; x < xb; ) {
-                int u = Math.floorMod(x + off, SCROLL_PERIOD);
-                int run = Math.min(SCROLL_PERIOD - u, xb - x);
-                gfx.blit(TEX, x, y, run, THICKNESS, LINE_H[0] + u, LINE_H[1], run, LINE_H[3], TEX_SIZE, TEX_SIZE);
-                x += run;
-            }
-        } else {
-            int x = Math.round(a[0]) - THICKNESS / 2;
-            int ya = Math.round(Math.min(a[1], b[1])), yb = Math.round(Math.max(a[1], b[1]));
-            for (int y = ya; y < yb; ) {
-                int v = Math.floorMod(y + off, SCROLL_PERIOD);
-                int run = Math.min(SCROLL_PERIOD - v, yb - y);
-                gfx.blit(TEX, x, y, LINE_V[2], run, LINE_V[0], LINE_V[1] + v, LINE_V[2], run, TEX_SIZE, TEX_SIZE);
-                y += run;
-            }
-        }
+    private static void drawSegment(GuiGraphics gfx, Subtexture st, boolean animated, int x, int y) {
+        int frame = !animated ? 0 :
+                (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME + st.t) % N_FRAMES;
+        gfx.blit(
+                animated ? TEX_ANIMATED : TEX_STATIC,
+                x * CELL + CELL/2 - st.ox, y * CELL + CELL/2 - st.oy,
+                st.u, st.v + frame * FRAME_SIZE, st.w, st.h,
+                FRAME_SIZE, FRAME_SIZE * (animated ? N_FRAMES : 1));
     }
 
     /**
@@ -216,44 +245,46 @@ public final class VirtualConnectionRenderer {
      *     <li>3 — V→H→V staircase (falls back to V→H if it can't fit)</li></ul>
      * A staircase needs a cell strictly between source and target on its stepping axis ({@code |d|>=2}).
      */
-    private static int[][] buildCellPath(VirtualPanelPosition from, VirtualPanelPosition to, int mode) {
+    private static List<Vector2i> buildCellPath(VirtualPanelPosition from, VirtualPanelPosition to, int mode) {
         int fx = from.x(), fy = from.y(), tx = to.x(), ty = to.y();
         if (fx == tx || fy == ty)                                   // aligned → straight run
-            return new int[][] {{fx, fy}, {tx, ty}};
+            return List.of(new Vector2i(fx, fy), new Vector2i(tx, ty));
 
         int dx = tx - fx, dy = ty - fy;
-        switch (mode) {
-            case 1:                                                 // H→V
-                return new int[][] {{fx, fy}, {tx, fy}, {tx, ty}};
-            case 2:                                                 // H→V→H
+        return switch (mode) {
+            case 1 ->                                                 // H→V
+                    List.of(new Vector2i(fx, fy), new Vector2i(tx, fy), new Vector2i(tx, ty));
+            case 2 -> {
                 if (Math.abs(dx) >= 2) {
                     int mx = fx + dx / 2;                           // bend column (a cell centre)
-                    return new int[][] {{fx, fy}, {mx, fy}, {mx, ty}, {tx, ty}};
+                    yield List.of(new Vector2i(fx, fy), new Vector2i(mx, fy), new Vector2i(mx, ty), new Vector2i(tx, ty));
                 }
-                return new int[][] {{fx, fy}, {tx, fy}, {tx, ty}};  // fall back to H→V
-            case 3:                                                 // V→H→V
+                yield List.of(new Vector2i(fx, fy), new Vector2i(tx, fy), new Vector2i(tx, ty));
+            }
+            case 3 -> {
                 if (Math.abs(dy) >= 2) {
                     int my = fy + dy / 2;                           // bend row (a cell centre)
-                    return new int[][] {{fx, fy}, {fx, my}, {tx, my}, {tx, ty}};
+                    yield List.of(new Vector2i(fx, fy), new Vector2i(fx, my), new Vector2i(tx, my), new Vector2i(tx, ty));
                 }
-                return new int[][] {{fx, fy}, {fx, ty}, {tx, ty}};  // fall back to V→H
-            default:                                                // 0: V→H
-                return new int[][] {{fx, fy}, {fx, ty}, {tx, ty}};
-        }
+                yield List.of(new Vector2i(fx, fy), new Vector2i(fx, ty), new Vector2i(tx, ty));
+            }
+            default ->                                                // 0: V→H
+                    List.of(new Vector2i(fx, fy), new Vector2i(fx, ty), new Vector2i(tx, ty));
+        };
     }
 
     /** True if the cell-space polyline passes through no occupied cell other than its endpoints. */
-    private static boolean pathClear(int[][] cells, Set<VirtualPanelPosition> occupied,
+    private static boolean pathClear(List<Vector2i> path, Set<VirtualPanelPosition> occupied,
                                      VirtualPanelPosition from, VirtualPanelPosition to) {
-        for (int i = 0; i < cells.length - 1; i++) {
-            int ax = cells[i][0], ay = cells[i][1], bx = cells[i + 1][0], by = cells[i + 1][1];
-            int stepX = Integer.signum(bx - ax), stepY = Integer.signum(by - ay);
-            int cx = ax, cy = ay;
+        for (int i = 0; i < path.size() - 1; i++) {
+            Vector2i a = path.get(i), b = path.get(i + 1);
+            int stepX = Integer.signum(b.x - a.x), stepY = Integer.signum(b.y - a.y);
+            Vector2i c = new Vector2i(a);
             while (true) {
-                VirtualPanelPosition p = new VirtualPanelPosition(cx, cy);
+                VirtualPanelPosition p = new VirtualPanelPosition(c.x, c.y);
                 if (!p.equals(from) && !p.equals(to) && occupied.contains(p)) return false;
-                if (cx == bx && cy == by) break;
-                cx += stepX; cy += stepY;
+                if (c.x == b.x && c.y == b.y) break;
+                c.x += stepX; c.y += stepY;
             }
         }
         return true;
@@ -274,16 +305,5 @@ public final class VirtualConnectionRenderer {
         boolean gaugeHasTarget = source instanceof VirtualGaugeBehaviour g && g.count != 0;
         if (!link.receive && !gaugeHasTarget) return LINK_INVALID;   // SEND with no driving target
         return conn.powered ? LINK_POWERED : LINK_UNPOWERED;
-    }
-
-    /** Blits an atlas sub-rect {@code {u,v,w,h}}, stretched into the given (world) rectangle. */
-    private static void blit(GuiGraphics gfx, int[] uv, int x, int y, int w, int h) {
-        if (w <= 0 || h <= 0) return;
-        gfx.blit(TEX, x, y, w, h, uv[0], uv[1], uv[2], uv[3], TEX_SIZE, TEX_SIZE);
-    }
-
-    /** World-pixel centre of a cell along one axis. */
-    private static float cellCenter(int cell) {
-        return (cell + 0.5f) * CELL;
     }
 }
