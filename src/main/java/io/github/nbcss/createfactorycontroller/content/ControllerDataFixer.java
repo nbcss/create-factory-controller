@@ -1,18 +1,20 @@
 package io.github.nbcss.createfactorycontroller.content;
 
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class ControllerDataFixer {
-    public static final int LATEST_VERSION = 1;
     private static final List<ControllerDataFixer> FIXERS = new ArrayList<>();
     static {
-        // 0 -> 1: connections moved from each component's per-component "TargetedBy" list onto a single central
+        // Mod version 0.2.1 -> 1.0, Data version 0 -> 1
+        // Connections moved from each component's per-component "TargetedBy" list onto a single central
         // "Connections" edge list at the controller root. In the old layout a wire was stored on its OWNER (the
         // consumer for an ingredient wire; the link for a gauge↔link wire) keyed by its source, so each old entry
         // becomes a central edge with To = that owner's position and a type derived from the owner's kind; From + the
@@ -21,23 +23,35 @@ public abstract class ControllerDataFixer {
         FIXERS.add(new ControllerDataFixer(1) {
             @Override
             public CompoundTag fix(CompoundTag tag) {
-                System.out.println("Fix: ");
-                System.out.println(tag);
                 ListTag components = tag.getList("Components", Tag.TAG_COMPOUND);
                 ListTag connections = new ListTag();
                 for (int i = 0; i < components.size(); i++) {
                     CompoundTag comp = components.getCompound(i);
-                    String connType = connectionTypeOf(comp.getString("Type"));
+                    String oldType = comp.getString("Type");
+                    // Only support gauge & redstone link in 0.2.1.
+                    String connType = switch (oldType) {
+                        case "createfactorycontroller:gauge" -> Connection.Type.LOGISTICS.name();
+                        case "createfactorycontroller:redstone_link" -> Connection.Type.REDSTONE.name();
+                        default -> null;
+                    };
                     if (connType != null) {
                         CompoundTag ownerPos = comp.getCompound("Pos");
                         ListTag targetedBy = comp.getList("TargetedBy", Tag.TAG_COMPOUND);
                         for (int j = 0; j < targetedBy.size(); j++) {
-                            CompoundTag edge = targetedBy.getCompound(j).copy();   // keeps From, ArrowBendMode, payload
+                            // keeps From, ArrowBendMode, payload
+                            CompoundTag edge = targetedBy.getCompound(j).copy();
                             edge.putString("Type", connType);
                             edge.put("To", ownerPos.copy());
                             connections.add(edge);
                         }
                     }
+                    comp.putString("Type", switch (oldType) {
+                        case "createfactorycontroller:gauge" -> RepackagedCompat.FLUID_GAUGE.toString()
+                                .equals(comp.getString("GaugeItem"))
+                                ? "FLUID_GAUGE" : "GAUGE";
+                        case "createfactorycontroller:redstone_link" -> "REDSTONE_LINK";
+                        default -> oldType;
+                    });
                     comp.remove("TargetedBy");
                     comp.remove("Targeting");
                 }
@@ -47,15 +61,6 @@ public abstract class ControllerDataFixer {
         });
     }
 
-    /** The {@code Connection.Type} name for a component kind ({@code Component#getTypeId}), or null if it owns no wires. */
-    @Nullable
-    private static String connectionTypeOf(String componentTypeId) {
-        return switch (componentTypeId) {
-            case "createfactorycontroller:gauge" -> "logistics";
-            case "createfactorycontroller:redstone_link" -> "redstone";
-            default -> null;
-        };
-    }
     private final int version;
     private ControllerDataFixer(int version) {
         this.version = version;
@@ -64,17 +69,15 @@ public abstract class ControllerDataFixer {
     public abstract CompoundTag fix(CompoundTag tag);
 
     public static CompoundTag fixControllerBE(CompoundTag tag) {
-        int ver = tag.getInt("Ver");
-        System.out.println(ver);
-        System.out.println(tag);
-        if (ver >= LATEST_VERSION)
+        if (tag.isEmpty())
             return tag;
-        for (ControllerDataFixer fixer : FIXERS) {
-            if (fixer.version > ver) {
+        int ver = tag.getInt("Ver");
+        if (ver >= FactoryControllerBlockEntity.DATA_VERSION)
+            return tag;
+        for (ControllerDataFixer fixer : FIXERS)
+            if (fixer.version > ver)
                 tag = fixer.fix(tag);
-            }
-        }
-        tag.putInt("Ver", LATEST_VERSION);
+        tag.putInt("Ver", FactoryControllerBlockEntity.DATA_VERSION);
         return tag;
     }
 }

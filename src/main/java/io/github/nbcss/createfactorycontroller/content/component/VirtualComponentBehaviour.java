@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -8,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -16,9 +18,15 @@ import java.util.function.Function;
 public interface VirtualComponentBehaviour {
     interface Type {
         String id();
-        ResourceLocation itemId();
+        List<ResourceLocation> items();
         boolean isRequireNetwork();
-        VirtualComponentBehaviour create();
+        VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
+                                         VirtualComponentPosition pos,
+                                         ResourceLocation itemId,
+                                         UUID networkId);
+        VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
+                                          CompoundTag tag,
+                                          HolderLookup.Provider registries);
     }
 
     // ── Identity & placement ────────────────────────────────────────────────

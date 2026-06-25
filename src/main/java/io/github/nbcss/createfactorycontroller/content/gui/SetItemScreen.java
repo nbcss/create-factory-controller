@@ -12,7 +12,6 @@ import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
-import io.github.nbcss.createfactorycontroller.content.component.GaugeType;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
@@ -54,13 +53,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private static final int INV_TEX_W = 176, INV_TEX_H = 108;
     /** Y of the hotbar slot row within player_inventory.png (matches the controller's constant). */
     private static final int INV_TEX_HOTBAR_Y = 76;
+    private static final int FILTER_SLOT_SIZE = 16;
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
-    /** The stock type of the gauge being configured (item / fluid / energy). */
-    private final GaugeType gaugeType;
-    /** A fluid gauge accepts only a fluid filter (any filled container → the chosen fluid); non-fluids are rejected. */
-    private final boolean fluidGauge;
+    private final VirtualGaugeBehaviour behaviour;
+    /** Staged filter copied into the gauge when the screen closes. */
+    private ItemStack filter = ItemStack.EMPTY;
 
     private IconButton confirm;
     private IconButton relocateButton;
@@ -81,16 +80,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private int invBgX, invBgY;
 
 
-    public SetItemScreen(FactoryControllerScreen controller, VirtualComponentPosition gaugePos) {
+    public SetItemScreen(FactoryControllerScreen controller, VirtualGaugeBehaviour behaviour) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               CreateLang.translate("gui.factory_panel.place_item_to_monitor").component());
         this.controller = controller;
-        this.gaugePos = gaugePos;
-        this.gaugeType = controller.getMenu().getComponent(gaugePos) instanceof VirtualGaugeBehaviour g
-                ? g.type : GaugeType.ITEM;
-        this.fluidGauge = gaugeType == GaugeType.FLUID;
+        this.behaviour = behaviour;
+        this.gaugePos = behaviour.position();
         this.ignoreData = false;
-        this.menu.setGhostFilter(ItemStack.EMPTY);
         /** Chime when the overlay opens — played client-side for this player only. */
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
@@ -116,7 +112,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         int originX = invBgX + 8 - leftPos;                                   // slot grid origin
         int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;                   // hotbar row
 
-        menu.showGhostSlot(filterX() - leftPos, filterY() - topPos, originX, hotbarY);
+        menu.repositionSlots(originX, hotbarY, true);
 
         int buttonY = panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25;
 
@@ -132,8 +128,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         relocateButton = new IconButton(panelX + 3, buttonY, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             PacketDistributor.sendToServer(new GaugeSetItemPacket(
-                    menu.controllerPos, gaugePos, menu.getGhostFilter().copy(), ignoreData));
-            menu.setGhostFilter(ItemStack.EMPTY);
+                    menu.controllerPos, gaugePos, filter.copy(), ignoreData));
             controller.beginRelocateMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
@@ -161,7 +156,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private void updateIgnoreDataButtons() {
         // Ignore-data is an item-gauge concept; hide it for any non-item gauge (fluid/energy have no NBT variants),
         // and for an item gauge once its chosen filter is a fluid.
-        boolean noIgnoreData = gaugeType != GaugeType.ITEM || FluidCompat.isFluidFilter(menu.getGhostFilter());
+        boolean noIgnoreData = !behaviour.supportsIgnoreData() || FluidCompat.isFluidFilter(filter);
         if (noIgnoreData) ignoreData = false;   // can't ignore data; the server clamps this too
         respectDataButton.visible = !noIgnoreData;
         ignoreDataButton.visible = !noIgnoreData;
@@ -212,7 +207,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
+        if (overFilter(mouseX, mouseY) && !filter.isEmpty()) {
+            if (FluidCompat.isFluidFilter(filter))
+                gfx.renderComponentTooltip(font, FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(filter),
+                        minecraft.options.advancedItemTooltips), mouseX, mouseY);
+            else
+                gfx.renderTooltip(font, filter, mouseX, mouseY);
+        } else renderTooltip(gfx, mouseX, mouseY);
         // Draw the icon-button tooltips LAST so the menu slots/items (drawn after renderBg) can't cover them.
         // Use isMouseOver (not isHoveredOrFocused) so a focused-but-not-hovered button doesn't trail the cursor.
         if (relocateButton.isMouseOver(mouseX, mouseY))
@@ -237,9 +238,19 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         respectDataButton.render(gfx, mouseX, mouseY, partialTick);
         ignoreDataButton.render(gfx, mouseX, mouseY, partialTick);
 
-        // Decorative gauge model; the configured filter shows in the real ghost slot (vanilla-drawn).
+        renderFilter(gfx, mouseX, mouseY);
+
+        // Decorative gauge model.
         GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack()).scale(3)
                 .render(gfx, panelX + 180, panelY + 48);
+    }
+
+    private void renderFilter(GuiGraphics gfx, int mouseX, int mouseY) {
+        FluidStack fluid = FluidCompat.getFilterFluid(filter);
+        if (!fluid.isEmpty()) FluidGuiRender.icon(gfx, fluid, filterX(), filterY(), FILTER_SLOT_SIZE);
+        else gfx.renderItem(filter, filterX(), filterY());
+        if (overFilter(mouseX, mouseY))
+            gfx.fill(filterX(), filterY(), filterX() + FILTER_SLOT_SIZE, filterY() + FILTER_SLOT_SIZE, 0x80FFFFFF);
     }
 
     @Override
@@ -251,47 +262,25 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 
-    /** True only for our ghost filter slot (the sole slot backed by the menu's ghost inventory). The wrapper
-     *  filter item can also sit in the player's inventory as a normal item, so the fluid form is scoped to here. */
-    private boolean isGhostSlot(Slot slot) {
-        return slot.container == menu.ghostInventory;
-    }
-
-    // In the ghost filter slot a fluid filter (CFL/CreateFluid's wrapper item) renders/names itself as the wrapper,
-    // so we draw the fluid itself instead — its icon (replacing the slot content) and its name. Real wrapper items
-    // in the player inventory keep their normal item icon/tooltip.
-    @Override
-    protected void renderSlotContents(GuiGraphics gfx, ItemStack stack, Slot slot, String countString) {
-        if (isGhostSlot(slot)) {
-            FluidStack fluid = FluidCompat.getFilterFluid(stack);
-            if (!fluid.isEmpty()) { FluidGuiRender.icon(gfx, fluid, slot.x, slot.y, 16); return; }
-        }
-        super.renderSlotContents(gfx, stack, slot, countString);
-    }
-
-    @Override
-    protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
-        if (hoveredSlot != null && isGhostSlot(hoveredSlot) && FluidCompat.isFluidFilter(stack))
-            return FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(stack),
-                    minecraft.options.advancedItemTooltips);
-        return super.getTooltipFromContainerItem(stack);
-    }
-
     // ── Input ────────────────────────────────────────────────────────────────
 
     @Override
-    protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
-        if (slotId == menu.ghostSlotIndex()) {
-            if (type == ClickType.QUICK_MOVE) menu.setGhostFilter(ItemStack.EMPTY);
-            else if (fluidGauge) applyFluidFilter(menu.getCarried(), true);   // empty hand clears, non-container refused
-            else menu.setGhostFilter(filterFromCarried(menu.getCarried(), mouseButton));
-            updateIgnoreDataButtons();   // filter may have become (non-)fluid → refresh the toggle
-            return;
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (overFilter(mouseX, mouseY)) {
+            if (behaviour.isFluidGauge()) applyFluidFilter(menu.getCarried(), true);
+            else setFilter(filterFromCarried(menu.getCarried(), button));
+            updateIgnoreDataButtons();
+            return true;
         }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
             // shift-click an inventory item → set the filter (a fluid gauge takes only its fluid's container).
-            if (fluidGauge) applyFluidFilter(slot.getItem(), false);   // non-container shift-click → ignored
-            else menu.setGhostFilter(slot.getItem());
+            if (behaviour.isFluidGauge()) applyFluidFilter(slot.getItem(), false);   // non-container shift-click → ignored
+            else setFilter(slot.getItem());
             updateIgnoreDataButtons();
             return;
         }
@@ -313,8 +302,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     private void returnToController() {
         PacketDistributor.sendToServer(new GaugeSetItemPacket(
-                menu.controllerPos, gaugePos, menu.getGhostFilter().copy(), ignoreData));
-        menu.setGhostFilter(ItemStack.EMPTY);
+                menu.controllerPos, gaugePos, filter.copy(), ignoreData));
         Minecraft.getInstance().setScreen(controller);
     }
 
@@ -330,17 +318,21 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
      */
     private void applyFluidFilter(ItemStack source, boolean allowClear) {
         if (source.isEmpty()) {
-            if (allowClear) menu.setGhostFilter(ItemStack.EMPTY);
+            if (allowClear) setFilter(ItemStack.EMPTY);
             return;
         }
         ItemStack fluidFilter = filterFromCarried(source, 0);
-        if (!fluidFilter.isEmpty()) menu.setGhostFilter(fluidFilter);   // non-container → refused, keep current
+        if (!fluidFilter.isEmpty()) setFilter(fluidFilter);   // non-container → refused, keep current
+    }
+
+    private void setFilter(ItemStack stack) {
+        filter = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
     }
 
     private ItemStack filterFromCarried(ItemStack carried, int mouseButton) {
         // A fluid gauge holds only a fluid: any filled fluid container (either click) becomes the generic fluid
         // filter; a non-fluid item yields EMPTY (the caller decides whether that clears or is refused).
-        if (fluidGauge) {
+        if (behaviour.isFluidGauge()) {
             FluidStack fluid = FluidCompat.fluidInContainer(carried);
             return fluid.isEmpty() ? ItemStack.EMPTY : FluidCompat.makeGenericFluidFilter(fluid);
         }
@@ -354,14 +346,19 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     // ── JEI hooks (used by the handlers registered on this screen) ──
     public Rect2i ghostSlotArea() { return new Rect2i(filterX(), filterY(), 16, 16); }
     /** Whether this screen configures a fluid gauge (filter restricted to fluids). Used by the JEI ghost handler. */
-    public boolean isFluidGauge() { return fluidGauge; }
+    public boolean isFluidGauge() { return behaviour.isFluidGauge(); }
     /** JEI drop. For a fluid gauge the handler passes an already-built fluid-filter token (from a dragged fluid); set
      *  it only if it's a valid fluid filter (a stray item drop is refused). An item gauge takes the stack directly. */
     public void setGhostFromJei(ItemStack stack) {
-        if (fluidGauge) {
-            if (FluidCompat.isFluidFilter(stack)) menu.setGhostFilter(stack);
-        } else menu.setGhostFilter(stack);
+        if (behaviour.isFluidGauge()) {
+            if (FluidCompat.isFluidFilter(stack)) setFilter(stack);
+        } else setFilter(stack);
         updateIgnoreDataButtons();
+    }
+
+    private boolean overFilter(double mx, double my) {
+        return mx >= filterX() && mx < filterX() + FILTER_SLOT_SIZE
+                && my >= filterY() && my < filterY() + FILTER_SLOT_SIZE;
     }
 
     public List<Rect2i> extraGuiAreas() {

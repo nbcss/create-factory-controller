@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -58,7 +59,7 @@ public abstract class Connection {
     public static Connection fromNBT(CompoundTag tag) {
         var type = Type.get(tag.getString("Type"));
         if (type != null)
-            return type.loader.apply(tag);
+            return type.factory.apply(tag);
         else
             return null;
     }
@@ -72,24 +73,24 @@ public abstract class Connection {
      *
      * <p>See {@code CONNECTION_REWORK_PLAN.md}.</p>
      */
-    public record Type(String name, Uniqueness uniqueness, Function<CompoundTag, Connection> loader) {
+    public record Type(String name, Uniqueness uniqueness, Function<CompoundTag, Connection> factory) {
         /** Item/fluid ingredient flow (gauge → gauge). */
-        public static final Type LOGISTICS = new Type("logistics", Uniqueness.DIRECTED, LogisticsConnection::fromNBT);
-        /** Boolean gating / state signal (gauge ↔ redstone link; future logic tubes). */
-        public static final Type REDSTONE = new Type("redstone", Uniqueness.UNDIRECTED, RedstoneConnection::fromNBT);
+        public static final Type LOGISTICS = new Type("LOGISTICS", Uniqueness.DIRECTED, LogisticsConnection::fromNBT);
+        /** Boolean gating / state signal. */
+        public static final Type REDSTONE = new Type("REDSTONE", Uniqueness.UNDIRECTED, RedstoneConnection::fromNBT);
 
-        private static final List<Type> ALL = List.of(LOGISTICS, REDSTONE);
+        private static final Map<String, Type> REGISTRY = Map.of(
+                LOGISTICS.name, LOGISTICS,
+                REDSTONE.name, REDSTONE
+        );
 
         public static Collection<Type> values() {
-            return ALL;
+            return REGISTRY.values();
         }
 
         @Nullable
-        public static Type get(String tag) {
-            for (var x: ALL)
-                if (x.name.equals(tag))
-                    return x;
-            return null;
+        public static Type get(String name) {
+            return REGISTRY.get(name);
         }
     }
 

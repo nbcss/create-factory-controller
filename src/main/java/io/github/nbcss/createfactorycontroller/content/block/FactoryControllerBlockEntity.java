@@ -57,9 +57,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public static final int MAX_NAME_LENGTH = 25;
     public static final int BOARD_LIMIT = 64;
 
-    /** Schema version of the persisted controller data ({@code "Ver"} in NBT). Absent ⇒ {@code 0} (pre-versioning).
-     *  Written now as a migration anchor; future format changes (e.g. central connection storage, see
-     *  CONNECTION_REWORK_PLAN.md) bump this and branch on {@link #dataVersion} read from disk. */
     public static final int DATA_VERSION = 1;
     /** Version of the data most recently {@link #read}; {@code 0} = pre-versioning. For future migration logic. */
 
@@ -240,6 +237,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, itemId, networkId);
+        if (behaviour == null) return;
         if (behaviour instanceof VirtualGaugeBehaviour gauge)
             gauge.controllerPowered = redstonePowered;   // inherit the live redstone state
         else if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
@@ -369,8 +367,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         // A fluid gauge holds only a fluid filter — reject any (non-empty) item filter (the screen already prevents
         // this; defensive against a crafted packet).
-        if (gauge.type == io.github.nbcss.createfactorycontroller.content.component.GaugeType.FLUID
-                && !filter.isEmpty() && !FluidCompat.isFluidFilter(filter)) return;
+        if (gauge instanceof FluidGaugeBehaviour && !filter.isEmpty() && !FluidCompat.isFluidFilter(filter)) return;
         boolean fluid = FluidCompat.isFluidFilter(filter);
         // Ignore-data never applies to a fluid filter (the set-item screen hides the toggle there).
         gauge.ignoreData = ignoreData && !fluid;
@@ -625,7 +622,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     @Override
     protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.read(tag, registries, clientPacket);
-        System.out.println("============================================================================");
+        clearCopiedSetupComponent();
         tag = ControllerDataFixer.fixControllerBE(tag);
 
         customName = tag.getString("CustomName");   // "" when absent
@@ -649,6 +646,15 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         markOrderableDirty();   // republish to the registry on the next server tick (level is set by then)
+    }
+
+    /**
+     * Older placed controllers could keep the item-only setup payload in the block entity's component map.
+     * Drop it on load so future saves/drops don't duplicate the controller setup data.
+     */
+    private void clearCopiedSetupComponent() {
+        if (components().has(CreateFactoryController.CONTROLLER_SETUP.get()))
+            setComponents(components().filter(type -> !type.equals(CreateFactoryController.CONTROLLER_SETUP.get())));
     }
 
     /** Loads the central connection graph from {@code tag}'s {@code "Connections"} edge list (old saves are upgraded to
@@ -683,11 +689,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         tag.putInt("Ver", DATA_VERSION);
         if (!customName.isBlank()) tag.putString("CustomName", customName);
 
-        ListTag gaugeList = new ListTag();
-        for (VirtualComponentBehaviour b : components.values()) {
-            gaugeList.add(b.toItemNBT(registries));
+        ListTag components = new ListTag();
+        for (VirtualComponentBehaviour b : this.components.values()) {
+            components.add(b.toItemNBT(registries));
         }
-        tag.put("Components", gaugeList);
+        tag.put("Components", components);
         tag.put("Connections", connectionGraph.toNBT());   // central edge list carried on the item
 
         ListTag networkList = new ListTag();

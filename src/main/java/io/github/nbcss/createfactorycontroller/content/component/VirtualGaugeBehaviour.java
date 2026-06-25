@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
 import com.google.common.collect.Multimap;
+import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.BigItemStack;
@@ -44,6 +45,39 @@ import java.util.UUID;
 
 public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
+    public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
+
+        @Override
+        public String id() {
+            return "GAUGE";
+        }
+
+        @Override
+        public List<ResourceLocation> items() {
+            return List.of(AllBlocks.FACTORY_GAUGE.getId());
+        }
+
+        @Override
+        public boolean isRequireNetwork() {
+            return true;
+        }
+
+        @Override
+        public VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
+                                                VirtualComponentPosition pos,
+                                                ResourceLocation itemId,
+                                                UUID networkId) {
+            return new VirtualGaugeBehaviour(controller, pos, networkId, itemId);
+        }
+
+        @Override
+        public VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
+                                                 CompoundTag tag,
+                                                 HolderLookup.Provider registries) {
+            return VirtualGaugeBehaviour.fromNBT(controller, tag, registries);
+        }
+    };
+
     public static final ResourceLocation TYPE_ID =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge");
     public static final ResourceLocation TEXTURE =
@@ -56,9 +90,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     // Identity
     public final UUID networkId;
     public UUID patternId = null;
-    /** The stock type this gauge manages (item / fluid / energy), derived from its gauge item id. Gates the item-only
-     *  features (mechanical crafting, {@link #ignoreData}) and selects the stock backend. */
-    public final GaugeType type;
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
@@ -106,7 +137,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      *  tick to ride out the mid-move "reads low" blip, then committed — keeps real drops responsive. */
     private boolean stockDropPending = false;
     private boolean sumDropPending = false;
-    private int timer = 0;
+    protected int timer = 0;
     /** Game tick of the last request attempt; the client decays the connection flash from it. */
     public long lastRequestTick = Long.MIN_VALUE;
     private boolean forceClearPromises = false;
@@ -121,7 +152,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                                  UUID networkId, ResourceLocation gaugeItemId) {
         super(controller, position, gaugeItemId);
         this.networkId = networkId;
-        this.type = ComponentRegistry.typeOf(gaugeItemId);
     }
 
     @Override
@@ -352,7 +382,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // Apply a pending player-forced clear (side effect only). Its promised drop is absorbed by the hold
         // below exactly like a settlement or an expiry — no per-cause disambiguation is needed any more.
         if (forceClearPromises){
-            type.forceClearPromise(networkId, filter);
+            forceClearPromise(networkId, filter);
             timer = getConfigRequestIntervalInTicks() / 2;
             forceClearPromises = false;
         }
@@ -412,13 +442,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     /**
      * Current network stock of {@code stack}.
      */
-    private int networkStockOf(ItemStack stack) {
+    protected int networkStockOf(ItemStack stack) {
         if (stack.isEmpty()) return 0;
-        // A FLUID gauge reads its stock (mB) from Repackaged's Deployer-backed fluid system — its generic fluid
-        // filter rides no Create item logistics. Isolated behind FluidCompat so this class never hard-links Deployer
-        // (item gauges load it on installs without Deployer); the branch only runs when a fluid gauge exists.
-        if (type == GaugeType.FLUID)
-            return FluidCompat.repackagedFluidStock(networkId, stack);
         if (FluidCompat.isFluidFilter(stack))
             return LogisticsManager.getStockOf(networkId, stack, null);
         // Ignore-data: count every variant of this item type. Sum only this item's bucket (getItemMap is keyed
@@ -434,15 +459,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return getRelevantSummary().getCountOf(stack);
     }
 
-
     private InventorySummary getRelevantSummary() {
         return LogisticsManager.getSummaryOfNetwork(networkId, false);
     }
 
     public int getPromised() {
         if (filter.isEmpty()) return 0;
-        if (type == GaugeType.FLUID)
-            return FluidCompat.repackagedFluidPromised(networkId, filter, getPromiseExpiryTimeInTicks());
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
         if (promises == null) return 0;
         int expiry = getPromiseExpiryTimeInTicks();
@@ -463,6 +485,34 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (ItemStack v : variants)
             total += promises.getTotalPromisedAndRemoveExpired(v, expiry);
         return total;
+    }
+
+    public boolean isFluidGauge() {
+        return false;
+    }
+
+    public boolean supportsIgnoreData() {
+        return true;
+    }
+
+    protected VirtualComponentBehaviour.Type componentType() {
+        return TYPE;
+    }
+
+    public void forceClearPromise(UUID networkId, ItemStack filter) {
+        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
+        if (promises != null) promises.forceClear(filter);
+    }
+
+    public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
+        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
+        if (promises != null) {
+            ItemStack promiseStack = filter.copy();
+            // Ignore-data: mark the promise so the queue clears it when ANY variant of the item type arrives
+            // (the produced output may carry data the pure-form filter doesn't). See RequestPromiseQueueMixin.
+            if (ignoreData) promiseStack.set(CreateFactoryController.FUZZY_PROMISE.get(), true);
+            promises.add(new RequestPromise(new BigItemStack(promiseStack, amount)));
+        }
     }
 
     private int getUnloadedLinks() {
@@ -635,7 +685,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
             LogisticsManager.performPackageRequests(req);
         setConnectionsSuccess(true);   // ingredients were dispatched → flash white
-        type.addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch);
+        addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch);
         controller.setChanged();
     }
 
@@ -705,11 +755,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private int getConfigRequestIntervalInTicks() {
+    protected int getConfigRequestIntervalInTicks() {
         return AllConfigs.server().logistics.factoryGaugeTimer.get();
     }
 
-    private int getPromiseExpiryTimeInTicks() {
+    protected int getPromiseExpiryTimeInTicks() {
         if (promiseClearingInterval == -1) return -1;
         if (promiseClearingInterval == 0) return 20 * 30;
         return promiseClearingInterval * 20 * 60;
@@ -720,7 +770,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     @Override
     public CompoundTag toNBT(net.minecraft.core.HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        tag.putString("Type", getTypeId().toString());
+        tag.putString("Type", componentType().id());
         tag.put("Pos", position.toNBT());
         tag.putString("GaugeItem", itemId.toString());
         tag.putUUID("Network", networkId);
@@ -786,7 +836,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // connections (arrow rendering). Server-only tick state and detailed recipe config are
         // omitted — those are pulled on demand when a config overlay opens.
         CompoundTag tag = new CompoundTag();
-        tag.putString("Type", getTypeId().toString());
+        tag.putString("Type", componentType().id());
         tag.put("Pos", position.toNBT());
         tag.putString("GaugeItem", itemId.toString());
         tag.putUUID("Network", networkId);

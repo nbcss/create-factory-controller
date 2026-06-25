@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.component.FluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
@@ -214,7 +215,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         // Fluid/energy gauges: a carried fluid container sets the fluid filter directly (mirrors an item gauge taking
         // a held item); an empty hand opens the set-item screen (unconfigured) or recipe screen (configured); a
         // non-container item is ignored. The fluid filter is the generic token (no item logistics).
-        if (behaviour.type != io.github.nbcss.createfactorycontroller.content.component.GaugeType.ITEM) {
+        if (behaviour instanceof FluidGaugeBehaviour) {
             ItemStack fluidFilter = FluidCompat.makeGenericFluidFilter(FluidCompat.fluidInContainer(carried));
             if (!fluidFilter.isEmpty()) {
                 PacketDistributor.sendToServer(
@@ -222,7 +223,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             } else if (carried.isEmpty()) {
                 screen.clearSelection();
                 Minecraft.getInstance().setScreen(behaviour.filter.isEmpty()
-                    ? new SetItemScreen(screen, behaviour.position())
+                    ? new SetItemScreen(screen, behaviour)
                     : new ConfigureRecipeScreen(screen, behaviour.position()));
             }
             return true;
@@ -230,7 +231,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         if (behaviour.filter.isEmpty()) {
             if (carried.isEmpty()) {
                 screen.clearSelection();   // entering an overlay clears the selection
-                Minecraft.getInstance().setScreen(new SetItemScreen(screen, behaviour.position()));
+                Minecraft.getInstance().setScreen(new SetItemScreen(screen, behaviour));
             } else
                 PacketDistributor.sendToServer(
                         new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), filterFromCarried(carried, button), false));

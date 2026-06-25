@@ -163,8 +163,14 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
         super.setPlacedBy(level, pos, state, placer, stack);
         if (level.isClientSide()) return;
         CompoundTag setup = stack.get(CreateFactoryController.CONTROLLER_SETUP.get());
-        if (setup != null)
-            withBlockEntityDo(level, pos, be -> be.applySetup(setup, level.registryAccess()));
+        if (setup != null) {
+            withBlockEntityDo(level, pos, be -> {
+                be.applySetup(setup, level.registryAccess());
+                // Vanilla copies item data components into the placed block entity before setPlacedBy.
+                // This component is only a placement payload; keeping it on the BE duplicates setup data on save/drop.
+                be.setComponents(be.components().filter(type -> !type.equals(CreateFactoryController.CONTROLLER_SETUP.get())));
+            });
+        }
     }
 
     /** Plain wrench does nothing (no rotation). Overridden to a no-op so the IWrenchable default — which assumes a

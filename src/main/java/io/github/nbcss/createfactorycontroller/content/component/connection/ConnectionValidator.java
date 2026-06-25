@@ -99,6 +99,7 @@ public final class ConnectionValidator {
      *  the two gauges' filters. Built lazily (only the client commit invokes it). */
     private static Component successMessage(Connection.Type ch, VirtualComponentBehaviour source,
                                             VirtualComponentBehaviour sink) {
+        //fixme don't hardcode success message branch
         if (ch == Connection.Type.REDSTONE) {
             VirtualComponentBehaviour link = source instanceof VirtualRedstoneLinkBehaviour ? source : sink;
             String linkName = new ItemStack(BuiltInRegistries.ITEM.get(link.getItemId())).getHoverName().getString();

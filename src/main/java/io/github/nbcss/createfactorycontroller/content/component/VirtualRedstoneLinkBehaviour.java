@@ -4,22 +4,26 @@ import com.simibubi.create.Create;
 import com.simibubi.create.content.redstone.link.IRedstoneLinkable;
 import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler;
 import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler.Frequency;
+import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.utility.CreateLang;
+
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
+
 import net.createmod.catnip.data.Couple;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+
+import java.util.List;
 
 /**
  * A Redstone Link placed on the controller board. It carries two frequency channels (Red/Blue, like Create's
@@ -33,6 +37,39 @@ import net.minecraft.world.level.Level;
  * connected gauges' requests (handled in the controller pre-pass).</p>
  */
 public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent implements IRedstoneLinkable {
+
+    public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
+
+        @Override
+        public String id() {
+            return "REDSTONE_LINK";
+        }
+
+        @Override
+        public List<ResourceLocation> items() {
+            return List.of(AllBlocks.REDSTONE_LINK.getId());
+        }
+
+        @Override
+        public boolean isRequireNetwork() {
+            return false;
+        }
+
+        @Override
+        public VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
+                                                VirtualComponentPosition pos,
+                                                ResourceLocation itemId,
+                                                java.util.UUID networkId) {
+            return new VirtualRedstoneLinkBehaviour(controller, pos, itemId);
+        }
+
+        @Override
+        public VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
+                                                 CompoundTag tag,
+                                                 HolderLookup.Provider registries) {
+            return VirtualRedstoneLinkBehaviour.fromNBT(controller, tag, registries);
+        }
+    };
 
     public static final ResourceLocation TYPE_ID =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "redstone_link");
@@ -281,7 +318,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public CompoundTag toNBT(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        tag.putString("Type", getTypeId().toString());
+        tag.putString("Type", TYPE.id());
         tag.put("Pos", position.toNBT());
         tag.putString("LinkItem", itemId.toString());
         tag.putBoolean("Receive", receive);
@@ -295,7 +332,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public CompoundTag toClientNBT(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        tag.putString("Type", getTypeId().toString());
+        tag.putString("Type", TYPE.id());
         tag.put("Pos", position.toNBT());
         tag.putString("LinkItem", itemId.toString());
         tag.putBoolean("Receive", receive);
