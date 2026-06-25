@@ -261,7 +261,7 @@ public final class VirtualConnectionRenderer {
      *     <li>3 — V→H→V staircase (falls back to V→H if it can't fit)</li></ul>
      * A staircase needs a cell strictly between source and target on its stepping axis ({@code |d|>=2}).
      */
-    private static List<Vector2i> buildCellPath(VirtualComponentPosition from, VirtualPanelPosition to, int mode) {
+    private static List<Vector2i> buildCellPath(VirtualComponentPosition from, VirtualComponentPosition to, int mode) {
         int fx = from.x(), fy = from.y(), tx = to.x(), ty = to.y();
         if (fx == tx || fy == ty)                                   // aligned → straight run
             return List.of(new Vector2i(fx, fy), new Vector2i(tx, ty));
