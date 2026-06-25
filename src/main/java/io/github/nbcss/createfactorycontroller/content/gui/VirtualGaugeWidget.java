@@ -85,7 +85,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
-        gfx.blitSprite(behaviour.getTexture().withSuffix("/front"), x0, y0, CELL, CELL);
+        gfx.blitSprite(behaviour.getFrontTexture(), x0, y0, CELL, CELL);
 
         if (!behaviour.filter.isEmpty()) {
             gfx.pose().pushPose();

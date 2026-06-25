@@ -1,7 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -46,9 +45,7 @@ public abstract class ControllerDataFixer {
                         }
                     }
                     comp.putString("Type", switch (oldType) {
-                        case "createfactorycontroller:gauge" -> RepackagedCompat.FLUID_GAUGE.toString()
-                                .equals(comp.getString("GaugeItem"))
-                                ? "FLUID_GAUGE" : "GAUGE";
+                        case "createfactorycontroller:gauge" -> "GAUGE";
                         case "createfactorycontroller:redstone_link" -> "REDSTONE_LINK";
                         default -> oldType;
                     });

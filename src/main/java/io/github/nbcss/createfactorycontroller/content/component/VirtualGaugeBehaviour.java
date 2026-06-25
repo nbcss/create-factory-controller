@@ -82,6 +82,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge");
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/factory_gauge");
+    public static final ResourceLocation FRONT_TEXTURE = TEXTURE.withSuffix("/front");
 
     /** Max ingredient (gauge → gauge) inputs, matching Create's factory-panel limit. Redstone-link wires are stored
      *  on the link and don't count toward this. */
@@ -162,6 +163,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     @Override
     public ResourceLocation getTexture() {
         return TEXTURE;
+    }
+
+    public ResourceLocation getFrontTexture() {
+        return FRONT_TEXTURE;
     }
 
     @Override

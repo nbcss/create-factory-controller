@@ -15,6 +15,9 @@ import java.util.UUID;
 
 public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
 
+    private static final ResourceLocation FRONT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/fluid_gauge/front");
+
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
 
         @Override
@@ -88,6 +91,11 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
     @Override
     protected VirtualComponentBehaviour.Type componentType() {
         return TYPE;
+    }
+
+    @Override
+    public ResourceLocation getFrontTexture() {
+        return FRONT_TEXTURE;
     }
 
     public static VirtualGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
