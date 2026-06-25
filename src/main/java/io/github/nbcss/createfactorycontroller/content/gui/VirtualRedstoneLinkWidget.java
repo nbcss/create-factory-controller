@@ -3,7 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.utility.CreateLang;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
@@ -23,9 +23,9 @@ import java.util.List;
 
 /**
  * A redstone link on the canvas. Renders the {@code base}/{@code front} sprites with mode/power overlays, plus the two
- * channel frequency icons (Red/Blue). Clicking the <b>top</b> half with an item sets the Red frequency, the
+ * type frequency icons (Red/Blue). Clicking the <b>top</b> half with an item sets the Red frequency, the
  * <b>bottom</b> half sets Blue (either mouse button, item not consumed); an empty-hand click opens the full-config GUI.
- * While holding an item, the hovered half is highlighted to show which channel a click will set.
+ * While holding an item, the hovered half is highlighted to show which type a click will set.
  */
 @OnlyIn(Dist.CLIENT)
 public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) implements VirtualComponentWidget {
@@ -33,7 +33,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     private static final int CELL = 16;
 
     @Override
-    public VirtualPanelPosition position() {
+    public VirtualComponentPosition position() {
         return behaviour.position();
     }
 
@@ -61,11 +61,11 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
                 (behaviour.powered ? "on" : "off");
         gfx.blitSprite(sprite(path), x0, y0, CELL, CELL);
 
-        // The two channel frequency icons (half-size): Red top-left, Blue bottom-right.
+        // The two type frequency icons (half-size): Red top-left, Blue bottom-right.
         renderFreqIcon(gfx, behaviour.redFreq, x0 + 6, y0 + 3);
         renderFreqIcon(gfx, behaviour.blueFreq, x0 + 6, y0 + 9);
 
-        // While holding an item, cover the hovered half (top = Red, bottom = Blue) to show which channel a click sets.
+        // While holding an item, cover the hovered half (top = Red, bottom = Blue) to show which type a click sets.
         ItemStack cursor = Minecraft.getInstance().player.containerMenu.getCarried();
         if (!cursor.isEmpty() && mouseX >= x0 && mouseX < x0 + CELL && mouseY >= y0 && mouseY < y0 + CELL) {
             boolean top = mouseY < y0 + CELL / 2.0;

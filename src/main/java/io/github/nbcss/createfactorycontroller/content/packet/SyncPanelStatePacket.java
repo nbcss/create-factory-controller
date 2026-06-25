@@ -26,6 +26,7 @@ import java.util.UUID;
  */
 public record SyncPanelStatePacket(BlockPos pos,
                                    List<CompoundTag> gaugeTags,
+                                   List<CompoundTag> connections,
                                    List<UUID> networks,
                                    List<String> networkNames,
                                    String controllerName)
@@ -95,15 +96,17 @@ public record SyncPanelStatePacket(BlockPos pos,
             public @NotNull SyncPanelStatePacket decode(RegistryFriendlyByteBuf buf) {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
                 List<CompoundTag> tags = TAG_LIST_CODEC.decode(buf);
+                List<CompoundTag> connections = TAG_LIST_CODEC.decode(buf);
                 List<UUID> networks = UUID_LIST_CODEC.decode(buf);
                 List<String> names = STRING_LIST_CODEC.decode(buf);
                 String controllerName = buf.readUtf();
-                return new SyncPanelStatePacket(pos, tags, networks, names, controllerName);
+                return new SyncPanelStatePacket(pos, tags, connections, networks, names, controllerName);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
                 BlockPos.STREAM_CODEC.encode(buf, packet.pos());
                 TAG_LIST_CODEC.encode(buf, packet.gaugeTags());
+                TAG_LIST_CODEC.encode(buf, packet.connections());
                 UUID_LIST_CODEC.encode(buf, packet.networks());
                 STRING_LIST_CODEC.encode(buf, packet.networkNames());
                 buf.writeUtf(packet.controllerName());
@@ -128,6 +131,7 @@ public record SyncPanelStatePacket(BlockPos pos,
                 VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, tag, mc.level.registryAccess());
                 if (b != null) menu.addComponent(b);
             }
+            menu.loadConnections(packet.connections());   // rebuild the client graph from the synced central edge list
             menu.knownNetworks.clear();
             menu.knownNetworks.addAll(packet.networks());
             menu.networkNicknames.clear();

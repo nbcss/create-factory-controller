@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -15,17 +15,17 @@ import net.minecraft.server.level.ServerPlayer;
  * Sent immediately when the player clicks an ingredient slot in {@code ConfigureRecipeScreen}, to
  * disconnect that incoming connection ({@code ingredient → gauge}) on the server right away.
  */
-public record DisconnectIngredientPacket(BlockPos pos, VirtualPanelPosition ingredient, VirtualPanelPosition gauge)
+public record DisconnectIngredientPacket(BlockPos pos, VirtualComponentPosition ingredient, VirtualComponentPosition gauge)
     implements CustomPacketPayload {
 
     public static final Type<DisconnectIngredientPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "disconnect_ingredient"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::x,
-            ByteBufCodecs.INT, VirtualPanelPosition::y,
-            VirtualPanelPosition::new
+            ByteBufCodecs.INT, VirtualComponentPosition::x,
+            ByteBufCodecs.INT, VirtualComponentPosition::y,
+            VirtualComponentPosition::new
         );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, DisconnectIngredientPacket> STREAM_CODEC =

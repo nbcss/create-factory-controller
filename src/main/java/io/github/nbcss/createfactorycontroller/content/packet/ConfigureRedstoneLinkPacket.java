@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import net.minecraft.core.BlockPos;
@@ -14,21 +14,21 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Configures a redstone-link component in one shot: its Send/Receive mode ({@code receive}) and both channel
- * frequency items ({@code red}/{@code blue}). The client resends the unchanged fields, so a single per-channel click
+ * Configures a redstone-link component in one shot: its Send/Receive mode ({@code receive}) and both type
+ * frequency items ({@code red}/{@code blue}). The client resends the unchanged fields, so a single per-type click
  * or an R-key mode toggle round-trips the full state (frequency items are stored count-1 and never consumed).
  */
-public record ConfigureRedstoneLinkPacket(BlockPos pos, VirtualPanelPosition panelPos, boolean receive,
+public record ConfigureRedstoneLinkPacket(BlockPos pos, VirtualComponentPosition panelPos, boolean receive,
                                           ItemStack red, ItemStack blue) implements CustomPacketPayload {
 
     public static final Type<ConfigureRedstoneLinkPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "configure_redstone_link"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::x,
-            ByteBufCodecs.INT, VirtualPanelPosition::y,
-            VirtualPanelPosition::new
+            ByteBufCodecs.INT, VirtualComponentPosition::x,
+            ByteBufCodecs.INT, VirtualComponentPosition::y,
+            VirtualComponentPosition::new
         );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ConfigureRedstoneLinkPacket> STREAM_CODEC =

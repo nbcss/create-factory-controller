@@ -4,7 +4,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,10 +25,10 @@ import java.util.Map;
  * the optional mechanical-crafting arrangement, and the clear-promises / reset flags.
  * {@code reset == true} wipes the gauge's whole recipe config (mirrors Create's trash button).
  */
-public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos, String address,
+public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panelPos, String address,
                                     int recipeOutput, int craftBatch, int craftDimension, int promiseInterval,
                                     int count, ThresholdUnit mode, RequestMode requestMode,
-                                    List<VirtualPanelPosition> inputPositions, List<Integer> inputAmounts,
+                                    List<VirtualComponentPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
 
@@ -64,7 +64,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
             },
             buf -> {
                 BlockPos pos = buf.readBlockPos();
-                VirtualPanelPosition panelPos = new VirtualPanelPosition(buf.readInt(), buf.readInt());
+                VirtualComponentPosition panelPos = new VirtualComponentPosition(buf.readInt(), buf.readInt());
                 String address = buf.readUtf();
                 int recipeOutput = buf.readInt();
                 int craftBatch = buf.readInt();
@@ -77,10 +77,10 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
                 boolean clearPromises = buf.readBoolean();
                 boolean reset = buf.readBoolean();
                 int n = buf.readVarInt();
-                List<VirtualPanelPosition> positions = new ArrayList<>(n);
+                List<VirtualComponentPosition> positions = new ArrayList<>(n);
                 List<Integer> amounts = new ArrayList<>(n);
                 for (int i = 0; i < n; i++) {
-                    positions.add(new VirtualPanelPosition(buf.readInt(), buf.readInt()));
+                    positions.add(new VirtualComponentPosition(buf.readInt(), buf.readInt()));
                     amounts.add(buf.readInt());
                 }
                 int m = buf.readVarInt();
@@ -100,7 +100,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualPanelPosition panelPos,
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             // One amount per connection (the UI owns the slot split). Last write wins if a position repeats.
-            Map<VirtualPanelPosition, Integer> inputs = new LinkedHashMap<>();
+            Map<VirtualComponentPosition, Integer> inputs = new LinkedHashMap<>();
             int n = Math.min(packet.inputPositions().size(), packet.inputAmounts().size());
             for (int i = 0; i < n; i++)
                 inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));

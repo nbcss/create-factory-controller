@@ -1,6 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui;
 
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,7 +18,7 @@ import java.util.List;
 @OnlyIn(Dist.CLIENT)
 public interface VirtualComponentWidget {
 
-    VirtualPanelPosition position();
+    VirtualComponentPosition position();
 
     VirtualComponentBehaviour behaviour();
 
@@ -35,7 +35,8 @@ public interface VirtualComponentWidget {
     /** Hover tooltip. When {@code selected}, the "Click to configure" hint is replaced with "Drag to relocate". */
     List<Component> getTooltip(FactoryControllerMenu menu, boolean selected);
 
-    /** Handles a left/right click on this component with the given cursor stack. Returns true if consumed. */
+    /** Handles a left/right click on this component with the given cursor stack (the type-specific interaction:
+     *  configure, set filter, open config, …). Returns true if consumed. */
     boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button);
 
     /** Shift-click: remove this component from the board. */

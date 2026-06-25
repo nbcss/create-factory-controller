@@ -4,11 +4,15 @@ import com.simibubi.create.Create;
 import com.simibubi.create.content.redstone.link.IRedstoneLinkable;
 import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler;
 import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler.Frequency;
+import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import net.createmod.catnip.data.Couple;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -50,7 +54,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     private boolean registered = false;
     private int lastTransmitted = -1;
 
-    public VirtualRedstoneLinkBehaviour(FactoryControllerBlockEntity controller, VirtualPanelPosition position,
+    public VirtualRedstoneLinkBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position,
                                         ResourceLocation itemId) {
         super(controller, position, itemId);
     }
@@ -58,10 +62,39 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override public ResourceLocation getTypeId() { return TYPE_ID; }
     @Override public ResourceLocation getTexture() { return TEXTURE; }
 
+    /** A link speaks REDSTONE only; its mode is decisive for direction (RECEIVE drives gauges = SOURCE, SEND reads
+     *  them = SINK), so a wired gauge follows the link. */
+    @Override
+    public java.util.List<ConnectionCapability> ports() {
+        return java.util.List.of(new ConnectionCapability(Connection.Type.REDSTONE, ConnectionCapability.Role.BOTH));
+    }
+
+    @Override
+    public ConnectionCapability.Role liveRole(Connection.Type channel) {
+        return receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK;
+    }
+
+    // Two links bridge each other wirelessly, so a board wire between links is meaningless — reject a link partner
+    // (whichever role this link takes). Gauge partners are always allowed (uniqueness handles duplicates).
+    @Override
+    public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) {
+        return sink instanceof VirtualRedstoneLinkBehaviour ? linkToLink() : ValidationResult.SUCCESS;
+    }
+
+    @Override
+    public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) {
+        return source instanceof VirtualRedstoneLinkBehaviour ? linkToLink() : ValidationResult.SUCCESS;
+    }
+
+    private static ValidationResult linkToLink() {
+        return ValidationResult.fail(() -> CreateLang.translate("factory_panel.connection_aborted")
+                .style(ChatFormatting.WHITE).component());
+    }
+
     // A link holds all its connected gauges (link-side storage) and inherits the uncapped base addConnection.
     @Override
-    protected VirtualPanelConnection createConnection(VirtualPanelPosition from, VirtualComponentBehaviour source) {
-        return new RedstoneConnection(from);
+    protected Connection createConnection(VirtualComponentPosition from, VirtualComponentBehaviour source) {
+        return new RedstoneConnection(from, position);
     }
 
     // ── Power computation ──────────────────────────────────────────────────────
@@ -106,8 +139,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     private boolean recomputePower() {
         boolean changed = false;
         boolean any = false;
-        for (VirtualPanelPosition gaugePos : targetedBy.keySet()) {
-            if (!(targetedBy.get(gaugePos) instanceof RedstoneConnection rc)) continue;
+        for (VirtualComponentPosition gaugePos : targetedBy().keySet()) {
+            if (!(targetedBy().get(gaugePos) instanceof RedstoneConnection rc)) continue;
             boolean connPowered = receive
                 ? receivedStrength > 0
                 : controller != null
@@ -123,7 +156,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     /** Re-applies the redstone gate ({@code redstonePowered}) to every gauge wired to this link. */
     private void refreshGauges() {
         if (controller == null) return;
-        for (VirtualPanelPosition gaugePos : targetedBy.keySet())
+        for (VirtualComponentPosition gaugePos : targetedBy().keySet())
             if (controller.components.get(gaugePos) instanceof VirtualGaugeBehaviour g)
                 g.redstonePowered = g.isGatedByLink();
     }
@@ -141,7 +174,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // ── Frequencies / mode ─────────────────────────────────────────────────────
 
     /**
-     * Applies a full link configuration in one shot — Send/Receive mode plus both channel frequencies. Frequency
+     * Applies a full link configuration in one shot — Send/Receive mode plus both type frequencies. Frequency
      * items are stored count-1 and never consumed; the network is re-keyed only if a frequency actually changed.
      * Drives the redstone-link GUI / per-click / R-toggle interactions (each resends the unchanged fields).
      */
@@ -255,16 +288,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         tag.put("RedFreq", redFreq.saveOptional(registries));
         tag.put("BlueFreq", blueFreq.saveOptional(registries));
         tag.putBoolean("Powered", powered);
-
-        ListTag targetedByList = new ListTag();
-        for (VirtualPanelConnection conn : targetedBy.values())
-            targetedByList.add(conn.toNBT());
-        tag.put("TargetedBy", targetedByList);
-
-        ListTag targetingList = new ListTag();
-        for (VirtualPanelPosition pos : targeting)
-            targetingList.add(pos.toNBT());
-        tag.put("Targeting", targetingList);
+        // Connections live in the controller's central graph (written there), not per-component.
         return tag;
     }
 
@@ -278,32 +302,20 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         tag.put("RedFreq", redFreq.saveOptional(registries));
         tag.put("BlueFreq", blueFreq.saveOptional(registries));
         tag.putBoolean("Powered", powered);
-
-        ListTag targetedByList = new ListTag();
-        for (VirtualPanelConnection conn : targetedBy.values())
-            targetedByList.add(conn.toNBT());
-        tag.put("TargetedBy", targetedByList);
+        // Connections live in the controller's central graph (synced separately), not per-component.
         return tag;
     }
 
     public static VirtualRedstoneLinkBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                        CompoundTag tag, HolderLookup.Provider registries) {
-        VirtualPanelPosition pos = VirtualPanelPosition.fromNBT(tag.getCompound("Pos"));
+        VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
         ResourceLocation itemId = ResourceLocation.parse(tag.getString("LinkItem"));
         VirtualRedstoneLinkBehaviour b = new VirtualRedstoneLinkBehaviour(controller, pos, itemId);
         b.receive = tag.getBoolean("Receive");
         b.redFreq = ItemStack.parseOptional(registries, tag.getCompound("RedFreq"));
         b.blueFreq = ItemStack.parseOptional(registries, tag.getCompound("BlueFreq"));
         b.powered = tag.getBoolean("Powered");
-
-        ListTag targetedByList = tag.getList("TargetedBy", net.minecraft.nbt.Tag.TAG_COMPOUND);
-        for (int i = 0; i < targetedByList.size(); i++) {
-            RedstoneConnection conn = RedstoneConnection.fromNBT(targetedByList.getCompound(i));
-            b.targetedBy.put(conn.from, conn);
-        }
-        ListTag targetingList = tag.getList("Targeting", net.minecraft.nbt.Tag.TAG_COMPOUND);
-        for (int i = 0; i < targetingList.size(); i++)
-            b.targeting.add(VirtualPanelPosition.fromNBT(targetingList.getCompound(i)));
+        // Connections are loaded centrally by the controller / menu, not from the component tag.
         return b;
     }
 }

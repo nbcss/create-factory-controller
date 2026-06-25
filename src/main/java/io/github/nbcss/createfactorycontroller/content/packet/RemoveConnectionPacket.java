@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -11,17 +11,17 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-public record RemoveConnectionPacket(BlockPos pos, VirtualPanelPosition from, VirtualPanelPosition to)
+public record RemoveConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
     implements CustomPacketPayload {
 
     public static final Type<RemoveConnectionPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "remove_connection"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::x,
-            ByteBufCodecs.INT, VirtualPanelPosition::y,
-            VirtualPanelPosition::new
+            ByteBufCodecs.INT, VirtualComponentPosition::x,
+            ByteBufCodecs.INT, VirtualComponentPosition::y,
+            VirtualComponentPosition::new
         );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, RemoveConnectionPacket> STREAM_CODEC =

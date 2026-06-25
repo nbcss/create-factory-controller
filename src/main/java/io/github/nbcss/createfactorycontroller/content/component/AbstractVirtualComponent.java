@@ -1,16 +1,18 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * Base for all virtual components. Holds the connection graph and its mechanics — identical for
@@ -18,21 +20,26 @@ import java.util.function.Supplier;
  *
  * <p>Mirrors the role {@code AbstractPanelBehaviour}/{@code AbstractPanelSupportBehaviour} play in
  * Deployer (both fill a {@code PanelConnectionBuilder} in their constructor), but binds to a
- * {@link FactoryControllerBlockEntity} + {@link VirtualPanelPosition} instead of a block entity +
+ * {@link FactoryControllerBlockEntity} + {@link VirtualComponentPosition} instead of a block entity +
  * slot, and never touches a world.</p>
  */
 public abstract class AbstractVirtualComponent implements VirtualComponentBehaviour {
 
     protected final FactoryControllerBlockEntity controller; // null on the client snapshot
-    protected VirtualPanelPosition position;
+    protected VirtualComponentPosition position;
     protected final ResourceLocation itemId;
 
-    // Connection graph
-    protected final Map<VirtualPanelPosition, VirtualPanelConnection> targetedBy = new LinkedHashMap<>();
-    protected final Set<VirtualPanelPosition> targeting = new LinkedHashSet<>();
+    /** Resolves a sibling component by board position for cross-component checks (connection validation). The server
+     *  uses the controller's live map; the client menu injects its snapshot, since client behaviours carry no
+     *  controller. See {@link #siblingAt}. */
+    private Function<VirtualComponentPosition, VirtualComponentBehaviour> siblingLookup;
+
+    /** The connection store backing this component when it has no controller (client snapshot); the server reads the
+     *  controller's graph instead. See {@link #graph}. */
+    private ConnectionGraph injectedGraph;
 
     protected AbstractVirtualComponent(FactoryControllerBlockEntity controller,
-                                       VirtualPanelPosition position, ResourceLocation itemId) {
+                                       VirtualComponentPosition position, ResourceLocation itemId) {
         this.controller = controller;
         this.position = position;
         this.itemId = itemId;
@@ -40,74 +47,88 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
 
     // ── Identity ─────────────────────────────────────────────────────────────
 
-    @Override public VirtualPanelPosition position() { return position; }
-    @Override public void setPosition(VirtualPanelPosition pos) { this.position = pos; }
+    @Override public VirtualComponentPosition position() { return position; }
+    @Override public void setPosition(VirtualComponentPosition pos) { this.position = pos; }
     @Override public ResourceLocation getItemId() { return itemId; }
 
     // ── Connection graph ──────────────────────────────────────────────────────
 
-    @Override public Map<VirtualPanelPosition, VirtualPanelConnection> targetedBy() { return targetedBy; }
-    @Override public Set<VirtualPanelPosition> targeting() { return targeting; }
+    @Override public Map<VirtualComponentPosition, Connection> targetedBy() { return graph().targetedBy(position); }
+    @Override public Set<VirtualComponentPosition> targeting() { return graph().targeting(position); }
+
+    /** The connection store backing this component: the controller's (server) or the injected one (client snapshot). */
+    protected ConnectionGraph graph() {
+        return controller != null ? controller.connectionGraph() : injectedGraph;
+    }
+
+    @Override public void setGraph(ConnectionGraph graph) { this.injectedGraph = graph; }
+
+    @Override
+    public void setSiblingLookup(Function<VirtualComponentPosition, VirtualComponentBehaviour> lookup) {
+        this.siblingLookup = lookup;
+    }
+
+    /** The sibling at {@code pos}: the controller's live map on the server, else the injected client lookup. */
+    protected VirtualComponentBehaviour siblingAt(VirtualComponentPosition pos) {
+        if (controller != null) return controller.components.get(pos);
+        return siblingLookup == null ? null : siblingLookup.apply(pos);
+    }
+
+    // No connection capabilities by default; gauges and links override. Validation is FAIL-CLOSED: a component must
+    // explicitly permit a connection (by overriding the validateAs* below), so forgetting rules never silently allows
+    // an unintended wire. (The ports() declaration gates which channels are even possible; these refine them.)
+    @Override public List<ConnectionCapability> ports() { return List.of(); }
+    @Override public ConnectionCapability.Role liveRole(Connection.Type channel) { return ConnectionCapability.Role.BOTH; }
+    @Override public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) { return rejectByDefault(); }
+    @Override public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) { return rejectByDefault(); }
+
+    private static ValidationResult rejectByDefault() {
+        return ValidationResult.fail(() -> CreateLang.translate("factory_panel.connection_aborted")
+                .style(ChatFormatting.WHITE).component());
+    }
 
     /**
      * Adds an incoming connection from {@code fromPos}. Uncapped at this level — only {@link VirtualGaugeBehaviour}
      * limits its ingredient inputs (a redstone link holds unlimited gauge connections).
      */
     @Override
-    public void addConnection(VirtualPanelPosition fromPos) {
-        if (targetedBy.containsKey(fromPos)) return;
+    public void addConnection(VirtualComponentPosition sourcePos) {
+        if (graph().targetedBy(position).containsKey(sourcePos)) return;
 
-        VirtualComponentBehaviour source = controller.components.get(fromPos);
+        VirtualComponentBehaviour source = controller.components.get(sourcePos);
         if (source == null) return;
 
-        source.targeting().add(position);
-        targetedBy.put(fromPos, createConnection(fromPos, source));
+        graph().add(createConnection(sourcePos, source));
         controller.setChanged();
         controller.sendData();
     }
 
     /** Creates the connection kind this component holds (a gauge → {@code LogisticsConnection}, a redstone link →
      *  {@code RedstoneConnection}). {@code source} is the wired-in component (for kind-specific defaults). */
-    protected abstract VirtualPanelConnection createConnection(VirtualPanelPosition from,
-                                                               VirtualComponentBehaviour source);
+    protected abstract Connection createConnection(VirtualComponentPosition from,
+                                                   VirtualComponentBehaviour source);
 
     @Override
-    public void removeConnection(VirtualPanelPosition fromPos) {
-        VirtualPanelConnection conn = targetedBy.remove(fromPos);
-        if (conn == null) return;
-        VirtualComponentBehaviour source = controller.components.get(fromPos);
-        if (source != null) source.targeting().remove(position);
+    public void removeConnection(VirtualComponentPosition fromPos) {
+        if (!graph().targetedBy(position).containsKey(fromPos)) return;
+        graph().remove(position, fromPos);
         controller.setChanged();
         controller.sendData();
     }
 
     @Override
     public void disconnectAll() {
-        for (VirtualPanelConnection conn : targetedBy.values()) {
-            VirtualComponentBehaviour source = controller.components.get(conn.from);
-            if (source != null) {
-                source.targeting().remove(position);
-                controller.sendData();
-            }
-        }
-        for (VirtualPanelPosition targetPos : targeting) {
-            VirtualComponentBehaviour target = controller.components.get(targetPos);
-            if (target != null) {
-                target.targetedBy().remove(position);
-                controller.sendData();
-            }
-        }
-        targetedBy.clear();
-        targeting.clear();
+        graph().disconnect(position);
+        if (controller != null) { controller.setChanged(); controller.sendData(); }
     }
 
     @Override
     public void onInteract() {
         int sharedMode = -1;
-        for (VirtualPanelPosition targetPos : targeting) {
+        for (VirtualComponentPosition targetPos : targeting()) {
             VirtualComponentBehaviour target = controller.components.get(targetPos);
             if (target == null) continue;
-            VirtualPanelConnection conn = target.targetedBy().get(position);
+            Connection conn = target.targetedBy().get(position);
             if (conn == null) continue;
             if (sharedMode == -1)
                 sharedMode = (conn.arrowBendMode + 1) % 4;

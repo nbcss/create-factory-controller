@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -19,17 +19,17 @@ import java.util.List;
  * empty or vacated by another moving component, and otherwise moves nothing (deny blip). Which positions move is driven
  * by the client-only selection state.
  */
-public record BatchMoveComponentPacket(BlockPos pos, List<VirtualPanelPosition> sources, int dx, int dy)
+public record BatchMoveComponentPacket(BlockPos pos, List<VirtualComponentPosition> sources, int dx, int dy)
     implements CustomPacketPayload {
 
     public static final Type<BatchMoveComponentPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "batch_move_component"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::x,
-            ByteBufCodecs.INT, VirtualPanelPosition::y,
-            VirtualPanelPosition::new
+            ByteBufCodecs.INT, VirtualComponentPosition::x,
+            ByteBufCodecs.INT, VirtualComponentPosition::y,
+            VirtualComponentPosition::new
         );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, BatchMoveComponentPacket> STREAM_CODEC =

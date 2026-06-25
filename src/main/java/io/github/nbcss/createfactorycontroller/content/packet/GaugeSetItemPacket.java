@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -13,17 +13,17 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 /** Sets a gauge's filter item (the produced output) from the set-item overlay or a carried item. */
-public record GaugeSetItemPacket(BlockPos pos, VirtualPanelPosition panelPos, ItemStack filter, boolean ignoreData)
+public record GaugeSetItemPacket(BlockPos pos, VirtualComponentPosition panelPos, ItemStack filter, boolean ignoreData)
     implements CustomPacketPayload {
 
     public static final Type<GaugeSetItemPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge_set_item"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::x,
-            ByteBufCodecs.INT, VirtualPanelPosition::y,
-            VirtualPanelPosition::new
+            ByteBufCodecs.INT, VirtualComponentPosition::x,
+            ByteBufCodecs.INT, VirtualComponentPosition::y,
+            VirtualComponentPosition::new
         );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GaugeSetItemPacket> STREAM_CODEC =

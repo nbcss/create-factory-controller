@@ -23,12 +23,12 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
-import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
@@ -89,7 +89,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int THRESH_H = 18;
 
     private final FactoryControllerScreen controller;
-    private final VirtualPanelPosition gaugePos;
+    private final VirtualComponentPosition gaugePos;
 
     private int panelX, panelY;
 
@@ -112,7 +112,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // One entry per input CONNECTION (not per grid slot): the source gauge and its TOTAL item count.
     // The 3×3 grid layout — full stacks first, one partial last slot, contiguous per connection, packed
     // in connection order — is derived on demand from these via layoutInputSlots().
-    private final List<VirtualPanelPosition> inputConnections = new ArrayList<>();
+    private final List<VirtualComponentPosition> inputConnections = new ArrayList<>();
     private final List<Integer> inputTotals = new ArrayList<>();
     private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search (per connection)
 
@@ -132,7 +132,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Cycles the gauge's {@link RequestMode}; its icon reflects the current mode. */
     @Nullable private IconButton requestModeButton;
 
-    public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualPanelPosition gaugePos) {
+    public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualComponentPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               CreateLang.translate("gui.factory_panel.title_as_recipe").component());
         this.controller = controller;
@@ -258,7 +258,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.getComponent(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
-    private ItemStack ingredientOf(VirtualPanelPosition pos) {
+    private ItemStack ingredientOf(VirtualComponentPosition pos) {
         return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
@@ -502,7 +502,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (fluidMode && !mode.isFluid()) mode = ThresholdUnit.FLUID_BUCKET;
         if (!fluidMode && mode.isFluid()) mode = ThresholdUnit.ITEMS;
         if (fluidMode && outputCount <= 1) outputCount = 1000;
-        for (VirtualPanelConnection conn : g.targetedBy().values()) {
+        for (Connection conn : g.targetedBy().values()) {
             // A gauge holds only logistics (ingredient) wires; the UI re-derives the slot layout from this total.
             if (!(conn instanceof LogisticsConnection lc)) continue;
             int total = lc.amount();
@@ -622,7 +622,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Whether any wired ingredient ignores item data — disables crafting batch & crafter-grid resizing. */
     private boolean craftingUsesIgnoreData() {
-        for (VirtualPanelPosition pos : inputConnections)
+        for (VirtualComponentPosition pos : inputConnections)
             if (menu.getComponent(pos) instanceof VirtualGaugeBehaviour s && s.ignoreData) return true;
         return false;
     }
@@ -1210,7 +1210,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 int iy = panelY + 28 + (i / 3) * 20;
                 if (!in(mouseX, mouseY, ix, iy, 16, 16)) continue;
                 int c = slots.get(i).connectionIndex();
-                VirtualPanelPosition from = inputConnections.get(c);
+                VirtualComponentPosition from = inputConnections.get(c);
                 inputConnections.remove(c);
                 inputTotals.remove(c);
                 inputConfig.remove(c);
@@ -1359,10 +1359,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ? craftingIngredients.stream().map(b -> b.stack).toList()
             : List.of();
 
-        List<VirtualPanelPosition> positions = new ArrayList<>();
+        List<VirtualComponentPosition> positions = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
         if (craftingActive) {
-            for (VirtualPanelPosition pos : inputConnections) {
+            for (VirtualComponentPosition pos : inputConnections) {
                 ItemStack ing = ingredientOf(pos);
                 int c = (int) craftingIngredients.stream()
                     .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))

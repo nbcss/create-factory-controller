@@ -196,8 +196,8 @@ public final class FluidCompat {
     }
 
     /**
-     * The fluid held in a container item (bucket, tank, …) via the NeoForge fluid-handler capability — used to turn a
-     * right-clicked container into a fluid filter. This reads the capability only, so it needs no addon classes and is
+     * The fluid held in a container item (bucket, tank, …) via the NeoForge fluid-handler role — used to turn a
+     * right-clicked container into a fluid filter. This reads the role only, so it needs no addon classes and is
      * safe to call regardless of {@link #isLoaded()}; an empty result means "not a (filled) fluid container".
      */
     public static FluidStack fluidInContainer(ItemStack container) {

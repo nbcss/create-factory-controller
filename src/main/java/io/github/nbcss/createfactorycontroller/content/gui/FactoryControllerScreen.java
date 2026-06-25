@@ -11,14 +11,11 @@ import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
-import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
-import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.*;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValidator;
 import io.github.nbcss.createfactorycontroller.content.packet.ComponentInteractPacket;
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -154,16 +151,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int INV_TEX_HOTBAR_Y  = 76;
 
     // Interaction state
-    @Nullable private VirtualPanelPosition hoveredPosition = null;
+    @Nullable private VirtualComponentPosition hoveredPosition = null;
 
-    private final Map<VirtualPanelPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
+    private final Map<VirtualComponentPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
 
-    private final Map<VirtualPanelPosition, LerpedFloat> bulbs = new HashMap<>();
-    private final Map<VirtualPanelPosition, Long> bulbSeenRequest = new HashMap<>();
+    private final Map<VirtualComponentPosition, LerpedFloat> bulbs = new HashMap<>();
+    private final Map<VirtualComponentPosition, Long> bulbSeenRequest = new HashMap<>();
 
     // Board action mode (e.g. connecting).
-    @Nullable private VirtualPanelPosition pendingConnectionTarget = null;
-    @Nullable private VirtualPanelPosition pendingRelocateTarget = null;
+    @Nullable private VirtualComponentPosition pendingConnectionTarget = null;
+    @Nullable private VirtualComponentPosition pendingRelocateTarget = null;
     @Nullable private Component actionPrompt = null;
     // When the prompt should disappear (millis). Long.MAX_VALUE for the persistent mode prompts;
     // a finite value for transient messages (e.g. the arrow-mode chime), which fade out near expiry.
@@ -174,7 +171,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // ── Selection mode (client-only) ─────────────────────────────────────────
     /** Components currently marked "selected" (gold reticle). Client-only; never serialized or synced. */
-    private final Set<VirtualPanelPosition> selected = new LinkedHashSet<>();
+    private final Set<VirtualComponentPosition> selected = new LinkedHashSet<>();
     // Rubber-band drag (only while the Selection-Mode key is held): screen-space start/current + a moved flag that
     // distinguishes a drag (rectangle select) from a click (toggle / clear).
     private boolean rubberBanding = false;
@@ -183,7 +180,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private double rubberStartX, rubberStartY, rubberCurX, rubberCurY;
     // Batch relocate drag (normal mode, started by pressing a selected component): the press cell + the live cell delta.
     private boolean batchRelocating = false;
-    @Nullable private VirtualPanelPosition batchAnchor = null;
+    @Nullable private VirtualComponentPosition batchAnchor = null;
     private int batchDx = 0, batchDy = 0;
 
     // Network selector widget
@@ -374,7 +371,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public void tickBulbs() {
         for (VirtualComponentWidget w : componentWidgets.values()) {
             if (!(w.behaviour() instanceof VirtualGaugeBehaviour g)) continue;   // only gauges have bulbs
-            VirtualPanelPosition pos = g.position();
+            VirtualComponentPosition pos = g.position();
             boolean firstSeen = !bulbSeenRequest.containsKey(pos);
             float steady = g.satisfied || g.redstonePowered ? 1 : 0;
             LerpedFloat bulb = bulbs.computeIfAbsent(pos,
@@ -393,7 +390,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Current interpolated bulb glow [0,1] for the gauge at {@code pos} (0 if none). */
-    private float bulbGlow(VirtualPanelPosition pos, float partialTick) {
+    private float bulbGlow(VirtualComponentPosition pos, float partialTick) {
         LerpedFloat bulb = bulbs.get(pos);
         return bulb == null ? 0f : bulb.getValue(partialTick);
     }
@@ -425,7 +422,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** True if {@code (mx, my)} lies within a cached {x0, y0, x1, y1} label box (null box ⇒ false). */
-    private static boolean inBounds(@Nullable int[] b, double mx, double my) {
+    private static boolean inBounds(int @Nullable [] b, double mx, double my) {
         return b != null && mx >= b[0] && mx < b[2] && my >= b[1] && my < b[3];
     }
 
@@ -670,7 +667,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void renderHoverTarget(GuiGraphics graphics) {
         // Source gauge of the active action mode — green, drawn first and given priority.
-        VirtualPanelPosition source = pendingConnectionTarget != null ? pendingConnectionTarget : pendingRelocateTarget;
+        VirtualComponentPosition source = pendingConnectionTarget != null ? pendingConnectionTarget : pendingRelocateTarget;
         if (source != null) renderTarget(graphics, source, TARGET_GREEN);
 
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
@@ -678,20 +675,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         ItemStack carried = menu.getCarried();
 
         if (pendingConnectionTarget != null) {
-            // Connect mode: hovering another component shows white if it can be wired, red otherwise. A gauge
-            // ingredient is blocked when it's a duplicate or the initiating gauge already holds the max inputs; a
-            // redstone link is only blocked when this gauge is already wired to it (the link is uncapped).
+            // Connect mode: hovering another component shows white if it can be wired (same validation the click and
+            // the server run), red otherwise — via the shared ConnectionResolver, no pairwise instanceof here.
             if (hoverHasGauge && !hoveredPosition.equals(pendingConnectionTarget)) {
                 VirtualComponentBehaviour initiator = componentAt(pendingConnectionTarget);
                 VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
-                boolean valid;
-                if (hovered instanceof VirtualRedstoneLinkBehaviour link) {
-                    valid = !link.targetedBy().containsKey(pendingConnectionTarget);
-                } else {
-                    valid = initiator != null
-                            && !initiator.targetedBy().containsKey(hoveredPosition)
-                            && usedInputSlots(initiator) < VirtualGaugeBehaviour.MAX_INGREDIENTS;
-                }
+                boolean valid = ConnectionValidator.validate(hovered, initiator, initiator).ok();
                 renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
             }
         } else if (pendingRelocateTarget != null) {
@@ -717,7 +706,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Whether a component at {@code cell} could contribute any pixel to the visible canvas rectangle
      *  {@code [minX,maxX]×[minY,maxY]} (canvas-world px), within {@link #COMPONENT_CULL_MARGIN} slack for its label. */
-    private static boolean isCellVisible(VirtualPanelPosition cell, int minX, int minY, int maxX, int maxY) {
+    private static boolean isCellVisible(VirtualComponentPosition cell, int minX, int minY, int maxX, int maxY) {
         int x0 = cell.x() * CANVAS_COMPONENT_SIZE - COMPONENT_CULL_MARGIN;
         int y0 = cell.y() * CANVAS_COMPONENT_SIZE - COMPONENT_CULL_MARGIN;
         int x1 = (cell.x() + 1) * CANVAS_COMPONENT_SIZE + COMPONENT_CULL_MARGIN;
@@ -726,7 +715,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
-    private void renderTarget(GuiGraphics graphics, VirtualPanelPosition pos, int rgb) {
+    private void renderTarget(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
         int x0 = pos.x() * CANVAS_COMPONENT_SIZE;
         int y0 = pos.y() * CANVAS_COMPONENT_SIZE;
         RenderSystem.enableBlend();
@@ -746,17 +735,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         batchRelocating = false;
     }
 
-    /** Removes every selected component from the board (one remove packet each), then clears the selection. */
-    private void removeSelected() {
-        for (VirtualPanelPosition p : new ArrayList<>(selected)) {
-            VirtualComponentWidget w = componentWidgetAt(p);
-            if (w != null) w.remove(this);
-        }
-        clearSelection();
-    }
-
     /** The canvas cell a screen position falls into (computes the board centre itself). */
-    private VirtualPanelPosition cellAt(double posX, double posY) {
+    private VirtualComponentPosition cellAt(double posX, double posY) {
         int x0 = leftPos + CANVAS_SIDE_PADDING;
         int y0 = topPos + CANVAS_TOP_PADDING;
         int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
@@ -766,19 +746,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Whether a batch relocate by the current delta would put {@code to} on a valid cell (in-board and not onto a
      *  non-selected component). Mirrors the server's {@code moveComponents} validation for the drag ghosts. */
-    private boolean batchDestValid(VirtualPanelPosition to) {
+    private boolean batchDestValid(VirtualComponentPosition to) {
         boolean occupiedByOther = componentWidgets.containsKey(to) && !selected.contains(to);
         return !FactoryControllerBlockEntity.isOutBoard(to) && !occupiedByOther;
     }
 
     /** The inclusive {minX, minY, maxX, maxY} cell box spanned by the current rubber-band rectangle. */
     private int[] rubberCellBox() {
-        VirtualPanelPosition a = cellAt(rubberStartX, rubberStartY);
-        VirtualPanelPosition b = cellAt(rubberCurX, rubberCurY);
+        VirtualComponentPosition a = cellAt(rubberStartX, rubberStartY);
+        VirtualComponentPosition b = cellAt(rubberCurX, rubberCurY);
         return new int[]{Math.min(a.x(), b.x()), Math.min(a.y(), b.y()), Math.max(a.x(), b.x()), Math.max(a.y(), b.y())};
     }
 
-    private static boolean inBox(int[] box, VirtualPanelPosition p) {
+    private static boolean inBox(int[] box, VirtualComponentPosition p) {
         return p.x() >= box[0] && p.x() <= box[2] && p.y() >= box[1] && p.y() <= box[3];
     }
 
@@ -786,19 +766,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      *  component currently inside the rubber-band rectangle while drag-selecting. */
     private void renderSelectionTargets(GuiGraphics graphics) {
         // Green selected marks first...
-        for (VirtualPanelPosition p : selected)
+        for (VirtualComponentPosition p : selected)
             if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
         if (rubberBanding && rubberMoved) {   // live preview: components the drag would select show the mark too
             int[] box = rubberCellBox();
-            for (VirtualPanelPosition p : componentWidgets.keySet())
+            for (VirtualComponentPosition p : componentWidgets.keySet())
                 if (inBox(box, p)) renderTarget(graphics, p, TARGET_GREEN);
         }
         // ...then the batch-relocate ghosts ON TOP, so a white/red target landing on a still-present selected gauge
         // (one that is itself moving away) draws over its green mark instead of being hidden behind it.
         if (batchRelocating && (batchDx != 0 || batchDy != 0)) {
-            for (VirtualPanelPosition p : selected) {
+            for (VirtualComponentPosition p : selected) {
                 if (!componentWidgets.containsKey(p)) continue;
-                VirtualPanelPosition to = new VirtualPanelPosition(p.x() + batchDx, p.y() + batchDy);
+                VirtualComponentPosition to = new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy);
                 renderTarget(graphics, to, batchDestValid(to) ? TARGET_WHITE : TARGET_RED);
             }
         }
@@ -807,7 +787,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Adds every component whose cell lies within the rubber-band rectangle to the selection (additive). */
     private void selectInRect() {
         int[] box = rubberCellBox();
-        for (VirtualPanelPosition p : componentWidgets.keySet())
+        for (VirtualComponentPosition p : componentWidgets.keySet())
             if (inBox(box, p)) selected.add(p);
     }
 
@@ -824,16 +804,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** The selection count, including the live rubber-band rectangle contents while drag-selecting. */
     private int effectiveSelectedCount() {
         if (!rubberBanding || !rubberMoved) return selected.size();
-        Set<VirtualPanelPosition> union = new LinkedHashSet<>(selected);
+        Set<VirtualComponentPosition> union = new LinkedHashSet<>(selected);
         int[] box = rubberCellBox();
-        for (VirtualPanelPosition p : componentWidgets.keySet())
+        for (VirtualComponentPosition p : componentWidgets.keySet())
             if (inBox(box, p)) union.add(p);
         return union.size();
     }
 
     /** A selection-mode click that didn't drag: toggle the component under the cursor, or clear all on empty space. */
     private void toggleOrClearAt(double mx, double my) {
-        VirtualPanelPosition cell = cellAt(mx, my);
+        VirtualComponentPosition cell = cellAt(mx, my);
         if (componentWidgets.containsKey(cell)) {
             if (!selected.remove(cell)) selected.add(cell);
         } else {
@@ -845,22 +825,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      *  and optimistically re-anchors the selection at the new positions. A zero-delta release is a no-op. */
     private void commitBatchRelocate() {
         if (batchDx == 0 && batchDy == 0) return;
-        List<VirtualPanelPosition> sources = new ArrayList<>();
-        for (VirtualPanelPosition p : selected)
+        List<VirtualComponentPosition> sources = new ArrayList<>();
+        for (VirtualComponentPosition p : selected)
             if (componentWidgets.containsKey(p)) sources.add(p);
         if (sources.isEmpty()) return;
 
-        for (VirtualPanelPosition p : sources)
-            if (!batchDestValid(new VirtualPanelPosition(p.x() + batchDx, p.y() + batchDy))) {
+        for (VirtualComponentPosition p : sources)
+            if (!batchDestValid(new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy))) {
                 playDenySound();
                 return;
             }
 
         PacketDistributor.sendToServer(new BatchMoveComponentPacket(menu.controllerPos, sources, batchDx, batchDy));
         // Keep the selection, re-anchored at the new positions (server validated identically, so this matches).
-        Set<VirtualPanelPosition> moved = new LinkedHashSet<>();
-        for (VirtualPanelPosition p : selected)
-            moved.add(new VirtualPanelPosition(p.x() + batchDx, p.y() + batchDy));
+        Set<VirtualComponentPosition> moved = new LinkedHashSet<>();
+        for (VirtualComponentPosition p : selected)
+            moved.add(new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy));
         selected.clear();
         selected.addAll(moved);
     }
@@ -868,13 +848,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // ── Mouse interaction ──────────────────────────────────────────────────
 
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
-    public void beginConnectionMode(VirtualPanelPosition target) {
+    public void beginConnectionMode(VirtualComponentPosition target) {
         pendingConnectionTarget = target;
         setPersistentPrompt(CreateLang.translate("factory_panel.click_second_panel").style(ChatFormatting.WHITE).component());
     }
 
     /** Enters "relocate" mode: the next empty cell clicked becomes {@code target}'s new position. */
-    public void beginRelocateMode(VirtualPanelPosition target) {
+    public void beginRelocateMode(VirtualComponentPosition target) {
         pendingRelocateTarget = target;
         setPersistentPrompt(CreateLang.translate("factory_panel.click_to_relocate").style(ChatFormatting.WHITE).component());
     }
@@ -914,7 +894,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Attaches a carried component at the empty {@code cell} (board-full / network checks, then the packet). No-op
      *  when not carrying a component. Reached from the rubber-band release path (every empty-cell press starts one). */
-    private void attachCarriedAt(VirtualPanelPosition cell, ItemStack carried) {
+    private void attachCarriedAt(VirtualComponentPosition cell, ItemStack carried) {
         if (!ComponentRegistry.containsItem(carried) || componentWidgetAt(cell) != null) return;
         if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
             setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
@@ -932,6 +912,64 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return;
         }
         PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, cell, network));
+    }
+
+    /**
+     * Connection mode: wire the clickedPos component as the other end of the pending connection (or cancel). Always
+     * consumes the click and ends the mode. A redstone-link wire (link ↔ gauge) is stored on the link and uncapped,
+     * its arrow following the link's Send/Receive mode, so it works the same from either side; a gauge → gauge wire
+     * feeds the source's filter into the consumer (the consumer is capped, the source must carry a filter). Two links
+     * can't wire to each other. Pair logic lives here (not on a clickedWidget) so the link↔gauge rules aren't duplicated.
+     */
+    private void completeConnection(VirtualComponentPosition clickedPos,
+                                    @Nullable VirtualComponentWidget clickedWidget) {
+        VirtualComponentPosition targetPos = pendingConnectionTarget;
+        pendingConnectionTarget = null;
+        actionPrompt = null;
+        if (clickedWidget == null || clickedPos.equals(targetPos)) {
+            setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
+                    .style(ChatFormatting.WHITE).component(), 3000);
+            return;
+        }
+        VirtualComponentBehaviour clicked = clickedWidget.behaviour();    // the clickedPos component
+        VirtualComponentBehaviour initiator = componentAt(targetPos);    // the component that started the mode (= sink)
+        if (initiator == null) return;
+
+        // The single shared validator — identical to the hover preview and the server. The server re-validates and
+        // performs the storage, so the client just sends the packet on success (no optimistic mutation). The result
+        // carries the prompt for both outcomes (green confirmation on success, red reason on failure).
+        ConnectionValidator.Result result = ConnectionValidator.validate(clicked, initiator, initiator);
+        if (!result.ok()) {
+            showConnectionMessage(result);
+            playDenySound();
+            return;
+        }
+        PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, clickedPos, targetPos));
+        showConnectionMessage(result);
+    }
+
+    /** Shows the resolver result's lazy message as a timed prompt, if any. */
+    private void showConnectionMessage(ConnectionValidator.Result result) {
+        if (result.validation().message() != null)
+            setTimedPrompt(result.validation().message().get(), 3000);
+    }
+
+    /**
+     * Relocate mode: move the pending component to the clicked cell if it's empty and in-board; otherwise cancel.
+     * Always consumes the click and ends the mode.
+     */
+    private void completeRelocate(VirtualComponentPosition clicked, @Nullable VirtualComponentWidget widget) {
+        VirtualComponentPosition from = pendingRelocateTarget;
+        pendingRelocateTarget = null;
+        actionPrompt = null;
+        if (widget == null && !FactoryControllerBlockEntity.isOutBoard(clicked)) {
+            PacketDistributor.sendToServer(new MoveComponentPacket(menu.controllerPos, from, clicked));
+            setTimedPrompt(CreateLang.translate("factory_panel.relocated")
+                    .style(ChatFormatting.GREEN).component(), 3000);
+        } else {
+            setTimedPrompt(CreateLang.translate("factory_panel.relocation_aborted")
+                    .style(ChatFormatting.WHITE).component(), 3000);
+        }
     }
 
     @Override
@@ -959,16 +997,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
-            VirtualPanelPosition clicked = at(mouseX, mouseY, centerX, centerY);
+            VirtualComponentPosition clicked = at(mouseX, mouseY, centerX, centerY);
             ItemStack carried = menu.getCarried();
             VirtualComponentWidget widget = componentWidgetAt(clicked);
             boolean leftOrRight = button == 0 || button == 1;
 
-            // Start a rubber-band selection. With the Selection-Mode key held it can begin on ANY cell; otherwise it
-            // begins only on an EMPTY cell — so a plain left-drag from blank space selects, while a drag from a
-            // component still configures/relocates. The click-vs-drag outcome is decided in mouseReleased.
-            // Never while carrying an item: a held cursor item is for placing/configuring, not selecting, regardless
-            // of the Selection-Mode key (placement is handled directly below, not via the rubber-band release path).
             boolean ctrl = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
             if (button == 0 && carried.isEmpty() && pendingConnectionTarget == null && pendingRelocateTarget == null
                     && (ctrl || widget == null)) {
@@ -989,109 +1022,40 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Shift + left/right-click a gauge → remove it from the board (server refunds if survival). Shift-removing
-            // a SELECTED component removes the entire selection at once.
-            if (hasShiftDown() && leftOrRight && widget != null) {
-                if (selected.contains(clicked)) removeSelected();
-                else widget.remove(this);
-                return true;
-            }
-
-            // Normal mode: pressing a SELECTED component starts a batch relocate drag of the whole selection
-            // (this is what makes selected components no longer "click to configure"). Committed in mouseReleased.
-            if (button == 0 && widget != null && selected.contains(clicked)
-                    && pendingConnectionTarget == null && pendingRelocateTarget == null) {
-                batchRelocating = true;
-                batchAnchor = clicked;
-                batchDx = batchDy = 0;
-                return true;
-            }
-
-            // Connection mode: clicking a gauge wires it as an input; clicking an empty cell (or the
-            // source gauge itself) cancels. Client rejects a gauge with no filter / a duplicate link.
+            // Connection mode: the clicked cell is the other end of the pending wire (handled in completeConnection).
             if (pendingConnectionTarget != null && leftOrRight) {
-                VirtualPanelPosition target = pendingConnectionTarget;
-                pendingConnectionTarget = null;
-                actionPrompt = null;
-                if (widget == null || clicked.equals(target)) {
-                    setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
-                            .style(ChatFormatting.WHITE).component(), 3000);
-                    return true;
-                }
-                VirtualComponentBehaviour input = widget.behaviour();
-                VirtualComponentBehaviour targetComp = componentAt(target);
-                boolean toLink = input instanceof VirtualRedstoneLinkBehaviour;
-                // Duplicate detection. A gauge↔gauge wire is stored on the consumer, so a duplicate is only
-                // "target already has clicked as an input" — the REVERSE wire (target→clicked) is a different,
-                // allowed connection (two gauges may feed each other). A gauge↔link wire is always stored on
-                // the link regardless of click direction, so when the source is a link also treat its own
-                // existing wire to the target as a duplicate.
-                boolean already = (targetComp != null && targetComp.targetedBy().containsKey(clicked))
-                        || (toLink && input.targetedBy().containsKey(target));
-                // Ingredient cap applies only to gauge↔gauge wires (a link is uncapped). It's a grid-SLOT cap:
-                // an ingredient whose amount exceeds its stack size spans several slots, so count slots, not wires.
-                boolean atCap = !toLink && targetComp != null
-                        && usedInputSlots(targetComp) >= VirtualGaugeBehaviour.MAX_INGREDIENTS;
-                // A gauge source with no filter can't be wired; a redstone-link source always can.
-                if (input instanceof VirtualGaugeBehaviour ig && ig.filter.isEmpty()) {
-                    setTimedPrompt(CreateLang.translate("factory_panel.no_item")
-                            .style(ChatFormatting.RED).component(), 3000);
-                    playDenySound();
-                } else if (already) {
-                    setTimedPrompt(CreateLang.translate("factory_panel.already_connected")
-                            .style(ChatFormatting.RED).component(), 3000);
-                    playDenySound();
-                } else if (atCap) {
-                    setTimedPrompt(CreateLang.translate("factory_panel.cannot_add_more_inputs")
-                            .style(ChatFormatting.RED).component(), 3000);
-                    playDenySound();
-                } else {
-                    PacketDistributor.sendToServer(new AddConnectionPacket(
-                            menu.controllerPos, clicked, target));
-                    if (!(input instanceof VirtualGaugeBehaviour ig)) {
-                        String outputName = new ItemStack(BuiltInRegistries.ITEM.get(input.getItemId()))
-                                .getHoverName().getString();
-                        setTimedPrompt(CreateLang.translate("factory_panel.link_connected",
-                                        outputName)
-                                .style(ChatFormatting.GREEN).component(), 3000);
-                        return true;
-                    }
-                    Component inputName = FluidCompat.filterName(ig.filter);
-                    Component outputName = targetComp instanceof VirtualGaugeBehaviour tg
-                            ? FluidCompat.filterName(tg.filter) : Component.empty();
-                    setTimedPrompt(CreateLang.translate("factory_panel.panels_connected",
-                            inputName, outputName)
-                            .style(ChatFormatting.GREEN).component(), 3000);
-                }
+                completeConnection(clicked, widget);
                 return true;
             }
 
-            // Relocate mode: an empty, in-board cell moves the gauge there; anything else (occupied cell,
-            // the gauge's own cell, off-board) aborts. Either way the mode ends.
+            // Relocate mode: the clicked cell is the pending component's destination (handled in completeRelocate).
             if (pendingRelocateTarget != null && leftOrRight) {
-                VirtualPanelPosition from = pendingRelocateTarget;
-                pendingRelocateTarget = null;
-                actionPrompt = null;
-                if (widget == null && !FactoryControllerBlockEntity.isOutBoard(clicked)) {
-                    PacketDistributor.sendToServer(new MoveComponentPacket(menu.controllerPos, from, clicked));
-                    setTimedPrompt(CreateLang.translate("factory_panel.relocated")
-                            .style(ChatFormatting.GREEN).component(), 3000);
-                } else {
-                    setTimedPrompt(CreateLang.translate("factory_panel.relocation_aborted")
-                            .style(ChatFormatting.WHITE).component(), 3000);
-                }
+                completeRelocate(clicked, widget);
                 return true;
             }
 
-            // (Empty-cursor left-clicks on an empty cell — drop the selection — are handled via the rubber-band
-            // release path, since an empty-cursor empty-cell left-press starts a rubber-band first. Carried-item
-            // placement on an empty cell is handled directly above.)
-
-            // Click an existing component → its own interaction. Pass the cursor in canvas-world coords (so a widget
-            // can hit-test sub-regions, e.g. the link's top/bottom frequency halves) and the button.
+            // Selection handling
             if (leftOrRight && widget != null) {
                 double worldX = viewX + (mouseX - centerX) / getZoomFactor();
                 double worldY = viewY + (mouseY - centerY) / getZoomFactor();
+                if (hasShiftDown()) {
+                    if (selected.contains(clicked)){
+                        for (VirtualComponentPosition p : new ArrayList<>(selected)) {
+                            VirtualComponentWidget w = componentWidgetAt(p);
+                            if (w != null) w.remove(this);
+                        }
+                        clearSelection();
+                    } else {
+                        widget.remove(this);
+                    }
+                    return true;
+                }
+                if (button == 0 && selected.contains(clicked)) {
+                    batchRelocating = true;
+                    batchAnchor = widget.position();
+                    batchDx = batchDy = 0;
+                    return true;
+                }
                 return widget.onClick(this, carried, worldX, worldY, button);
             }
 
@@ -1115,7 +1079,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
         // Batch relocate: the live cell delta from the anchor drives the ghost reticles.
         if (button == 0 && batchRelocating && batchAnchor != null) {
-            VirtualPanelPosition cell = cellAt(mouseX, mouseY);
+            VirtualComponentPosition cell = cellAt(mouseX, mouseY);
             batchDx = cell.x() - batchAnchor.x();
             batchDy = cell.y() - batchAnchor.y();
             return true;
@@ -1248,10 +1212,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Maps a screen position to the canvas cell it falls into. */
-    private VirtualPanelPosition at(double posX, double posY, int centerX, int centerY) {
+    private VirtualComponentPosition at(double posX, double posY, int centerX, int centerY) {
         int cellX = (int) Math.floor((viewX + (posX - centerX) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
         int cellY = (int) Math.floor((viewY + (posY - centerY) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
-        return new VirtualPanelPosition(cellX, cellY);
+        return new VirtualComponentPosition(cellX, cellY);
     }
 
     private boolean isInCanvasArea(double x, double y) {
@@ -1349,9 +1313,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      * -1, the "auto" mode), or {@code null} if it has no outgoing connection.
      */
     @Nullable
-    private Integer outgoingArrowBendMode(VirtualPanelPosition pos) {
+    private Integer outgoingArrowBendMode(VirtualComponentPosition pos) {
         for (VirtualComponentBehaviour b : menu.components) {
-            VirtualPanelConnection conn = b.targetedBy().get(pos);
+            Connection conn = b.targetedBy().get(pos);
             if (conn != null) return conn.arrowBendMode;
         }
         return null;
@@ -1373,21 +1337,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** The widget at {@code pos}, or {@code null} if the cell is empty (O(1)). */
     @Nullable
-    VirtualComponentWidget componentWidgetAt(@Nullable VirtualPanelPosition pos) {
+    VirtualComponentWidget componentWidgetAt(@Nullable VirtualComponentPosition pos) {
         return pos == null ? null : componentWidgets.get(pos);
     }
 
     /** The component at {@code pos} (any type), or {@code null} if the cell is empty. */
     @Nullable
-    private VirtualComponentBehaviour componentAt(@Nullable VirtualPanelPosition pos) {
+    private VirtualComponentBehaviour componentAt(@Nullable VirtualComponentPosition pos) {
         VirtualComponentWidget w = componentWidgetAt(pos);
         return w == null ? null : w.behaviour();
-    }
-
-    /** Grid slots {@code comp}'s ingredient connections occupy (client view), resolving each source's filter via
-     *  the menu. Shared slot-counting logic lives in {@link VirtualGaugeBehaviour#usedInputSlots}. */
-    private int usedInputSlots(VirtualComponentBehaviour comp) {
-        return VirtualGaugeBehaviour.usedInputSlots(comp.targetedBy(), pos ->
-            menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY);
     }
 }

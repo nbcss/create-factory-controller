@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -15,16 +15,16 @@ import net.minecraft.server.level.ServerPlayer;
  * The "interact" key (R) on a hovered component. The server dispatches by component type: a gauge cycles its outgoing
  * connection arrow-bend mode; a redstone link toggles its Send/Receive mode.
  */
-public record ComponentInteractPacket(BlockPos pos, VirtualPanelPosition panelPos) implements CustomPacketPayload {
+public record ComponentInteractPacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
 
     public static final Type<ComponentInteractPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "component_interact"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualPanelPosition> POS_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
-            ByteBufCodecs.INT, VirtualPanelPosition::x,
-            ByteBufCodecs.INT, VirtualPanelPosition::y,
-            VirtualPanelPosition::new
+            ByteBufCodecs.INT, VirtualComponentPosition::x,
+            ByteBufCodecs.INT, VirtualComponentPosition::y,
+            VirtualComponentPosition::new
         );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ComponentInteractPacket> STREAM_CODEC =

@@ -2,15 +2,13 @@ package io.github.nbcss.createfactorycontroller.content.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
-import com.simibubi.create.AllItems;
-import com.simibubi.create.content.redstone.link.RedstoneLinkBlock;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
@@ -33,7 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 /**
- * Full-configuration overlay for a Redstone Link component — its two channel frequencies (Red/Blue) and Send/Receive
+ * Full-configuration overlay for a Redstone Link component — its two type frequencies (Red/Blue) and Send/Receive
  * mode. Shares the controller's {@link FactoryControllerMenu} (no container swap) and draws the live board as a dimmed
  * backdrop, with the player inventory shown so items can be grabbed onto the frequency slots (or dropped from JEI).
  *
@@ -63,7 +61,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     private static final int RED_X = 87, RED_Y = 26, BLUE_X = 87, BLUE_Y = 44, SLOT = 18;
 
     private final FactoryControllerScreen controller;
-    private final VirtualPanelPosition linkPos;
+    private final VirtualComponentPosition linkPos;
 
     // Staged config (committed on close).
     private ItemStack red = ItemStack.EMPTY;
@@ -72,9 +70,9 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     private boolean committed = false;
 
     private int panelX, panelY, invBgX, invBgY;
-    private IconButton relocateButton, modeButton, confirmButton;
+    private IconButton relocateButton, addConnectionButton, modeButton, confirmButton;
 
-    public ConfigureRedstoneLinkScreen(FactoryControllerScreen controller, VirtualPanelPosition linkPos) {
+    public ConfigureRedstoneLinkScreen(FactoryControllerScreen controller, VirtualComponentPosition linkPos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               Component.translatable("createfactorycontroller.gui.redstone_link_settings"));
         this.controller = controller;
@@ -112,6 +110,16 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         });
         // No self-tooltip (it would draw during renderBg and be covered by the slots/items); drawn last in render().
         addWidget(relocateButton);
+
+        // Add-connection: same icon/flow as the recipe screen's "connect input" — start board connection mode from this
+        // link. The wire is stored on the link regardless of which side starts it, and its arrow follows the link's
+        // Send/Receive mode (see VirtualConnectionRenderer), so this needs no direction choice here.
+        addConnectionButton = new IconButton(panelX + 52, panelY + 79, AllIcons.I_ADD);
+        addConnectionButton.withCallback(() -> {
+            controller.beginConnectionMode(linkPos);
+            Minecraft.getInstance().setScreen(controller);   // commit happens in removed()
+        });
+        addWidget(addConnectionButton);
 
         ScreenElement modeIcon = (gfx, x, y) -> gfx.blitSprite(receive ? WIRELESS_RECEIVE : WIRELESS_TRANSMIT, x, y, 16, 16);
         modeButton = new IconButton(panelX + 30, panelY + 79, modeIcon);
@@ -172,6 +180,8 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         // Icon-button tooltips drawn here (last) so the slots/items from super.render can't cover them.
         else if (relocateButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
+        else if (addConnectionButton.isMouseOver(mouseX, mouseY))
+            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.connect_input").component(), mouseX, mouseY);
         else if (confirmButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
@@ -199,6 +209,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         RenderSystem.clear(256, Minecraft.ON_OSX);
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
+        addConnectionButton.render(gfx, mouseX, mouseY, partialTick);
         modeButton.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
     }
@@ -236,7 +247,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         boolean onRed = overRed(mouseX, mouseY), onBlue = overBlue(mouseX, mouseY);
         if (onRed || onBlue) {
-            // A held item sets the channel; an empty cursor clears it. The cursor is never consumed (filters).
+            // A held item sets the type; an empty cursor clears it. The cursor is never consumed (filters).
             ItemStack carried = menu.getCarried();
             ItemStack set = carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1);
             if (onRed) red = set; else blue = set;
@@ -247,7 +258,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
 
     @Override
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
-        // Shift-click an inventory item → fill the first empty channel (Red, then Blue). Item isn't moved.
+        // Shift-click an inventory item → fill the first empty type (Red, then Blue). Item isn't moved.
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
             ItemStack freq = slot.getItem().copyWithCount(1);
             if (red.isEmpty()) red = freq;

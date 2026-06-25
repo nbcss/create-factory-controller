@@ -1,13 +1,13 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
-import io.github.nbcss.createfactorycontroller.content.component.RedstoneConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.Minecraft;
@@ -33,7 +33,7 @@ import java.util.Set;
  *
  * <p>Connections follow the 2D grid like Create's panels: each connection is an axis-aligned
  * path — a single straight segment when the two cells share a row/column, otherwise an L-path
- * through one corner (corner side chosen by {@link VirtualPanelConnection#arrowBendMode}). The
+ * through one corner (corner side chosen by {@link Connection#arrowBendMode}). The
  * texture is a pre-oriented atlas: it contains a separate line + arrow strip for each of the four
  * grid directions, so we blit the matching strip directly (no rotation). The arrowhead points
  * into the {@code from} (source) gauge.</p>
@@ -55,7 +55,7 @@ public final class VirtualConnectionRenderer {
 
     private enum Direction { UP, DOWN, LEFT, RIGHT }
 
-    // Subtexture rect coordinates in a frame. 
+    // Subtexture rect coordinates in a frame.
     // (ox, oy) = origin which is aligned with the center of a cell
     // t = starting frame
     // LINE_*_0 = line that fills the earlier half of the cell in this direction
@@ -100,12 +100,12 @@ public final class VirtualConnectionRenderer {
      */
     public static void renderConnections(GuiGraphics gfx, FactoryControllerMenu menu,
                                          int minX, int minY, int maxX, int maxY) {
-        Set<VirtualPanelPosition> occupied = new HashSet<>();
-        Map<VirtualPanelPosition, VirtualComponentBehaviour> byPos = new HashMap<>();
+        Set<VirtualComponentPosition> occupied = new HashSet<>();
+        Map<VirtualComponentPosition, VirtualComponentBehaviour> byPos = new HashMap<>();
         for (VirtualComponentBehaviour c : menu.components) { occupied.add(c.position()); byPos.put(c.position(), c); }
         for (VirtualComponentBehaviour target : menu.components) {
-            VirtualPanelPosition toPos = target.position();
-            for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : target.targetedBy().entrySet()) {
+            VirtualComponentPosition toPos = target.position();
+            for (Map.Entry<VirtualComponentPosition, Connection> e : target.targetedBy().entrySet()) {
                 if (!spanVisible(e.getKey(), toPos, minX, minY, maxX, maxY)) continue;
                 drawConnection(gfx, e.getKey(), toPos, e.getValue(), target, byPos.get(e.getKey()), occupied);
             }
@@ -113,7 +113,7 @@ public final class VirtualConnectionRenderer {
     }
 
     /** Whether the cell-bounding rectangle of the two connection ends overlaps the visible canvas rectangle. */
-    private static boolean spanVisible(VirtualPanelPosition a, VirtualPanelPosition b,
+    private static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b,
                                        int minX, int minY, int maxX, int maxY) {
         int x0 = Math.min(a.x(), b.x()) * CELL;
         int y0 = Math.min(a.y(), b.y()) * CELL;
@@ -128,10 +128,10 @@ public final class VirtualConnectionRenderer {
      * SEND reverses to gauge → link (arrow into the link).
      */
     private static void drawConnection(GuiGraphics gfx,
-                                       VirtualPanelPosition from, VirtualPanelPosition to,
-                                       VirtualPanelConnection conn, VirtualComponentBehaviour target,
+                                       VirtualComponentPosition from, VirtualComponentPosition to,
+                                       Connection conn, VirtualComponentBehaviour target,
                                        VirtualComponentBehaviour source,
-                                       Set<VirtualPanelPosition> occupied) {
+                                       Set<VirtualComponentPosition> occupied) {
         if (from.equals(to)) return;
 
         // The path is built in the stable storage direction (from = source, to = target) and its bend uses the stored
@@ -261,7 +261,7 @@ public final class VirtualConnectionRenderer {
      *     <li>3 — V→H→V staircase (falls back to V→H if it can't fit)</li></ul>
      * A staircase needs a cell strictly between source and target on its stepping axis ({@code |d|>=2}).
      */
-    private static List<Vector2i> buildCellPath(VirtualPanelPosition from, VirtualPanelPosition to, int mode) {
+    private static List<Vector2i> buildCellPath(VirtualComponentPosition from, VirtualPanelPosition to, int mode) {
         int fx = from.x(), fy = from.y(), tx = to.x(), ty = to.y();
         if (fx == tx || fy == ty)                                   // aligned → straight run
             return List.of(new Vector2i(fx, fy), new Vector2i(tx, ty));
@@ -290,14 +290,14 @@ public final class VirtualConnectionRenderer {
     }
 
     /** True if the cell-space polyline passes through no occupied cell other than its endpoints. */
-    private static boolean pathClear(List<Vector2i> path, Set<VirtualPanelPosition> occupied,
-                                     VirtualPanelPosition from, VirtualPanelPosition to) {
+    private static boolean pathClear(List<Vector2i> path, Set<VirtualComponentPosition> occupied,
+                                     VirtualComponentPosition from, VirtualComponentPosition to) {
         for (int i = 0; i < path.size() - 1; i++) {
             Vector2i a = path.get(i), b = path.get(i + 1);
             int stepX = Integer.signum(b.x - a.x), stepY = Integer.signum(b.y - a.y);
             Vector2i c = new Vector2i(a);
             while (true) {
-                VirtualPanelPosition p = new VirtualPanelPosition(c.x, c.y);
+                VirtualComponentPosition p = new VirtualComponentPosition(c.x, c.y);
                 if (!p.equals(from) && !p.equals(to) && occupied.contains(p)) return false;
                 if (c.x == b.x && c.y == b.y) break;
                 c.x += stepX; c.y += stepY;

@@ -8,11 +8,10 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
-import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
-import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.*;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValidator;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
@@ -58,12 +57,21 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public static final int MAX_NAME_LENGTH = 25;
     public static final int BOARD_LIMIT = 64;
 
+    /** Schema version of the persisted controller data ({@code "Ver"} in NBT). Absent ⇒ {@code 0} (pre-versioning).
+     *  Written now as a migration anchor; future format changes (e.g. central connection storage, see
+     *  CONNECTION_REWORK_PLAN.md) bump this and branch on {@link #dataVersion} read from disk. */
+    public static final int DATA_VERSION = 1;
+    /** Version of the data most recently {@link #read}; {@code 0} = pre-versioning. For future migration logic. */
+
     /** Whether the given position lies on the finite ±{@link #BOARD_LIMIT}-cell board. */
-    public static boolean isOutBoard(VirtualPanelPosition pos) {
+    public static boolean isOutBoard(VirtualComponentPosition pos) {
         return Math.abs(pos.x()) > BOARD_LIMIT || Math.abs(pos.y()) > BOARD_LIMIT;
     }
 
-    public final Map<VirtualPanelPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
+    public final Map<VirtualComponentPosition, VirtualComponentBehaviour> components = new LinkedHashMap<>();
+    /** Controller-level store of every connection on the board; components are live views into it (Phase 2). */
+    private final ConnectionGraph connectionGraph = new ConnectionGraph();
+    public ConnectionGraph connectionGraph() { return connectionGraph; }
     public final Set<UUID> networks = new LinkedHashSet<>();
     public final Map<UUID, String> networkNicknames = new HashMap<>();
 
@@ -204,7 +212,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Gauge attach ───────────────────────────────────────────────────────
 
-    public void attachComponent(VirtualPanelPosition pos, Player player, @Nullable UUID selectedNetwork) {
+    public void attachComponent(VirtualComponentPosition pos, Player player, @Nullable UUID selectedNetwork) {
         ItemStack carried = player.containerMenu.getCarried();
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(carried.getItem());
 
@@ -249,7 +257,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Component remove ───────────────────────────────────────────────────────
 
-    public void removeComponent(VirtualPanelPosition pos, Player player) {
+    public void removeComponent(VirtualComponentPosition pos, Player player) {
         VirtualComponentBehaviour behaviour = components.remove(pos);
         if (behaviour == null) return;
 
@@ -289,7 +297,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Component relocate ─────────────────────────────────────────────────────
 
-    public void moveComponent(VirtualPanelPosition from, VirtualPanelPosition to) {
+    public void moveComponent(VirtualComponentPosition from, VirtualComponentPosition to) {
         if (from.equals(to)) return;
         VirtualComponentBehaviour behaviour = components.get(from);
         if (behaviour == null) return;
@@ -300,26 +308,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         components.remove(from);
-
-        // Incoming sources point at us via their `targeting` set.
-        for (VirtualPanelConnection conn : behaviour.targetedBy().values()) {
-            VirtualComponentBehaviour source = components.get(conn.from);
-            if (source != null) {
-                source.targeting().remove(from);
-                source.targeting().add(to);
-            }
-        }
-        // Outgoing targets key our connection in their `targetedBy` map by our old position.
-        for (VirtualPanelPosition targetPos : behaviour.targeting()) {
-            VirtualComponentBehaviour target = components.get(targetPos);
-            if (target == null) continue;
-            VirtualPanelConnection conn = target.targetedBy().remove(from);
-            if (conn != null) {
-                conn.from = to;
-                target.targetedBy().put(to, conn);
-            }
-        }
-
+        connectionGraph.rename(from, to);   // re-key every wire touching `from` (both indexes + each conn.from)
         behaviour.setPosition(to);
         components.put(to, behaviour);
 
@@ -335,51 +324,35 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * by another moving component; otherwise nothing moves (deny blip). Connection references to any moved cell are
      * remapped through {@code f(p) = moving ? p+delta : p}, so wires survive whether one or both endpoints moved.
      */
-    public void moveComponents(List<VirtualPanelPosition> sources, int dx, int dy) {
+    public void moveComponents(List<VirtualComponentPosition> sources, int dx, int dy) {
         if (dx == 0 && dy == 0) return;
 
         // Live moving set (skip stale positions sent by the client).
-        Set<VirtualPanelPosition> moving = new LinkedHashSet<>();
-        for (VirtualPanelPosition p : sources)
+        Set<VirtualComponentPosition> moving = new LinkedHashSet<>();
+        for (VirtualComponentPosition p : sources)
             if (components.containsKey(p)) moving.add(p);
         if (moving.isEmpty()) return;
 
         // Validate ALL destinations first (atomic): in-board, and not occupied by a NON-moving component.
-        for (VirtualPanelPosition p : moving) {
-            VirtualPanelPosition to = new VirtualPanelPosition(p.x() + dx, p.y() + dy);
+        for (VirtualComponentPosition p : moving) {
+            VirtualComponentPosition to = new VirtualComponentPosition(p.x() + dx, p.y() + dy);
             if (isOutBoard(to) || (components.containsKey(to) && !moving.contains(to))) {
                 playDenySound();
                 return;
             }
         }
 
-        java.util.function.Function<VirtualPanelPosition, VirtualPanelPosition> remap = p ->
-            moving.contains(p) ? new VirtualPanelPosition(p.x() + dx, p.y() + dy) : p;
+        java.util.function.Function<VirtualComponentPosition, VirtualComponentPosition> remap = p ->
+            moving.contains(p) ? new VirtualComponentPosition(p.x() + dx, p.y() + dy) : p;
 
-        // Rewire every component's connection references (incoming keys + conn.from, and outgoing entries).
-        for (VirtualComponentBehaviour comp : components.values()) {
-            Map<VirtualPanelPosition, VirtualPanelConnection> in = comp.targetedBy();
-            Map<VirtualPanelPosition, VirtualPanelConnection> newIn = new LinkedHashMap<>();
-            for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : in.entrySet()) {
-                VirtualPanelConnection conn = e.getValue();
-                conn.from = remap.apply(conn.from);
-                newIn.put(remap.apply(e.getKey()), conn);
-            }
-            in.clear();
-            in.putAll(newIn);
-
-            Set<VirtualPanelPosition> out = comp.targeting();
-            Set<VirtualPanelPosition> newOut = new LinkedHashSet<>();
-            for (VirtualPanelPosition t : out) newOut.add(remap.apply(t));
-            out.clear();
-            out.addAll(newOut);
-        }
+        // Rewire every connection reference (owner/source keys + each conn.from) in one atomic pass.
+        connectionGraph.remap(remap);
 
         // Move the components themselves: re-key the map and update each stored position.
         List<VirtualComponentBehaviour> movers = new ArrayList<>();
-        for (VirtualPanelPosition p : moving) movers.add(components.remove(p));
+        for (VirtualComponentPosition p : moving) movers.add(components.remove(p));
         for (VirtualComponentBehaviour mover : movers) {
-            VirtualPanelPosition to = new VirtualPanelPosition(mover.position().x() + dx, mover.position().y() + dy);
+            VirtualComponentPosition to = new VirtualComponentPosition(mover.position().x() + dx, mover.position().y() + dy);
             mover.setPosition(to);
             components.put(to, mover);
         }
@@ -392,7 +365,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Configure panel ────────────────────────────────────────────────────
 
-    public void setComponentItem(VirtualPanelPosition pos, ItemStack filter, boolean ignoreData) {
+    public void setComponentItem(VirtualComponentPosition pos, ItemStack filter, boolean ignoreData) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         // A fluid gauge holds only a fluid filter — reject any (non-empty) item filter (the screen already prevents
         // this; defensive against a crafted packet).
@@ -421,10 +394,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * otherwise the address / output-per-craft / promise interval and per-connection ingredient
      * amounts are updated.
      */
-    public void configureRecipe(VirtualPanelPosition pos, String address, int recipeOutput, int craftBatch,
+    public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
                                 int craftDimension, int promiseInterval, int count, ThresholdUnit mode,
                                 RequestMode requestMode,
-                                Map<VirtualPanelPosition, Integer> inputAmounts,
+                                Map<VirtualComponentPosition, Integer> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
 
@@ -457,7 +430,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.requestMode = requestMode;
         if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
-        for (Map.Entry<VirtualPanelPosition, Integer> e : inputAmounts.entrySet())
+        for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
             if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
                 conn.amount = Math.max(1, e.getValue());
         if (clearPromises) gauge.requestClearPromises();
@@ -467,35 +440,42 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
-    public VirtualComponentBehaviour componentAt(VirtualPanelPosition pos) {
+    public VirtualComponentBehaviour componentAt(VirtualComponentPosition pos) {
         return components.get(pos);
     }
 
     // ── Connections ────────────────────────────────────────────────────────
 
-    public void addConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
-        VirtualComponentBehaviour target = components.get(to);
-        VirtualComponentBehaviour source = components.get(from);
-        if (source == null || target == null || from.equals(to)) {
+    public void addConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
+        VirtualComponentBehaviour fromComp = components.get(from);
+        VirtualComponentBehaviour toComp = components.get(to);   // the GUI initiator = intended sink
+        if (fromComp == null || toComp == null || from.equals(to)) {
             playDenySound();
             return;
         }
-        // Gauge↔link connections are always stored on the link (link.targetedBy[gauge]), regardless of which side
-        // was clicked, so the gauge's targetedBy stays ingredient-only and the gauge's R-cycle owns the arrow bend.
-        if (target instanceof VirtualGaugeBehaviour && source instanceof VirtualRedstoneLinkBehaviour) {
-            VirtualPanelPosition swap = from; from = to; to = swap;
-            target = components.get(to);
+        // Authoritative re-validation with the SAME resolver the client (preview + commit) used, so the server can
+        // never be more permissive than the UI.
+        if (!ConnectionValidator.validate(fromComp, toComp, toComp).ok()) {
+            playDenySound();
+            return;
         }
-        int before = target.targetedBy().size();
-        target.addConnection(from);
-        // addConnection silently no-ops on duplicate / max-reached / missing source: a grown map = success.
-        if (target.targetedBy().size() > before)
+        // Phase-1 storage (per-component model): a gauge↔link wire is always stored on the link, regardless of which
+        // side was clicked, so the gauge's targetedBy stays ingredient-only; gauge↔gauge on the consumer (to).
+        // [Phase 2 replaces this with a central edge list — no owner.]
+        VirtualComponentBehaviour owner = toComp;
+        VirtualComponentPosition sourcePos = from;
+        if (toComp instanceof VirtualGaugeBehaviour && fromComp instanceof VirtualRedstoneLinkBehaviour) {
+            owner = fromComp; sourcePos = to;   // store on the link
+        }
+        int before = owner.targetedBy().size();
+        owner.addConnection(sourcePos);
+        if (owner.targetedBy().size() > before)
             playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
         else
             playDenySound();
     }
 
-    public void removeConnection(VirtualPanelPosition from, VirtualPanelPosition to) {
+    public void removeConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
         VirtualComponentBehaviour target = components.get(to);
         if (target == null) return;
         target.removeConnection(from);
@@ -504,18 +484,18 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Disconnects every redstone link wired to the gauge at {@code gaugePos} (Create's "redstone reset"). The wires
      *  live on the links ({@code link.targetedBy[gauge]}); removing them clears the gauge's targeting and ungates it.
      *  Does not touch the gauge's recipe config. */
-    public void disconnectLinks(VirtualPanelPosition gaugePos) {
+    public void disconnectLinks(VirtualComponentPosition gaugePos) {
         if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour gauge)) return;
         // The gauge already tracks what it's wired to in its `targeting` set — iterate that (copied, since
         // removeConnection mutates it) rather than scanning the whole board, keeping only the redstone-link wires.
-        for (VirtualPanelPosition pos : new ArrayList<>(gauge.targeting()))
+        for (VirtualComponentPosition pos : new ArrayList<>(gauge.targeting()))
             if (components.get(pos) instanceof VirtualRedstoneLinkBehaviour link)
                 link.removeConnection(gaugePos);
         gauge.redstonePowered = gauge.isGatedByLink();
     }
 
     /** The interact (R) key: a gauge cycles its arrow-bend mode; a redstone link toggles Send/Receive. */
-    public void interactComponent(VirtualPanelPosition pos) {
+    public void interactComponent(VirtualComponentPosition pos) {
         VirtualComponentBehaviour behaviour = components.get(pos);
         if (behaviour != null) behaviour.onInteract();
     }
@@ -590,10 +570,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<CompoundTag> tags = new ArrayList<>();
         for (VirtualComponentBehaviour b : components.values())
             tags.add(b.toClientNBT(serverLevel.registryAccess()));
+        List<CompoundTag> connTags = connectionGraph.toTagList();
         List<UUID> netList = new ArrayList<>(networks);
         List<String> nameList = new ArrayList<>(netList.size());
         for (UUID id : netList) nameList.add(networkNicknames.getOrDefault(id, ""));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, netList, nameList, customName);
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, connTags, netList, nameList, customName);
         for (ServerPlayer player : viewers)
             PacketDistributor.sendToPlayer(player, packet);
     }
@@ -621,12 +602,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         if (clientPacket) return;
 
+        tag.putInt("Ver", DATA_VERSION);
         if (!customName.isBlank()) tag.putString("CustomName", customName);
 
         ListTag gaugeList = new ListTag();
         for (VirtualComponentBehaviour b : components.values())
             gaugeList.add(b.toNBT(registries));
         tag.put("Components", gaugeList);
+        tag.put("Connections", connectionGraph.toNBT());   // central edge list (Phase 2)
 
         ListTag networkList = new ListTag();
         for (UUID id : networks) {
@@ -642,6 +625,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     @Override
     protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.read(tag, registries, clientPacket);
+        System.out.println("============================================================================");
+        tag = ControllerDataFixer.fixControllerBE(tag);
 
         customName = tag.getString("CustomName");   // "" when absent
 
@@ -651,6 +636,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             VirtualComponentBehaviour b = ComponentRegistry.fromNBT(this, componentList.getCompound(i), registries);
             if (b != null) components.put(b.position(), b);
         }
+        readConnections(tag);
 
         networks.clear();
         networkNicknames.clear();
@@ -663,6 +649,13 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         markOrderableDirty();   // republish to the registry on the next server tick (level is set by then)
+    }
+
+    /** Loads the central connection graph from {@code tag}'s {@code "Connections"} edge list (old saves are upgraded to
+     *  that format by {@link ControllerDataFixer} before read). Call after components load. */
+    private void readConnections(CompoundTag tag) {
+        connectionGraph.clear();
+        connectionGraph.readNBT(tag.getList("Connections", Tag.TAG_COMPOUND));
     }
 
     /** Aborts the open production tasks of every orderable gauge (called when the controller is destroyed —
@@ -687,6 +680,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      */
     public CompoundTag writeSetup(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
+        tag.putInt("Ver", DATA_VERSION);
         if (!customName.isBlank()) tag.putString("CustomName", customName);
 
         ListTag gaugeList = new ListTag();
@@ -694,6 +688,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gaugeList.add(b.toItemNBT(registries));
         }
         tag.put("Components", gaugeList);
+        tag.put("Connections", connectionGraph.toNBT());   // central edge list carried on the item
 
         ListTag networkList = new ListTag();
         for (UUID id : networks) {
@@ -710,6 +705,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Restores a board from {@link #writeSetup} onto a freshly placed controller (server side). */
     public void applySetup(CompoundTag tag, HolderLookup.Provider registries) {
         if (level == null || level.isClientSide()) return;
+        tag = ControllerDataFixer.fixControllerBE(tag);
 
         customName = tag.getString("CustomName");
 
@@ -723,6 +719,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                     updateGaugeOrderable(gauge);
             }
         }
+        readConnections(tag);
 
         networks.clear();
         networkNicknames.clear();

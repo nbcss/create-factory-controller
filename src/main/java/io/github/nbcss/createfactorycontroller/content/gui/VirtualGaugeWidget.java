@@ -4,7 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
@@ -57,7 +57,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     private static final int BULB_RED = 0xFF5555;
     private static final float BULB_MIN_BRIGHTNESS = 0.35f;
 
-    public VirtualPanelPosition position() {
+    public VirtualComponentPosition position() {
         return behaviour.position();
     }
 

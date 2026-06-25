@@ -2,9 +2,10 @@ package io.github.nbcss.createfactorycontroller.content.block;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -24,7 +25,10 @@ import java.util.*;
 public class FactoryControllerMenu extends AbstractContainerMenu {
     public final List<VirtualComponentBehaviour> components = new ArrayList<>();
     /** Position → component index for O(1) lookup; mirrors {@link #components}. */
-    private final Map<VirtualPanelPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
+    private final Map<VirtualComponentPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
+    /** Client-side connection store the menu's components are views into (the server's components use the controller's
+     *  graph instead). Populated from the synced per-component wires (see the client constructor). */
+    private final ConnectionGraph connectionGraph = new ConnectionGraph();
     public final List<UUID> knownNetworks = new ArrayList<>();
     /** Client mirror of the controller's per-network nicknames (synced); see {@link #networkName}. */
     public final Map<UUID, String> networkNicknames = new HashMap<>();
@@ -68,6 +72,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, helper.tag(), playerInventory.player.level().registryAccess());
             if (b != null) addComponent(b);
         }
+        int connectionCount = buf.readVarInt();
+        List<net.minecraft.nbt.CompoundTag> connectionTags = new ArrayList<>(connectionCount);
+        for (int i = 0; i < connectionCount; i++) connectionTags.add(new CompoundTagHelper(buf).tag());
+        loadConnections(connectionTags);   // build the client graph from the synced central edge list
 
         int networkCount = buf.readVarInt();
         for (int i = 0; i < networkCount; i++) {
@@ -194,6 +202,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     public void addComponent(VirtualComponentBehaviour component) {
         components.add(component);
         componentsByPosition.put(component.position(), component);
+        // Client behaviours carry no controller; give them the sibling lookup + the client connection graph so
+        // validation and targetedBy()/targeting() resolve. Both are harmless on the server (the controller wins).
+        component.setSiblingLookup(this::getComponent);
+        component.setGraph(connectionGraph);
     }
 
     /** Replaces all components (used on the full sync), rebuilding the position index. */
@@ -202,15 +214,21 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         for (VirtualComponentBehaviour c : newComponents) addComponent(c);
     }
 
-    /** Removes every component and clears the position index. */
+    /** Removes every component and clears the position index + the (client) connection graph. */
     public void clearComponents() {
         components.clear();
         componentsByPosition.clear();
+        connectionGraph.clear();
+    }
+
+    /** Replaces the client connection graph from a synced central edge list (the components' positions are already in). */
+    public void loadConnections(List<net.minecraft.nbt.CompoundTag> edges) {
+        connectionGraph.readTagList(edges);
     }
 
     /** O(1) lookup of the component occupying {@code pos}, or {@code null} if the cell is empty. */
     @Nullable
-    public VirtualComponentBehaviour getComponent(@Nullable VirtualPanelPosition pos) {
+    public VirtualComponentBehaviour getComponent(@Nullable VirtualComponentPosition pos) {
         return pos == null ? null : componentsByPosition.get(pos);
     }
 
@@ -233,6 +251,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             net.minecraft.nbt.CompoundTag tag = b.toClientNBT(be.getLevel().registryAccess());
             writeCompoundTag(buf, tag);
         }
+
+        List<net.minecraft.nbt.CompoundTag> connectionTags = be.connectionGraph().toTagList();
+        buf.writeVarInt(connectionTags.size());
+        for (net.minecraft.nbt.CompoundTag tag : connectionTags) writeCompoundTag(buf, tag);
 
         buf.writeVarInt(be.networks.size());
         for (UUID id : be.networks) {

@@ -10,7 +10,7 @@ import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.GaugeType;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
@@ -56,7 +56,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private static final int INV_TEX_HOTBAR_Y = 76;
 
     private final FactoryControllerScreen controller;
-    private final VirtualPanelPosition gaugePos;
+    private final VirtualComponentPosition gaugePos;
     /** The stock type of the gauge being configured (item / fluid / energy). */
     private final GaugeType gaugeType;
     /** A fluid gauge accepts only a fluid filter (any filled container → the chosen fluid); non-fluids are rejected. */
@@ -81,7 +81,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private int invBgX, invBgY;
 
 
-    public SetItemScreen(FactoryControllerScreen controller, VirtualPanelPosition gaugePos) {
+    public SetItemScreen(FactoryControllerScreen controller, VirtualComponentPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               CreateLang.translate("gui.factory_panel.place_item_to_monitor").component());
         this.controller = controller;

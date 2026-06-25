@@ -18,10 +18,12 @@ import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
@@ -115,7 +117,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public int craftDimension = 0;
     public int promiseClearingInterval = -1;
 
-    public VirtualGaugeBehaviour(FactoryControllerBlockEntity controller, VirtualPanelPosition position,
+    public VirtualGaugeBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position,
                                  UUID networkId, ResourceLocation gaugeItemId) {
         super(controller, position, gaugeItemId);
         this.networkId = networkId;
@@ -133,10 +135,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     @Override
-    protected VirtualPanelConnection createConnection(VirtualPanelPosition from, VirtualComponentBehaviour source) {
+    protected Connection createConnection(VirtualComponentPosition from, VirtualComponentBehaviour source) {
         // A fluid ingredient is measured in millibuckets, so start it at one bucket (1000 mB); items start at 1.
         int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;
-        return new LogisticsConnection(from, amount);
+        return new LogisticsConnection(from, position, amount);
     }
 
     /** A gauge caps its ingredient inputs at {@link #MAX_INGREDIENTS} grid <em>slots</em> (redstone-link wires
@@ -144,16 +146,41 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      *  several slots, so the cap is on {@link #usedInputSlots} — not the connection count — and a new
      *  connection (≥1 slot) is rejected once the grid is already full. */
     @Override
-    public void addConnection(VirtualPanelPosition fromPos) {
-        if (!targetedBy().containsKey(fromPos)
+    public void addConnection(VirtualComponentPosition sourcePos) {
+        if (!targetedBy().containsKey(sourcePos)
                 && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS) return;
-        super.addConnection(fromPos);
+        super.addConnection(sourcePos);
     }
 
-    /** The filter of the gauge at {@code pos} (server-side, via the controller), or empty. */
-    private ItemStack filterAt(VirtualPanelPosition pos) {
-        return controller != null && controller.components.get(pos) instanceof VirtualGaugeBehaviour g
-            ? g.filter : ItemStack.EMPTY;
+    /** The filter of the gauge at {@code pos}, resolved side-agnostically (server: controller; client: menu), or empty. */
+    private ItemStack filterAt(VirtualComponentPosition pos) {
+        return siblingAt(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
+    }
+
+    /** A gauge outputs/accepts item-fluid ingredients (LOGISTICS) and is read/gated by redstone (REDSTONE); both
+     *  channels defer their direction (BOTH), so a wired link's mode dictates the redstone arrow. */
+    @Override
+    public List<ConnectionCapability> ports() {
+        return List.of(new ConnectionCapability(Connection.Type.LOGISTICS, ConnectionCapability.Role.BOTH),
+                       new ConnectionCapability(Connection.Type.REDSTONE, ConnectionCapability.Role.BOTH));
+    }
+
+    /** As a LOGISTICS source the gauge feeds its stock, so it must carry a filter. (REDSTONE source: no rule.) */
+    @Override
+    public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) {
+        if (channel == Connection.Type.LOGISTICS && filter.isEmpty())
+            return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
+                    .style(ChatFormatting.RED).component());
+        return ValidationResult.SUCCESS;
+    }
+
+    /** As a LOGISTICS sink (the consumer) the gauge caps its ingredient grid slots. (REDSTONE sink: no rule.) */
+    @Override
+    public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) {
+        if (channel == Connection.Type.LOGISTICS && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
+            return ValidationResult.fail(() -> CreateLang.translate("factory_panel.cannot_add_more_inputs")
+                    .style(ChatFormatting.RED).component());
+        return ValidationResult.SUCCESS;
     }
 
     /**
@@ -164,10 +191,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * let the grid overflow. {@code filterResolver} maps a source position to its ingredient (server: via the
      * controller; client: via the menu snapshot), letting both sides share this logic.
      */
-    public static int usedInputSlots(Map<VirtualPanelPosition, VirtualPanelConnection> connections,
-                                     java.util.function.Function<VirtualPanelPosition, ItemStack> filterResolver) {
+    public static int usedInputSlots(Map<VirtualComponentPosition, Connection> connections,
+                                     java.util.function.Function<VirtualComponentPosition, ItemStack> filterResolver) {
         int used = 0;
-        for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : connections.entrySet()) {
+        for (Map.Entry<VirtualComponentPosition, Connection> e : connections.entrySet()) {
             if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
             ItemStack src = filterResolver.apply(e.getKey());
             if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
@@ -220,7 +247,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      */
     public boolean isGatedByLink() {
         if (controller == null) return false;
-        for (VirtualPanelPosition linkPos : targeting)
+        for (VirtualComponentPosition linkPos : targeting())
             if (controller.components.get(linkPos) instanceof VirtualRedstoneLinkBehaviour link && link.gatesGauge())
                 return true;
         return false;
@@ -281,7 +308,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public void computeDemand() {
         if (!requestMode.isPassive() || controller == null) return;
         int demand = 0;
-        for (VirtualPanelPosition parentPos : targeting) {
+        for (VirtualComponentPosition parentPos : targeting()) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
             if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
@@ -502,7 +529,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
                 }
             }
         } else {
-            for (Map.Entry<VirtualPanelPosition, VirtualPanelConnection> e : targetedBy().entrySet()) {
+            for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
                 if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
                 if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
                 ItemStack ingredient = source.filter;
@@ -619,7 +646,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      */
     private void setConnectionsSuccess(boolean value) {
         boolean changed = false;
-        for (VirtualPanelConnection conn : targetedBy().values())
+        for (Connection conn : targetedBy().values())
             if (conn instanceof LogisticsConnection lc && lc.success != value) { lc.success = value; changed = true; }
         if (changed) {
             controller.setChanged();
@@ -629,7 +656,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     /** Whether any wired-in ingredient is an (item) ignore-data gauge — disables crafting batch & grid resize. */
     private boolean craftingUsesIgnoreData() {
-        for (VirtualPanelPosition p : targetedBy().keySet())
+        for (VirtualComponentPosition p : targetedBy().keySet())
             if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
                     && s.ignoreData && !FluidCompat.isFluidFilter(s.filter)) return true;
         return false;
@@ -637,7 +664,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
     private VirtualGaugeBehaviour findIngredientSource(ItemStack cell) {
-        for (VirtualPanelPosition p : targetedBy().keySet())
+        for (VirtualComponentPosition p : targetedBy().keySet())
             if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
                     && !s.filter.isEmpty() && ItemStack.isSameItemSameComponents(s.filter, cell))
                 return s;
@@ -715,16 +742,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
 
-        // Connections
-        ListTag targetedByList = new ListTag();
-        for (VirtualPanelConnection conn : targetedBy.values())
-            targetedByList.add(conn.toNBT());
-        tag.put("TargetedBy", targetedByList);
-
-        ListTag targetingList = new ListTag();
-        for (VirtualPanelPosition pos : targeting)
-            targetingList.add(pos.toNBT());
-        tag.put("Targeting", targetingList);
+        // Connections live in the controller's central graph (written there), not per-component.
 
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
 
@@ -796,11 +814,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putInt("Promised", promisedCount);
         tag.putLong("LastRequestTick", lastRequestTick);
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
-
-        ListTag targetedByList = new ListTag();
-        for (VirtualPanelConnection conn : targetedBy.values())
-            targetedByList.add(conn.toNBT());
-        tag.put("TargetedBy", targetedByList);
+        // Connections live in the controller's central graph (synced separately), not per-component.
 
         return tag;
     }
@@ -808,7 +822,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public static VirtualGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                 CompoundTag tag,
                                                 net.minecraft.core.HolderLookup.Provider registries) {
-        VirtualPanelPosition pos = VirtualPanelPosition.fromNBT(tag.getCompound("Pos"));
+        VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
         ResourceLocation gaugeItemId = ResourceLocation.parse(tag.getString("GaugeItem"));
         UUID networkId = tag.getUUID("Network");
 
@@ -840,16 +854,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         b.craftBatch = Math.max(1, tag.getInt("CraftBatch"));   // absent (legacy data) → 1
         b.craftDimension = Math.max(0, tag.getInt("CraftDimension"));   // 0 = not a large recipe / unset
         b.promiseClearingInterval = tag.getInt("PromiseClearingInterval");
-
-        ListTag targetedByList = tag.getList("TargetedBy", Tag.TAG_COMPOUND);
-        for (int i = 0; i < targetedByList.size(); i++) {
-            LogisticsConnection conn = LogisticsConnection.fromNBT(targetedByList.getCompound(i));
-            b.targetedBy.put(conn.from, conn);
-        }
-
-        ListTag targetingList = tag.getList("Targeting", Tag.TAG_COMPOUND);
-        for (int i = 0; i < targetingList.size(); i++)
-            b.targeting.add(VirtualPanelPosition.fromNBT(targetingList.getCompound(i)));
+        // Connections are loaded centrally by the controller / menu, not from the component tag.
 
         // Server-side load (placement via setup, or chunk reload): delay the first request by a full interval.
         // A freshly loaded gauge's network stock summary can read 0 for a tick or two before it populates, and
