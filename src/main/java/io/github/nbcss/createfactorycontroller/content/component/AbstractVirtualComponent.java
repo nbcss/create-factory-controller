@@ -80,8 +80,8 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     // explicitly permit a connection (by overriding the validateAs* below), so forgetting rules never silently allows
     // an unintended wire. (The ports() declaration gates which channels are even possible; these refine them.)
     @Override public List<ConnectionCapability> ports() { return List.of(); }
-    @Override public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) { return rejectByDefault(); }
-    @Override public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) { return rejectByDefault(); }
+    @Override public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) { return rejectByDefault(); }
+    @Override public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) { return rejectByDefault(); }
 
     private static ValidationResult rejectByDefault() {
         return ValidationResult.fail(() -> CreateLang.translate("factory_panel.connection_aborted")

@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
+import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
@@ -23,14 +24,16 @@ import java.util.function.Consumer;
  * wires), so serialization needs no type discriminator — each component reads/writes its own concrete subclass.</p>
  */
 public abstract class Connection {
-
     public final Type type;
     public VirtualComponentPosition from;
     public VirtualComponentPosition to;
     public int arrowBendMode; // -1 = auto, 0-3 = fixed bend direction
     private transient Consumer<Connection> onChanged;
 
-    protected Connection(Type type, VirtualComponentPosition from, VirtualComponentPosition to, int arrowBendMode) {
+    protected Connection(Type type,
+                         VirtualComponentPosition from,
+                         VirtualComponentPosition to,
+                         int arrowBendMode) {
         this.type = type;
         this.from = from;
         this.to = to;
@@ -62,6 +65,10 @@ public abstract class Connection {
     public void setOnChanged(@Nullable Consumer<Connection> onChanged) {
         this.onChanged = onChanged;
     }
+
+    public int getConnectionColor(ComponentHolder holder) { return 0x888898; }
+
+    public long getAnimationTick(ComponentHolder holder) { return -1; }
 
     protected void notifyChanged() {
         if (onChanged != null) onChanged.accept(this);

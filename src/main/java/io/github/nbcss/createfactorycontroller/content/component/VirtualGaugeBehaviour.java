@@ -258,8 +258,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     /** As a LOGISTICS source the gauge feeds its stock, so it must carry a filter. (REDSTONE source: no rule.) */
     @Override
-    public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) {
-        if (channel == Connection.Type.LOGISTICS && filter.isEmpty())
+    public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
+        if (filter.isEmpty())
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
                     .style(ChatFormatting.RED).component());
         return ValidationResult.SUCCESS;
@@ -267,8 +267,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     /** As a LOGISTICS sink (the consumer) the gauge caps its ingredient grid slots. (REDSTONE sink: no rule.) */
     @Override
-    public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) {
-        if (channel == Connection.Type.LOGISTICS && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
+    public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) {
+        if (filter.isEmpty())
+            return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
+                    .style(ChatFormatting.RED).component());
+        if (type == Connection.Type.LOGISTICS && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.cannot_add_more_inputs")
                     .style(ChatFormatting.RED).component());
         return ValidationResult.SUCCESS;

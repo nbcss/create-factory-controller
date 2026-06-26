@@ -255,11 +255,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Nullable
     private VirtualGaugeBehaviour gauge() {
-        return menu.getComponent(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
+        return menu.componentAt(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
     private ItemStack ingredientOf(VirtualComponentPosition pos) {
-        return menu.getComponent(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
+        return menu.componentAt(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
     /** Whether input connection {@code c}'s ingredient is a fluid — its amount is then in
@@ -623,7 +623,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Whether any wired ingredient ignores item data — disables crafting batch & crafter-grid resizing. */
     private boolean craftingUsesIgnoreData() {
         for (VirtualComponentPosition pos : inputConnections)
-            if (menu.getComponent(pos) instanceof VirtualGaugeBehaviour s && s.ignoreData) return true;
+            if (menu.componentAt(pos) instanceof VirtualGaugeBehaviour s && s.ignoreData) return true;
         return false;
     }
 
@@ -844,7 +844,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
                     int total = Math.max(1, inputTotals.get(slot.connectionIndex()));
                     String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
-                    boolean srcIgnore = menu.getComponent(inputConnections.get(slot.connectionIndex()))
+                    boolean srcIgnore = menu.componentAt(inputConnections.get(slot.connectionIndex()))
                             instanceof VirtualGaugeBehaviour s && s.ignoreData;
                     tooltip = stack.isEmpty()
                         ? List.of(

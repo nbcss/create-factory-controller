@@ -45,7 +45,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider {
+public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider, ComponentHolder {
 
     /** Cap on components a single controller may hold — bounds the BE/item NBT and sync size.
      *  Configurable via {@link ServerConfig#maxComponents()} (default 256, max 1024). */
@@ -303,7 +303,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         components.remove(from);
-        connectionGraph.rename(from, to);   // re-key every wire touching `from` (both indexes + each conn.from)
+        connectionGraph.rename(from, to);   // re-key every wire touching `from` (both indexes + payload endpoints)
         behaviour.setPosition(to);
         components.put(to, behaviour);
 
@@ -340,7 +340,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         java.util.function.Function<VirtualComponentPosition, VirtualComponentPosition> remap = p ->
             moving.contains(p) ? new VirtualComponentPosition(p.x() + dx, p.y() + dy) : p;
 
-        // Rewire every connection reference (owner/source keys + each conn.from) in one atomic pass.
+        // Rewire every connection reference (owner/source keys + payload endpoints) in one atomic pass.
         connectionGraph.remap(remap);
 
         // Move the components themselves: re-key the map and update each stored position.
@@ -434,6 +434,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
+    @Override
     public VirtualComponentBehaviour componentAt(VirtualComponentPosition pos) {
         return components.get(pos);
     }

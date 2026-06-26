@@ -1,6 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
+import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 
 /**
@@ -9,7 +12,6 @@ import net.minecraft.nbt.CompoundTag;
  * on demand, so a single total is all the model needs.
  */
 public class LogisticsConnection extends Connection {
-
     public int amount;
     public boolean success;
 
@@ -21,6 +23,27 @@ public class LogisticsConnection extends Connection {
 
     public int amount() {
         return Math.max(1, amount);
+    }
+
+    @Override
+    public int getConnectionColor(ComponentHolder holder) {
+        if (holder.componentAt(to) instanceof VirtualGaugeBehaviour behaviour) {
+            return behaviour.getConnectionColor();
+        }
+        return super.getConnectionColor(holder);
+    }
+
+    @Override
+    public long getAnimationTick(ComponentHolder holder) {
+        if (!(holder.componentAt(to) instanceof VirtualGaugeBehaviour behaviour))
+            return -1;
+        if (behaviour.isMissingAddress() || behaviour.waitingForNetwork)
+            return -1;
+        if (behaviour.satisfied || behaviour.redstonePowered)
+            return -1;
+        if (Minecraft.getInstance().level == null)
+            return -1;
+        return Minecraft.getInstance().level.getGameTime() - behaviour.lastRequestTick;
     }
 
     @Override

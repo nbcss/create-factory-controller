@@ -108,14 +108,14 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // Two links bridge each other wirelessly, so a board wire between links is meaningless — reject a link partner
     // (whichever role this link takes). Gauge partners are always allowed (uniqueness handles duplicates).
     @Override
-    public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) {
-        if (channel == Connection.Type.REDSTONE && !receive) return fail();
+    public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
+        if (type == Connection.Type.REDSTONE && !receive) return fail();
         return sink instanceof VirtualRedstoneLinkBehaviour ? fail() : ValidationResult.SUCCESS;
     }
 
     @Override
-    public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) {
-        if (channel == Connection.Type.REDSTONE && receive) return fail();
+    public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) {
+        if (type == Connection.Type.REDSTONE && receive) return fail();
         return source instanceof VirtualRedstoneLinkBehaviour ? fail() : ValidationResult.SUCCESS;
     }
 

@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
+import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.nbt.CompoundTag;
 
@@ -17,7 +18,6 @@ public class RedstoneConnection extends Connection {
         }
 
         public boolean isPowered() { return this == POWERED; }
-        public int color() { return color; }
     }
 
     private State state;
@@ -33,6 +33,11 @@ public class RedstoneConnection extends Connection {
 
     public State state() {
         return state;
+    }
+
+    @Override
+    public int getConnectionColor(ComponentHolder holder) {
+        return state.color;
     }
 
     public void setValue(boolean powered) {

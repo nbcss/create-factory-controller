@@ -77,7 +77,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
               Component.translatable("createfactorycontroller.gui.redstone_link_settings"));
         this.controller = controller;
         this.linkPos = linkPos;
-        if (controller.getMenu().getComponent(linkPos) instanceof VirtualRedstoneLinkBehaviour link) {
+        if (controller.getMenu().componentAt(linkPos) instanceof VirtualRedstoneLinkBehaviour link) {
             red = link.redFreq.copy();
             blue = link.blueFreq.copy();
             receive = link.receive;

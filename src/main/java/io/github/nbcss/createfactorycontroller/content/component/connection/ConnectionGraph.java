@@ -115,13 +115,15 @@ public class ConnectionGraph {
     }
 
     /** Re-keys every wire touching {@code from} to {@code to} (a component relocation); updates each moved wire's
-     *  {@code from} when {@code from} was the source. {@code to} must be empty. */
+     *  stored endpoints to match. {@code to} must be empty. */
     public void rename(VirtualComponentPosition from, VirtualComponentPosition to) {
         // As sink: move its incoming map; repoint each source's outgoing set from→to.
         LinkedHashMap<VirtualComponentPosition, Connection> owned = incoming.remove(from);
         if (owned != null) {
             incoming.put(to, owned);
-            for (VirtualComponentPosition source : owned.keySet()) {
+            for (Map.Entry<VirtualComponentPosition, Connection> entry : owned.entrySet()) {
+                VirtualComponentPosition source = entry.getKey();
+                entry.getValue().to = to;
                 Map<VirtualComponentPosition, Connection> out = outgoing.get(source);
                 if (out != null) {
                     Connection conn = out.remove(from);
@@ -142,17 +144,19 @@ public class ConnectionGraph {
         }
     }
 
-    /** Remaps every sink/source position (and each wire's {@code from}) through {@code f} in one atomic pass — the
+    /** Remaps every sink/source position (and each wire's stored endpoints) through {@code f} in one atomic pass — the
      *  batch relocate. The reverse index is rebuilt from the remapped incoming map. */
     public void remap(java.util.function.Function<VirtualComponentPosition, VirtualComponentPosition> f) {
         Map<VirtualComponentPosition, LinkedHashMap<VirtualComponentPosition, Connection>> remapped = new LinkedHashMap<>();
         for (Map.Entry<VirtualComponentPosition, LinkedHashMap<VirtualComponentPosition, Connection>> e : incoming.entrySet()) {
+            VirtualComponentPosition sink = f.apply(e.getKey());
             LinkedHashMap<VirtualComponentPosition, Connection> m = new LinkedHashMap<>();
             for (Connection conn : e.getValue().values()) {
                 conn.from = f.apply(conn.from);
+                conn.to = sink;
                 m.put(conn.from, conn);
             }
-            remapped.put(f.apply(e.getKey()), m);
+            remapped.put(sink, m);
         }
         incoming.clear();
         incoming.putAll(remapped);

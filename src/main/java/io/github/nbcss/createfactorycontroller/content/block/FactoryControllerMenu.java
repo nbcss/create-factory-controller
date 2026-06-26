@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class FactoryControllerMenu extends AbstractContainerMenu {
+public class FactoryControllerMenu extends AbstractContainerMenu implements ComponentHolder {
     public final List<VirtualComponentBehaviour> components = new ArrayList<>();
     /** Position → component index for O(1) lookup; mirrors {@link #components}. */
     private final Map<VirtualComponentPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
@@ -177,7 +177,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         componentsByPosition.put(component.position(), component);
         // Client behaviours carry no controller; give them the sibling lookup + the client connection graph so
         // validation and targetedBy()/targeting() resolve. Both are harmless on the server (the controller wins).
-        component.setSiblingLookup(this::getComponent);
+        component.setSiblingLookup(this::componentAt);
         component.setGraph(connectionGraph);
     }
 
@@ -202,17 +202,17 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
 
     private void bindConnectionHooks() {
         for (io.github.nbcss.createfactorycontroller.content.component.connection.Connection conn : connectionGraph.connections()) {
-            VirtualComponentBehaviour source = getComponent(conn.from);
-            VirtualComponentBehaviour sink = getComponent(conn.to);
+            VirtualComponentBehaviour source = componentAt(conn.from);
+            VirtualComponentBehaviour sink = componentAt(conn.to);
             if (sink != null) sink.onConnectAsSink(conn);
             if (source != null) source.onConnectAsSource(conn);
         }
     }
 
     /** O(1) lookup of the component occupying {@code pos}, or {@code null} if the cell is empty. */
-    @Nullable
-    public VirtualComponentBehaviour getComponent(@Nullable VirtualComponentPosition pos) {
-        return pos == null ? null : componentsByPosition.get(pos);
+    @Override
+    public VirtualComponentBehaviour componentAt(VirtualComponentPosition position) {
+        return position == null ? null : componentsByPosition.get(position);
     }
 
     /** Number of components currently on the given network (used by the network selector). */

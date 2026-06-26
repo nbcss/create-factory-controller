@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
+import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
@@ -108,7 +109,7 @@ public final class VirtualConnectionRenderer {
         for (VirtualComponentBehaviour sink : menu.components) {
             for (Connection conn : sink.targetedBy().values()) {
                 if (!spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
-                drawConnection(gfx, conn, byPos.get(conn.from), byPos.get(conn.to), occupied);
+                drawConnection(gfx, menu, conn, byPos.get(conn.from), byPos.get(conn.to), occupied);
             }
         }
     }
@@ -127,7 +128,8 @@ public final class VirtualConnectionRenderer {
      * Draws one grid-following connection. The stored {@code conn.from -> conn.to} direction is the signal/item flow;
      * redstone link mode changes rewrite that direction in the graph instead of being special-cased here.
      */
-    private static void drawConnection(GuiGraphics gfx, Connection conn,
+    private static void drawConnection(GuiGraphics gfx,
+                                       ComponentHolder holder, Connection conn,
                                        VirtualComponentBehaviour source,
                                        VirtualComponentBehaviour sink,
                                        Set<VirtualComponentPosition> occupied) {
@@ -151,24 +153,17 @@ public final class VirtualConnectionRenderer {
 
         assert Minecraft.getInstance().level != null;
 
-        int color = 0x888898;
-        boolean animated = false;
-        if (conn instanceof RedstoneConnection rc) {
-            color = rc.state().color();
-        } else if (sink instanceof VirtualGaugeBehaviour gauge) {
-            color = gauge.getConnectionColor();
-            animated = !gauge.isMissingAddress() && !gauge.waitingForNetwork
-                    && !gauge.satisfied && !gauge.redstonePowered;
-            if (animated) {
-                // Flash once per request attempt, decaying from the gauge's last-attempt tick.
-                float age = Minecraft.getInstance().level.getGameTime() - gauge.lastRequestTick
-                        + AnimationTickHolder.getPartialTicks();
-                float glow = Mth.clamp(1f - age / FLASH_DECAY, 0f, 1f);
-                if (glow > 0f) {
-                    float p = 1f - (1f - glow) * (1f - glow);
-                    boolean success = conn instanceof LogisticsConnection lc && lc.success;
-                    color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
-                }
+        int color = conn.getConnectionColor(holder);
+        long animationTick = conn.getAnimationTick(holder);
+        boolean animated = animationTick >= 0;
+        if (animated) {
+            // Flash once per request attempt, decaying from the gauge's last-attempt tick.
+            float age = animationTick + AnimationTickHolder.getPartialTicks();
+            float glow = Mth.clamp(1f - age / FLASH_DECAY, 0f, 1f);
+            if (glow > 0f) {
+                float p = 1f - (1f - glow) * (1f - glow);
+                boolean success = conn instanceof LogisticsConnection lc && lc.success;
+                color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
             }
         }
         gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
