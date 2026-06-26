@@ -1,14 +1,14 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
-import io.github.nbcss.createfactorycontroller.content.RequestMode;
-import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +17,35 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
 
     private static final ResourceLocation FRONT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/fluid_gauge/front");
+    private static final GaugeFilterResolver FILTER_RESOLVER = new GaugeFilterResolver() {
+        @Override public boolean acceptsFilter(ItemStack filter) { return filter.isEmpty() || FluidCompat.isFluidFilter(filter); }
+        @Override public boolean supportsIgnoreData() { return false; }
+        @Override public boolean acceptsItemDrop() { return false; }
+        @Override public boolean acceptsFluidDrop() { return true; }
+
+        @Override
+        public ItemStack fromCarried(ItemStack carried, int mouseButton) {
+            FluidStack fluid = FluidCompat.fluidInContainer(carried);
+            return fluid.isEmpty() ? ItemStack.EMPTY : FluidCompat.makeFluidGaugeFilter(fluid);
+        }
+
+        @Override
+        public ItemStack fromFluid(FluidStack fluid) {
+            return FluidCompat.makeFluidGaugeFilter(fluid);
+        }
+    };
+    private static final LogisticsControl LOGISTICS = new LogisticsControl() {
+        @Override public int stockOf(VirtualGaugeBehaviour gauge, ItemStack stack) {
+            return stack.isEmpty() ? 0 : FluidCompat.fluidStock(gauge.networkId, stack);
+        }
+        @Override public int promised(VirtualGaugeBehaviour gauge) {
+            return gauge.filter.isEmpty() ? 0 : FluidCompat.fluidPromised(gauge.networkId, gauge.filter, gauge.getPromiseExpiryTimeInTicks());
+        }
+        @Override public void forceClearPromise(UUID networkId, ItemStack filter) { FluidCompat.forceClearFluid(networkId, filter); }
+        @Override public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
+            FluidCompat.addFluidPromise(networkId, filter, amount);
+        }
+    };
 
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
 
@@ -38,9 +67,9 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         @Override
         public VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
                                                 VirtualComponentPosition pos,
-                                                ResourceLocation itemId,
+                                                Item item,
                                                 UUID networkId) {
-            return new FluidGaugeBehaviour(controller, pos, networkId, itemId);
+            return new FluidGaugeBehaviour(controller, pos, networkId, item);
         }
 
         @Override
@@ -54,39 +83,12 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
     public FluidGaugeBehaviour(FactoryControllerBlockEntity controller,
                                VirtualComponentPosition position,
                                UUID networkId,
-                               ResourceLocation gaugeItemId) {
-        super(controller, position, networkId, gaugeItemId);
+                               Item gaugeItem) {
+        super(controller, position, networkId, gaugeItem);
     }
 
-    @Override
-    public void forceClearPromise(UUID networkId, ItemStack filter) {
-        FluidCompat.repackagedForceClearFluid(networkId, filter);
-    }
-
-    @Override
-    public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
-        FluidCompat.repackagedAddFluidPromise(networkId, filter, amount);
-    }
-
-    @Override
-    protected int networkStockOf(ItemStack stack) {
-        return stack.isEmpty() ? 0 : FluidCompat.repackagedFluidStock(networkId, stack);
-    }
-
-    @Override
-    public int getPromised() {
-        return filter.isEmpty() ? 0 : FluidCompat.repackagedFluidPromised(networkId, filter, getPromiseExpiryTimeInTicks());
-    }
-
-    @Override
-    public boolean isFluidGauge() {
-        return true;
-    }
-
-    @Override
-    public boolean supportsIgnoreData() {
-        return false;
-    }
+    @Override public GaugeFilterResolver filterResolver() { return FILTER_RESOLVER; }
+    @Override public LogisticsControl logisticsControl() { return LOGISTICS; }
 
     @Override
     protected VirtualComponentBehaviour.Type componentType() {
@@ -98,49 +100,16 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         return FRONT_TEXTURE;
     }
 
-    public static VirtualGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
-                                                CompoundTag tag,
-                                                net.minecraft.core.HolderLookup.Provider registries) {
+    public static FluidGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
+                                              CompoundTag tag,
+                                              net.minecraft.core.HolderLookup.Provider registries) {
         VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
-        ResourceLocation gaugeItemId = ResourceLocation.parse(tag.getString("GaugeItem"));
+        ResourceLocation gaugeItemId = ResourceLocation.parse(tag.getString("Item"));
+        Item gaugeItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(gaugeItemId);
         UUID networkId = tag.getUUID("Network");
 
-        FluidGaugeBehaviour b = new FluidGaugeBehaviour(controller, pos, networkId, gaugeItemId);
-        b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
-        b.ignoreData = tag.getBoolean("IgnoreData");
-        b.count = tag.getInt("Count");
-        b.unit = ThresholdUnit.fromName(tag.getString("Unit"));
-        if (tag.contains("RequestMode"))
-            b.requestMode = RequestMode.fromName(tag.getString("RequestMode"));
-        else   // legacy migration from the old Passive boolean
-            b.requestMode = tag.getBoolean("Passive")
-                    ? RequestMode.PASSIVE : RequestMode.NORMAL;
-        if (tag.hasUUID("PatternId"))
-            b.patternId = tag.getUUID("PatternId");
-        b.stockLevel = tag.getInt("Stock");
-        b.promisedCount = tag.getInt("Promised");
-        b.lastRequestTick = tag.getLong("LastRequestTick");
-
-        b.satisfied = tag.getBoolean("Satisfied");
-        b.promisedSatisfied = tag.getBoolean("PromisedSatisfied");
-        b.waitingForNetwork = tag.getBoolean("Waiting");
-        b.redstonePowered = tag.getBoolean("RedstonePowered");
-        b.controllerPowered = tag.getBoolean("ControllerPowered");
-        b.timer = tag.getInt("Timer");
-        b.recipeAddress = tag.getString("RecipeAddress");
-        b.recipeOutput = tag.getInt("RecipeOutput");
-        b.craftBatch = Math.max(1, tag.getInt("CraftBatch"));   // absent (legacy data) → 1
-        b.craftDimension = Math.max(0, tag.getInt("CraftDimension"));   // 0 = not a large recipe / unset
-        b.promiseClearingInterval = tag.getInt("PromiseClearingInterval");
-        // Connections are loaded centrally by the controller / menu, not from the component tag.
-
-        // Server-side load (placement via setup, or chunk reload): delay the first request by a full interval.
-        // A freshly loaded gauge's network stock summary can read 0 for a tick or two before it populates, and
-        // with timer==0 (setup strips it) tickRequests would fire immediately even though stock is sufficient.
-        // Throttling the first attempt gives tickStorageMonitor time to read real stock and mark it satisfied.
-        // (controller is null only on the client snapshot, which never ticks — leave its timer as-is.)
-        if (controller != null) b.timer = b.getConfigRequestIntervalInTicks();
-
+        FluidGaugeBehaviour b = new FluidGaugeBehaviour(controller, pos, networkId, gaugeItem);
+        b.readGaugeNBT(tag, registries);
         return b;
     }
 }

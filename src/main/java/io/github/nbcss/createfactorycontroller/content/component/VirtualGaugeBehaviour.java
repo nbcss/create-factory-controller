@@ -24,17 +24,21 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -65,9 +69,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         @Override
         public VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
                                                 VirtualComponentPosition pos,
-                                                ResourceLocation itemId,
+                                                Item item,
                                                 UUID networkId) {
-            return new VirtualGaugeBehaviour(controller, pos, networkId, itemId);
+            return new VirtualGaugeBehaviour(controller, pos, networkId, item);
         }
 
         @Override
@@ -78,11 +82,86 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         }
     };
 
-    public static final ResourceLocation TYPE_ID =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "gauge");
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/factory_gauge");
     public static final ResourceLocation FRONT_TEXTURE = TEXTURE.withSuffix("/front");
+
+    private static final GaugeFilterResolver ITEM_FILTER_RESOLVER = new GaugeFilterResolver() {
+        @Override public boolean acceptsFilter(ItemStack filter) { return true; }
+        @Override public boolean supportsIgnoreData() { return true; }
+        @Override public boolean acceptsItemDrop() { return true; }
+        @Override public boolean acceptsFluidDrop() { return FluidCompat.isLoaded(); }
+
+        @Override
+        public ItemStack fromCarried(ItemStack carried, int mouseButton) {
+            if (FluidCompat.isLoaded() && mouseButton == 1) {
+                FluidStack fluid = FluidCompat.fluidInContainer(carried);
+                if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
+            }
+            return carried;
+        }
+
+        @Override
+        public ItemStack fromFluid(FluidStack fluid) {
+            return FluidCompat.makeFluidFilter(fluid);
+        }
+    };
+
+    private static final LogisticsControl ITEM_LOGISTICS = new LogisticsControl() {
+        @Override
+        public int stockOf(VirtualGaugeBehaviour gauge, ItemStack stack) {
+            if (stack.isEmpty()) return 0;
+            if (FluidCompat.isFluidFilter(stack))
+                return LogisticsManager.getStockOf(gauge.networkId, stack, null);
+            if (gauge.ignoreData) {
+                List<BigItemStack> variants = gauge.getRelevantSummary().getItemMap().get(stack.getItem());
+                if (variants == null) return 0;
+                int total = 0;
+                for (BigItemStack b : variants) total += b.count;
+                return total;
+            }
+            return gauge.getRelevantSummary().getCountOf(stack);
+        }
+
+        @Override
+        public int promised(VirtualGaugeBehaviour gauge) {
+            if (gauge.filter.isEmpty()) return 0;
+            RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(gauge.networkId);
+            if (promises == null) return 0;
+            int expiry = gauge.getPromiseExpiryTimeInTicks();
+            if (!gauge.ignoreData || FluidCompat.isFluidFilter(gauge.filter))
+                return promises.getTotalPromisedAndRemoveExpired(gauge.filter, expiry);
+            List<ItemStack> variants = new ArrayList<>();
+            for (RequestPromise p : promises.flatten(false)) {
+                ItemStack s = p.promisedStack.stack;
+                if (!s.is(gauge.filter.getItem())) continue;
+                boolean known = false;
+                for (ItemStack v : variants)
+                    if (ItemStack.isSameItemSameComponents(v, s)) { known = true; break; }
+                if (!known) variants.add(s);
+            }
+            int total = 0;
+            for (ItemStack v : variants)
+                total += promises.getTotalPromisedAndRemoveExpired(v, expiry);
+            return total;
+        }
+
+        @Override
+        public void forceClearPromise(UUID networkId, ItemStack filter) {
+            RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
+            if (promises != null) promises.forceClear(filter);
+        }
+
+        @Override
+        public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
+            RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
+            if (promises != null) {
+                ItemStack promiseStack = filter.copy();
+                if (ignoreData) promiseStack.set(CreateFactoryController.FUZZY_PROMISE.get(), true);
+                promises.add(new RequestPromise(new BigItemStack(promiseStack, amount)));
+            }
+        }
+    };
 
     /** Max ingredient (gauge → gauge) inputs, matching Create's factory-panel limit. Redstone-link wires are stored
      *  on the link and don't count toward this. */
@@ -116,7 +195,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public boolean waitingForNetwork = false;
     /** Driven by a powered RECEIVE-mode redstone link wired to this gauge — recomputed each controller pre-pass. */
     public boolean redstonePowered = false;
-    public boolean controllerPowered = false;
 
     // Internal tick state
     private int lastReportedUnloadedLinks = 0;
@@ -138,6 +216,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      *  tick to ride out the mid-move "reads low" blip, then committed — keeps real drops responsive. */
     private boolean stockDropPending = false;
     private boolean sumDropPending = false;
+    private boolean redstoneOutputPowered = false;
     protected int timer = 0;
     /** Game tick of the last request attempt; the client decays the connection flash from it. */
     public long lastRequestTick = Long.MIN_VALUE;
@@ -150,14 +229,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     public int promiseClearingInterval = -1;
 
     public VirtualGaugeBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position,
-                                 UUID networkId, ResourceLocation gaugeItemId) {
-        super(controller, position, gaugeItemId);
+                                 UUID networkId, Item gaugeItem) {
+        super(controller, position, gaugeItem);
         this.networkId = networkId;
-    }
-
-    @Override
-    public ResourceLocation getTypeId() {
-        return TYPE_ID;
     }
 
     @Override
@@ -167,24 +241,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
 
     public ResourceLocation getFrontTexture() {
         return FRONT_TEXTURE;
-    }
-
-    @Override
-    protected Connection createConnection(VirtualComponentPosition from, VirtualComponentBehaviour source) {
-        // A fluid ingredient is measured in millibuckets, so start it at one bucket (1000 mB); items start at 1.
-        int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;
-        return new LogisticsConnection(from, position, amount);
-    }
-
-    /** A gauge caps its ingredient inputs at {@link #MAX_INGREDIENTS} grid <em>slots</em> (redstone-link wires
-     *  live on the link and don't count). A single ingredient whose amount exceeds its stack size occupies
-     *  several slots, so the cap is on {@link #usedInputSlots} — not the connection count — and a new
-     *  connection (≥1 slot) is rejected once the grid is already full. */
-    @Override
-    public void addConnection(VirtualComponentPosition sourcePos) {
-        if (!targetedBy().containsKey(sourcePos)
-                && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS) return;
-        super.addConnection(sourcePos);
     }
 
     /** The filter of the gauge at {@code pos}, resolved side-agnostically (server: controller; client: menu), or empty. */
@@ -270,22 +326,50 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return !targetedBy().isEmpty() && isActive() && recipeAddress.isBlank();
     }
 
-    /** SEND-mode redstone-link power source: an active target ({@code count != 0}) that is currently in stock. */
-    public boolean powersLink() {
-        return count != 0 && satisfied;
+    @Override
+    public void onConnectAsSource(Connection conn) {
+        if (conn instanceof RedstoneConnection)
+            pushRedstoneOutput(isActive() && satisfied);
     }
 
-    /**
-     * Whether a powered RECEIVE-mode redstone link is wired to this gauge (which gates its requests via
-     * {@link #redstonePowered}). The link holds the connection ({@code link.targetedBy[gauge]}), so this gauge's
-     * {@link #targeting} lists the link. Server-only ({@code controller} is null on the client snapshot).
-     */
-    public boolean isGatedByLink() {
-        if (controller == null) return false;
-        for (VirtualComponentPosition linkPos : targeting())
-            if (controller.components.get(linkPos) instanceof VirtualRedstoneLinkBehaviour link && link.gatesGauge())
-                return true;
-        return false;
+    @Override
+    public void onConnectAsSink(Connection conn) {
+        if (conn instanceof RedstoneConnection rc) {
+            rc.setOnChanged(c -> recomputeRedstoneInput());
+            recomputeRedstoneInput();
+        }
+    }
+
+    @Override
+    public void onDisconnectAsSink(Connection conn) {
+        if (conn == null || conn instanceof RedstoneConnection)
+            recomputeRedstoneInput();
+    }
+
+    private void recomputeRedstoneInput() {
+        redstonePowered = graph().incomingConnections(position, Connection.Type.REDSTONE).stream()
+                .filter(RedstoneConnection.class::isInstance)
+                .map(RedstoneConnection.class::cast)
+                .anyMatch(RedstoneConnection::powered);
+    }
+
+    public void publishRedstoneOutput() {
+        pushRedstoneOutput(isActive() && satisfied);
+    }
+
+    private boolean updateRedstoneOutput() {
+        boolean now = isActive() && satisfied;
+        if (now == redstoneOutputPowered) return false;
+        redstoneOutputPowered = now;
+        pushRedstoneOutput(now);
+        return true;
+    }
+
+    private void pushRedstoneOutput(boolean powered) {
+        for (Connection conn : graph().outgoingConnections(position, Connection.Type.REDSTONE))
+            if (conn instanceof RedstoneConnection rc)
+                rc.setState(isActive() ? (powered ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED)
+                        : RedstoneConnection.State.INACTIVE);
     }
 
     /**
@@ -364,7 +448,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * demand.
      */
     private boolean isDemandingIngredients() {
-        if (count == 0 || waitingForNetwork || redstonePowered || controllerPowered || isMissingAddress())
+        if (count == 0 || waitingForNetwork || redstonePowered || isControllerPowered() || isMissingAddress())
             return false;
         return !promisedSatisfied;
     }
@@ -376,10 +460,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             waitingForNetwork = false;
             stockLevel = 0;
             promisedCount = 0;
+            updateRedstoneOutput();
             return;
         }
 
-        int unloadedLinkCount = getUnloadedLinks();
+        int unloadedLinkCount = Create.LOGISTICS.getUnloadedLinkCount(networkId);
 
         if (unloadedLinkCount == 0 && lastReportedUnloadedLinks != 0)
             LogisticsManager.SUMMARIES.invalidate(networkId);
@@ -423,7 +508,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         promisedSatisfied = heldSum >= demand;
         waitingForNetwork = unloadedLinkCount > 0;
 
-        if (stockLevel == prevStock && promisedCount == prevPromised && satisfied == wasSatisfied
+        boolean redstoneChanged = updateRedstoneOutput();
+
+        if (!redstoneChanged && stockLevel == prevStock && promisedCount == prevPromised && satisfied == wasSatisfied
                 && promisedSatisfied == prevPromiseSatisfy && waitingForNetwork == prevWait
                 && lastReportedCount == count && lastReportedUnloadedLinks == unloadedLinkCount)
             return;
@@ -448,20 +535,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * Current network stock of {@code stack}.
      */
     protected int networkStockOf(ItemStack stack) {
-        if (stack.isEmpty()) return 0;
-        if (FluidCompat.isFluidFilter(stack))
-            return LogisticsManager.getStockOf(networkId, stack, null);
-        // Ignore-data: count every variant of this item type. Sum only this item's bucket (getItemMap is keyed
-        // by Item) rather than getTotalOfMatching, which would scan the WHOLE summary every tick — this keeps
-        // the cost at O(variants of the item), the same class as getCountOf.
-        if (ignoreData) {
-            List<BigItemStack> variants = getRelevantSummary().getItemMap().get(stack.getItem());
-            if (variants == null) return 0;
-            int total = 0;
-            for (BigItemStack b : variants) total += b.count;
-            return total;
-        }
-        return getRelevantSummary().getCountOf(stack);
+        return logisticsControl().stockOf(this, stack);
     }
 
     private InventorySummary getRelevantSummary() {
@@ -469,59 +543,27 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     }
 
     public int getPromised() {
-        if (filter.isEmpty()) return 0;
-        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-        if (promises == null) return 0;
-        int expiry = getPromiseExpiryTimeInTicks();
-        if (!ignoreData || FluidCompat.isFluidFilter(filter))
-            return promises.getTotalPromisedAndRemoveExpired(filter, expiry);
-        // Ignore-data: sum the promises of every distinct variant of this item type. The queue matches by
-        // exact components, so total each distinct variant separately (which also expires them per-variant).
-        List<ItemStack> variants = new ArrayList<>();
-        for (RequestPromise p : promises.flatten(false)) {
-            ItemStack s = p.promisedStack.stack;
-            if (!s.is(filter.getItem())) continue;
-            boolean known = false;
-            for (ItemStack v : variants)
-                if (ItemStack.isSameItemSameComponents(v, s)) { known = true; break; }
-            if (!known) variants.add(s);
-        }
-        int total = 0;
-        for (ItemStack v : variants)
-            total += promises.getTotalPromisedAndRemoveExpired(v, expiry);
-        return total;
-    }
-
-    public boolean isFluidGauge() {
-        return false;
-    }
-
-    public boolean supportsIgnoreData() {
-        return true;
+        return logisticsControl().promised(this);
     }
 
     protected VirtualComponentBehaviour.Type componentType() {
         return TYPE;
     }
 
+    public GaugeFilterResolver filterResolver() {
+        return ITEM_FILTER_RESOLVER;
+    }
+
+    public LogisticsControl logisticsControl() {
+        return ITEM_LOGISTICS;
+    }
+
     public void forceClearPromise(UUID networkId, ItemStack filter) {
-        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-        if (promises != null) promises.forceClear(filter);
+        logisticsControl().forceClearPromise(networkId, filter);
     }
 
     public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
-        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
-        if (promises != null) {
-            ItemStack promiseStack = filter.copy();
-            // Ignore-data: mark the promise so the queue clears it when ANY variant of the item type arrives
-            // (the produced output may carry data the pure-form filter doesn't). See RequestPromiseQueueMixin.
-            if (ignoreData) promiseStack.set(CreateFactoryController.FUZZY_PROMISE.get(), true);
-            promises.add(new RequestPromise(new BigItemStack(promiseStack, amount)));
-        }
-    }
-
-    private int getUnloadedLinks() {
-        return Create.LOGISTICS.getUnloadedLinkCount(networkId);
+        logisticsControl().addPromise(networkId, filter, ignoreData, amount);
     }
 
     // ── Recipe-mode requests ─────────────────────────────────────────────────
@@ -541,7 +583,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         // is what prevents over-requesting: the timer never idles at 0 ready to fire, so the one-tick
         // stock/promise flicker as the produced item lands can't trigger an extra request — a request
         // only fires after the gauge has been continuously understocked for the whole interval.
-        if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered || controllerPowered) return;
+        if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered || isControllerPowered()) return;
         if (isMissingAddress()) return;
         if (timer > 0) {                                // throttle between attempts
             timer = Math.min(timer, getConfigRequestIntervalInTicks());
@@ -615,17 +657,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
             for (BigItemStack need : netEntry.getValue()) {
-                // A Repackaged generic fluid filter rides Deployer's fluid logistics, so its stock (mB) must be read
-                // there — Create's item logistics knows nothing about it (would read 0 → always flash red).
-                // CFL/CreateFluid fluid filters read via getStockOf (per-link), like the storage monitor — the merged
-                // accurate summary may not carry the virtual tanks; items use the accurate summary.
-                int available;
-                if (FluidCompat.isGenericFluidFilter(need.stack))
-                    available = FluidCompat.repackagedFluidStock(netEntry.getKey(), need.stack);
-                else if (FluidCompat.isFluidFilter(need.stack))
-                    available = LogisticsManager.getStockOf(netEntry.getKey(), need.stack, null);
-                else
-                    available = summary.getCountOf(need.stack);
+                int available = FluidCompat.isFluidFilter(need.stack)
+                        ? FluidCompat.fluidStock(netEntry.getKey(), need.stack)
+                        : summary.getCountOf(need.stack);
                 if (available < need.count) {        // insufficient → flash red
                     setConnectionsSuccess(false);
                     return;
@@ -650,13 +684,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             // fluids), so Repackaged's Package Shelf groups the resulting fragments under a single orderId. The fluids
             // ride Deployer's logistics; the items ride Create's — broadcastAllPackageRequest spans both with a shared
             // orderId, which dispatching them separately would not.
-            List<BigItemStack> repackagedFluids = netEntry.getValue().stream()
-                .filter(b -> FluidCompat.isGenericFluidFilter(b.stack)).toList();
-            if (!repackagedFluids.isEmpty()) {
+            List<BigItemStack> externalFluids = netEntry.getValue().stream()
+                .filter(b -> !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
+            if (!externalFluids.isEmpty()) {
                 List<BigItemStack> items = netEntry.getValue().stream()
-                    .filter(b -> !FluidCompat.isGenericFluidFilter(b.stack)).toList();
+                    .filter(b -> FluidCompat.usesCreateItemLogistics(b.stack)).toList();
                 PackageOrderWithCrafts itemOrder = new PackageOrderWithCrafts(new PackageOrder(items), crafts);
-                if (!FluidCompat.broadcastRepackagedRecipe(netEntry.getKey(), itemOrder, repackagedFluids, recipeAddress)) {
+                if (!FluidCompat.broadcastRepackagedRecipe(netEntry.getKey(), itemOrder, externalFluids, recipeAddress)) {
                     setConnectionsSuccess(false);
                     return;
                 }
@@ -773,13 +807,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
     // ── NBT ────────────────────────────────────────────────────────────────
 
     @Override
-    public CompoundTag toNBT(net.minecraft.core.HolderLookup.Provider registries) {
+    public CompoundTag toNBT(net.minecraft.core.HolderLookup.Provider registries, NbtProfile profile) {
         CompoundTag tag = new CompoundTag();
         tag.putString("Type", componentType().id());
         tag.put("Pos", position.toNBT());
-        tag.putString("GaugeItem", itemId.toString());
+        tag.putString("Item", getItemId().toString());
         tag.putUUID("Network", networkId);
-        if (patternId != null) tag.putUUID("PatternId", patternId);   // only orderable gauges carry an id
 
         tag.put("Filter", filter.saveOptional(registries));
         tag.putBoolean("IgnoreData", ignoreData);
@@ -787,20 +820,27 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         tag.putString("Unit", unit.name());
         tag.putString("RequestMode", requestMode.name());
 
-        tag.putBoolean("Satisfied", satisfied);
-        tag.putBoolean("PromisedSatisfied", promisedSatisfied);
-        tag.putBoolean("Waiting", waitingForNetwork);
-        tag.putInt("Timer", timer);
         tag.putString("RecipeAddress", recipeAddress);
         tag.putInt("RecipeOutput", recipeOutput);
         tag.putInt("CraftBatch", craftBatch);
         tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
-
-        // Connections live in the controller's central graph (written there), not per-component.
-
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
 
+        if (profile.includesRuntime()) {
+            tag.putBoolean("Satisfied", satisfied);
+            tag.putBoolean("PromisedSatisfied", promisedSatisfied);
+            tag.putBoolean("Waiting", waitingForNetwork);
+            tag.putBoolean("RedstonePowered", redstonePowered);
+            tag.putInt("Stock", stockLevel);
+            tag.putInt("Promised", promisedCount);
+            tag.putLong("LastRequestTick", lastRequestTick);
+            tag.putInt("Timer", timer);
+        }
+        if (profile.includesServerOnly() && patternId != null)
+            tag.putUUID("PatternId", patternId);
+
+        // Connections live in the controller's central graph, not per-component.
         return tag;
     }
 
@@ -823,101 +863,48 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         forceClearPromises = true;
     }
 
-    @Override
-    public CompoundTag toItemNBT(HolderLookup.Provider registries) {
-        CompoundTag tags = super.toItemNBT(registries);
-        tags.remove("PatternId");
-        tags.remove("Satisfied");
-        tags.remove("PromisedSatisfied");
-        tags.remove("Waiting");
-        tags.remove("Timer");
-        return tags;
-    }
-
-    @Override
-    public CompoundTag toClientNBT(net.minecraft.core.HolderLookup.Provider registries) {
-        // Only what the canvas needs: identity/texture, filter (icon + set-item check), status
-        // (indicator colour + gating), the address (status `isMissingAddress`), and incoming
-        // connections (arrow rendering). Server-only tick state and detailed recipe config are
-        // omitted — those are pulled on demand when a config overlay opens.
-        CompoundTag tag = new CompoundTag();
-        tag.putString("Type", componentType().id());
-        tag.put("Pos", position.toNBT());
-        tag.putString("GaugeItem", itemId.toString());
-        tag.putUUID("Network", networkId);
-        // patternId is server-only — clients never need it.
-
-        tag.put("Filter", filter.saveOptional(registries));
-        tag.putBoolean("IgnoreData", ignoreData);
-        tag.putInt("Count", count);
-        tag.putString("Unit", unit.name());
-        tag.putString("RequestMode", requestMode.name());
-
-        tag.putBoolean("Satisfied", satisfied);
-        tag.putBoolean("PromisedSatisfied", promisedSatisfied);
-        tag.putBoolean("Waiting", waitingForNetwork);
-        tag.putBoolean("RedstonePowered", redstonePowered);   // link-driven; synced for the gray path + bulb
-        //tag.putBoolean("ControllerPowered", true);
-        tag.putString("RecipeAddress", recipeAddress);
-        // Recipe-config fields the ConfigureRecipeScreen edits — synced so the overlay can show
-        // current values without a separate on-demand fetch.
-        tag.putInt("RecipeOutput", recipeOutput);
-        tag.putInt("CraftBatch", craftBatch);
-        tag.putInt("CraftDimension", craftDimension);
-        tag.putInt("PromiseClearingInterval", promiseClearingInterval);
-        tag.putInt("Stock", stockLevel);
-        tag.putInt("Promised", promisedCount);
-        tag.putLong("LastRequestTick", lastRequestTick);
-        tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
-        // Connections live in the controller's central graph (synced separately), not per-component.
-
-        return tag;
-    }
-
     public static VirtualGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                 CompoundTag tag,
                                                 net.minecraft.core.HolderLookup.Provider registries) {
         VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
-        ResourceLocation gaugeItemId = ResourceLocation.parse(tag.getString("GaugeItem"));
+        ResourceLocation gaugeItemId = ResourceLocation.parse(tag.getString("Item"));
+        Item gaugeItem = BuiltInRegistries.ITEM.get(gaugeItemId);
         UUID networkId = tag.getUUID("Network");
 
-        VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItemId);
-        b.filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
-        b.ignoreData = tag.getBoolean("IgnoreData");
-        b.count = tag.getInt("Count");
-        b.unit = ThresholdUnit.fromName(tag.getString("Unit"));
-        if (tag.contains("RequestMode"))
-            b.requestMode = RequestMode.fromName(tag.getString("RequestMode"));
-        else   // legacy migration from the old Passive boolean
-            b.requestMode = tag.getBoolean("Passive")
-                ? RequestMode.PASSIVE : RequestMode.NORMAL;
-        if (tag.hasUUID("PatternId"))
-            b.patternId = tag.getUUID("PatternId");
-        b.stockLevel = tag.getInt("Stock");
-        b.promisedCount = tag.getInt("Promised");
-        b.lastRequestTick = tag.getLong("LastRequestTick");
-        b.activeCraftingArrangement = readStacks(tag.getList("CraftingArrangement", Tag.TAG_COMPOUND), registries);
-
-        b.satisfied = tag.getBoolean("Satisfied");
-        b.promisedSatisfied = tag.getBoolean("PromisedSatisfied");
-        b.waitingForNetwork = tag.getBoolean("Waiting");
-        b.redstonePowered = tag.getBoolean("RedstonePowered");
-        b.controllerPowered = tag.getBoolean("ControllerPowered");
-        b.timer = tag.getInt("Timer");
-        b.recipeAddress = tag.getString("RecipeAddress");
-        b.recipeOutput = tag.getInt("RecipeOutput");
-        b.craftBatch = Math.max(1, tag.getInt("CraftBatch"));   // absent (legacy data) → 1
-        b.craftDimension = Math.max(0, tag.getInt("CraftDimension"));   // 0 = not a large recipe / unset
-        b.promiseClearingInterval = tag.getInt("PromiseClearingInterval");
-        // Connections are loaded centrally by the controller / menu, not from the component tag.
-
-        // Server-side load (placement via setup, or chunk reload): delay the first request by a full interval.
-        // A freshly loaded gauge's network stock summary can read 0 for a tick or two before it populates, and
-        // with timer==0 (setup strips it) tickRequests would fire immediately even though stock is sufficient.
-        // Throttling the first attempt gives tickStorageMonitor time to read real stock and mark it satisfied.
-        // (controller is null only on the client snapshot, which never ticks — leave its timer as-is.)
-        if (controller != null) b.timer = b.getConfigRequestIntervalInTicks();
-
+        VirtualGaugeBehaviour b = new VirtualGaugeBehaviour(controller, pos, networkId, gaugeItem);
+        b.readGaugeNBT(tag, registries);
         return b;
+    }
+
+    protected void readGaugeNBT(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
+        ignoreData = tag.getBoolean("IgnoreData");
+        count = tag.getInt("Count");
+        unit = ThresholdUnit.fromName(tag.getString("Unit"));
+        requestMode = tag.contains("RequestMode")
+                ? RequestMode.fromName(tag.getString("RequestMode"))
+                : tag.getBoolean("Passive") ? RequestMode.PASSIVE : RequestMode.NORMAL;
+        if (tag.hasUUID("PatternId")) patternId = tag.getUUID("PatternId");
+        stockLevel = tag.getInt("Stock");
+        promisedCount = tag.getInt("Promised");
+        lastRequestTick = tag.getLong("LastRequestTick");
+        activeCraftingArrangement = readStacks(tag.getList("CraftingArrangement", Tag.TAG_COMPOUND), registries);
+
+        satisfied = tag.getBoolean("Satisfied");
+        promisedSatisfied = tag.getBoolean("PromisedSatisfied");
+        waitingForNetwork = tag.getBoolean("Waiting");
+        redstonePowered = tag.getBoolean("RedstonePowered");
+        timer = tag.getInt("Timer");
+        recipeAddress = tag.getString("RecipeAddress");
+        recipeOutput = tag.getInt("RecipeOutput");
+        craftBatch = Math.max(1, tag.getInt("CraftBatch"));
+        craftDimension = Math.max(0, tag.getInt("CraftDimension"));
+        promiseClearingInterval = tag.getInt("PromiseClearingInterval");
+
+        if (controller != null) timer = getConfigRequestIntervalInTicks();
+    }
+
+    private boolean isControllerPowered() {
+        return controller != null && controller.isRedstonePowered();
     }
 }

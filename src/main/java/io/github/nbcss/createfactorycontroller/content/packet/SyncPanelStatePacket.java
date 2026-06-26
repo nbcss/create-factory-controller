@@ -27,9 +27,10 @@ import java.util.UUID;
 public record SyncPanelStatePacket(BlockPos pos,
                                    List<CompoundTag> gaugeTags,
                                    List<CompoundTag> connections,
-                                   List<UUID> networks,
-                                   List<String> networkNames,
-                                   String controllerName)
+                                    List<UUID> networks,
+                                    List<String> networkNames,
+                                    String controllerName,
+                                    boolean controllerPowered)
         implements CustomPacketPayload {
 
     public static final Type<SyncPanelStatePacket> TYPE =
@@ -100,7 +101,8 @@ public record SyncPanelStatePacket(BlockPos pos,
                 List<UUID> networks = UUID_LIST_CODEC.decode(buf);
                 List<String> names = STRING_LIST_CODEC.decode(buf);
                 String controllerName = buf.readUtf();
-                return new SyncPanelStatePacket(pos, tags, connections, networks, names, controllerName);
+                boolean controllerPowered = buf.readBoolean();
+                return new SyncPanelStatePacket(pos, tags, connections, networks, names, controllerName, controllerPowered);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
@@ -110,6 +112,7 @@ public record SyncPanelStatePacket(BlockPos pos,
                 UUID_LIST_CODEC.encode(buf, packet.networks());
                 STRING_LIST_CODEC.encode(buf, packet.networkNames());
                 buf.writeUtf(packet.controllerName());
+                buf.writeBoolean(packet.controllerPowered());
             }
         };
 
@@ -140,6 +143,7 @@ public record SyncPanelStatePacket(BlockPos pos,
             for (int i = 0; i < nets.size() && i < names.size(); i++)
                 if (!names.get(i).isBlank()) menu.networkNicknames.put(nets.get(i), names.get(i));
             menu.controllerName = packet.controllerName();
+            menu.controllerPowered = packet.controllerPowered();
 
             // Refresh whichever of this controller's screens is active — the controller canvas itself
             // or a sub-screen (set-item / configure-recipe) that renders the canvas as its background.

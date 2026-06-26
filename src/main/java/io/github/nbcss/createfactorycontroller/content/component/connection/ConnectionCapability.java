@@ -5,19 +5,14 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 /**
  * A component's declared participation in one {@link Connection.Type}: the type plus its static
  * {@link Role role} ({@code SOURCE}/{@code SINK}/{@code BOTH}). A component returns its ports from
- * {@link VirtualComponentBehaviour#ports()}; {@link ConnectionValidator} reads them to decide whether a wire is
+ * {@link VirtualComponentBehaviour#ports()}; {@link ConnectionResolver} reads them to decide whether a wire is
  * possible — no {@code instanceof} pair matrix.
  */
 public record ConnectionCapability(Connection.Type type, Role role) {
     /**
-     * A component port's participation in a {@link Connection.Type}. Serves two purposes:
-     * <ul>
-     *   <li><b>Capability</b> (static, for validity): may this port be a source and/or a sink? {@link #BOTH} = either.</li>
-     *   <li><b>Live role</b> (dynamic, for direction): a component's {@link VirtualComponentBehaviour#liveRole} returns a
-     *       <i>decisive</i> {@link #SOURCE}/{@link #SINK} when it knows its role, or {@link #BOTH} when it defers. A
-     *       decisive role beats {@code BOTH}, so e.g. a redstone link's Send/Receive mode dictates the wire's direction
-     *       without any priority/weight.</li>
-     * </ul>
+     * A component port's static participation in a {@link Connection.Type}: may this port be a source and/or a sink?
+     * {@link #BOTH} = either. Dynamic state belongs in {@code validateAsSource}/{@code validateAsSink}, which the
+     * resolver uses to infer direction.
      */
     public enum Role {
         SOURCE, SINK, BOTH;

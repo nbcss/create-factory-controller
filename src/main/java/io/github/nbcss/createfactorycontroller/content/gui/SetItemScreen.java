@@ -1,7 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
@@ -156,7 +155,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private void updateIgnoreDataButtons() {
         // Ignore-data is an item-gauge concept; hide it for any non-item gauge (fluid/energy have no NBT variants),
         // and for an item gauge once its chosen filter is a fluid.
-        boolean noIgnoreData = !behaviour.supportsIgnoreData() || FluidCompat.isFluidFilter(filter);
+        boolean noIgnoreData = !behaviour.filterResolver().supportsIgnoreData() || FluidCompat.isFluidFilter(filter);
         if (noIgnoreData) ignoreData = false;   // can't ignore data; the server clamps this too
         respectDataButton.visible = !noIgnoreData;
         ignoreDataButton.visible = !noIgnoreData;
@@ -241,7 +240,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         renderFilter(gfx, mouseX, mouseY);
 
         // Decorative gauge model.
-        GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack()).scale(3)
+        GuiGameElement.of(behaviour.getItem()).scale(3)
                 .render(gfx, panelX + 180, panelY + 48);
     }
 
@@ -267,8 +266,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (overFilter(mouseX, mouseY)) {
-            if (behaviour.isFluidGauge()) applyFluidFilter(menu.getCarried(), true);
-            else setFilter(filterFromCarried(menu.getCarried(), button));
+            setFilterFromCarried(menu.getCarried(), button, true);
             updateIgnoreDataButtons();
             return true;
         }
@@ -278,9 +276,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
-            // shift-click an inventory item → set the filter (a fluid gauge takes only its fluid's container).
-            if (behaviour.isFluidGauge()) applyFluidFilter(slot.getItem(), false);   // non-container shift-click → ignored
-            else setFilter(slot.getItem());
+            setFilterFromCarried(slot.getItem(), mouseButton, false);
             updateIgnoreDataButtons();
             return;
         }
@@ -306,54 +302,33 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         Minecraft.getInstance().setScreen(controller);
     }
 
-    /**
-     * The filter a carried item produces: normally the item itself, but with a fluid-logistics addon installed a
-     * right-click (mouseButton 1) on a filled fluid container uses its stored fluid as a fluid filter instead.
-     * Without an addon, or on left-click, the container item is the filter (requirement: both clicks set item).
-     */
-    /**
-     * Sets the ghost filter from {@code source} for a fluid gauge: a filled fluid container becomes the generic fluid
-     * filter, an empty hand clears it (only when {@code allowClear}), and any non-container item is <b>refused</b> —
-     * the current filter is left unchanged. Used for both the cursor and shift-click / JEI paths.
-     */
-    private void applyFluidFilter(ItemStack source, boolean allowClear) {
+    private void setFilterFromCarried(ItemStack source, int mouseButton, boolean allowClear) {
         if (source.isEmpty()) {
             if (allowClear) setFilter(ItemStack.EMPTY);
             return;
         }
-        ItemStack fluidFilter = filterFromCarried(source, 0);
-        if (!fluidFilter.isEmpty()) setFilter(fluidFilter);   // non-container → refused, keep current
+        ItemStack resolved = behaviour.filterResolver().fromCarried(source, mouseButton);
+        if (!resolved.isEmpty()) setFilter(resolved);
     }
 
     private void setFilter(ItemStack stack) {
         filter = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
     }
 
-    private ItemStack filterFromCarried(ItemStack carried, int mouseButton) {
-        // A fluid gauge holds only a fluid: any filled fluid container (either click) becomes the generic fluid
-        // filter; a non-fluid item yields EMPTY (the caller decides whether that clears or is refused).
-        if (behaviour.isFluidGauge()) {
-            FluidStack fluid = FluidCompat.fluidInContainer(carried);
-            return fluid.isEmpty() ? ItemStack.EMPTY : FluidCompat.makeGenericFluidFilter(fluid);
-        }
-        if (FluidCompat.isLoaded() && mouseButton == 1) {
-            FluidStack fluid = FluidCompat.fluidInContainer(carried);
-            if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
-        }
-        return carried;
-    }
-
     // ── JEI hooks (used by the handlers registered on this screen) ──
     public Rect2i ghostSlotArea() { return new Rect2i(filterX(), filterY(), 16, 16); }
-    /** Whether this screen configures a fluid gauge (filter restricted to fluids). Used by the JEI ghost handler. */
-    public boolean isFluidGauge() { return behaviour.isFluidGauge(); }
+    public boolean acceptsJeiItems() { return behaviour.filterResolver().acceptsItemDrop(); }
+    public boolean acceptsJeiFluids() { return behaviour.filterResolver().acceptsFluidDrop(); }
     /** JEI drop. For a fluid gauge the handler passes an already-built fluid-filter token (from a dragged fluid); set
      *  it only if it's a valid fluid filter (a stray item drop is refused). An item gauge takes the stack directly. */
     public void setGhostFromJei(ItemStack stack) {
-        if (behaviour.isFluidGauge()) {
-            if (FluidCompat.isFluidFilter(stack)) setFilter(stack);
-        } else setFilter(stack);
+        if (behaviour.filterResolver().acceptsFilter(stack)) setFilter(stack);
         updateIgnoreDataButtons();
+    }
+
+    public void setFluidFromJei(FluidStack fluid) {
+        ItemStack stack = behaviour.filterResolver().fromFluid(fluid);
+        if (!stack.isEmpty()) setGhostFromJei(stack);
     }
 
     private boolean overFilter(double mx, double my) {

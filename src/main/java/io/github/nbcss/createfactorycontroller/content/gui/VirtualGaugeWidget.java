@@ -3,7 +3,6 @@ package io.github.nbcss.createfactorycontroller.content.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.FluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
@@ -39,11 +38,6 @@ import java.util.List;
 public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements VirtualComponentWidget {
 
     private static final int CELL = 16;
-
-    /**
-     * A dispatched package has a 3×3 (9-slot) buffer; a request that needs more can't be carried.
-     */
-    private static final int MAX_PACKAGE_SLOTS = 9;
 
     /**
      * Status indicator light, drawn top-right within the cell and tinted by gauge state.
@@ -212,14 +206,11 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     @Override
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
         FactoryControllerMenu menu = screen.getMenu();
-        // Fluid/energy gauges: a carried fluid container sets the fluid filter directly (mirrors an item gauge taking
-        // a held item); an empty hand opens the set-item screen (unconfigured) or recipe screen (configured); a
-        // non-container item is ignored. The fluid filter is the generic token (no item logistics).
-        if (behaviour instanceof FluidGaugeBehaviour) {
-            ItemStack fluidFilter = FluidCompat.makeGenericFluidFilter(FluidCompat.fluidInContainer(carried));
-            if (!fluidFilter.isEmpty()) {
+        if (!behaviour.filterResolver().acceptsItemDrop()) {
+            ItemStack resolved = behaviour.filterResolver().fromCarried(carried, button);
+            if (!resolved.isEmpty()) {
                 PacketDistributor.sendToServer(
-                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), fluidFilter, false));
+                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), resolved, false));
             } else if (carried.isEmpty()) {
                 screen.clearSelection();
                 Minecraft.getInstance().setScreen(behaviour.filter.isEmpty()
@@ -234,7 +225,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
                 Minecraft.getInstance().setScreen(new SetItemScreen(screen, behaviour));
             } else
                 PacketDistributor.sendToServer(
-                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), filterFromCarried(carried, button), false));
+                        new GaugeSetItemPacket(menu.controllerPos, behaviour.position(), behaviour.filterResolver().fromCarried(carried, button), false));
         } else if (carried.isEmpty()) {
             screen.clearSelection();   // entering an overlay clears the selection
             Minecraft.getInstance().setScreen(new ConfigureRecipeScreen(screen, behaviour.position()));
@@ -242,15 +233,4 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         return true;
     }
 
-    /**
-     * The filter a carried item sets on an empty gauge: the item itself on left-click, or (with a
-     * fluid-logistics addon installed) the stored fluid as a fluid filter on right-click of a filled container.
-     */
-    private static ItemStack filterFromCarried(ItemStack carried, int button) {
-        if (FluidCompat.isLoaded() && button == 1) {
-            var fluid = FluidCompat.fluidInContainer(carried);
-            if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
-        }
-        return carried.copy();
-    }
 }

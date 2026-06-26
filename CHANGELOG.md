@@ -10,6 +10,7 @@ Compatibility:
 
 Bugfixes:
 - Fixed fluid cannot properly work to create production order
+- Fixed connection arrow tip does not have flow animation
 
 ## 0.2.1
 Features:

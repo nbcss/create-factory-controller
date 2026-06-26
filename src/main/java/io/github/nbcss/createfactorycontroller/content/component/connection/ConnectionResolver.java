@@ -4,7 +4,6 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -15,16 +14,15 @@ import java.util.function.Supplier;
  * The single, side-agnostic validator for a connection between two components. Used identically by the hover preview,
  * the client commit, and the server apply, so the server can never be more permissive than the UI.
  *
- * <p>Algorithm: pick the first shared {@link Connection.Type} (enum order) whose ports admit a valid orientation →
- * resolve direction from the endpoints' {@link VirtualComponentBehaviour#liveRole live roles} (decisive beats
- * deferring; both defer → the caller's creation intent) → run {@code source.validateAsSource} then
- * {@code sink.validateAsSink} → check the type's uniqueness policy. On success it also attaches the green
+ * <p>Algorithm: pick the first shared {@link Connection.Type} (enum order), lock source/sink direction from port
+ * capabilities (or caller intent when both directions are possible), then validate only that locked direction. On
+ * success it also attaches the green
  * confirmation message, so the screen renders {@code result.validation().message()} the same way for both outcomes
  * (the message is a lazy supplier — the preview never builds it). See {@code CONNECTION_REWORK_PLAN.md}.</p>
  */
-public final class ConnectionValidator {
+public final class ConnectionResolver {
 
-    /** Outcome of {@link #validate}: the resolved type + directed endpoints, and the {@link ValidationResult}
+    /** Outcome of {@link #resolve}: the resolved type + directed endpoints, and the {@link ValidationResult}
      *  (carrying a lazy success or failure message). */
     public record Result(@Nullable Connection.Type type,
                          @Nullable VirtualComponentPosition source,
@@ -38,51 +36,51 @@ public final class ConnectionValidator {
     }
 
     /**
-     * Validates wiring {@code a} and {@code b}. {@code creationSink} is the component whose GUI started the
+     * Resolves wiring {@code a} and {@code b}. {@code creationSink} is the component whose GUI started the
      * connection (the user's intended target) — the direction fallback when neither end is decisive (e.g. gauge →
      * gauge). Order of {@code a}/{@code b} is otherwise irrelevant.
      */
-    public static Result validate(@Nullable VirtualComponentBehaviour a, @Nullable VirtualComponentBehaviour b,
-                                  @Nullable VirtualComponentBehaviour creationSink) {
-        if (a == null || b == null || a.position().equals(b.position())) return Result.fail(ConnectionValidator::aborted);
+    public static Result resolve(@Nullable VirtualComponentBehaviour a,
+                                 @Nullable VirtualComponentBehaviour b,
+                                 @Nullable VirtualComponentBehaviour creationSink) {
+        if (a == null || b == null || a.position().equals(b.position())) return Result.fail(ConnectionResolver::aborted);
 
-        for (Connection.Type ch : Connection.Type.values()) {
-            ConnectionCapability.Role ca = capabilityOf(a, ch);
-            ConnectionCapability.Role cb = capabilityOf(b, ch);
+        for (Connection.Type type : Connection.Type.values()) {
+            ConnectionCapability.Role ca = capabilityOf(a, type);
+            ConnectionCapability.Role cb = capabilityOf(b, type);
             if (ca == null || cb == null) continue;   // not a shared type — try the next
 
-            // First shared type wins. Resolve which end is the source.
             boolean abValid = ca.canSource() && cb.canSink();   // a → b
             boolean baValid = cb.canSource() && ca.canSink();   // b → a
-            VirtualComponentBehaviour source, sink;
-            if (abValid && !baValid)      { source = a; sink = b; }
-            else if (baValid && !abValid) { source = b; sink = a; }
-            else if (!abValid)            { return Result.fail(ConnectionValidator::aborted); }   // no valid orientation
-            else { boolean aSource = resolveDirection(a, b, ch, creationSink);
-                   source = aSource ? a : b; sink = aSource ? b : a; }
+            if (!abValid && !baValid) return Result.fail(ConnectionResolver::aborted);
 
-            ValidationResult vr = source.validateAsSource(ch, sink);
-            if (vr.isSuccess()) vr = sink.validateAsSink(ch, source);
-            if (vr.isSuccess() && alreadyConnected(ch, source, sink))
-                vr = ValidationResult.fail(() -> CreateLang.translate("factory_panel.already_connected")
-                        .style(ChatFormatting.RED).component());
-            if (vr.isSuccess())
-                vr = new ValidationResult(true, () -> successMessage(ch, source, sink));
-            return new Result(ch, source.position(), sink.position(), vr);
+            if (abValid && !baValid) return result(type, a, b);
+            if (!abValid) return result(type, b, a);
+            return creationSink == a ? result(type, b, a) : result(type, a, b);
         }
-        return Result.fail(ConnectionValidator::aborted);   // no shared type
+        return Result.fail(ConnectionResolver::aborted);   // no shared type
     }
 
-    /** Whether {@code a} is the source (else {@code b}) when both orientations are role-valid. */
-    private static boolean resolveDirection(VirtualComponentBehaviour a, VirtualComponentBehaviour b,
-                                            Connection.Type ch, @Nullable VirtualComponentBehaviour creationSink) {
-        ConnectionCapability.Role la = a.liveRole(ch), lb = b.liveRole(ch);
-        if (la == ConnectionCapability.Role.SOURCE) return true;
-        if (la == ConnectionCapability.Role.SINK)   return false;
-        if (lb == ConnectionCapability.Role.SOURCE) return false;
-        if (lb == ConnectionCapability.Role.SINK)   return true;
-        // Both defer (BOTH) → a is the source unless a is the intended sink.
-        return creationSink != a;
+    private static Result result(Connection.Type type, VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+        return new Result(type, source.position(), sink.position(), validate(type, source, sink));
+    }
+
+    /** Validates that the explicit {@code type/source/sink} setup is still legal. Does not resolve alternatives. */
+    public static ValidationResult validate(@Nullable Connection.Type type,
+                                            @Nullable VirtualComponentBehaviour source,
+                                            @Nullable VirtualComponentBehaviour sink) {
+        if (type == null || source == null || sink == null || source.position().equals(sink.position()))
+            return ValidationResult.fail(ConnectionResolver::aborted);
+        ConnectionCapability.Role sourceCap = capabilityOf(source, type);
+        ConnectionCapability.Role sinkCap = capabilityOf(sink, type);
+        if (sourceCap == null || sinkCap == null || !sourceCap.canSource() || !sinkCap.canSink())
+            return ValidationResult.fail(ConnectionResolver::aborted);
+        ValidationResult vr = source.validateAsSource(type, sink);
+        if (vr.isSuccess()) vr = sink.validateAsSink(type, source);
+        if (vr.isSuccess() && alreadyConnected(type, source, sink))
+            vr = ValidationResult.fail(() -> CreateLang.translate("factory_panel.already_connected")
+                    .style(ChatFormatting.RED).component());
+        return vr.isSuccess() ? new ValidationResult(true, () -> successMessage(type, source, sink)) : vr;
     }
 
     /** This type's uniqueness policy against the current graph (Phase 1: per-component {@code targetedBy}). */
@@ -102,7 +100,7 @@ public final class ConnectionValidator {
         //fixme don't hardcode success message branch
         if (ch == Connection.Type.REDSTONE) {
             VirtualComponentBehaviour link = source instanceof VirtualRedstoneLinkBehaviour ? source : sink;
-            String linkName = new ItemStack(BuiltInRegistries.ITEM.get(link.getItemId())).getHoverName().getString();
+            String linkName = new ItemStack(link.getItem()).getHoverName().getString();
             return CreateLang.translate("factory_panel.link_connected", linkName).style(ChatFormatting.GREEN).component();
         }
         Component in  = source instanceof VirtualGaugeBehaviour g ? FluidCompat.filterName(g.filter) : Component.empty();

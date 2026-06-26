@@ -1,6 +1,5 @@
 package io.github.nbcss.createfactorycontroller.content.compat.fluids;
 
-import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -25,10 +24,8 @@ import java.util.List;
  *     recognise/build seam per addon is a {@link FluidFilterProvider}; one is added (reflectively, so a missing class
  *     in a build without that addon's jar is simply skipped) only when its mod is loaded. The two are mutually
  *     incompatible, so at most one is ever active.</li>
- * <li><b>The generic token</b> — for Create: Repackaged's Fluid Gauge we use our own {@link
- *     CreateFactoryController#FLUID_FILTER} item ({@link #isGenericFluidFilter}), which rides Deployer's separate fluid
- *     logistics rather than Create's item logistics; its stock/promises/dispatch go through {@link RepackagedFluidStock}
- *     (the {@code repackaged*} methods here).</li>
+ * <li><b>Non-item-logistics filters</b> — e.g. Create: Repackaged's Fluid Gauge uses this mod's fluid-filter token,
+ *     which rides Deployer's separate fluid logistics rather than Create's item logistics.</li>
  * </ul>
  *
  * <p>Every addon reference is {@code compileOnly} and soft-detected at runtime, so the JVM never resolves an absent
@@ -38,22 +35,28 @@ public final class FluidCompat {
 
     private static final String CFL_MODID = "fluidlogistics";
     private static final String CREATEFLUID_MODID = "fluid";
+    private static final String REPACKAGED_MODID = "repackaged";
 
     private static final String CFL_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CflFluidProvider";
     private static final String CREATEFLUID_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CreateFluidProvider";
+    private static final String REPACKAGED_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.RepackagedFluidProvider";
 
-    /** The active providers (one per installed addon), tried in order. {@code makeFluidFilter} uses the first. */
-    private static final List<FluidFilterProvider> PROVIDERS = createProviders();
+    /** The active providers (one per installed addon), tried in order. Built lazily because FluidCompat can be touched
+     * before ModList is ready during mod construction/component registration. */
+    private static final List<FluidFilterProvider> PROVIDERS = new ArrayList<>();
+    private static boolean providersInitialized = false;
 
     private FluidCompat() {}
 
-    private static List<FluidFilterProvider> createProviders() {
-        List<FluidFilterProvider> providers = new ArrayList<>();
+    private static List<FluidFilterProvider> providers() {
+        if (providersInitialized) return PROVIDERS;
         ModList list = ModList.get();
-        if (list == null) return providers;
-        if (list.isLoaded(CFL_MODID)) addProvider(providers, CFL_PROVIDER);
-        if (list.isLoaded(CREATEFLUID_MODID)) addProvider(providers, CREATEFLUID_PROVIDER);
-        return providers;
+        if (list == null) return PROVIDERS;
+        providersInitialized = true;
+        if (list.isLoaded(CFL_MODID)) addProvider(PROVIDERS, CFL_PROVIDER);
+        if (list.isLoaded(CREATEFLUID_MODID)) addProvider(PROVIDERS, CREATEFLUID_PROVIDER);
+        if (list.isLoaded(REPACKAGED_MODID)) addProvider(PROVIDERS, REPACKAGED_PROVIDER);
+        return PROVIDERS;
     }
 
     /**
@@ -72,23 +75,18 @@ public final class FluidCompat {
 
     /** Whether any supported fluid-logistics addon is installed; gates all fluid-filter behaviour. */
     public static boolean isLoaded() {
-        return !PROVIDERS.isEmpty();
+        return providers().stream().anyMatch(FluidFilterProvider::usesCreateItemLogistics);
     }
 
-    /** Whether {@code stack} is our addon-agnostic generic fluid-filter token (the FLUID-gauge filter, riding
-     *  Repackaged's Deployer fluid logistics — NOT the CFL/CreateFluid wrapper items, which ride Create's item
-     *  logistics). The token + its component are only registered when Create: Repackaged is installed, so the
-     *  holders may be null. */
-    public static boolean isGenericFluidFilter(ItemStack stack) {
-        return CreateFactoryController.FLUID_FILTER != null && stack.is(CreateFactoryController.FLUID_FILTER.get());
+    public static boolean usesCreateItemLogistics(ItemStack stack) {
+        FluidFilterProvider provider = providerOf(stack);
+        return provider == null || provider.usesCreateItemLogistics();
     }
 
-    /** True when {@code stack} is a fluid filter — our addon-agnostic {@link #makeGenericFluidFilter generic token}
-     *  (used by fluid gauges) or any installed addon's wrapper item (a virtual item holding a fluid type). */
+    /** True when {@code stack} is a fluid filter from any installed provider. */
     public static boolean isFluidFilter(ItemStack stack) {
         if (stack.isEmpty()) return false;
-        if (isGenericFluidFilter(stack)) return true;
-        for (FluidFilterProvider provider : PROVIDERS)
+        for (FluidFilterProvider provider : providers())
             if (provider.isFluidFilter(stack)) return true;
         return false;
     }
@@ -96,44 +94,44 @@ public final class FluidCompat {
     /** The fluid carried by a fluid-filter stack, or {@link FluidStack#EMPTY} if it isn't one. */
     public static FluidStack getFilterFluid(ItemStack stack) {
         if (stack.isEmpty()) return FluidStack.EMPTY;
-        if (isGenericFluidFilter(stack))
-            return stack.getOrDefault(CreateFactoryController.FLUID_CONTENT.get(),
-                    net.neoforged.neoforge.fluids.SimpleFluidContent.EMPTY).copy();
-        for (FluidFilterProvider provider : PROVIDERS) {
+        for (FluidFilterProvider provider : providers()) {
             FluidStack fluid = provider.getFilterFluid(stack);
             if (!fluid.isEmpty()) return fluid;
         }
         return FluidStack.EMPTY;
     }
 
-    /** Network stock (mB) of a fluid gauge's {@code filter} fluid, read from Repackaged's Deployer-backed fluid stock
-     *  system. Only meaningful for a FLUID gauge (its generic filter rides no Create item logistics). Delegates to
-     *  {@link RepackagedFluidStock} so the Deployer references stay lazily loaded (Repackaged-only). */
-    public static int repackagedFluidStock(java.util.UUID network, ItemStack filter) {
-        return RepackagedFluidStock.stock(network, getFilterFluid(filter));
+    private static FluidFilterProvider providerOf(ItemStack stack) {
+        if (stack.isEmpty()) return null;
+        for (FluidFilterProvider provider : providers())
+            if (provider.isFluidFilter(stack)) return provider;
+        return null;
     }
 
-    /** Open promised amount (mB) of a fluid gauge's {@code filter} fluid on the network (Repackaged backend). */
-    public static int repackagedFluidPromised(java.util.UUID network, ItemStack filter, int expiry) {
-        return RepackagedFluidStock.promised(network, getFilterFluid(filter), expiry);
+    public static int fluidStock(java.util.UUID network, ItemStack filter) {
+        FluidFilterProvider provider = providerOf(filter);
+        return provider == null ? 0 : provider.stock(network, filter);
     }
 
-    /** Promises {@code amount} mB of a fluid gauge's produced output (Repackaged backend). */
-    public static void repackagedAddFluidPromise(java.util.UUID network, ItemStack filter, int amount) {
-        RepackagedFluidStock.addPromise(network, getFilterFluid(filter), amount);
+    public static int fluidPromised(java.util.UUID network, ItemStack filter, int expiry) {
+        FluidFilterProvider provider = providerOf(filter);
+        return provider == null ? 0 : provider.promised(network, filter, expiry);
     }
 
-    /** Force-clears a fluid gauge's open output promises (Repackaged backend). */
-    public static void repackagedForceClearFluid(java.util.UUID network, ItemStack filter) {
-        RepackagedFluidStock.forceClear(network, getFilterFluid(filter));
+    public static void addFluidPromise(java.util.UUID network, ItemStack filter, int amount) {
+        FluidFilterProvider provider = providerOf(filter);
+        if (provider != null) provider.addPromise(network, filter, amount);
     }
 
-    /** Ships {@code amount} mB of a generic fluid filter's fluid to {@code address} as link
-     *  ({@code linkIndex}/{@code finalLink}) of the shared production order {@code orderId} (Repackaged backend). */
-    public static boolean dispatchRepackagedFluid(java.util.UUID network, ItemStack filter, int amount, String address,
-                                                  int orderId, int linkIndex, boolean finalLink) {
-        return RepackagedFluidStock.dispatchWithOrderId(network, getFilterFluid(filter).copyWithAmount(amount),
-            address, orderId, linkIndex, finalLink);
+    public static void forceClearFluid(java.util.UUID network, ItemStack filter) {
+        FluidFilterProvider provider = providerOf(filter);
+        if (provider != null) provider.forceClear(network, filter);
+    }
+
+    public static boolean dispatchFluid(java.util.UUID network, ItemStack filter, int amount, String address,
+                                        int orderId, int linkIndex, boolean finalLink) {
+        FluidFilterProvider provider = providerOf(filter);
+        return provider != null && provider.dispatch(network, filter, amount, address, orderId, linkIndex, finalLink);
     }
 
     /** Dispatches a whole recipe (Repackaged backend) as ONE order so the Package Shelf groups its fragments: the
@@ -152,15 +150,12 @@ public final class FluidCompat {
         return RepackagedFluidStock.broadcastAll(network, itemOrder, fluids, address);
     }
 
-    /** Builds the addon-agnostic generic fluid-filter token for a fluid gauge (the {@link CreateFactoryController#FLUID_FILTER}
-     *  item tagged with the chosen fluid type). Used when the gauge's stock type is FLUID; empty when the token isn't
-     *  registered (Repackaged absent). */
-    public static ItemStack makeGenericFluidFilter(FluidStack fluid) {
-        if (fluid.isEmpty() || CreateFactoryController.FLUID_FILTER == null) return ItemStack.EMPTY;
-        ItemStack stack = new ItemStack(CreateFactoryController.FLUID_FILTER.get());
-        stack.set(CreateFactoryController.FLUID_CONTENT.get(),
-                net.neoforged.neoforge.fluids.SimpleFluidContent.copyOf(fluid.copyWithAmount(1)));
-        return stack;
+    /** Builds a filter for a dedicated fluid gauge backend (currently Repackaged); empty when none is installed. */
+    public static ItemStack makeFluidGaugeFilter(FluidStack fluid) {
+        if (fluid.isEmpty()) return ItemStack.EMPTY;
+        for (FluidFilterProvider provider : providers())
+            if (!provider.usesCreateItemLogistics()) return provider.makeFluidFilter(fluid);
+        return ItemStack.EMPTY;
     }
 
     /**
@@ -191,8 +186,10 @@ public final class FluidCompat {
 
     /** Builds a fluid filter tagging {@code fluid}'s type, using the first installed addon's representation. */
     public static ItemStack makeFluidFilter(FluidStack fluid) {
-        if (fluid.isEmpty() || PROVIDERS.isEmpty()) return ItemStack.EMPTY;
-        return PROVIDERS.getFirst().makeFluidFilter(fluid);
+        if (fluid.isEmpty()) return ItemStack.EMPTY;
+        for (FluidFilterProvider provider : providers())
+            if (provider.usesCreateItemLogistics()) return provider.makeFluidFilter(fluid);
+        return ItemStack.EMPTY;
     }
 
     /**

@@ -925,7 +925,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
 
         // 3D gauge preview
-        GuiGameElement.of(AllBlocks.FACTORY_GAUGE.asStack())
+        GuiGameElement.of(g == null ? AllBlocks.FACTORY_GAUGE : g.getItem())
             .scale(4).at(0, 0, -200).render(gfx, panelX + 195, panelY + 139);
         if (g != null && !g.filter.isEmpty()) {
             if (FluidCompat.isFluidFilter(g.filter))

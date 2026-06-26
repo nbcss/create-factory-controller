@@ -6,6 +6,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
@@ -53,10 +54,11 @@ public final class ComponentRegistry {
      */
     public static VirtualComponentBehaviour createFromItem(FactoryControllerBlockEntity controller,
                                                            VirtualComponentPosition pos,
-                                                           ResourceLocation itemId,
+                                                           Item item,
                                                            @Nullable UUID networkId) {
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(item);
         VirtualComponentBehaviour.Type type = ITEM_REGISTRY.get(itemId);
-        return type == null ? null : type.create(controller, pos, itemId, networkId);
+        return type == null ? null : type.create(controller, pos, item, networkId);
     }
 
     // ── Item acceptance ───────────────────────────────────────────────────────

@@ -20,7 +20,6 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Vector2i;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -102,12 +101,14 @@ public final class VirtualConnectionRenderer {
                                          int minX, int minY, int maxX, int maxY) {
         Set<VirtualComponentPosition> occupied = new HashSet<>();
         Map<VirtualComponentPosition, VirtualComponentBehaviour> byPos = new HashMap<>();
-        for (VirtualComponentBehaviour c : menu.components) { occupied.add(c.position()); byPos.put(c.position(), c); }
-        for (VirtualComponentBehaviour target : menu.components) {
-            VirtualComponentPosition toPos = target.position();
-            for (Map.Entry<VirtualComponentPosition, Connection> e : target.targetedBy().entrySet()) {
-                if (!spanVisible(e.getKey(), toPos, minX, minY, maxX, maxY)) continue;
-                drawConnection(gfx, e.getKey(), toPos, e.getValue(), target, byPos.get(e.getKey()), occupied);
+        for (VirtualComponentBehaviour c : menu.components) {
+            occupied.add(c.position());
+            byPos.put(c.position(), c);
+        }
+        for (VirtualComponentBehaviour sink : menu.components) {
+            for (Connection conn : sink.targetedBy().values()) {
+                if (!spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
+                drawConnection(gfx, conn, byPos.get(conn.from), byPos.get(conn.to), occupied);
             }
         }
     }
@@ -123,22 +124,16 @@ public final class VirtualConnectionRenderer {
     }
 
     /**
-     * Draws one grid-following connection. For gauge sources the arrowhead enters {@code to} (the consumer). For a
-     * redstone-link source the direction follows the link's mode: RECEIVE keeps link → gauge (arrow into the gauge),
-     * SEND reverses to gauge → link (arrow into the link).
+     * Draws one grid-following connection. The stored {@code conn.from -> conn.to} direction is the signal/item flow;
+     * redstone link mode changes rewrite that direction in the graph instead of being special-cased here.
      */
-    private static void drawConnection(GuiGraphics gfx,
-                                       VirtualComponentPosition from, VirtualComponentPosition to,
-                                       Connection conn, VirtualComponentBehaviour target,
+    private static void drawConnection(GuiGraphics gfx, Connection conn,
                                        VirtualComponentBehaviour source,
+                                       VirtualComponentBehaviour sink,
                                        Set<VirtualComponentPosition> occupied) {
+        VirtualComponentPosition from = conn.from;
+        VirtualComponentPosition to = conn.to;
         if (from.equals(to)) return;
-
-        // The path is built in the stable storage direction (from = source, to = target) and its bend uses the stored
-        // arrowBendMode, so toggling a redstone link's send/receive never re-routes it (matches Create: the path is
-        // fixed, only the arrowhead end moves). A RECEIVE link points the arrow back into the gauge, which we do by
-        // reversing the cell ORDER (identical shape) so the arrowhead lands on the source end instead of the target.
-        boolean reverse = target instanceof VirtualRedstoneLinkBehaviour link && link.receive;
 
         // Resolve the bend mode. Auto (-1) mirrors Create: try the four modes in order and use the
         // first whose path runs through no other component cell; if all are blocked, fall to V→H.
@@ -153,15 +148,14 @@ public final class VirtualConnectionRenderer {
         }
 
         List<Vector2i> path = new ArrayList<>(buildCellPath(from, to, mode));
-        if (reverse) Collections.reverse(path);
 
         assert Minecraft.getInstance().level != null;
 
         int color = 0x888898;
         boolean animated = false;
-        if (target instanceof VirtualRedstoneLinkBehaviour link && conn instanceof RedstoneConnection rc) {
-            color = linkConnectionColor(link, rc, source);
-        } else if (target instanceof VirtualGaugeBehaviour gauge) {
+        if (conn instanceof RedstoneConnection rc) {
+            color = rc.state().color();
+        } else if (sink instanceof VirtualGaugeBehaviour gauge) {
             color = gauge.getConnectionColor();
             animated = !gauge.isMissingAddress() && !gauge.waitingForNetwork
                     && !gauge.satisfied && !gauge.redstonePowered;
@@ -306,20 +300,4 @@ public final class VirtualConnectionRenderer {
         return true;
     }
 
-    // Redstone-link connection colours — exact values from Create's FactoryPanelRenderer.renderPath (redstone-link
-    // branch): gray 0x888898 (no target), red 0xEF0000 (powered), dark red 0x580101 (valid but unpowered).
-    private static final int LINK_INVALID = 0x888898;
-    private static final int LINK_POWERED = 0xEF0000;
-    private static final int LINK_UNPOWERED = 0x580101;
-
-    /**
-     * Connection colour for a redstone-link source. Gray only when the link is in SEND mode and its connected gauge
-     * has no target amount (an invalid drive); otherwise light-red while the link is powered, dark-red while idle.
-     */
-    private static int linkConnectionColor(VirtualRedstoneLinkBehaviour link, RedstoneConnection conn,
-                                           VirtualComponentBehaviour source) {
-        boolean gaugeHasTarget = source instanceof VirtualGaugeBehaviour g && g.count != 0;
-        if (!link.receive && !gaugeHasTarget) return LINK_INVALID;   // SEND with no driving target
-        return conn.powered ? LINK_POWERED : LINK_UNPOWERED;
-    }
 }

@@ -20,6 +20,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
@@ -58,9 +59,9 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         @Override
         public VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
                                                 VirtualComponentPosition pos,
-                                                ResourceLocation itemId,
+                                                Item item,
                                                 java.util.UUID networkId) {
-            return new VirtualRedstoneLinkBehaviour(controller, pos, itemId);
+            return new VirtualRedstoneLinkBehaviour(controller, pos, item);
         }
 
         @Override
@@ -71,8 +72,6 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         }
     };
 
-    public static final ResourceLocation TYPE_ID =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "redstone_link");
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/redstone_link");
     /** Power level broadcast by a powered SEND link. */
@@ -92,56 +91,46 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     private int lastTransmitted = -1;
 
     public VirtualRedstoneLinkBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position,
-                                        ResourceLocation itemId) {
-        super(controller, position, itemId);
+                                        Item item) {
+        super(controller, position, item);
     }
 
-    @Override public ResourceLocation getTypeId() { return TYPE_ID; }
     @Override public ResourceLocation getTexture() { return TEXTURE; }
 
     /** A link speaks REDSTONE only; its mode is decisive for direction (RECEIVE drives gauges = SOURCE, SEND reads
      *  them = SINK), so a wired gauge follows the link. */
     @Override
     public java.util.List<ConnectionCapability> ports() {
-        return java.util.List.of(new ConnectionCapability(Connection.Type.REDSTONE, ConnectionCapability.Role.BOTH));
-    }
-
-    @Override
-    public ConnectionCapability.Role liveRole(Connection.Type channel) {
-        return receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK;
+        return java.util.List.of(new ConnectionCapability(Connection.Type.REDSTONE,
+                receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK));
     }
 
     // Two links bridge each other wirelessly, so a board wire between links is meaningless — reject a link partner
     // (whichever role this link takes). Gauge partners are always allowed (uniqueness handles duplicates).
     @Override
     public ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink) {
-        return sink instanceof VirtualRedstoneLinkBehaviour ? linkToLink() : ValidationResult.SUCCESS;
+        if (channel == Connection.Type.REDSTONE && !receive) return fail();
+        return sink instanceof VirtualRedstoneLinkBehaviour ? fail() : ValidationResult.SUCCESS;
     }
 
     @Override
     public ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source) {
-        return source instanceof VirtualRedstoneLinkBehaviour ? linkToLink() : ValidationResult.SUCCESS;
+        if (channel == Connection.Type.REDSTONE && receive) return fail();
+        return source instanceof VirtualRedstoneLinkBehaviour ? fail() : ValidationResult.SUCCESS;
     }
 
-    private static ValidationResult linkToLink() {
+    private static ValidationResult fail() {
         return ValidationResult.fail(() -> CreateLang.translate("factory_panel.connection_aborted")
                 .style(ChatFormatting.WHITE).component());
-    }
-
-    // A link holds all its connected gauges (link-side storage) and inherits the uncapped base addConnection.
-    @Override
-    protected Connection createConnection(VirtualComponentPosition from, VirtualComponentBehaviour source) {
-        return new RedstoneConnection(from, position);
     }
 
     // ── Power computation ──────────────────────────────────────────────────────
 
     /**
-     * Recomputes per-connection and overall power, then pushes any transmit change onto the network. Driven from the
-     * controller's <b>lazy tick</b> for the SEND side (it depends on connected gauges' stock, which isn't an event);
-     * the RECEIVE side is updated live in {@link #setReceivedStrength}. RECEIVE: every connection (and the link) is
-     * powered by the network. SEND: each connection tracks its own gauge driving it ({@code gauge.powersLink()}), and
-     * the link is powered if ANY connection is. Gauge↔link connections are stored on the link
+     * Recomputes overall power, then pushes any transmit change onto the network. SEND power is event-driven:
+     * connected source components push their state into their {@link RedstoneConnection}, and the connection notifies
+     * this redstone component as the sink. RECEIVE is updated live in {@link #setReceivedStrength}. Gauge↔redstone
+     * component connections are stored on this component
      * ({@code link.targetedBy[gauge]}).
      */
     public void updatePower() {
@@ -149,6 +138,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         // must pull its own current power (covers joining an already-steady transmitter / registration ordering).
         if (receive) receivedStrength = pullNetworkPower();
         boolean changed = recomputePower();
+        if (receive) pushNetworkPowerToConnections();
         if (changed && controller != null) { controller.setChanged(); controller.sendData(); }
 
         // Push transmit changes onto the network so receivers update (SEND links).
@@ -171,36 +161,61 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         return power;
     }
 
-    /** Recomputes {@link #powered} + each connection's powered flag. Returns whether the link's overall power changed.
+    /** Recomputes {@link #powered}. Returns whether the redstone component's overall power changed.
      *  Does not touch the network (no transmit notify) — safe to call from the network's {@code setReceivedStrength}. */
     private boolean recomputePower() {
-        boolean changed = false;
         boolean any = false;
-        for (VirtualComponentPosition gaugePos : targetedBy().keySet()) {
-            if (!(targetedBy().get(gaugePos) instanceof RedstoneConnection rc)) continue;
-            boolean connPowered = receive
-                ? receivedStrength > 0
-                : controller != null
-                    && controller.components.get(gaugePos) instanceof VirtualGaugeBehaviour g && g.powersLink();
-            if (connPowered) any = true;
-            if (rc.powered != connPowered) { rc.powered = connPowered; changed = true; }
-        }
+        for (Connection conn : graph().incomingConnections(position, Connection.Type.REDSTONE))
+            if (conn instanceof RedstoneConnection rc && rc.powered()) {
+                any = true;
+                break;
+            }
         boolean now = receive ? receivedStrength > 0 : any;
-        if (now != powered) { powered = now; changed = true; }
-        return changed;
+        if (now == powered) return false;
+        powered = now;
+        return true;
     }
 
-    /** Re-applies the redstone gate ({@code redstonePowered}) to every gauge wired to this link. */
-    private void refreshGauges() {
+    private void pushNetworkPowerToConnections() {
         if (controller == null) return;
-        for (VirtualComponentPosition gaugePos : targetedBy().keySet())
-            if (controller.components.get(gaugePos) instanceof VirtualGaugeBehaviour g)
-                g.redstonePowered = g.isGatedByLink();
+        boolean output = receive && powered;
+        for (Connection conn : graph().outgoingConnections(position, Connection.Type.REDSTONE))
+            if (conn instanceof RedstoneConnection rc)
+                rc.setValue(output);
     }
 
-    /** Whether this link is a powered receiver (so it gates the gauges wired to it). */
-    public boolean gatesGauge() {
-        return receive && powered;
+    @Override
+    public void onConnectAsSource(Connection conn) {
+        if (conn instanceof RedstoneConnection)
+            pushNetworkPowerToConnections();
+    }
+
+    @Override
+    public void onConnectAsSink(Connection conn) {
+        if (conn instanceof RedstoneConnection rc) {
+            rc.setOnChanged(c -> recomputeIncomingRedstone());
+            recomputeIncomingRedstone();
+        }
+    }
+
+    @Override
+    public void onDisconnectAsSink(Connection conn) {
+        if (conn instanceof RedstoneConnection)
+            recomputeIncomingRedstone();
+    }
+
+    private void recomputeIncomingRedstone() {
+        if (receive) return;
+        boolean changed = recomputePower();
+        if (changed && controller != null) { controller.setChanged(); controller.sendData(); }
+        updateTransmittedPower();
+    }
+
+    private void updateTransmittedPower() {
+        int transmit = getTransmittedStrength();
+        if (transmit == lastTransmitted) return;
+        lastTransmitted = transmit;
+        notifyNetwork();
     }
 
     @Override
@@ -228,13 +243,38 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         blueFreq = b;
         this.receive = receive;
         lastTransmitted = -1;                    // force a transmit re-evaluation
+        if (modeChanged) reorientRedstoneConnections();
         if (freqChanged) addToNetwork();         // rejoin with the new key
 
-        // A config change takes effect immediately, not on the next lazy tick: recompute power (which also re-notifies
-        // the network so receivers update) and refresh the redstone gate on every gauge wired to this link.
+        // A config change takes effect immediately, not on the next lazy tick.
         updatePower();
-        refreshGauges();
+        pushNetworkPowerToConnections();
+        for (Connection conn : graph().incomingConnections(position, Connection.Type.REDSTONE))
+            if (controller != null && controller.components.get(conn.from) instanceof VirtualGaugeBehaviour gauge)
+                gauge.publishRedstoneOutput();
         if (controller != null) { controller.setChanged(); controller.sendData(); }
+    }
+
+    private void reorientRedstoneConnections() {
+        java.util.List<Connection> redstone = new java.util.ArrayList<>();
+        redstone.addAll(graph().incomingConnections(position, Connection.Type.REDSTONE));
+        redstone.addAll(graph().outgoingConnections(position, Connection.Type.REDSTONE));
+        for (Connection conn : redstone) {
+            if (position.equals(conn.from) == receive) continue;
+
+            VirtualComponentBehaviour oldSource = siblingAt(conn.from);
+            VirtualComponentBehaviour oldSink = siblingAt(conn.to);
+
+            graph().reverse(conn);
+
+            if (oldSource != null) oldSource.onDisconnectAsSource(conn);
+            if (oldSink != null) oldSink.onDisconnectAsSink(conn);
+
+            VirtualComponentBehaviour newSource = siblingAt(conn.from);
+            VirtualComponentBehaviour newSink = siblingAt(conn.to);
+            if (newSink != null) newSink.onConnectAsSink(conn);
+            if (newSource != null) newSource.onConnectAsSource(conn);
+        }
     }
 
     /** The interact (R) key on the board: toggle Send/Receive, keeping the current frequencies. */
@@ -261,7 +301,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         this.receivedStrength = networkPower;
         if (!receive) return;
         boolean changed = recomputePower();
-        refreshGauges();
+        pushNetworkPowerToConnections();
         if (changed && controller != null) { controller.setChanged(); controller.sendData(); }
     }
 
@@ -309,45 +349,26 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
 
     @Override
-    public CompoundTag toItemNBT(HolderLookup.Provider registries) {
-        CompoundTag tag = super.toItemNBT(registries);
-        tag.remove("Powered");
-        return tag;
-    }
-
-    @Override
-    public CompoundTag toNBT(HolderLookup.Provider registries) {
+    public CompoundTag toNBT(HolderLookup.Provider registries, NbtProfile profile) {
         CompoundTag tag = new CompoundTag();
         tag.putString("Type", TYPE.id());
         tag.put("Pos", position.toNBT());
-        tag.putString("LinkItem", itemId.toString());
+        tag.putString("Item", getItemId().toString());
         tag.putBoolean("Receive", receive);
         tag.put("RedFreq", redFreq.saveOptional(registries));
         tag.put("BlueFreq", blueFreq.saveOptional(registries));
-        tag.putBoolean("Powered", powered);
+        if (profile.includesRuntime())
+            tag.putBoolean("Powered", powered);
         // Connections live in the controller's central graph (written there), not per-component.
-        return tag;
-    }
-
-    @Override
-    public CompoundTag toClientNBT(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        tag.putString("Type", TYPE.id());
-        tag.put("Pos", position.toNBT());
-        tag.putString("LinkItem", itemId.toString());
-        tag.putBoolean("Receive", receive);
-        tag.put("RedFreq", redFreq.saveOptional(registries));
-        tag.put("BlueFreq", blueFreq.saveOptional(registries));
-        tag.putBoolean("Powered", powered);
-        // Connections live in the controller's central graph (synced separately), not per-component.
         return tag;
     }
 
     public static VirtualRedstoneLinkBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                        CompoundTag tag, HolderLookup.Provider registries) {
         VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
-        ResourceLocation itemId = ResourceLocation.parse(tag.getString("LinkItem"));
-        VirtualRedstoneLinkBehaviour b = new VirtualRedstoneLinkBehaviour(controller, pos, itemId);
+        ResourceLocation itemId = ResourceLocation.parse(tag.getString("Item"));
+        Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId);
+        VirtualRedstoneLinkBehaviour b = new VirtualRedstoneLinkBehaviour(controller, pos, item);
         b.receive = tag.getBoolean("Receive");
         b.redFreq = ItemStack.parseOptional(registries, tag.getCompound("RedFreq"));
         b.blueFreq = ItemStack.parseOptional(registries, tag.getCompound("BlueFreq"));

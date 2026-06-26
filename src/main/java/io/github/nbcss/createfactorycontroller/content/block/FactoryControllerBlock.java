@@ -8,7 +8,6 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -135,7 +134,7 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
             } else {
                 List<ItemStack> drops = new ArrayList<>(super.getDrops(state, params));
                 for (VirtualComponentBehaviour b : be.components.values()) {
-                    drops.add(new ItemStack(BuiltInRegistries.ITEM.get(b.getItemId())));
+                    drops.add(new ItemStack(b.getItem()));
                 }
                 return drops;
             }

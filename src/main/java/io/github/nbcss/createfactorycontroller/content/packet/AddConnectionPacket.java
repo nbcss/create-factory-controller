@@ -11,7 +11,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-public record AddConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
+public record AddConnectionPacket(BlockPos pos, String connectionType,
+                                  VirtualComponentPosition source, VirtualComponentPosition sink)
     implements CustomPacketPayload {
 
     public static final Type<AddConnectionPacket> TYPE =
@@ -27,8 +28,9 @@ public record AddConnectionPacket(BlockPos pos, VirtualComponentPosition from, V
     public static final StreamCodec<RegistryFriendlyByteBuf, AddConnectionPacket> STREAM_CODEC =
         StreamCodec.composite(
             BlockPos.STREAM_CODEC, AddConnectionPacket::pos,
-            POS_CODEC, AddConnectionPacket::from,
-            POS_CODEC, AddConnectionPacket::to,
+            ByteBufCodecs.STRING_UTF8, AddConnectionPacket::connectionType,
+            POS_CODEC, AddConnectionPacket::source,
+            POS_CODEC, AddConnectionPacket::sink,
             AddConnectionPacket::new
         );
 
@@ -39,7 +41,7 @@ public record AddConnectionPacket(BlockPos pos, VirtualComponentPosition from, V
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.addConnection(packet.from(), packet.to());
+            be.addConnection(packet.connectionType(), packet.source(), packet.sink());
         });
     }
 }

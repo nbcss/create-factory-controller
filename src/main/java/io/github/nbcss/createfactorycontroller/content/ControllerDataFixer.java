@@ -13,12 +13,6 @@ public abstract class ControllerDataFixer {
     private static final List<ControllerDataFixer> FIXERS = new ArrayList<>();
     static {
         // Mod version 0.2.1 -> 1.0, Data version 0 -> 1
-        // Connections moved from each component's per-component "TargetedBy" list onto a single central
-        // "Connections" edge list at the controller root. In the old layout a wire was stored on its OWNER (the
-        // consumer for an ingredient wire; the link for a gauge↔link wire) keyed by its source, so each old entry
-        // becomes a central edge with To = that owner's position and a type derived from the owner's kind; From + the
-        // arrow-bend + payload fields are carried over unchanged. (Component "Type" ids are matched as historical
-        // literals so the fix is stable even if those constants are later renamed.)
         FIXERS.add(new ControllerDataFixer(1) {
             @Override
             public CompoundTag fix(CompoundTag tag) {
@@ -40,10 +34,25 @@ public abstract class ControllerDataFixer {
                             // keeps From, ArrowBendMode, payload
                             CompoundTag edge = targetedBy.getCompound(j).copy();
                             edge.putString("Type", connType);
-                            edge.put("To", ownerPos.copy());
+                            if (connType.equals(Connection.Type.REDSTONE.name()) && comp.getBoolean("Receive")) {
+                                CompoundTag gaugePos = edge.getCompound("From").copy();
+                                edge.put("From", ownerPos.copy());
+                                edge.put("To", gaugePos);
+                            } else {
+                                edge.put("To", ownerPos.copy());
+                            }
                             connections.add(edge);
                         }
                     }
+                    if (comp.contains("GaugeItem")) {
+                        comp.putString("Item", comp.getString("GaugeItem"));
+                        comp.remove("GaugeItem");
+                    }
+                    if (comp.contains("LinkItem")) {
+                        comp.putString("Item", comp.getString("LinkItem"));
+                        comp.remove("LinkItem");
+                    }
+                    // we only have gauge & redstone link before v0.2.1 (no fluid gauge)
                     comp.putString("Type", switch (oldType) {
                         case "createfactorycontroller:gauge" -> "GAUGE";
                         case "createfactorycontroller:redstone_link" -> "REDSTONE_LINK";
@@ -66,8 +75,7 @@ public abstract class ControllerDataFixer {
     public abstract CompoundTag fix(CompoundTag tag);
 
     public static CompoundTag fixControllerBE(CompoundTag tag) {
-        if (tag.isEmpty())
-            return tag;
+        if (tag.isEmpty()) return tag;
         int ver = tag.getInt("Ver");
         if (ver >= FactoryControllerBlockEntity.DATA_VERSION)
             return tag;

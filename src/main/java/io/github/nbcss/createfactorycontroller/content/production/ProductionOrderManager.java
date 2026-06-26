@@ -269,38 +269,24 @@ public class ProductionOrderManager extends SavedData {
      *  Read-only: {@code -1} expiry means no promises are removed. */
     private static int networkPromisedOf(UUID network, ItemStack stack) {
         if (stack.isEmpty()) return 0;
-        // A Repackaged generic fluid rides Deployer's logistics; its promises live there, not in Create's queue.
-        if (FluidCompat.isGenericFluidFilter(stack))
-            return FluidCompat.repackagedFluidPromised(network, stack, -1);
+        if (FluidCompat.isFluidFilter(stack))
+            return FluidCompat.fluidPromised(network, stack, -1);
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(network);
         return promises == null ? 0 : promises.getTotalPromisedAndRemoveExpired(stack, -1);
     }
 
     private static int networkStockOf(UUID network, ItemStack stack) {
         if (stack.isEmpty()) return 0;
-        // A Repackaged generic fluid's stock (mB) lives in Deployer's fluid logistics — Create's would read 0, so the
-        // task would never reach its ship threshold. CFL/CreateFluid fluids ride Create item logistics (getStockOf).
-        if (FluidCompat.isGenericFluidFilter(stack))
-            return FluidCompat.repackagedFluidStock(network, stack);
         return FluidCompat.isFluidFilter(stack)
-            ? LogisticsManager.getStockOf(network, stack, null)
+            ? FluidCompat.fluidStock(network, stack)
             : LogisticsManager.getSummaryOfNetwork(network, true).getCountOf(stack);
     }
 
     /** Ships {@code req}'s produced item to its address as its assigned link of the shared order (item 9). */
     private boolean dispatch(Task req) {
-        // A Repackaged generic fluid ships through Deployer's fluid logistics (with the same shared order/link
-        // metadata, so the Package Shelf still merges it with the order's other links).
-        if (FluidCompat.isGenericFluidFilter(req.item))
-            return FluidCompat.dispatchRepackagedFluid(req.network, req.item, req.amount, req.address,
-                req.orderId, req.linkIndex, req.finalLink);
-        // CFL/CreateFluid virtual fluids ride Create item logistics but their packagers aren't found by
-        // findPackagersForRequest — they need broadcast routing (one standalone link; no re-packager merging).
-        if (FluidCompat.isFluidFilter(req.item)) {
-            PackageOrderWithCrafts fluidOrder =
-                PackageOrderWithCrafts.simple(List.of(new BigItemStack(req.item.copy(), req.amount)));
-            return LogisticsManager.broadcastPackageRequest(req.network, RequestType.RESTOCK, fluidOrder, null, req.address);
-        }
+        if (FluidCompat.isFluidFilter(req.item))
+            return FluidCompat.dispatchFluid(req.network, req.item, req.amount, req.address,
+                    req.orderId, req.linkIndex, req.finalLink);
         PackageOrderWithCrafts order =
             PackageOrderWithCrafts.simple(List.of(new BigItemStack(req.item.copy(), req.amount)));
         return dispatchWithOrderId(req.network, RequestType.RESTOCK, order, req.address, req.orderId,

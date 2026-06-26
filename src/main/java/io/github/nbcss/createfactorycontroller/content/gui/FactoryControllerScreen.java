@@ -15,7 +15,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
-import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValidator;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.packet.ComponentInteractPacket;
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -680,7 +680,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (hoverHasGauge && !hoveredPosition.equals(pendingConnectionTarget)) {
                 VirtualComponentBehaviour initiator = componentAt(pendingConnectionTarget);
                 VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
-                boolean valid = ConnectionValidator.validate(hovered, initiator, initiator).ok();
+                boolean valid = ConnectionResolver.resolve(hovered, initiator, initiator).ok();
                 renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
             }
         } else if (pendingRelocateTarget != null) {
@@ -938,18 +938,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // The single shared validator — identical to the hover preview and the server. The server re-validates and
         // performs the storage, so the client just sends the packet on success (no optimistic mutation). The result
         // carries the prompt for both outcomes (green confirmation on success, red reason on failure).
-        ConnectionValidator.Result result = ConnectionValidator.validate(clicked, initiator, initiator);
+        ConnectionResolver.Result result = ConnectionResolver.resolve(clicked, initiator, initiator);
         if (!result.ok()) {
             showConnectionMessage(result);
             playDenySound();
             return;
         }
-        PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, clickedPos, targetPos));
+        PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, result.type().name(), result.source(), result.sink()));
         showConnectionMessage(result);
     }
 
     /** Shows the resolver result's lazy message as a timed prompt, if any. */
-    private void showConnectionMessage(ConnectionValidator.Result result) {
+    private void showConnectionMessage(ConnectionResolver.Result result) {
         if (result.validation().message() != null)
             setTimedPrompt(result.validation().message().get(), 3000);
     }

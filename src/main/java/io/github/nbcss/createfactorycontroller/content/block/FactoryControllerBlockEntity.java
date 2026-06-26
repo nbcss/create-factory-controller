@@ -9,8 +9,9 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
-import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValidator;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
@@ -141,9 +142,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                     link.addToNetwork();   // lazy (re)registration after load; no-op once registered
                     link.updatePower();
                 }
-            for (VirtualComponentBehaviour component : components.values())
-                if (component instanceof VirtualGaugeBehaviour gauge)
-                    gauge.redstonePowered = gauge.isGatedByLink();
         }
     }
 
@@ -201,10 +199,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         boolean powered = level.hasNeighborSignal(getBlockPos());
         if (powered == redstonePowered) return;   // no edge → nothing to propagate
         redstonePowered = powered;
-        for (VirtualComponentBehaviour component : components.values())
-            if (component instanceof VirtualGaugeBehaviour gauge)
-                gauge.controllerPowered = powered;
         sendData();   // push the new powered state to any open GUI
+    }
+
+    public boolean isRedstonePowered() {
+        return redstonePowered;
     }
 
     // ── Gauge attach ───────────────────────────────────────────────────────
@@ -236,11 +235,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             }
         }
 
-        VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, itemId, networkId);
+        VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, carried.getItem(), networkId);
         if (behaviour == null) return;
-        if (behaviour instanceof VirtualGaugeBehaviour gauge)
-            gauge.controllerPowered = redstonePowered;   // inherit the live redstone state
-        else if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
+        if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
             link.addToNetwork();                          // join Create's frequency network
         components.put(pos, behaviour);
 
@@ -269,7 +266,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         behaviour.disconnectAll();
 
         // Return a component item
-        ItemStack refund = new ItemStack(BuiltInRegistries.ITEM.get(behaviour.getItemId()));
+        ItemStack refund = new ItemStack(behaviour.getItem());
         if (!player.isCreative() && !player.getInventory().add(refund))
             player.drop(refund, false);
 
@@ -365,9 +362,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     public void setComponentItem(VirtualComponentPosition pos, ItemStack filter, boolean ignoreData) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
-        // A fluid gauge holds only a fluid filter — reject any (non-empty) item filter (the screen already prevents
-        // this; defensive against a crafted packet).
-        if (gauge instanceof FluidGaugeBehaviour && !filter.isEmpty() && !FluidCompat.isFluidFilter(filter)) return;
+        if (!gauge.filterResolver().acceptsFilter(filter)) return;
         boolean fluid = FluidCompat.isFluidFilter(filter);
         // Ignore-data never applies to a fluid filter (the set-item screen hides the toggle there).
         gauge.ignoreData = ignoreData && !fluid;
@@ -380,6 +375,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (fluid && !gauge.unit.isFluid()) gauge.unit = ThresholdUnit.FLUID_BUCKET;
         else if (!fluid && gauge.unit.isFluid()) gauge.unit = ThresholdUnit.ITEMS;
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible → mint/abort patternId
+        gauge.publishRedstoneOutput();
         markOrderableDirty();   // filter (the blueprint's display item) changed
         setChanged();
         sendData();
@@ -432,6 +428,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 conn.amount = Math.max(1, e.getValue());
         if (clearPromises) gauge.requestClearPromises();
         updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible → mint/abort patternId
+        gauge.publishRedstoneOutput();
         markOrderableDirty();   // request mode / filter / address may have changed
         setChanged();
         sendData();
@@ -443,39 +440,47 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Connections ────────────────────────────────────────────────────────
 
-    public void addConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
-        VirtualComponentBehaviour fromComp = components.get(from);
-        VirtualComponentBehaviour toComp = components.get(to);   // the GUI initiator = intended sink
-        if (fromComp == null || toComp == null || from.equals(to)) {
+    public void addConnection(String typeName, VirtualComponentPosition sourcePos, VirtualComponentPosition sinkPos) {
+        Connection.Type type = Connection.Type.get(typeName);
+        VirtualComponentBehaviour source = components.get(sourcePos);
+        VirtualComponentBehaviour sink = components.get(sinkPos);
+        if (type == null || source == null || sink == null || sourcePos.equals(sinkPos)) {
             playDenySound();
             return;
         }
-        // Authoritative re-validation with the SAME resolver the client (preview + commit) used, so the server can
-        // never be more permissive than the UI.
-        if (!ConnectionValidator.validate(fromComp, toComp, toComp).ok()) {
+        // The client resolved type/source/sink; the server only validates that exact setup is still legal.
+        if (!ConnectionResolver.validate(type, source, sink).isSuccess()) {
             playDenySound();
             return;
         }
-        // Phase-1 storage (per-component model): a gauge↔link wire is always stored on the link, regardless of which
-        // side was clicked, so the gauge's targetedBy stays ingredient-only; gauge↔gauge on the consumer (to).
-        // [Phase 2 replaces this with a central edge list — no owner.]
-        VirtualComponentBehaviour owner = toComp;
-        VirtualComponentPosition sourcePos = from;
-        if (toComp instanceof VirtualGaugeBehaviour && fromComp instanceof VirtualRedstoneLinkBehaviour) {
-            owner = fromComp; sourcePos = to;   // store on the link
+        Connection conn = type.create(source, sink);
+        connectionGraph.add(conn);
+        sink.onConnectAsSink(conn);
+        source.onConnectAsSource(conn);
+        playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
+        setChanged();
+        sendData();
+    }
+
+    private void bindConnectionHooks() {
+        for (Connection conn : connectionGraph.connections()) {
+            VirtualComponentBehaviour source = components.get(conn.from);
+            VirtualComponentBehaviour sink = components.get(conn.to);
+            if (sink != null) sink.onConnectAsSink(conn);
+            if (source != null) source.onConnectAsSource(conn);
         }
-        int before = owner.targetedBy().size();
-        owner.addConnection(sourcePos);
-        if (owner.targetedBy().size() > before)
-            playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
-        else
-            playDenySound();
     }
 
     public void removeConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
-        VirtualComponentBehaviour target = components.get(to);
-        if (target == null) return;
-        target.removeConnection(from);
+        Connection conn = connectionGraph.get(from, to);
+        if (conn == null) return;
+        connectionGraph.remove(to, from);
+        VirtualComponentBehaviour source = components.get(from);
+        VirtualComponentBehaviour sink = components.get(to);
+        if (source != null) source.onDisconnectAsSource(conn);
+        if (sink != null) sink.onDisconnectAsSink(conn);
+        setChanged();
+        sendData();
     }
 
     /** Disconnects every redstone link wired to the gauge at {@code gaugePos} (Create's "redstone reset"). The wires
@@ -483,12 +488,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      *  Does not touch the gauge's recipe config. */
     public void disconnectLinks(VirtualComponentPosition gaugePos) {
         if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour gauge)) return;
-        // The gauge already tracks what it's wired to in its `targeting` set — iterate that (copied, since
-        // removeConnection mutates it) rather than scanning the whole board, keeping only the redstone-link wires.
-        for (VirtualComponentPosition pos : new ArrayList<>(gauge.targeting()))
-            if (components.get(pos) instanceof VirtualRedstoneLinkBehaviour link)
-                link.removeConnection(gaugePos);
-        gauge.redstonePowered = gauge.isGatedByLink();
+        List<Connection> redstone = new ArrayList<>();
+        redstone.addAll(connectionGraph.incomingConnections(gaugePos, Connection.Type.REDSTONE));
+        redstone.addAll(connectionGraph.outgoingConnections(gaugePos, Connection.Type.REDSTONE));
+        for (Connection conn : redstone) {
+            connectionGraph.remove(conn.to, conn.from);
+            VirtualComponentBehaviour source = components.get(conn.from);
+            VirtualComponentBehaviour sink = components.get(conn.to);
+            if (source != null) source.onDisconnectAsSource(conn);
+            if (sink != null) sink.onDisconnectAsSink(conn);
+        }
+        gauge.onDisconnectAsSink(null);
+        setChanged();
+        sendData();
     }
 
     /** The interact (R) key: a gauge cycles its arrow-bend mode; a redstone link toggles Send/Receive. */
@@ -566,12 +578,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         List<CompoundTag> tags = new ArrayList<>();
         for (VirtualComponentBehaviour b : components.values())
-            tags.add(b.toClientNBT(serverLevel.registryAccess()));
+            tags.add(b.toNBT(serverLevel.registryAccess(), VirtualComponentBehaviour.NbtProfile.CLIENT));
         List<CompoundTag> connTags = connectionGraph.toTagList();
         List<UUID> netList = new ArrayList<>(networks);
         List<String> nameList = new ArrayList<>(netList.size());
         for (UUID id : netList) nameList.add(networkNicknames.getOrDefault(id, ""));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, connTags, netList, nameList, customName);
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, connTags, netList, nameList, customName, redstonePowered);
         for (ServerPlayer player : viewers)
             PacketDistributor.sendToPlayer(player, packet);
     }
@@ -604,7 +616,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         ListTag gaugeList = new ListTag();
         for (VirtualComponentBehaviour b : components.values())
-            gaugeList.add(b.toNBT(registries));
+            gaugeList.add(b.toNBT(registries, VirtualComponentBehaviour.NbtProfile.SERVER));
         tag.put("Components", gaugeList);
         tag.put("Connections", connectionGraph.toNBT());   // central edge list (Phase 2)
 
@@ -662,6 +674,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     private void readConnections(CompoundTag tag) {
         connectionGraph.clear();
         connectionGraph.readNBT(tag.getList("Connections", Tag.TAG_COMPOUND));
+        bindConnectionHooks();
     }
 
     /** Aborts the open production tasks of every orderable gauge (called when the controller is destroyed —
@@ -691,7 +704,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         ListTag components = new ListTag();
         for (VirtualComponentBehaviour b : this.components.values()) {
-            components.add(b.toItemNBT(registries));
+            components.add(b.toNBT(registries, VirtualComponentBehaviour.NbtProfile.EXPORT));
         }
         tag.put("Components", components);
         tag.put("Connections", connectionGraph.toNBT());   // central edge list carried on the item

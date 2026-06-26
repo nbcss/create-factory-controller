@@ -15,6 +15,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,36 +77,25 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
      */
     private static class SetItemGhostHandler implements IGhostIngredientHandler<SetItemScreen> {
         @Override
-        public <I> List<Target<I>> getTargetsTyped(SetItemScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+        public <I> @NotNull List<Target<I>> getTargetsTyped(SetItemScreen screen,
+                                                            @NotNull ITypedIngredient<I> ingredient,
+                                                            boolean doStart) {
             List<Target<I>> targets = new ArrayList<>();
             Rect2i area = screen.ghostSlotArea();
 
-            // A fluid gauge accepts ONLY a dragged fluid (converted to the generic fluid-filter token); item drags
-            // are not offered.
-            if (screen.isFluidGauge()) {
+            if (screen.acceptsJeiFluids()) {
                 Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
                 if (fluid.isPresent() && !fluid.get().isEmpty()) {
-                    ItemStack filter = FluidCompat.makeGenericFluidFilter(fluid.get());
-                    if (!filter.isEmpty())
-                        targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
+                    FluidStack dropped = fluid.get();
+                    targets.add(dropTarget(area, () -> screen.setFluidFromJei(dropped)));
                 }
-                return targets;
             }
 
             Optional<ItemStack> stack = ingredient.getItemStack();
-            if (stack.isPresent()) {
+            if (screen.acceptsJeiItems() && stack.isPresent()) {
                 ItemStack filter = stack.get();
                 targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
                 return targets;
-            }
-            // Fluid ghost → addon fluid filter (item gauge), only when a fluid-logistics addon is present.
-            if (FluidCompat.isLoaded()) {
-                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
-                if (fluid.isPresent() && !fluid.get().isEmpty()) {
-                    ItemStack filter = FluidCompat.makeFluidFilter(fluid.get());
-                    if (!filter.isEmpty())
-                        targets.add(dropTarget(area, () -> screen.setGhostFromJei(filter)));
-                }
             }
             return targets;
         }

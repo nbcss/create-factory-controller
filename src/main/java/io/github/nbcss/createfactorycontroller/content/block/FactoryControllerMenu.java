@@ -32,6 +32,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     public final Map<UUID, String> networkNicknames = new HashMap<>();
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";
+    public boolean controllerPowered = false;
     public final BlockPos controllerPos;
 
     // Server-side: reference to the actual BE
@@ -53,6 +54,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         setComponents(be.components.values());
         this.knownNetworks.addAll(be.networks);
         this.controllerName = be.customName;
+        this.controllerPowered = be.isRedstonePowered();
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -84,6 +86,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         }
 
         this.controllerName = buf.readUtf();
+        this.controllerPowered = buf.readBoolean();
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -194,6 +197,16 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     /** Replaces the client connection graph from a synced central edge list (the components' positions are already in). */
     public void loadConnections(List<net.minecraft.nbt.CompoundTag> edges) {
         connectionGraph.readTagList(edges);
+        bindConnectionHooks();
+    }
+
+    private void bindConnectionHooks() {
+        for (io.github.nbcss.createfactorycontroller.content.component.connection.Connection conn : connectionGraph.connections()) {
+            VirtualComponentBehaviour source = getComponent(conn.from);
+            VirtualComponentBehaviour sink = getComponent(conn.to);
+            if (sink != null) sink.onConnectAsSink(conn);
+            if (source != null) source.onConnectAsSource(conn);
+        }
     }
 
     /** O(1) lookup of the component occupying {@code pos}, or {@code null} if the cell is empty. */
@@ -218,7 +231,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
 
         buf.writeVarInt(be.components.size());
         for (VirtualComponentBehaviour b : be.components.values()) {
-            net.minecraft.nbt.CompoundTag tag = b.toClientNBT(be.getLevel().registryAccess());
+            net.minecraft.nbt.CompoundTag tag = b.toNBT(be.getLevel().registryAccess(), VirtualComponentBehaviour.NbtProfile.CLIENT);
             writeCompoundTag(buf, tag);
         }
 
@@ -234,15 +247,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         }
 
         buf.writeUtf(be.customName);
+        buf.writeBoolean(be.isRedstonePowered());
     }
 
-    /** True while the controller block is redstone-powered (gauges paused). Derived from the synced
-     *  gauge state, so it reflects the live server signal on both sides. */
     public boolean isRedstonePowered() {
-        for (VirtualComponentBehaviour component : components)
-            if (component instanceof VirtualGaugeBehaviour gauge && gauge.controllerPowered)
-                return true;
-        return false;
+        return controllerPowered;
     }
 
     /** Controller display name: the custom name, or the default translated block name when unset. */

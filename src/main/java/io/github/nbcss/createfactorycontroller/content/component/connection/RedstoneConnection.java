@@ -4,29 +4,58 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import net.minecraft.nbt.CompoundTag;
 
 /**
- * A gauge ↔ redstone-link connection, held on the link ({@code link.targetedBy[gauge]}). {@link #powered} is the
- * per-connection power state — for a SEND link it tracks whether that specific gauge is driving the link; for a
- * RECEIVE link every connection mirrors the link's network power. It drives the connection-line colour.
+ * A redstone connection whose {@link #state} is pushed by the source component and observed by the sink component.
  */
 public class RedstoneConnection extends Connection {
+    public enum State {
+        POWERED(0xEF0000), UNPOWERED(0x580101), INACTIVE(0x888898);
 
-    public boolean powered;
+        private final int color;
+
+        State(int color) {
+            this.color = color;
+        }
+
+        public boolean isPowered() { return this == POWERED; }
+        public int color() { return color; }
+    }
+
+    private State state;
 
     public RedstoneConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
         super(Type.REDSTONE, from, to);
-        this.powered = false;
+        this.state = State.UNPOWERED;
+    }
+
+    public boolean powered() {
+        return state.isPowered();
+    }
+
+    public State state() {
+        return state;
+    }
+
+    public void setValue(boolean powered) {
+        setState(powered ? State.POWERED : State.UNPOWERED);
+    }
+
+    public void setState(State state) {
+        if (this.state == state) return;
+        this.state = state;
+        notifyChanged();
     }
 
     @Override
     public CompoundTag toNBT() {
         CompoundTag tag = super.toNBT();
-        tag.putBoolean("Powered", powered);
+        tag.putString("State", state.name());
         return tag;
     }
 
     private RedstoneConnection(CompoundTag tag) {
         super(tag);
-        this.powered = tag.getBoolean("Powered");
+        this.state = tag.contains("State") ? State.valueOf(tag.getString("State"))
+                : tag.getBoolean("Powered") ? State.POWERED : State.UNPOWERED;
     }
 
     public static RedstoneConnection fromNBT(CompoundTag tag) {
