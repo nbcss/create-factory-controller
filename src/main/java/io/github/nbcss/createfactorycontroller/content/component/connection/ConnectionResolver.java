@@ -75,20 +75,17 @@ public final class ConnectionResolver {
             return ValidationResult.fail(ConnectionResolver::aborted);
         ValidationResult vr = source.validateAsSource(type, sink);
         if (vr.isSuccess()) vr = sink.validateAsSink(type, source);
-        if (vr.isSuccess() && alreadyConnected(type, source, sink))
+        if (vr.isSuccess() && alreadyConnected(source, sink))
             vr = ValidationResult.fail(() -> CreateLang.translate("factory_panel.already_connected")
                     .style(ChatFormatting.RED).component());
         return vr.isSuccess() ? new ValidationResult(true, () -> type.successMessage(source, sink)) : vr;
     }
 
-    /** This type's uniqueness policy against the current graph (Phase 1: per-component {@code targetedBy}). */
-    private static boolean alreadyConnected(Connection.Type type, VirtualComponentBehaviour source,
-                                            VirtualComponentBehaviour sink) {
-        return switch (type.uniqueness()) {
-            case DIRECTED -> sink.targetedBy().containsKey(source.position());
-            case UNDIRECTED -> source.targetedBy().containsKey(sink.position())
-                            || sink.targetedBy().containsKey(source.position());
-        };
+    /** Whether the exact directed edge {@code source → sink} already exists. The reverse {@code sink → source} is a
+     *  separate, independently-allowed wire (so two tubes can point at each other) — the single direction a redstone
+     *  link permits is enforced by its decisive capability role, not here. */
+    private static boolean alreadyConnected(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+        return sink.targetedBy().containsKey(source.position());
     }
 
     /** {@code c}'s role for {@code type}, or null if it has no such port. */

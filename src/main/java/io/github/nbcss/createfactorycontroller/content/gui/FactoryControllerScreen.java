@@ -1273,6 +1273,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (nameBox.keyPressed(keyCode, scanCode, modifiers) || nameBox.canConsumeInput())
                 return true;
         }
+        VirtualComponentBehaviour hover = componentAt(hoveredPosition);
+
+        // TEMP/DEBUG: press C over a component to start a connection FROM it (it becomes the wire's sink/initiator);
+        // the next component clicked becomes the source. Lets us wire logic tubes without a GUI. Press C over the tube
+        // to make it an input sink, or over the other end to make the tube the source. Remove once the tube GUI lands.
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_C && hoveredPosition != null
+                && hover != null
+                && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+            beginConnectionMode(hoveredPosition);
+            return true;
+        }
 
         // Toggle "full overlay" (rebindable, Left Alt by default). Handled here — never in-world or on
         // another screen — and persisted client-side via ClientConfig so it survives controllers/sessions.
@@ -1282,29 +1293,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        // The interact key over a hovered redstone link toggles its Send/Receive mode (via onInteract, like a gauge's
-        // arrow-bend cycle) — the same unified ComponentInteractPacket path.
-        if (CreateFactoryControllerClient.INTERACT.matches(keyCode, scanCode)
-                && componentAt(hoveredPosition) instanceof VirtualRedstoneLinkBehaviour) {
-            PacketDistributor.sendToServer(new ComponentInteractPacket(menu.controllerPos, hoveredPosition));
-            return true;
-        }
-
-        // The interact key on a hovered gauge cycles its outgoing connection bend mode
-        if (CreateFactoryControllerClient.INTERACT.matches(keyCode, scanCode)
-                && hoveredPosition != null && componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour) {
-            // Optimistically reflect the new mode (server cycles to (mode+1)%4) as a fading prompt,
-            // reusing Create's "Cycled arrow pathing mode □□□□" message with the active mode filled.
-            Integer mode = outgoingArrowBendMode(hoveredPosition);
-            if (mode != null) {
-                char[] dots = {'□', '□', '□', '□'};   // □□□□
-                dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
-                setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
-                        .style(ChatFormatting.WHITE).component(), 3000);
+        if (CreateFactoryControllerClient.INTERACT.matches(keyCode, scanCode) && hover != null) {
+            if (hover instanceof VirtualGaugeBehaviour) {
+                Integer mode = outgoingArrowBendMode(hoveredPosition);
+                if (mode != null) {
+                    char[] dots = {'□', '□', '□', '□'};   // □□□□
+                    dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
+                    setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
+                            .style(ChatFormatting.WHITE).component(), 3000);
+                }
             }
             PacketDistributor.sendToServer(new ComponentInteractPacket(menu.controllerPos, hoveredPosition));
             return true;
         }
+
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -1334,6 +1336,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 componentWidgets.put(gauge.position(), new VirtualGaugeWidget(gauge));
             else if (b instanceof VirtualRedstoneLinkBehaviour link)
                 componentWidgets.put(link.position(), new VirtualRedstoneLinkWidget(link));
+            else if (b instanceof LogicTubeBehaviour tube)
+                componentWidgets.put(tube.position(), new VirtualLogicTubeWidget(tube));
         }
         // Drop selected cells that no longer hold a component (removed, or relocated away — possibly by another
         // player), so the selection count and marks stay in sync with the board.

@@ -346,13 +346,22 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return count != 0 || requestMode.isPassive();
     }
 
+    /** Whether any incoming wire is an ingredient (LOGISTICS) connection. {@link #targetedBy()} now also holds redstone
+     *  inputs (from RECEIVE links / logic tubes), which are NOT ingredients — so "has ingredients" must filter by type,
+     *  or a redstone-only gauge would wrongly look like it has a recipe to fulfil. */
+    private boolean hasIngredientInputs() {
+        for (Connection c : targetedBy().values())
+            if (c instanceof LogisticsConnection) return true;
+        return false;
+    }
+
     /**
-     * Whether this gauge needs a restock address but has none — an active target with incoming connections
-     * (or restocker role) but a blank {@link #recipeAddress}. Mirrors Create's check (minus the packager-block-entity
-     * part). Redstone-link connections are stored on the link, so {@link #targetedBy()} holds only ingredient gauges.
+     * Whether this gauge needs a restock address but has none — an active target with ingredient connections wired in
+     * but a blank {@link #recipeAddress}. Mirrors Create's check (minus the packager-block-entity part). Redstone
+     * inputs don't count (they need no address).
      */
     public boolean isMissingAddress() {
-        return !targetedBy().isEmpty() && isActive() && recipeAddress.isBlank();
+        return hasIngredientInputs() && isActive() && recipeAddress.isBlank();
     }
 
     /** A gauge's redstone OUTPUT to wired send-links: gray INACTIVE when it has no target, else POWERED/UNPOWERED by
@@ -605,7 +614,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      */
     private void tickRequests() {
         if (controller == null) return;                 // client snapshot never ticks, but be safe
-        if (targetedBy().isEmpty()) return;             // no ingredients wired in → nothing to craft
+        if (!hasIngredientInputs()) return;             // no ingredient wires in → nothing to craft (redstone inputs don't count)
         // Check satisfaction FIRST (Create's order) so the timer is frozen while stocked/promised. This
         // is what prevents over-requesting: the timer never idles at 0 ready to fire, so the one-tick
         // stock/promise flicker as the produced item lands can't trigger an extra request — a request

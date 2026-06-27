@@ -137,8 +137,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
-        // Drain signal changes from network events / the lazy tick (e.g. RECEIVE-link power) before gauges run, so
-        // their request gate is fresh this tick.
+        // Sequential components (logic tubes) commit the output they computed last tick, before any settle this tick —
+        // this is what gives them their deterministic one-tick delay. No-op for combinational components.
+        for (VirtualComponentBehaviour component : components.values())
+            component.preTick();
+        // Drain signal changes from preTick commits, network events, and the lazy tick (e.g. RECEIVE-link power) before
+        // gauges run, so their request gate is fresh this tick.
         settleConnections();
         // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot, so a multi-stage production
         // chain's demand all derives from the same state, before any gauge ticks/requests. (The redstone-link power +
@@ -540,6 +544,15 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         settleConnections();
         setChanged();
         sendData();
+    }
+
+    /** Cycles a logic tube's boolean mode (interim interaction; the output follows one tick later via {@code preTick}). */
+    public void cycleLogicTubeMode(VirtualComponentPosition pos) {
+        if (components.get(pos) instanceof LogicTubeBehaviour tube) {
+            tube.cycleMode();
+            setChanged();
+            sendData();
+        }
     }
 
     /** The interact (R) key: a gauge cycles its arrow-bend mode; a redstone link toggles Send/Receive. */

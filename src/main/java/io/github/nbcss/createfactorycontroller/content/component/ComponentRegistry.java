@@ -36,6 +36,7 @@ public final class ComponentRegistry {
     static {
         registerType(VirtualRedstoneLinkBehaviour.TYPE);
         registerType(VirtualGaugeBehaviour.TYPE);
+        registerType(LogicTubeBehaviour.TYPE);
 
         // Create: Repackaged's Fluid Gauge is registered only when the addon is present.
         if (RepackagedCompat.isLoaded())

@@ -75,6 +75,11 @@ public interface VirtualComponentBehaviour {
 
     // ── Lifecycle ───────────────────────────────────────────────────────────
 
+    /** Called on every component at the very start of the controller tick, <b>before</b> any connection settle.
+     *  Sequential components (logic tubes) commit their previously-computed output here, which — because it runs ahead
+     *  of this tick's settles — gives a deterministic one-tick delay; combinational components do nothing. */
+    default void preTick() {}
+
     /** Server tick. No-op on the client snapshot. */
     void tick();
 

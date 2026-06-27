@@ -96,7 +96,7 @@ public abstract class Connection {
      */
     public static abstract class Type {
         /** Item/fluid ingredient flow (gauge → gauge). */
-        public static final Type LOGISTICS = new Type("LOGISTICS", Uniqueness.DIRECTED) {
+        public static final Type LOGISTICS = new Type("LOGISTICS") {
             @Override
             public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
                 int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;
@@ -120,7 +120,7 @@ public abstract class Connection {
             }
         };
         /** Boolean gating / state signal. */
-        public static final Type REDSTONE = new Type("REDSTONE", Uniqueness.UNDIRECTED) {
+        public static final Type REDSTONE = new Type("REDSTONE") {
             @Override
             public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
                 return new RedstoneConnection(source.position(), sink.position());
@@ -133,15 +133,12 @@ public abstract class Connection {
         };
 
         private final String name;
-        private final Uniqueness uniqueness;
 
-        private Type(String name, Uniqueness uniqueness) {
+        private Type(String name) {
             this.name = name;
-            this.uniqueness = uniqueness;
         }
 
         public String name() { return name; }
-        public Uniqueness uniqueness() { return uniqueness; }
 
         public abstract Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink);
         public abstract Connection fromNBT(CompoundTag tag);
@@ -177,13 +174,5 @@ public abstract class Connection {
         public int hashCode() {
             return Objects.hashCode(name);
         }
-    }
-
-    /** How many connections of the same type may exist between a pair of components. */
-    public enum Uniqueness {
-        /** {@code A→B} and {@code B→A} are considered different. */
-        DIRECTED,
-        /** {@code A→B} and {@code B→A} are considered the same. */
-        UNDIRECTED,
     }
 }

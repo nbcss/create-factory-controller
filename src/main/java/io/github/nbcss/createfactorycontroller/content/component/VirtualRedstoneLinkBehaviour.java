@@ -108,7 +108,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     }
 
     // Two links bridge each other wirelessly, so a board wire between links is meaningless — reject a link partner
-    // (whichever role this link takes). Gauge partners are always allowed (uniqueness handles duplicates).
+    // (whichever role this link takes). Other partners are allowed; the link's single direction is forced by its
+    // decisive role (SOURCE when receive, SINK when send), so the reverse wire is structurally impossible.
     @Override
     public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
         if (Connection.Type.REDSTONE.equals(type) && !receive) return fail();

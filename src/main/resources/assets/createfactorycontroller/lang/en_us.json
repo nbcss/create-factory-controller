@@ -8,6 +8,15 @@
 
   "createfactorycontroller.connection.connected": "%1$s connects to %2$s",
 
+  "createfactorycontroller.component.logic_tube": "Logic Tube",
+  "createfactorycontroller.component.logic_tube.mode_prefix": "Mode: %1$s",
+  "createfactorycontroller.component.logic_tube.mode.none": "NONE",
+  "createfactorycontroller.component.logic_tube.mode.and": "AND",
+  "createfactorycontroller.component.logic_tube.mode.or": "OR",
+  "createfactorycontroller.component.logic_tube.mode.nor": "NOR",
+  "createfactorycontroller.component.logic_tube.mode.nand": "NAND",
+  "createfactorycontroller.component.logic_tube.click_to_change": "Click to change mode",
+
   "createfactorycontroller.gui.capacity": "Capacity",
   "createfactorycontroller.gui.zoom": "Zoom",
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",
