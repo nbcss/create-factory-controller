@@ -1339,7 +1339,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             else if (b instanceof VirtualRedstoneLinkBehaviour link)
                 componentWidgets.put(link.position(), new VirtualRedstoneLinkWidget(link));
             else if (b instanceof LogicalTubeBehaviour tube)
-                componentWidgets.put(tube.position(), new VirtualLogicTubeWidget(tube));
+                componentWidgets.put(tube.position(), new VirtualLogicalTubeWidget(tube));
         }
         // Drop selected cells that no longer hold a component (removed, or relocated away — possibly by another
         // player), so the selection count and marks stay in sync with the board.

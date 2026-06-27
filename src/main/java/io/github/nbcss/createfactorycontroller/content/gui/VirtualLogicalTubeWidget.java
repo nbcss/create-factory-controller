@@ -24,7 +24,7 @@ import java.util.List;
  * click cycles the mode; shift-click removes (handled by the screen).
  */
 @OnlyIn(Dist.CLIENT)
-public record VirtualLogicTubeWidget(LogicalTubeBehaviour behaviour) implements VirtualComponentWidget {
+public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implements VirtualComponentWidget {
 
     private static final int CELL = 16;
 
@@ -44,23 +44,31 @@ public record VirtualLogicTubeWidget(LogicalTubeBehaviour behaviour) implements 
         gfx.blitSprite(sprite("back"), x0, y0, CELL, CELL);
     }
 
+    /** Mode-icon tint by current output value (committed {@code value}, not the pending {@code nextValue}). */
+    private static final int ICON_POWERED = 0x913660, ICON_UNPOWERED = 0x741A41;
+
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
+        boolean powered = behaviour.isPowered();   // current value state
         RenderSystem.enableBlend();
-        gfx.blitSprite(sprite("front"), x0, y0, CELL, CELL);
+        gfx.blitSprite(sprite(powered ? "front_on" : "front_off"), x0, y0, CELL, CELL);
 
         LogicalTubeBehaviour.Mode mode = behaviour.getMode();
         if (mode == LogicalTubeBehaviour.Mode.NONE) return;   // NONE → no mode icon
-        gfx.blitSprite(sprite(mode.name().toLowerCase()), x0, y0, CELL, CELL);   // and/or/nor/nand symbol overlay
+        // Mode symbol: 16×16 sprite drawn at half size (8×8), centred, tinted by the value state.
+        int rgb = powered ? ICON_POWERED : ICON_UNPOWERED;
+        gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+        gfx.blitSprite(sprite(mode.name().toLowerCase()), x0 + CELL / 4, y0 + CELL / 4, CELL / 2, CELL / 2);
+        gfx.setColor(1f, 1f, 1f, 1f);
     }
 
     @Override
     public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.component.logic_tube").withStyle(ChatFormatting.WHITE));
+        lines.add(Component.translatable("createfactorycontroller.component.logical_tube").withColor(0xFC688D));
         lines.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
-                Component.translatable("createfactorycontroller.component.logic_tube.mode." + behaviour.getMode().name().toLowerCase())
+                Component.translatable("createfactorycontroller.component.logical_tube.mode." + behaviour.getMode().name().toLowerCase())
                         .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         lines.add(selected
                 ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)

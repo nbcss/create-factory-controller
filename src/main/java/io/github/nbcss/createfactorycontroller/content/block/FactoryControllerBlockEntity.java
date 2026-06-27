@@ -718,7 +718,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      *  that format by {@link ControllerDataFixer} before read). Call after components load. */
     private void readConnections(CompoundTag tag) {
         connectionGraph.clear();
-        connectionGraph.readNBT(tag.getList("Connections", Tag.TAG_COMPOUND));
+        ListTag connections = tag.getList("Connections", Tag.TAG_COMPOUND);
+        for (int i = 0; i < connections.size(); i++) {
+            Connection conn = Connection.fromNBT(connections.getCompound(i));
+            if (conn != null && components.containsKey(conn.from) && components.containsKey(conn.to))
+                connectionGraph.add(conn);
+        }
         bindConnectionHooks();
     }
 
