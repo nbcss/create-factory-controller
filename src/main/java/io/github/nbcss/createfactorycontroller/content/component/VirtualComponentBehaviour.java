@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -91,6 +92,9 @@ public interface VirtualComponentBehaviour {
     /** Positions this component points at. */
     Set<VirtualComponentPosition> targeting();
 
+    /** Outgoing connections (this component as source). Symmetric to {@link #targetedBy()}, but as a value collection. */
+    Collection<Connection> outgoingConnections();
+
     /** The connection {@link ConnectionCapability types} this component participates in (its static capabilities). Read by
      *  {@link ConnectionResolver} to decide whether a wire is possible — no {@code instanceof} pair matrix. */
     List<ConnectionCapability> ports();
@@ -131,7 +135,11 @@ public interface VirtualComponentBehaviour {
      *  its network transmit). Called once per dirty sink by the settle pass, and directly on load/sync reconcile. */
     void onInputChanged(Connection.Type type);
 
-    void onInteract();
+    List<Connection> connectionsToCycle();
+
+    void cycleArrowMode();
+
+    void cycleOperationMode();
 
     // ── Persistence ─────────────────────────────────────────────────────────
 

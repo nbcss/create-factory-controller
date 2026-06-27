@@ -16,7 +16,8 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
-import io.github.nbcss.createfactorycontroller.content.packet.ComponentInteractPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
+import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
@@ -877,10 +878,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 SimpleSoundInstance.forUI(AllSoundEvents.DENY.getMainEvent(), 1.0f));
     }
 
-    /** Shows a timed error prompt and plays the deny sound. Called from sub-screens (e.g. configure overlay). */
-    public void denyWithMessage(Component message, long durationMs) {
-        setTimedPrompt(message, durationMs);
-        playDenySound();
+    private void playWrenchSound() {
+        Minecraft.getInstance().getSoundManager().play(
+                SimpleSoundInstance.forUI(AllSoundEvents.WRENCH_ROTATE.getMainEvent(), 1.0f));
     }
 
     /**
@@ -1275,13 +1275,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
         VirtualComponentBehaviour hover = componentAt(hoveredPosition);
 
-        // TEMP/DEBUG: press C over a component to start a connection FROM it (it becomes the wire's sink/initiator);
-        // the next component clicked becomes the source. Lets us wire logic tubes without a GUI. Press C over the tube
-        // to make it an input sink, or over the other end to make the tube the source. Remove once the tube GUI lands.
-        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_C && hoveredPosition != null
-                && hover != null
-                && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+        if (CreateFactoryControllerClient.START_CONNECTION.matches(keyCode, scanCode) && hover != null
+                && pendingConnectionTarget == null && pendingRelocateTarget == null && selected.isEmpty()) {
             beginConnectionMode(hoveredPosition);
+            return true;
+        }
+
+        if (CreateFactoryControllerClient.RELOCATE_COMPONENT.matches(keyCode, scanCode) && hover != null
+                && pendingConnectionTarget == null && pendingRelocateTarget == null && selected.isEmpty()) {
+            beginRelocateMode(hoveredPosition);
             return true;
         }
 
@@ -1293,17 +1295,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        if (CreateFactoryControllerClient.INTERACT.matches(keyCode, scanCode) && hover != null) {
-            if (hover instanceof VirtualGaugeBehaviour) {
-                Integer mode = outgoingArrowBendMode(hoveredPosition);
-                if (mode != null) {
-                    char[] dots = {'□', '□', '□', '□'};   // □□□□
-                    dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
-                    setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
-                            .style(ChatFormatting.WHITE).component(), 3000);
-                }
+        if (CreateFactoryControllerClient.CYCLE_ARROW_MODE.matches(keyCode, scanCode) && hover != null) {
+            Integer mode = outgoingArrowBendMode(hoveredPosition);
+            if (mode != null) {
+                char[] dots = {'□', '□', '□', '□'};   // □□□□
+                dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
+                setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
+                        .style(ChatFormatting.WHITE).component(), 3000);
+                playWrenchSound();
+                PacketDistributor.sendToServer(new CycleArrowModePacket(menu.controllerPos, hoveredPosition));
             }
-            PacketDistributor.sendToServer(new ComponentInteractPacket(menu.controllerPos, hoveredPosition));
+            return true;
+        }
+
+        if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode) && hover != null) {
+            playWrenchSound();
+            PacketDistributor.sendToServer(new CycleOperationModePacket(menu.controllerPos, hoveredPosition));
             return true;
         }
 
@@ -1311,21 +1318,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /**
-     * Current shared arrow-bend mode of the connections {@code pos}'s interact (R) cycles — its outgoing wires, plus
-     * (for a gauge) its incoming redstone wires, mirroring {@code VirtualGaugeBehaviour#connectionsToCycle}. May
-     * legitimately be -1 (auto); {@code null} if it has no such connection.
+     * The shared arrow-bend mode {@code pos}'s cycle-arrow key would advance — read from the exact same
+     * {@link VirtualComponentBehaviour#connectionsToCycle()} set the server cycles (single source of truth), so this
+     * preview always matches what the server applies. {@code null} if there are no such connections; may be -1 (auto).
      */
     @Nullable
     private Integer outgoingArrowBendMode(VirtualComponentPosition pos) {
-        for (VirtualComponentBehaviour b : menu.components) {
-            Connection conn = b.targetedBy().get(pos);
-            if (conn != null) return conn.arrowBendMode;   // outgoing from pos
-        }
-        VirtualComponentBehaviour self = componentAt(pos);   // incoming redstone (RECEIVE link → gauge)
-        if (self != null)
-            for (Connection conn : self.targetedBy().values())
-                if (conn.type == Connection.Type.REDSTONE) return conn.arrowBendMode;
-        return null;
+        VirtualComponentBehaviour self = componentAt(pos);
+        if (self == null) return null;
+        List<Connection> toCycle = self.connectionsToCycle();
+        return toCycle.isEmpty() ? null : toCycle.getFirst().arrowBendMode;
     }
 
     /** Rebuilds the position→widget index from the synced component list (one widget per component type). */
@@ -1336,7 +1338,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 componentWidgets.put(gauge.position(), new VirtualGaugeWidget(gauge));
             else if (b instanceof VirtualRedstoneLinkBehaviour link)
                 componentWidgets.put(link.position(), new VirtualRedstoneLinkWidget(link));
-            else if (b instanceof LogicTubeBehaviour tube)
+            else if (b instanceof LogicalTubeBehaviour tube)
                 componentWidgets.put(tube.position(), new VirtualLogicTubeWidget(tube));
         }
         // Drop selected cells that no longer hold a component (removed, or relocated away — possibly by another

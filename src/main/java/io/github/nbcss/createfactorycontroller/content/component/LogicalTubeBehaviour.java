@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
 import com.simibubi.create.AllItems;
+import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
@@ -25,7 +26,7 @@ import java.util.UUID;
  * {@link #onInputChanged}), and {@link #preTick} commits it into {@link #value} at the start of the <em>next</em>
  * tick — before any settle, so the delay is one tick regardless of component order. See {@code LOGIC_TUBE_PLAN.md}.</p>
  */
-public class LogicTubeBehaviour extends AbstractVirtualComponent {
+public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
     /** Boolean gate applied to the folded inputs. The fold starts at the identities ({@code all=true, any=false}), so
      *  with no input wires AND and NOR are true, OR and NAND are false. {@link #NONE} always outputs false. */
@@ -55,15 +56,18 @@ public class LogicTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public VirtualComponentBehaviour create(FactoryControllerBlockEntity controller, VirtualComponentPosition pos,
                                                 Item item, UUID networkId) {
-            return new LogicTubeBehaviour(controller, pos, item);
+            return new LogicalTubeBehaviour(controller, pos, item);
         }
 
         @Override
         public VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller, CompoundTag tag,
                                                  HolderLookup.Provider registries) {
-            return LogicTubeBehaviour.fromNBT(controller, tag, registries);
+            return LogicalTubeBehaviour.fromNBT(controller, tag, registries);
         }
     };
+
+    public static final ResourceLocation TEXTURE =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/logical_tube");
 
     public Mode mode = Mode.NONE;
     /** Emitted output — drives outgoing redstone edges, rendered, synced. Only ever changed in {@link #preTick}. */
@@ -72,12 +76,11 @@ public class LogicTubeBehaviour extends AbstractVirtualComponent {
      *  {@link #value} on the next {@link #preTick} (this indirection is the one-tick delay). Not serialized. */
     private boolean nextValue = false;
 
-    public LogicTubeBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position, Item item) {
+    public LogicalTubeBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position, Item item) {
         super(controller, position, item);
     }
 
-    /** Reuse the gauge body sprites for now (no dedicated texture yet). */
-    @Override public ResourceLocation getTexture() { return VirtualGaugeBehaviour.TEXTURE; }
+    @Override public ResourceLocation getTexture() { return TEXTURE; }
 
     public Mode getMode() { return mode; }
     public boolean isPowered() { return value; }
@@ -135,9 +138,14 @@ public class LogicTubeBehaviour extends AbstractVirtualComponent {
     }
 
     /** Cycle to the next mode (NONE→AND→OR→NOR→NAND→NONE); the output follows one tick later (via preTick). */
-    public void cycleMode() {
+    @Override
+    public void cycleOperationMode() {
         mode = mode.next();
         recomputeNext();
+        if (controller != null) {
+            controller.setChanged();
+            controller.sendData();
+        }
     }
 
     // ── NBT ─────────────────────────────────────────────────────────────────────
@@ -155,12 +163,12 @@ public class LogicTubeBehaviour extends AbstractVirtualComponent {
         return tag;
     }
 
-    public static LogicTubeBehaviour fromNBT(FactoryControllerBlockEntity controller, CompoundTag tag,
-                                             HolderLookup.Provider registries) {
+    public static LogicalTubeBehaviour fromNBT(FactoryControllerBlockEntity controller, CompoundTag tag,
+                                               HolderLookup.Provider registries) {
         VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
         ResourceLocation itemId = ResourceLocation.parse(tag.getString("Item"));
         Item item = BuiltInRegistries.ITEM.get(itemId);
-        LogicTubeBehaviour b = new LogicTubeBehaviour(controller, pos, item);
+        LogicalTubeBehaviour b = new LogicalTubeBehaviour(controller, pos, item);
         b.mode = parseMode(tag.getString("Mode"));
         b.value = tag.getBoolean("Value");
         b.nextValue = b.value;

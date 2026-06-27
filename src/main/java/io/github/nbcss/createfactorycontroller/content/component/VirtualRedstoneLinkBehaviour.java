@@ -193,6 +193,14 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         if (controller != null) { controller.setChanged(); controller.sendData(); }
     }
 
+    @Override
+    public List<Connection> connectionsToCycle() {
+        List<Connection> result = super.connectionsToCycle();
+        for (Connection conn : targetedBy().values())
+            if (conn != null) result.add(conn);
+        return result;
+    }
+
     private void updateTransmittedPower() {
         int transmit = getTransmittedStrength();
         if (transmit == lastTransmitted) return;
@@ -256,12 +264,10 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         }
     }
 
-    /** The interact (R) key on the board: toggle Send/Receive, keeping the current frequencies. */
+    /** The operation-mode key on the board: toggle Send/Receive, keeping the current frequencies. */
     @Override
-    public void onInteract() {
+    public void cycleOperationMode() {
         configure(!receive, redFreq, blueFreq);
-        if (controller != null)
-            controller.playWrenchRotateSound();
     }
 
     // ── IRedstoneLinkable ──────────────────────────────────────────────────────

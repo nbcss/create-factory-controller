@@ -11,14 +11,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/**
- * The "interact" key (R) on a hovered component. The server dispatches by component type: a gauge cycles its outgoing
- * connection arrow-bend mode; a redstone link toggles its Send/Receive mode.
- */
-public record ComponentInteractPacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
+/** Client → server: cycle the arrow-bend mode for the hovered component's relevant connections. */
+public record CycleArrowModePacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
 
-    public static final Type<ComponentInteractPacket> TYPE =
-        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "component_interact"));
+    public static final Type<CycleArrowModePacket> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "cycle_arrow_mode"));
 
     private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
@@ -27,21 +24,21 @@ public record ComponentInteractPacket(BlockPos pos, VirtualComponentPosition pan
             VirtualComponentPosition::new
         );
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, ComponentInteractPacket> STREAM_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, CycleArrowModePacket> STREAM_CODEC =
         StreamCodec.composite(
-            BlockPos.STREAM_CODEC, ComponentInteractPacket::pos,
-            POS_CODEC, ComponentInteractPacket::panelPos,
-            ComponentInteractPacket::new
+            BlockPos.STREAM_CODEC, CycleArrowModePacket::pos,
+            POS_CODEC, CycleArrowModePacket::panelPos,
+            CycleArrowModePacket::new
         );
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
-    public static void handle(ComponentInteractPacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
+    public static void handle(CycleArrowModePacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.interactComponent(packet.panelPos());
+            be.cycleArrowMode(packet.panelPos());
         });
     }
 }

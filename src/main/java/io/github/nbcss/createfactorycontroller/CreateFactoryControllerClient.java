@@ -33,13 +33,28 @@ import org.lwjgl.glfw.GLFW;
 @EventBusSubscriber(modid = CreateFactoryController.MODID, value = Dist.CLIENT)
 public class CreateFactoryControllerClient {
 
-    /**
-     * Interacts with the hovered component in the controller GUI: a gauge cycles its outgoing arrow-bend mode, a
-     * redstone link toggles Send/Receive. Rebindable from Options ▸ Controls; defaults to R.
-     */
-    public static final KeyMapping INTERACT = new KeyMapping(
-            "key.createfactorycontroller.interact",
+    /** Cycles the hovered component's connection arrow-bend mode. Rebindable from Options ▸ Controls; defaults to R. */
+    public static final KeyMapping CYCLE_ARROW_MODE = new KeyMapping(
+            "key.createfactorycontroller.cycle_arrow_mode",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,
+            "key.categories.createfactorycontroller");
+
+    /** Cycles the hovered component's operation mode. Rebindable from Options ▸ Controls; defaults to T. */
+    public static final KeyMapping CYCLE_OPERATION_MODE = new KeyMapping(
+            "key.createfactorycontroller.cycle_operation_mode",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F,
+            "key.categories.createfactorycontroller");
+
+    /** Starts connection mode from the hovered component. Unbound by default. */
+    public static final KeyMapping START_CONNECTION = new KeyMapping(
+            "key.createfactorycontroller.start_connection",
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
+            "key.categories.createfactorycontroller");
+
+    /** Starts relocate mode for the hovered component. Unbound by default. */
+    public static final KeyMapping RELOCATE_COMPONENT = new KeyMapping(
+            "key.createfactorycontroller.relocate_component",
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
             "key.categories.createfactorycontroller");
 
     /**
@@ -104,7 +119,10 @@ public class CreateFactoryControllerClient {
 
     @SubscribeEvent
     static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(INTERACT);
+        event.register(CYCLE_ARROW_MODE);
+        event.register(CYCLE_OPERATION_MODE);
+        event.register(START_CONNECTION);
+        event.register(RELOCATE_COMPONENT);
         event.register(PAN_VIEW);
         event.register(TOGGLE_FULL_OVERLAY);
         event.register(SELECTION_MODE);

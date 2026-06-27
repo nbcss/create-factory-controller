@@ -56,6 +56,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
 
     @Override public Map<VirtualComponentPosition, Connection> targetedBy() { return graph().targetedBy(position); }
     @Override public Set<VirtualComponentPosition> targeting() { return graph().targeting(position); }
+    @Override public java.util.Collection<Connection> outgoingConnections() { return graph().outgoingConnections(position); }
 
     /** The connection store backing this component: the controller's (server) or the injected one (client snapshot). */
     protected ConnectionGraph graph() {
@@ -128,21 +129,23 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     }
 
     @Override
-    public void onInteract() {
+    public void cycleArrowMode() {
         List<Connection> toCycle = connectionsToCycle();
         if (toCycle.isEmpty()) return;
-        int sharedMode = (toCycle.get(0).arrowBendMode + 1) % 4;   // auto (-1) → 0 on first press
+        int sharedMode = (toCycle.getFirst().arrowBendMode + 1) % 4;   // auto (-1) → 0 on first press
         for (Connection conn : toCycle) conn.arrowBendMode = sharedMode;
         if (controller != null) {
-            controller.playWrenchRotateSound();
             controller.setChanged();
             controller.sendData();
         }
     }
 
-    /** The connections whose arrow-bend this component's interact (R) cycles. By default its outgoing wires; gauges
+    @Override
+    public void cycleOperationMode() {}
+
+    /** The connections whose arrow-bend this component's cycle-arrow key cycles. By default its outgoing wires; gauges
      *  also include incoming redstone (whose RECEIVE-link end can't cycle — see {@code VirtualGaugeBehaviour}). */
-    protected List<Connection> connectionsToCycle() {
+    public List<Connection> connectionsToCycle() {
         List<Connection> result = new java.util.ArrayList<>();
         for (VirtualComponentPosition targetPos : targeting()) {
             Connection conn = graph().get(position, targetPos);

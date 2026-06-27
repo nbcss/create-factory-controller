@@ -374,14 +374,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
              :               RedstoneConnection.State.UNPOWERED;
     }
 
-    /** The gauge is the only interactive end of its redstone wires (a link's R toggles its mode), so its R cycles the
+    /** The gauge is the reliable arrow-control end of its redstone wires, so its cycle-arrow key cycles the
      *  bend of its outgoing wires AND its incoming redstone wires (from RECEIVE links), not just outgoing. */
-    @Override
-    protected List<Connection> connectionsToCycle() {
-        List<Connection> result = super.connectionsToCycle();   // outgoing (logistics + redstone to SEND links)
-        result.addAll(graph().incomingConnections(position, Connection.Type.REDSTONE));   // redstone from RECEIVE links
-        return result;
-    }
+//    @Override
+//    protected List<Connection> connectionsToCycle() {
+//        List<Connection> result = super.connectionsToCycle();   // outgoing (logistics + redstone to SEND links)
+//        result.addAll(graph().incomingConnections(position, Connection.Type.REDSTONE));   // redstone from RECEIVE links
+//        return result;
+//    }
 
     /** Re-fold the request gate — powered by any wired, powered RECEIVE link. Synced on change so the client gate
      *  colour follows. */

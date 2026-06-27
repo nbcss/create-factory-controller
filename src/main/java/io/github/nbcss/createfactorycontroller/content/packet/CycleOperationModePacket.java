@@ -11,11 +11,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client → server: cycle the logic tube at {@code panelPos} to its next mode (interim, until a config GUI exists). */
-public record CycleLogicTubeModePacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
+/** Client → server: cycle the hovered component's operation mode, if it has one. */
+public record CycleOperationModePacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
 
-    public static final Type<CycleLogicTubeModePacket> TYPE =
-        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "cycle_logic_tube_mode"));
+    public static final Type<CycleOperationModePacket> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "cycle_operation_mode"));
 
     private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
@@ -24,21 +24,21 @@ public record CycleLogicTubeModePacket(BlockPos pos, VirtualComponentPosition pa
             VirtualComponentPosition::new
         );
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, CycleLogicTubeModePacket> STREAM_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, CycleOperationModePacket> STREAM_CODEC =
         StreamCodec.composite(
-            BlockPos.STREAM_CODEC, CycleLogicTubeModePacket::pos,
-            POS_CODEC, CycleLogicTubeModePacket::panelPos,
-            CycleLogicTubeModePacket::new
+            BlockPos.STREAM_CODEC, CycleOperationModePacket::pos,
+            POS_CODEC, CycleOperationModePacket::panelPos,
+            CycleOperationModePacket::new
         );
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
-    public static void handle(CycleLogicTubeModePacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
+    public static void handle(CycleOperationModePacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.cycleLogicTubeMode(packet.panelPos());
+            be.cycleOperationMode(packet.panelPos());
         });
     }
 }

@@ -529,36 +529,35 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
-    /** Disconnects every redstone wire touching the gauge at {@code gaugePos} (Create's "redstone reset"): both wires
-     *  driving it (RECEIVE links → gate) and wires it drives (→ SEND links). Each removal re-folds the surviving sink.
-     *  Does not touch the gauge's recipe config. */
+    /** Disconnects every NON-logistics wire touching the gauge at {@code gaugePos} (the "link reset" slot): redstone
+     *  links and logic tubes, in either direction. Leaves ingredient (logistics) wires intact. Each removal re-folds
+     *  the surviving sink. Does not touch the gauge's recipe config. */
     public void disconnectLinks(VirtualComponentPosition gaugePos) {
         if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour)) return;
-        List<Connection> redstone = new ArrayList<>();
-        redstone.addAll(connectionGraph.incomingConnections(gaugePos, Connection.Type.REDSTONE));
-        redstone.addAll(connectionGraph.outgoingConnections(gaugePos, Connection.Type.REDSTONE));
-        for (Connection conn : redstone) {
+        List<Connection> toRemove = new ArrayList<>();
+        for (Connection conn : connectionGraph.incomingConnections(gaugePos))
+            if (!Connection.Type.LOGISTICS.equals(conn.type)) toRemove.add(conn);
+        for (Connection conn : connectionGraph.outgoingConnections(gaugePos))
+            if (!Connection.Type.LOGISTICS.equals(conn.type)) toRemove.add(conn);
+        for (Connection conn : toRemove) {
             connectionGraph.remove(conn.to, conn.from);
-            markSinkDirty(conn.to, conn.type);   // the gauge (its gate) or the SEND link re-folds
+            markSinkDirty(conn.to, conn.type);   // the gauge (its gate) or the wire's sink re-folds
         }
         settleConnections();
         setChanged();
         sendData();
     }
 
-    /** Cycles a logic tube's boolean mode (interim interaction; the output follows one tick later via {@code preTick}). */
-    public void cycleLogicTubeMode(VirtualComponentPosition pos) {
-        if (components.get(pos) instanceof LogicTubeBehaviour tube) {
-            tube.cycleMode();
-            setChanged();
-            sendData();
-        }
+    /** Cycles a component's operation mode, if it has one. */
+    public void cycleOperationMode(VirtualComponentPosition pos) {
+        VirtualComponentBehaviour behaviour = components.get(pos);
+        if (behaviour != null) behaviour.cycleOperationMode();
     }
 
-    /** The interact (R) key: a gauge cycles its arrow-bend mode; a redstone link toggles Send/Receive. */
-    public void interactComponent(VirtualComponentPosition pos) {
+    /** Cycles a component's connection arrow-bend mode. */
+    public void cycleArrowMode(VirtualComponentPosition pos) {
         VirtualComponentBehaviour behaviour = components.get(pos);
-        if (behaviour != null) behaviour.onInteract();
+        if (behaviour != null) behaviour.cycleArrowMode();
     }
 
     // ── Rename ───────────────────────────────────────────────────────────────
@@ -591,12 +590,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void playDenySound() {
         if (level == null || level.isClientSide()) return;
         AllSoundEvents.DENY.playOnServer(level, getBlockPos());
-    }
-
-    /** Create's wrench-rotate sound (random pitch), used when cycling a connection's arrow-bend mode. */
-    public void playWrenchRotateSound() {
-        if (level == null || level.isClientSide()) return;
-        AllSoundEvents.WRENCH_ROTATE.playOnServer(level, getBlockPos(), 1f, level.getRandom().nextFloat() + 0.5f);
     }
 
     /** Place/break sound of the component's underlying block (matches Create placing/breaking a gauge). */
