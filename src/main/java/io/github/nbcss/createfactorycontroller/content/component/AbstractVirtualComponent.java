@@ -5,10 +5,9 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
 import java.util.List;
@@ -78,8 +77,11 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
 
     // No connection capabilities by default; gauges and links override. Validation is FAIL-CLOSED: a component must
     // explicitly permit a connection (by overriding the validateAs* below), so forgetting rules never silently allows
-    // an unintended wire. (The ports() declaration gates which channels are even possible; these refine them.)
+    // an unintended wire. (The ports() declaration gates which types are even possible; these refine them.)
     @Override public List<ConnectionCapability> ports() { return List.of(); }
+
+    /** Default wire-endpoint label: the component's item name (a link shows "Redstone Link"). Gauges override to
+     *  name their ingredient instead. */
     @Override public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) { return rejectByDefault(); }
     @Override public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) { return rejectByDefault(); }
 
@@ -88,37 +90,64 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
                 .style(ChatFormatting.WHITE).component());
     }
 
+    // ── Signal propagation ──────────────────────────────────────────────────────
+    // Not a source/sink of any type by default; gauges and links override. The generic publisher below is the single
+    // place that touches edges — sources call it on a real output change (and on connect/load).
+
+    @Override public ConnectionValue outputValue(Connection.Type type) { return null; }
+    @Override public void onInputChanged(Connection.Type type) {}
+
+    @Override
+    public final void publish(Connection.Type type) {
+        ConnectionValue out = outputValue(type);
+        if (out == null) return;                       // I'm not a source of this type
+        // Eager edge write, deferred fold: a new edge enters at its fold-identity default (UNPOWERED for the redstone
+        // OR), so writing the source's value here and flagging the sink dirty is enough — the sink folds once at the
+        // next settle, reading every edge already up to date (no per-source double-fold, no mid-tick glitch).
+        for (Connection c : graph().outgoingConnections(position, type))
+            if (c.setValue(out) && controller != null)
+                controller.markSinkDirty(c.to, type);
+    }
+
     @Override
     public void disconnectAll() {
         List<Connection> affected = graph().connections().stream()
                 .filter(c -> position.equals(c.from) || position.equals(c.to))
                 .toList();
         graph().disconnect(position);
+        // Flag every surviving sink that lost an incoming edge from this component (a source partner needs nothing),
+        // then settle once. Off-controller (client) — which never reaches here in practice — folds directly.
         for (Connection conn : affected) {
-            VirtualComponentBehaviour source = position.equals(conn.from) ? this : siblingAt(conn.from);
-            VirtualComponentBehaviour sink = position.equals(conn.to) ? this : siblingAt(conn.to);
-            if (source != null) source.onDisconnectAsSource(conn);
-            if (sink != null) sink.onDisconnectAsSink(conn);
+            if (position.equals(conn.to)) continue;       // we were the sink → the source side is unaffected
+            VirtualComponentBehaviour sink = siblingAt(conn.to);
+            if (sink == null) continue;
+            if (controller != null) controller.markSinkDirty(conn.to, conn.type);
+            else sink.onInputChanged(conn.type);
         }
-        if (controller != null) { controller.setChanged(); controller.sendData(); }
+        if (controller != null) { controller.settleConnections(); controller.setChanged(); controller.sendData(); }
     }
 
     @Override
     public void onInteract() {
-        int sharedMode = -1;
-        for (VirtualComponentPosition targetPos : targeting()) {
-            VirtualComponentBehaviour target = controller.components.get(targetPos);
-            if (target == null) continue;
-            Connection conn = target.targetedBy().get(position);
-            if (conn == null) continue;
-            if (sharedMode == -1)
-                sharedMode = (conn.arrowBendMode + 1) % 4;
-            conn.arrowBendMode = sharedMode;
-        }
-        if (sharedMode != -1) {
+        List<Connection> toCycle = connectionsToCycle();
+        if (toCycle.isEmpty()) return;
+        int sharedMode = (toCycle.get(0).arrowBendMode + 1) % 4;   // auto (-1) → 0 on first press
+        for (Connection conn : toCycle) conn.arrowBendMode = sharedMode;
+        if (controller != null) {
             controller.playWrenchRotateSound();
             controller.setChanged();
             controller.sendData();
         }
+    }
+
+    /** The connections whose arrow-bend this component's interact (R) cycles. By default its outgoing wires; gauges
+     *  also include incoming redstone (whose RECEIVE-link end can't cycle — see {@code VirtualGaugeBehaviour}). */
+    protected List<Connection> connectionsToCycle() {
+        List<Connection> result = new java.util.ArrayList<>();
+        for (VirtualComponentPosition targetPos : targeting()) {
+            Connection conn = graph().get(position, targetPos);
+            if (conn != null) result.add(conn);
+        }
+        return result;
     }
 }

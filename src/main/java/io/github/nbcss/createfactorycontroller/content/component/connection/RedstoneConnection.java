@@ -8,7 +8,7 @@ import net.minecraft.nbt.CompoundTag;
  * A redstone connection whose {@link #state} is pushed by the source component and observed by the sink component.
  */
 public class RedstoneConnection extends Connection {
-    public enum State {
+    public enum State implements ConnectionValue {
         POWERED(0xEF0000), UNPOWERED(0x580101), INACTIVE(0x888898);
 
         private final int color;
@@ -40,14 +40,17 @@ public class RedstoneConnection extends Connection {
         return state.color;
     }
 
-    public void setValue(boolean powered) {
-        setState(powered ? State.POWERED : State.UNPOWERED);
+    @Override
+    public boolean setValue(ConnectionValue value) {
+        State next = (State) value;
+        if (next == this.state) return false;
+        this.state = next;
+        return true;
     }
 
-    public void setState(State state) {
-        if (this.state == state) return;
-        this.state = state;
-        notifyChanged();
+    @Override
+    public ConnectionValue value() {
+        return state;
     }
 
     @Override

@@ -1309,15 +1309,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /**
-     * Current shared arrow-bend mode of {@code pos}'s outgoing connections (which may legitimately be
-     * -1, the "auto" mode), or {@code null} if it has no outgoing connection.
+     * Current shared arrow-bend mode of the connections {@code pos}'s interact (R) cycles — its outgoing wires, plus
+     * (for a gauge) its incoming redstone wires, mirroring {@code VirtualGaugeBehaviour#connectionsToCycle}. May
+     * legitimately be -1 (auto); {@code null} if it has no such connection.
      */
     @Nullable
     private Integer outgoingArrowBendMode(VirtualComponentPosition pos) {
         for (VirtualComponentBehaviour b : menu.components) {
             Connection conn = b.targetedBy().get(pos);
-            if (conn != null) return conn.arrowBendMode;
+            if (conn != null) return conn.arrowBendMode;   // outgoing from pos
         }
+        VirtualComponentBehaviour self = componentAt(pos);   // incoming redstone (RECEIVE link → gauge)
+        if (self != null)
+            for (Connection conn : self.targetedBy().values())
+                if (conn.type == Connection.Type.REDSTONE) return conn.arrowBendMode;
         return null;
     }
 

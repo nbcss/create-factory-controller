@@ -23,6 +23,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
@@ -216,7 +217,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      *  tick to ride out the mid-move "reads low" blip, then committed — keeps real drops responsive. */
     private boolean stockDropPending = false;
     private boolean sumDropPending = false;
-    private boolean redstoneOutputPowered = false;
+    /** Last redstone OUTPUT state pushed to wired send-links; gates {@link #updateRedstoneOutput} so a steady gauge
+     *  never re-walks its outgoing wires. {@code null} until first computed (forces an initial publish). */
+    private RedstoneConnection.State lastRedstoneOutput = null;
     protected int timer = 0;
     /** Game tick of the last request attempt; the client decays the connection flash from it. */
     public long lastRequestTick = Long.MIN_VALUE;
@@ -248,8 +251,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return siblingAt(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
+    public Component getFilterName() {
+        return filter.isEmpty() ? ItemStack.EMPTY.getHoverName() : FluidCompat.filterName(filter);
+    }
+
     /** A gauge outputs/accepts item-fluid ingredients (LOGISTICS) and is read/gated by redstone (REDSTONE); both
-     *  channels defer their direction (BOTH), so a wired link's mode dictates the redstone arrow. */
+     *  types defer their direction (BOTH), so a wired link's mode dictates the redstone arrow. */
     @Override
     public List<ConnectionCapability> ports() {
         return List.of(new ConnectionCapability(Connection.Type.LOGISTICS, ConnectionCapability.Role.BOTH),
@@ -271,7 +278,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         if (filter.isEmpty())
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
                     .style(ChatFormatting.RED).component());
-        if (type == Connection.Type.LOGISTICS && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
+        if (Connection.Type.LOGISTICS.equals(type) && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.cannot_add_more_inputs")
                     .style(ChatFormatting.RED).component());
         return ValidationResult.SUCCESS;
@@ -294,6 +301,25 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
             if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
             int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
             used += (lc.amount() + ss - 1) / ss;   // ceil
+        }
+        return used;
+    }
+
+    /**
+     * Grid slots this gauge's ingredients would occupy if {@code proposedAmounts} (source position → new per-input
+     * amount) were applied — used to reject a recipe-config edit that would push the grid past {@link #MAX_INGREDIENTS}
+     * (the creation-time {@code validateAsSink} cap only sees one wire at a time, so larger amounts could otherwise
+     * overflow it). Positions absent from the map keep their current amount.
+     */
+    public int projectedInputSlots(Map<VirtualComponentPosition, Integer> proposedAmounts) {
+        int used = 0;
+        for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
+            if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
+            ItemStack src = filterAt(e.getKey());
+            if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
+            int amount = Math.max(1, proposedAmounts.getOrDefault(e.getKey(), lc.amount()));
+            int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
+            used += (amount + ss - 1) / ss;   // ceil
         }
         return used;
     }
@@ -329,50 +355,48 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return !targetedBy().isEmpty() && isActive() && recipeAddress.isBlank();
     }
 
+    /** A gauge's redstone OUTPUT to wired send-links: gray INACTIVE when it has no target, else POWERED/UNPOWERED by
+     *  whether its stock is satisfied. (A gauge is not driven by its own redstone input — that only gates requests.) */
     @Override
-    public void onConnectAsSource(Connection conn) {
-        if (conn instanceof RedstoneConnection)
-            pushRedstoneOutput(isActive() && satisfied);
+    public ConnectionValue outputValue(Connection.Type type) {
+        if (!Connection.Type.REDSTONE.equals(type)) return null;
+        return !isActive() ? RedstoneConnection.State.INACTIVE
+             : satisfied   ? RedstoneConnection.State.POWERED
+             :               RedstoneConnection.State.UNPOWERED;
     }
 
+    /** The gauge is the only interactive end of its redstone wires (a link's R toggles its mode), so its R cycles the
+     *  bend of its outgoing wires AND its incoming redstone wires (from RECEIVE links), not just outgoing. */
     @Override
-    public void onConnectAsSink(Connection conn) {
-        if (conn instanceof RedstoneConnection rc) {
-            rc.setOnChanged(c -> recomputeRedstoneInput());
-            recomputeRedstoneInput();
-        }
+    protected List<Connection> connectionsToCycle() {
+        List<Connection> result = super.connectionsToCycle();   // outgoing (logistics + redstone to SEND links)
+        result.addAll(graph().incomingConnections(position, Connection.Type.REDSTONE));   // redstone from RECEIVE links
+        return result;
     }
 
+    /** Re-fold the request gate — powered by any wired, powered RECEIVE link. Synced on change so the client gate
+     *  colour follows. */
     @Override
-    public void onDisconnectAsSink(Connection conn) {
-        if (conn == null || conn instanceof RedstoneConnection)
-            recomputeRedstoneInput();
+    public void onInputChanged(Connection.Type type) {
+        if (!Connection.Type.REDSTONE.equals(type)) return;
+        boolean now = false;
+        for (Connection c : graph().incomingConnections(position, Connection.Type.REDSTONE))
+            if (c instanceof RedstoneConnection rc && rc.powered()) { now = true; break; }
+        if (now == redstonePowered) return;
+        redstonePowered = now;
+        if (controller != null) { controller.setChanged(); controller.sendData(); }
     }
 
-    private void recomputeRedstoneInput() {
-        redstonePowered = graph().incomingConnections(position, Connection.Type.REDSTONE).stream()
-                .filter(RedstoneConnection.class::isInstance)
-                .map(RedstoneConnection.class::cast)
-                .anyMatch(RedstoneConnection::powered);
-    }
-
-    public void publishRedstoneOutput() {
-        pushRedstoneOutput(isActive() && satisfied);
-    }
+    /** Re-evaluate this gauge's redstone output and push it to wired send-links (no-op unless it changed). Called on
+     *  config edits that can flip its active/satisfied output. */
+    public void publishRedstoneOutput() { updateRedstoneOutput(); }
 
     private boolean updateRedstoneOutput() {
-        boolean now = isActive() && satisfied;
-        if (now == redstoneOutputPowered) return false;
-        redstoneOutputPowered = now;
-        pushRedstoneOutput(now);
+        RedstoneConnection.State now = (RedstoneConnection.State) outputValue(Connection.Type.REDSTONE);
+        if (now == lastRedstoneOutput) return false;
+        lastRedstoneOutput = now;
+        publish(Connection.Type.REDSTONE);
         return true;
-    }
-
-    private void pushRedstoneOutput(boolean powered) {
-        for (Connection conn : graph().outgoingConnections(position, Connection.Type.REDSTONE))
-            if (conn instanceof RedstoneConnection rc)
-                rc.setState(isActive() ? (powered ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED)
-                        : RedstoneConnection.State.INACTIVE);
     }
 
     /**

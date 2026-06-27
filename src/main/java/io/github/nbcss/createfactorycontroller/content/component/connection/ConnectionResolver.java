@@ -1,11 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
 import com.simibubi.create.foundation.utility.CreateLang;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
@@ -80,39 +78,24 @@ public final class ConnectionResolver {
         if (vr.isSuccess() && alreadyConnected(type, source, sink))
             vr = ValidationResult.fail(() -> CreateLang.translate("factory_panel.already_connected")
                     .style(ChatFormatting.RED).component());
-        return vr.isSuccess() ? new ValidationResult(true, () -> successMessage(type, source, sink)) : vr;
+        return vr.isSuccess() ? new ValidationResult(true, () -> type.successMessage(source, sink)) : vr;
     }
 
     /** This type's uniqueness policy against the current graph (Phase 1: per-component {@code targetedBy}). */
-    private static boolean alreadyConnected(Connection.Type ch, VirtualComponentBehaviour source,
+    private static boolean alreadyConnected(Connection.Type type, VirtualComponentBehaviour source,
                                             VirtualComponentBehaviour sink) {
-        return switch (ch.uniqueness()) {
+        return switch (type.uniqueness()) {
             case DIRECTED -> sink.targetedBy().containsKey(source.position());
             case UNDIRECTED -> source.targetedBy().containsKey(sink.position())
                             || sink.targetedBy().containsKey(source.position());
         };
     }
 
-    /** The green confirmation prompt for a valid connection: a redstone wire names the link; an ingredient wire names
-     *  the two gauges' filters. Built lazily (only the client commit invokes it). */
-    private static Component successMessage(Connection.Type ch, VirtualComponentBehaviour source,
-                                            VirtualComponentBehaviour sink) {
-        //fixme don't hardcode success message branch
-        if (ch == Connection.Type.REDSTONE) {
-            VirtualComponentBehaviour link = source instanceof VirtualRedstoneLinkBehaviour ? source : sink;
-            String linkName = new ItemStack(link.getItem()).getHoverName().getString();
-            return CreateLang.translate("factory_panel.link_connected", linkName).style(ChatFormatting.GREEN).component();
-        }
-        Component in  = source instanceof VirtualGaugeBehaviour g ? FluidCompat.filterName(g.filter) : Component.empty();
-        Component out = sink   instanceof VirtualGaugeBehaviour g ? FluidCompat.filterName(g.filter) : Component.empty();
-        return CreateLang.translate("factory_panel.panels_connected", in, out).style(ChatFormatting.GREEN).component();
-    }
-
-    /** {@code c}'s role for {@code ch}, or null if it has no such port. */
+    /** {@code c}'s role for {@code type}, or null if it has no such port. */
     @Nullable
-    private static ConnectionCapability.Role capabilityOf(VirtualComponentBehaviour c, Connection.Type ch) {
+    private static ConnectionCapability.Role capabilityOf(VirtualComponentBehaviour c, Connection.Type type) {
         for (ConnectionCapability p : c.ports())
-            if (p.type() == ch) return p.role();
+            if (type.equals(p.type())) return p.role();
         return null;
     }
 

@@ -1388,8 +1388,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** True if any redstone link on the board is wired to this gauge (its connection is held on the link). */
     private boolean hasLinkConnections() {
+        // A redstone wire to a link in either direction: SEND link → wire is gauge→link (link.targetedBy);
+        // RECEIVE link → wire is link→gauge (link.targeting). The link's mode is dynamic, so check both.
         for (VirtualComponentBehaviour c : menu.components)
-            if (c instanceof VirtualRedstoneLinkBehaviour link && link.targetedBy().containsKey(gaugePos))
+            if (c instanceof VirtualRedstoneLinkBehaviour link
+                    && (link.targetedBy().containsKey(gaugePos) || link.targeting().contains(gaugePos)))
                 return true;
         return false;
     }

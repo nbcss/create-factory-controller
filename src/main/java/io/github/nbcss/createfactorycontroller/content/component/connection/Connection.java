@@ -1,18 +1,21 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
+import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 /**
  * Base for a directed connection on the controller board. Holds only what every connection kind shares — the source,
@@ -20,15 +23,14 @@ import java.util.function.Consumer;
  * {@code LogisticsConnection} for gauge ingredient wires (amount + last-request success) and {@code RedstoneConnection}
  * for gauge ↔ redstone-link wires (powered state).
  *
- * <p>The connection kind is determined by the owning component (a gauge holds logistics wires, a link holds redstone
- * wires), so serialization needs no type discriminator — each component reads/writes its own concrete subclass.</p>
+ * <p>Edges live in the controller's central {@link ConnectionGraph}, not on the endpoints, so each serialized edge
+ * carries a {@code "Type"} discriminator; {@link #fromNBT} dispatches on it to the matching concrete subclass.</p>
  */
 public abstract class Connection {
     public final Type type;
     public VirtualComponentPosition from;
     public VirtualComponentPosition to;
     public int arrowBendMode; // -1 = auto, 0-3 = fixed bend direction
-    private transient Consumer<Connection> onChanged;
 
     protected Connection(Type type,
                          VirtualComponentPosition from,
@@ -62,17 +64,17 @@ public abstract class Connection {
         return tag;
     }
 
-    public void setOnChanged(@Nullable Consumer<Connection> onChanged) {
-        this.onChanged = onChanged;
-    }
-
     public int getConnectionColor(ComponentHolder holder) { return 0x888898; }
 
     public long getAnimationTick(ComponentHolder holder) { return -1; }
 
-    protected void notifyChanged() {
-        if (onChanged != null) onChanged.accept(this);
-    }
+    /** Accept a value pushed by the source for a signal type; returns whether it changed (drives sink notification in
+     *  {@code publish}). Non-signal types (logistics) carry no signal value and ignore it. */
+    public boolean setValue(ConnectionValue value) { return false; }
+
+    /** The value currently transported on this edge, or {@code null} for a non-signal type. */
+    @Nullable
+    public ConnectionValue value() { return null; }
 
     @Nullable
     public static Connection fromNBT(CompoundTag tag) {
@@ -105,6 +107,17 @@ public abstract class Connection {
             public Connection fromNBT(CompoundTag tag) {
                 return LogisticsConnection.fromNBT(tag);
             }
+
+            /** Ingredient flow: names the two gauges' filters (Create's own "panels connected" prompt). */
+            @Override
+            public Component successMessage(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+                if (!(source instanceof VirtualGaugeBehaviour sourceBehaviour))
+                    return super.successMessage(source, sink);
+                if (!(sink instanceof VirtualGaugeBehaviour sinkBehaviour))
+                    return super.successMessage(source, sink);
+                return CreateLang.translate("factory_panel.panels_connected", sourceBehaviour.getFilterName(),
+                        sinkBehaviour.getFilterName()).style(ChatFormatting.GREEN).component();
+            }
         };
         /** Boolean gating / state signal. */
         public static final Type REDSTONE = new Type("REDSTONE", Uniqueness.UNDIRECTED) {
@@ -132,6 +145,12 @@ public abstract class Connection {
 
         public abstract Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink);
         public abstract Connection fromNBT(CompoundTag tag);
+
+        public Component successMessage(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+            return Component.translatable("createfactorycontroller.connection.connected",
+                    new ItemStack(source.getItem()).getHoverName(),
+                    new ItemStack(sink.getItem()).getHoverName()).withStyle(ChatFormatting.GREEN);
+        }
 
         private static final List<Type> TYPES = List.of(LOGISTICS, REDSTONE);
         private static final Map<String, Type> REGISTRY = Map.of(

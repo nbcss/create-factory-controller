@@ -15,28 +15,33 @@ import java.util.stream.Collectors;
 
 /**
  * The controller-level store of every connection on the board (Phase 2 — connections live here, not on each
- * component). A connection is owned by one component (the link for a gauge↔link wire; the consumer for a gauge→gauge
- * wire) and keyed there by its source position, exactly as the old per-component {@code targetedBy} map was.
+ * component). There is no per-connection owner: a wire is a directed {@code source → sink} edge, and its direction is
+ * resolved from the endpoints' port roles (see {@code ConnectionResolver}), not from where it happens to be stored.
  *
- * <p>Two indexes are kept in lock-step: {@link #targetedBy} (sink → source → payload, the live "incoming" view a
- * component exposes) and {@link #targeting} (source → sink, the reverse "outgoing" view). Both server (controller)
- * and client (menu) hold one; components are stateless views over it. The reverse index is derived, never serialized.</p>
+ * <p>Two indexes are kept in lock-step: {@link #targetedBy} (sink → source → payload, the "incoming" view a component
+ * exposes) and {@link #targeting} (source → sink, the reverse "outgoing" view). Both server (controller) and client
+ * (menu) hold one; components are stateless views over it. The reverse index is derived, never serialized.</p>
  */
 public class ConnectionGraph {
 
     private final Map<VirtualComponentPosition, LinkedHashMap<VirtualComponentPosition, Connection>> incoming = new LinkedHashMap<>();
     private final Map<VirtualComponentPosition, LinkedHashMap<VirtualComponentPosition, Connection>> outgoing = new LinkedHashMap<>();
 
-    // ── Live views (what components return from targetedBy()/targeting()) ───────
+    // ── Read-only views (what components return from targetedBy()/targeting()) ──
+    // These never create an index entry for an absent position — read-only callers (tick, gating, renderer) far
+    // outnumber mutators, and a creating read would litter the indexes with empty maps. Mutation goes through add/
+    // remove, which create the entries they need.
 
-    /** Live map of the connections {@code sink} holds, keyed by source position. Created on demand. */
+    /** The connections {@code sink} holds, keyed by source position; empty (and immutable) if it has none. */
     public Map<VirtualComponentPosition, Connection> targetedBy(VirtualComponentPosition sink) {
-        return incoming.computeIfAbsent(sink, k -> new LinkedHashMap<>());
+        Map<VirtualComponentPosition, Connection> in = incoming.get(sink);
+        return in == null ? Collections.emptyMap() : in;
     }
 
-    /** Live set of the components {@code source} points at (sinks that hold a wire from it). Created on demand. */
+    /** The components {@code source} points at (sinks that hold a wire from it); empty (and immutable) if none. */
     public Set<VirtualComponentPosition> targeting(VirtualComponentPosition source) {
-        return outgoing.computeIfAbsent(source, k -> new LinkedHashMap<>()).keySet();
+        Map<VirtualComponentPosition, Connection> out = outgoing.get(source);
+        return out == null ? Collections.emptySet() : out.keySet();
     }
 
     public Collection<Connection> incomingConnections(VirtualComponentPosition sink) {
@@ -50,11 +55,11 @@ public class ConnectionGraph {
     }
 
     public List<Connection> incomingConnections(VirtualComponentPosition sink, Connection.Type type) {
-        return incomingConnections(sink).stream().filter(c -> c.type == type).collect(Collectors.toList());
+        return incomingConnections(sink).stream().filter(c -> type.equals(c.type)).collect(Collectors.toList());
     }
 
     public List<Connection> outgoingConnections(VirtualComponentPosition source, Connection.Type type) {
-        return outgoingConnections(source).stream().filter(c -> c.type == type).collect(Collectors.toList());
+        return outgoingConnections(source).stream().filter(c -> type.equals(c.type)).collect(Collectors.toList());
     }
 
     public Connection get(VirtualComponentPosition source, VirtualComponentPosition sink) {
@@ -64,7 +69,7 @@ public class ConnectionGraph {
 
     public Connection get(VirtualComponentPosition source, VirtualComponentPosition sink, Connection.Type type) {
         Connection conn = get(source, sink);
-        return conn != null && conn.type == type ? conn : null;
+        return conn != null && type.equals(conn.type) ? conn : null;
     }
 
     public List<Connection> connections() {
@@ -95,6 +100,11 @@ public class ConnectionGraph {
         VirtualComponentPosition oldFrom = conn.from;
         conn.from = conn.to;
         conn.to = oldFrom;
+        // Keep the rendered path SHAPE stable across the flip — only the arrowhead should change direction. For the
+        // swapped endpoints an explicit V→H (0) is the same L as H→V (1) and vice-versa; staircases (2/3) and auto (-1)
+        // are already direction-symmetric.
+        if (conn.arrowBendMode == 0) conn.arrowBendMode = 1;
+        else if (conn.arrowBendMode == 1) conn.arrowBendMode = 0;
         add(conn);
     }
 

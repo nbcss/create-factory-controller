@@ -70,6 +70,36 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Controller-level store of every connection on the board; components are live views into it (Phase 2). */
     private final ConnectionGraph connectionGraph = new ConnectionGraph();
     public ConnectionGraph connectionGraph() { return connectionGraph; }
+
+    /** Sinks whose incoming signal value changed since the last drain (per connection type); folded once each by
+     *  {@link #settleConnections}. Server-only — the client folds directly on sync. */
+    private final Set<DirtySink> dirtySinks = new LinkedHashSet<>();
+    private record DirtySink(VirtualComponentPosition pos, Connection.Type type) {}
+
+    /** Flags {@code pos}'s sink-side state stale for {@code type}; it is re-folded at the next {@link #settleConnections}. */
+    public void markSinkDirty(VirtualComponentPosition pos, Connection.Type type) {
+        dirtySinks.add(new DirtySink(pos, type));
+    }
+
+    /**
+     * Folds every sink flagged since the last drain, exactly once each. This coalesces a sink fed by several sources
+     * that all changed in the same tick into a single fold (each source's {@code publish} has already written its edge
+     * value), so there is no per-source double-fold and no mid-tick glitch. The loop lets a fold that cascades — a SEND
+     * link folding fires its network transmit, which pushes a wired RECEIVE link, which publishes — settle in the same
+     * pass; the iteration cap breaks any redstone feedback cycle (interim — full cycle handling is deferred). Called in
+     * the controller tick and after each structural mutation, before its sync.
+     */
+    public void settleConnections() {
+        int guard = components.size() + 1;
+        while (!dirtySinks.isEmpty() && guard-- > 0) {
+            List<DirtySink> batch = new ArrayList<>(dirtySinks);
+            dirtySinks.clear();
+            for (DirtySink d : batch) {
+                VirtualComponentBehaviour c = components.get(d.pos());
+                if (c != null) c.onInputChanged(d.type());
+            }
+        }
+    }
     public final Set<UUID> networks = new LinkedHashSet<>();
     public final Map<UUID, String> networkNicknames = new HashMap<>();
 
@@ -107,6 +137,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
+        // Drain signal changes from network events / the lazy tick (e.g. RECEIVE-link power) before gauges run, so
+        // their request gate is fresh this tick.
+        settleConnections();
         // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot, so a multi-stage production
         // chain's demand all derives from the same state, before any gauge ticks/requests. (The redstone-link power +
         // gauge gate are refreshed on the lazy tick — see lazyTick — like Create's redstone links.)
@@ -116,6 +149,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         for (VirtualComponentBehaviour component : components.values())
             component.tick();
+        // Drain signal changes published during this tick (a gauge becoming satisfied → its SEND links, etc.).
+        settleConnections();
         // Promptly heartbeat when an orderable gauge's state may have changed (the 20t lazyTick keeps it fresh).
         if (orderableDirty) {
             orderableDirty = false;
@@ -376,6 +411,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         else if (!fluid && gauge.unit.isFluid()) gauge.unit = ThresholdUnit.ITEMS;
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible → mint/abort patternId
         gauge.publishRedstoneOutput();
+        settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
         markOrderableDirty();   // filter (the blueprint's display item) changed
         setChanged();
         sendData();
@@ -423,12 +459,17 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.requestMode = requestMode;
         if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
-        for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
-            if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
-                conn.amount = Math.max(1, e.getValue());
+        // Apply per-input amounts only if they keep the ingredient grid within its slot cap. A larger amount can take
+        // several grid slots (ceil(amount / stackSize)), so an unchecked edit could overflow the cap the connection
+        // create-time check enforces one wire at a time. Reject the whole amount set on overflow (other config stands).
+        if (gauge.projectedInputSlots(inputAmounts) <= VirtualGaugeBehaviour.MAX_INGREDIENTS)
+            for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
+                if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
+                    conn.amount = Math.max(1, e.getValue());
         if (clearPromises) gauge.requestClearPromises();
         updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible → mint/abort patternId
         gauge.publishRedstoneOutput();
+        settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
         markOrderableDirty();   // request mode / filter / address may have changed
         setChanged();
         sendData();
@@ -456,19 +497,21 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
         Connection conn = type.create(source, sink);
         connectionGraph.add(conn);
-        sink.onConnectAsSink(conn);
-        source.onConnectAsSource(conn);
+        source.publish(type);          // write the new edge's value + flag the sink (new edge enters at fold identity)
+        settleConnections();           // fold the sink once
         playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
         setChanged();
         sendData();
     }
 
+    /** Reconciles each sink's reactive state from the edge values after load/sync. Edges are authoritative — they carry
+     *  their own value in NBT — and propagation is data-driven (no callbacks to rebind), so we only re-fold every sink.
+     *  Sources need no bind action: their edges arrive correct, and a source self-heals them on its next tick if its
+     *  output has since changed. (Folds directly, not via the dirty set — this is a one-off reconcile, not a tick.) */
     private void bindConnectionHooks() {
         for (Connection conn : connectionGraph.connections()) {
-            VirtualComponentBehaviour source = components.get(conn.from);
             VirtualComponentBehaviour sink = components.get(conn.to);
-            if (sink != null) sink.onConnectAsSink(conn);
-            if (source != null) source.onConnectAsSource(conn);
+            if (sink != null) sink.onInputChanged(conn.type);
         }
     }
 
@@ -476,30 +519,25 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Connection conn = connectionGraph.get(from, to);
         if (conn == null) return;
         connectionGraph.remove(to, from);
-        VirtualComponentBehaviour source = components.get(from);
-        VirtualComponentBehaviour sink = components.get(to);
-        if (source != null) source.onDisconnectAsSource(conn);
-        if (sink != null) sink.onDisconnectAsSink(conn);
+        markSinkDirty(to, conn.type);   // re-fold without the removed edge (the source is unaffected)
+        settleConnections();
         setChanged();
         sendData();
     }
 
-    /** Disconnects every redstone link wired to the gauge at {@code gaugePos} (Create's "redstone reset"). The wires
-     *  live on the links ({@code link.targetedBy[gauge]}); removing them clears the gauge's targeting and ungates it.
+    /** Disconnects every redstone wire touching the gauge at {@code gaugePos} (Create's "redstone reset"): both wires
+     *  driving it (RECEIVE links → gate) and wires it drives (→ SEND links). Each removal re-folds the surviving sink.
      *  Does not touch the gauge's recipe config. */
     public void disconnectLinks(VirtualComponentPosition gaugePos) {
-        if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour gauge)) return;
+        if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour)) return;
         List<Connection> redstone = new ArrayList<>();
         redstone.addAll(connectionGraph.incomingConnections(gaugePos, Connection.Type.REDSTONE));
         redstone.addAll(connectionGraph.outgoingConnections(gaugePos, Connection.Type.REDSTONE));
         for (Connection conn : redstone) {
             connectionGraph.remove(conn.to, conn.from);
-            VirtualComponentBehaviour source = components.get(conn.from);
-            VirtualComponentBehaviour sink = components.get(conn.to);
-            if (source != null) source.onDisconnectAsSource(conn);
-            if (sink != null) sink.onDisconnectAsSink(conn);
+            markSinkDirty(conn.to, conn.type);   // the gauge (its gate) or the SEND link re-folds
         }
-        gauge.onDisconnectAsSink(null);
+        settleConnections();
         setChanged();
         sendData();
     }

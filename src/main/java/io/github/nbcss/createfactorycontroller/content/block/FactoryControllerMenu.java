@@ -201,11 +201,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     }
 
     private void bindConnectionHooks() {
+        // Edges arrive with their value; each sink re-folds from them (no callbacks to rebind in the new model).
         for (io.github.nbcss.createfactorycontroller.content.component.connection.Connection conn : connectionGraph.connections()) {
-            VirtualComponentBehaviour source = componentAt(conn.from);
             VirtualComponentBehaviour sink = componentAt(conn.to);
-            if (sink != null) sink.onConnectAsSink(conn);
-            if (source != null) source.onConnectAsSource(conn);
+            if (sink != null) sink.onInputChanged(conn.type);
         }
     }
 

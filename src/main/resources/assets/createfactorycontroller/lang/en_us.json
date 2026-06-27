@@ -6,6 +6,8 @@
   "block.createfactorycontroller.factory_controller.tooltip.behaviour1": "_Pause_ all managed gauges.",
   "createfactorycontroller.tooltip.configured_controller": "Controller configured",
 
+  "createfactorycontroller.connection.connected": "%1$s connects to %2$s",
+
   "createfactorycontroller.gui.capacity": "Capacity",
   "createfactorycontroller.gui.zoom": "Zoom",
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",

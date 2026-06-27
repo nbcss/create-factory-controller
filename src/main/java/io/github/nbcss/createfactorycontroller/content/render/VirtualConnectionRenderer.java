@@ -141,10 +141,15 @@ public final class VirtualConnectionRenderer {
         // first whose path runs through no other component cell; if all are blocked, fall to V→H.
         int mode;
         if (conn.arrowBendMode < 0) {
-            mode = 0;
-            for (int m = 0; m < 4; m++) {
-                if (pathClear(buildCellPath(from, to, m), occupied, from, to)) { mode = m; break; }
+            // Resolve auto on a canonical (flow-direction-independent) endpoint order, then translate back to from→to,
+            // so flipping a redstone wire's direction doesn't reshape its path — only the arrowhead flips.
+            boolean swap = from.x() > to.x() || (from.x() == to.x() && from.y() > to.y());
+            VirtualComponentPosition pa = swap ? to : from, pb = swap ? from : to;
+            int m = 0;
+            for (int k = 0; k < 4; k++) {
+                if (pathClear(buildCellPath(pa, pb, k), occupied, pa, pb)) { m = k; break; }
             }
+            mode = !swap ? m : (m == 0 ? 1 : m == 1 ? 0 : m);   // translate canonical mode → from→to orientation
         } else {
             mode = conn.arrowBendMode % 4;
         }

@@ -5,6 +5,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
@@ -85,17 +86,17 @@ public interface VirtualComponentBehaviour {
     /** Positions this component points at. */
     Set<VirtualComponentPosition> targeting();
 
-    /** The connection {@link ConnectionCapability channels} this component participates in (its static capabilities). Read by
+    /** The connection {@link ConnectionCapability types} this component participates in (its static capabilities). Read by
      *  {@link ConnectionResolver} to decide whether a wire is possible — no {@code instanceof} pair matrix. */
     List<ConnectionCapability> ports();
 
     /** Validates this component acting as the SOURCE of a {@code type} wire to {@code sink}. (E.g. a gauge source
      *  must carry a filter.) */
-    ValidationResult validateAsSource(Connection.Type channel, VirtualComponentBehaviour sink);
+    ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink);
 
     /** Validates this component acting as the SINK of a {@code type} wire from {@code source}. (E.g. a gauge sink
      *  caps its ingredient slots; a link rejects a link partner.) */
-    ValidationResult validateAsSink(Connection.Type channel, VirtualComponentBehaviour source);
+    ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source);
 
     /** Injects a sibling-component lookup for cross-component checks when this behaviour has no controller (client
      *  snapshot). The server leaves it unset and uses the controller. See {@code AbstractVirtualComponent#siblingAt}. */
@@ -108,10 +109,22 @@ public interface VirtualComponentBehaviour {
     /** Removes this component from the graph entirely (called before removal). */
     void disconnectAll();
 
-    default void onConnectAsSource(Connection connection) {}
-    default void onConnectAsSink(Connection connection) {}
-    default void onDisconnectAsSource(Connection connection) {}
-    default void onDisconnectAsSink(Connection connection) {}
+    // ── Signal propagation (REDSTONE today; generic for future value types) ──────
+
+    /** My current output value for {@code type} (REDSTONE → a {@link RedstoneConnection.State}), or {@code null} if I
+     *  am not a source of it. Pure — no side effects; {@link #publish} reads it. */
+    ConnectionValue outputValue(Connection.Type type);
+
+    /** Write my {@link #outputValue} onto every outgoing {@code type} edge and, for each edge whose value actually
+     *  changed, flag its sink dirty on the controller (folded once at the next {@code settleConnections} drain — see
+     *  the coalescing note on {@code FactoryControllerBlockEntity#settleConnections}). A source calls this when its
+     *  output may have changed (and on connect). The single, generic implementation lives in
+     *  {@code AbstractVirtualComponent}. */
+    void publish(Connection.Type type);
+
+    /** Re-fold my incoming wires of {@code type} and apply the result (a gauge refreshes its request gate; a SEND link
+     *  its network transmit). Called once per dirty sink by the settle pass, and directly on load/sync reconcile. */
+    void onInputChanged(Connection.Type type);
 
     void onInteract();
 
