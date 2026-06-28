@@ -455,7 +455,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         gauge.recipeAddress = address.length() > MAX_ADDRESS_LENGTH
             ? address.substring(0, MAX_ADDRESS_LENGTH) : address;
-        gauge.recipeOutput = Math.max(1, recipeOutput);
+        // Item output is capped at MAX(64, 9 stacks of the produced item); fluids keep their own (client) cap.
+        int outputCap = FluidCompat.isFluidFilter(gauge.filter) ? Integer.MAX_VALUE
+            : Math.max(64, 9 * Math.max(1, gauge.filter.isEmpty() ? 64 : gauge.filter.getMaxStackSize()));
+        gauge.recipeOutput = Math.min(Math.max(1, recipeOutput), outputCap);
         gauge.craftBatch = Math.max(1, craftBatch);
         gauge.craftDimension = Math.max(0, craftDimension);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));

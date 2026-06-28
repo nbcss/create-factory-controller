@@ -5,8 +5,10 @@ Features:
 - Allow drag-to-select components and perform batch relocate & remove
 - Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform Redstone Logical Operation (1 tick delay)
 - Display Link can now read pending orders from Factory Controller
-- Added new keybinding (default F) to change component operation mode
+- Added new keybinding (default F) to change component operation mode, works on Redstone Link and Logical Tube
 - Added new keybindings to relocate component and start connection
+- Gauge recipe output slot now supports up to 9 stacks of expecting product
+- If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
 
 Changes:
 - Request limit for unit item & stack are increased to 1000.

@@ -42,6 +42,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
@@ -335,7 +336,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         int next;
         if (ctrl) {
-            next = cur + dir * ss;                       // ±1 full stack
+            next = snapToStack(cur, dir, ss);            // snap to the next/previous full-stack value
         } else if (shift) {
             next = cur + dir * 10;
             if (cur % ss != 0) {                         // snap across a stack boundary (not from a boundary)
@@ -355,6 +356,33 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      */
     private int maxCraftBatch() {
         return Math.max(1, MAX_CRAFT_OUTPUT / Math.max(1, outputCount));
+    }
+
+    /** Max stack size of the produced item (64 when no filter yet). */
+    private int outputStackSize() {
+        VirtualGaugeBehaviour g = gauge();
+        return g == null || g.filter.isEmpty() ? 64 : Math.max(1, g.filter.getMaxStackSize());
+    }
+
+    /** Largest free (non-crafting) item output count: at least 64, or 9 full stacks of the produced item — so a
+     *  stack-of-64 item allows up to 576, a stack-of-1 item stays at 64. */
+    private int maxItemOutput() {
+        return Math.max(64, 9 * outputStackSize());
+    }
+
+    /** Dark-gray " | &lt;stacks&gt;▤ +&lt;overflow&gt;" suffix breaking {@code count} of a stack-{@code ss} item into full
+     *  stacks plus remainder (the {@code +overflow} omitted when {@code count} is a whole number of stacks). */
+    private static MutableComponent stackBreakdown(int count, int ss) {
+        int stacks = count / ss, overflow = count % ss;
+        return Component.literal(" | " + stacks + "▤" + (overflow > 0 ? " +" + overflow : ""))
+                .withStyle(ChatFormatting.DARK_GRAY);
+    }
+
+    /** Ctrl-scroll snap: move {@code cur} to the next full-stack multiple of {@code ss} in direction {@code dir} —
+     *  up rounds to the next higher multiple, down to the next lower (below one stack → 0, then clamped to 1 by the
+     *  caller). E.g. ss=64: 100↑→128, 100↓→64, 40↓→0. */
+    private static int snapToStack(int cur, int dir, int ss) {
+        return dir > 0 ? (cur / ss + 1) * ss : (cur - 1) / ss * ss;
     }
 
     /** Crafts per request actually used: forced to 1 when an ignore-data ingredient disables batching. */
@@ -845,15 +873,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
                     boolean srcIgnore = menu.componentAt(inputConnections.get(slot.connectionIndex()))
                             instanceof VirtualGaugeBehaviour s && s.ignoreData;
+                    // Header: "Sending <Item> x<total>" + (item only) the dark-gray stack breakdown, like the output slot.
+                    MutableComponent inHeader = CreateLang.translate("gui.factory_panel.sending_item",
+                            FluidCompat.filterName(stack).getString() + " x" + totalLabel)
+                            .color(ScrollInput.HEADER_RGB).component();
+                    if (!fluidIng && total > stackSizeOf(stack)) inHeader.append(stackBreakdown(total, stackSizeOf(stack)));
                     tooltip = stack.isEmpty()
                         ? List.of(
                             CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
                             Component.translatable("createfactorycontroller.gui.action_disconnect")
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         : withIgnoreDataLine(List.of(
-                            CreateLang.translate("gui.factory_panel.sending_item",
-                                FluidCompat.filterName(stack).getString() + " x" + totalLabel)
-                                .color(ScrollInput.HEADER_RGB).component(),
+                            inHeader,
                             CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                 .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
                             CreateLang.translate("gui.factory_panel.left_click_disconnect")
@@ -887,10 +918,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
                     : CreateLang.translate("gui.factory_panel.expected_output_tip_2")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
-                tooltip = withIgnoreDataLine(List.of(
-                    CreateLang.translate("gui.factory_panel.expected_output",
+                // Header: "Expecting <Item> x<count>", and for an item output a dark-gray stack breakdown
+                // "| <stacks>▤ +<overflow>" (overflow shown only when the count isn't a whole number of stacks).
+                MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
                         FluidCompat.filterName(g.filter).getString() + " x" + producedTip)
-                        .color(ScrollInput.HEADER_RGB).component(),
+                        .color(ScrollInput.HEADER_RGB).component();
+                if (!fluidMode && producedCount > outputStackSize())
+                    header.append(stackBreakdown(producedCount, outputStackSize()));
+                tooltip = withIgnoreDataLine(List.of(
+                    header,
                     CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
                     CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
                     scrollLine),
@@ -1306,8 +1342,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             } else if (fluidMode) {
                 outputCount = adjustFluidAmount(outputCount, dir, hasShiftDown(), hasControlDown(), 1, FLUID_OUTPUT_CAP_MB);
                 playScrollSound();
+            } else if (hasControlDown()) {
+                outputCount = Mth.clamp(snapToStack(outputCount, dir, outputStackSize()), 1, maxItemOutput());   // full-stack snap
+                playScrollSound();
             } else {
-                outputCount = Mth.clamp(outputCount + dir * step, 1, 64);
+                outputCount = Mth.clamp(outputCount + dir * step, 1, maxItemOutput());
                 playScrollSound();
             }
             return true;
