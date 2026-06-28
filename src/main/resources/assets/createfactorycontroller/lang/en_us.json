@@ -8,6 +8,8 @@
 
   "createfactorycontroller.connection.connected": "Connect %1$s to %2$s",
 
+  "createfactorycontroller.display_source.factory_controller_pending_orders": "Pending Orders",
+
   "createfactorycontroller.component.logical_tube": "Logical Tube",
   "createfactorycontroller.component.logical_tube.mode.and": "AND",
   "createfactorycontroller.component.logical_tube.mode.and.desc": "Output on when ALL connected inputs are on.",

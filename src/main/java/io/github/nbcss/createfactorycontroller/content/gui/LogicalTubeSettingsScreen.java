@@ -53,6 +53,8 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     private static final ResourceLocation PANEL_TEX =   // TEMP: reuse the redstone-link panel texture
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/logical_tube.png");
+    private static final ResourceLocation LOGIC_GATE_ICONS =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/logic_gates");
     private static final int PANEL_W = 200, PANEL_H = 103;
 
     private static final int CELL = 16;
@@ -66,22 +68,15 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     private int panelX, panelY;
     private IconButton relocateButton, addConnectionButton, confirmButton;
-    /** One toggle button per {@link LogicalTubeBehaviour.Mode}, ordered as the enum; the staged mode glows green. */
+    /** One toggle button per {@link LogicalTubeBehaviour.Mode}, ordered as the enum; the live mode glows green. */
     private final java.util.EnumMap<LogicalTubeBehaviour.Mode, IconButton> modeButtons =
             new java.util.EnumMap<>(LogicalTubeBehaviour.Mode.class);
-
-    /** Staged mode — shown live in the centre slot but only sent to the server when the screen closes (commit-on-close,
-     *  like the redstone-link config). {@link #committed} guards the several close paths. */
-    private LogicalTubeBehaviour.Mode mode;
-    private boolean committed = false;
 
     public LogicalTubeSettingsScreen(FactoryControllerScreen controller, VirtualComponentPosition tubePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               Component.translatable("createfactorycontroller.gui.logical_tube_settings"));
         this.controller = controller;
         this.tubePos = tubePos;
-        this.mode = controller.getMenu().componentAt(tubePos) instanceof LogicalTubeBehaviour t
-                ? t.getMode() : LogicalTubeBehaviour.Mode.OR;
         Minecraft.getInstance().getSoundManager().play(
             net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
     }
@@ -106,28 +101,41 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         addWidget(addConnectionButton);
 
         // Mode button group (AND/OR/NOR/NAND), to the LEFT of the confirm button. Each blits its mode sprite; the
-        // staged mode glows green. Selecting only stages — committed on close (see commit()).
+        // live mode glows green. Selecting commits immediately (the output then follows one tick later via preTick).
         LogicalTubeBehaviour.Mode[] modes = LogicalTubeBehaviour.Mode.values();
         int groupX = panelX + 161 - modes.length * 18 - 4;
         for (int i = 0; i < modes.length; i++) {
             LogicalTubeBehaviour.Mode m = modes[i];
-            ResourceLocation icon = LogicalTubeBehaviour.TEXTURE.withSuffix("/" + m.name().toLowerCase());
-            ScreenElement element = (g, x, y) -> g.blitSprite(icon, x, y, 16, 16);
+            ScreenElement element = modeButtonIcon(m);
             IconButton button = new IconButton(groupX + i * 18, panelY + 79, element);
-            button.withCallback(() -> { mode = m; refreshModeButtons(); });
+            button.withCallback(() -> {
+                PacketDistributor.sendToServer(new ConfigureLogicalTubePacket(menu.controllerPos, tubePos, m.name()));
+                playClickSound();
+            });
             modeButtons.put(m, button);
             addWidget(button);
         }
-        refreshModeButtons();
 
         confirmButton = new IconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
         confirmButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));
         addWidget(confirmButton);
     }
 
-    /** Green-highlights the staged mode's button (Create's selected-toggle convention). */
+    private static ScreenElement modeButtonIcon(LogicalTubeBehaviour.Mode mode) {
+        ResourceLocation icon = LOGIC_GATE_ICONS.withSuffix("/" + mode.name().toLowerCase());
+        return (gfx, x, y) -> gfx.blitSprite(icon, x, y, 16, 16);
+    }
+
+    /** The tube's live mode (fallback OR if it's gone) — committed immediately, so this reflects the server state. */
+    private LogicalTubeBehaviour.Mode currentMode() {
+        LogicalTubeBehaviour t = tube();
+        return t != null ? t.getMode() : LogicalTubeBehaviour.Mode.OR;
+    }
+
+    /** Green-highlights the live mode's button (refreshed each frame, since the mode syncs back asynchronously). */
     private void refreshModeButtons() {
-        modeButtons.forEach((m, b) -> b.green = m == mode);
+        LogicalTubeBehaviour.Mode current = currentMode();
+        modeButtons.forEach((m, b) -> b.green = m == current);
     }
 
     /** Mode-button tooltip: name + hold-shift hint, with the description appended while Shift is held (matches
@@ -202,6 +210,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         addConnectionButton.render(gfx, mouseX, mouseY, partialTick);
+        refreshModeButtons();   // track the live mode (synced back asynchronously)
         modeButtons.values().forEach(b -> b.render(gfx, mouseX, mouseY, partialTick));
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
     }
@@ -250,21 +259,10 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             frontAt(gfx, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
             frontAt(gfx, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
-        renderTubeFront(gfx, cellScreenX(TUBE_COL), cellScreenY(MID_ROW));   // centre shows the STAGED mode (read-only)
-    }
-
-    /** Centre slot front: the tube's front (powered visual is live) overlaid with the <b>staged</b> mode icon, so
-     *  selecting a mode updates the preview before the change is committed on close. Mirrors the tube widget's draw. */
-    private void renderTubeFront(GuiGraphics gfx, int x, int y) {
-        LogicalTubeBehaviour t = tube();
-        boolean powered = t != null && t.isPowered();
-        RenderSystem.enableBlend();
-        gfx.blitSprite(LogicalTubeBehaviour.TEXTURE.withSuffix(powered ? "/front_on" : "/front_off"), x, y, CELL, CELL);
-        int rgb = powered ? 0x913660 : 0x741A41;   // matches VirtualLogicalTubeWidget ICON_POWERED/UNPOWERED
-        gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-        gfx.blitSprite(LogicalTubeBehaviour.TEXTURE.withSuffix("/" + mode.name().toLowerCase()),
-                x + CELL / 4, y + CELL / 4, CELL / 2, CELL / 2);
-        gfx.setColor(1f, 1f, 1f, 1f);
+        // Centre slot: the tube's own canvas front (live mode + powered visual), reused like every other slot.
+        VirtualComponentWidget tubeWidget = controller.componentWidgetAt(tubePos);
+        if (tubeWidget != null) atSlot(gfx, tubeWidget, cellScreenX(TUBE_COL), cellScreenY(MID_ROW),
+                () -> tubeWidget.renderFront(gfx, -10000, -10000, 1f));
     }
 
     private void backAt(GuiGraphics gfx, VirtualComponentPosition pos, int x, int y) {
@@ -382,13 +380,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    /** Sends the staged mode once (idempotent across the several close paths). Disconnect/reverse are immediate. */
-    private void commit() {
-        if (committed) return;
-        committed = true;
-        PacketDistributor.sendToServer(new ConfigureLogicalTubePacket(menu.controllerPos, tubePos, mode.name()));
-    }
-
     /** Create's soft GUI button blip for slot clicks. */
     private static void playClickSound() {
         Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance
@@ -418,7 +409,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     @Override
     public void removed() {
-        commit();
         Minecraft.getInstance().getSoundManager().play(
             net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
         super.removed();

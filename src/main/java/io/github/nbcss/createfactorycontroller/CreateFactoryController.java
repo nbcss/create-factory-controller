@@ -142,6 +142,14 @@ public class CreateFactoryController {
             IMenuTypeExtension.create(
                 (syncId, inv, buf) -> new FactoryControllerMenu(syncId, inv, buf)));
 
+    // ── Display Link sources (registered into Create's display-source registry) ──
+    public static final DeferredRegister<com.simibubi.create.api.behaviour.display.DisplaySource> DISPLAY_SOURCES =
+        DeferredRegister.create(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE, MODID);
+    public static final DeferredHolder<com.simibubi.create.api.behaviour.display.DisplaySource,
+            io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource>
+            FACTORY_CONTROLLER_PENDING_ORDERS = DISPLAY_SOURCES.register("factory_controller_pending_orders",
+            io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource::new);
+
     // ── Constructor ────────────────────────────────────────────────────────
     public CreateFactoryController(IEventBus modEventBus, ModContainer modContainer) {
         // Create: Repackaged compat — register the generic fluid-filter token + its fluid component ONLY when the
@@ -163,9 +171,11 @@ public class CreateFactoryController {
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
         SOUND_EVENTS.register(modEventBus);
+        DISPLAY_SOURCES.register(modEventBus);
 
         modEventBus.addListener(this::registerPayloads);
         modEventBus.addListener(this::addCreativeTabContents);
+        modEventBus.addListener(this::commonSetup);
 
         // Drive the production-order manager once per server tick (independent of any loaded controller/keeper).
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
@@ -184,6 +194,13 @@ public class CreateFactoryController {
             modEventBus.addListener(this::registerScreens);
             modEventBus.addListener(this::registerShaders);
         }
+    }
+
+    /** Bind the controller's Display Link source to its block (the binding map is not a registry — done in setup,
+     *  enqueued so it's on the main thread after all blocks/sources are registered). */
+    private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> com.simibubi.create.api.behaviour.display.DisplaySource.BY_BLOCK.add(
+            FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get()));
     }
 
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {

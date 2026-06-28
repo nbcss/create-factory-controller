@@ -27,6 +27,8 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
+import io.github.nbcss.createfactorycontroller.content.display.DisplayDataProvider;
+import io.github.nbcss.createfactorycontroller.content.display.DisplayMode;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
@@ -48,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
+public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements DisplayDataProvider {
 
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
 
@@ -429,15 +431,26 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
      * current network stock. Shows the stock (in stacks when {@code !upTo}), and when a target
      * {@link #count} is set, "stock⏶/target" coloured by satisfaction, with the request marker.
      */
+    /** Current network stock as shown on the gauge face: {@code ∞} when infinite, the gauge's unit (mB/B) for a fluid
+     *  filter, else count/stacks + suffix. Shared by the count overlay and the Display Link line so they never drift. */
+    public String stockText() {
+        return isInfiniteStock() ? "∞"
+            : FluidCompat.isFluidFilter(filter) ? unit.formatInUnit(stockLevel)
+            : stockLevel / unit.toCountMultiplier(filter) + unit.suffix;
+    }
+
+    /** The target threshold as shown on the gauge face ({@code count} in the gauge's unit). */
+    public String demandText() {
+        return count + unit.suffix;
+    }
+
     public MutableComponent getCountLabel() {
         if (filter.isEmpty()) return Component.empty();
         if (waitingForNetwork) return Component.literal("?");
 
         // A fluid filter's stockLevel is millibuckets — shown in the gauge's own unit (mB/B); items show
         // count/stacks + suffix.
-        String inStorage = isInfiniteStock() ? "∞"
-            : FluidCompat.isFluidFilter(filter) ? unit.formatInUnit(stockLevel)
-            : stockLevel / unit.toCountMultiplier(filter) + unit.suffix;
+        String inStorage = stockText();
 
         if (!isActive())
             return CreateLang.text(inStorage).color(0xF1EFE8).component();
@@ -445,8 +458,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return CreateLang.text(inStorage).color(satisfied ? 0xD7FFA8 : promisedSatisfied ? 0xFFCD75 : 0xFFBFA8)
             .add(CreateLang.text(promisedCount == 0 ? "" : "⏶"))
             .add(CreateLang.text("/").style(ChatFormatting.WHITE))
-            .add(CreateLang.text(count + unit.suffix).color(requestMode.isPassive() ? 0x9ECFFC : 0xF1EFE8))
+            .add(CreateLang.text(demandText()).color(requestMode.isPassive() ? 0x9ECFFC : 0xF1EFE8))
             .component();
+    }
+
+    /** Display Link line for {@link DisplayMode#ACTIVE_REQUESTS}: an active, understocked gauge contributes
+     *  "{@code <⏶ if promised><stock>/<demand> <item>}" (matching the count overlay); anything else contributes nothing. */
+    @Override
+    public List<MutableComponent> provideDisplayLines(DisplayMode mode) {
+        if (mode != DisplayMode.ACTIVE_REQUESTS) return List.of();
+        if (filter.isEmpty() || !isActive() || satisfied) return List.of();
+        MutableComponent line = Component.literal((promisedCount > 0 ? "⏶" : "") + stockText() + "/" + demandText() + " ")
+                .append(FluidCompat.filterName(filter));
+        return List.of(line);
     }
 
     // ── Tick ───────────────────────────────────────────────────────────────

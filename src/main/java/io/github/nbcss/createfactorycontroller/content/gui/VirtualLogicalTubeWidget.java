@@ -43,9 +43,6 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
         gfx.blitSprite(sprite("back"), x0, y0, CELL, CELL);
     }
 
-    /** Mode-icon tint by current output value (committed {@code value}, not the pending {@code nextValue}). */
-    private static final int ICON_POWERED = 0x913660, ICON_UNPOWERED = 0x741A41;
-
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
@@ -55,10 +52,7 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
 
         LogicalTubeBehaviour.Mode mode = behaviour.getMode();
         // Mode symbol: 16×16 sprite drawn at half size (8×8), centred, tinted by the value state.
-        int rgb = powered ? ICON_POWERED : ICON_UNPOWERED;
-        gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
         gfx.blitSprite(sprite(mode.name().toLowerCase()), x0 + CELL / 4, y0 + CELL / 4, CELL / 2, CELL / 2);
-        gfx.setColor(1f, 1f, 1f, 1f);
     }
 
     @Override
