@@ -11,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Vali
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
@@ -29,9 +30,9 @@ import java.util.UUID;
 public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
     /** Boolean gate applied to the folded inputs. The fold starts at the identities ({@code all=true, any=false}), so
-     *  with no input wires AND and NOR are true, OR and NAND are false. {@link #NONE} always outputs false. */
+     *  with no input wires AND and NOR are true, OR and NAND are false. */
     public enum Mode {
-        NONE, AND, OR, NOR, NAND;
+        AND, OR, NOR, NAND;
 
         public boolean apply(boolean any, boolean all) {
             return switch (this) {
@@ -39,12 +40,19 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
                 case OR   -> any;
                 case NAND -> !all;
                 case NOR  -> !any;
-                default   -> false;   // NONE
             };
         }
 
         public Mode next() {
             return values()[(ordinal() + 1) % values().length];
+        }
+
+        public static Mode fromName(String name) {
+            try {
+                return Mode.valueOf(name);
+            } catch (IllegalArgumentException e) {
+                return OR;   // default / legacy "NONE"
+            }
         }
     }
 
@@ -69,7 +77,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/logical_tube");
 
-    public Mode mode = Mode.NONE;
+    public Mode mode = Mode.OR;
     /** Emitted output — drives outgoing redstone edges, rendered, synced. Only ever changed in {@link #preTick}. */
     private boolean value = false;
     /** Combinational target {@code = mode(folded input)}, kept current by {@link #onInputChanged}; committed to
@@ -81,6 +89,13 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     }
 
     @Override public ResourceLocation getTexture() { return TEXTURE; }
+
+    @Override public int getColor() { return 0xFC688D; }
+
+    @Override
+    public Component getName() {
+        return Component.translatable("createfactorycontroller.component.logical_tube");
+    }
 
     public Mode getMode() { return mode; }
     public boolean isPowered() { return value; }
@@ -140,7 +155,13 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     /** Cycle to the next mode (NONE→AND→OR→NOR→NAND→NONE); the output follows one tick later (via preTick). */
     @Override
     public void cycleOperationMode() {
-        mode = mode.next();
+        setMode(mode.next());
+    }
+
+    /** Set the operation mode directly (settings GUI). The output follows one tick later (via preTick). */
+    public void setMode(Mode mode) {
+        if (this.mode == mode) return;
+        this.mode = mode;
         recomputeNext();
         if (controller != null) {
             controller.setChanged();
@@ -169,17 +190,9 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
         ResourceLocation itemId = ResourceLocation.parse(tag.getString("Item"));
         Item item = BuiltInRegistries.ITEM.get(itemId);
         LogicalTubeBehaviour b = new LogicalTubeBehaviour(controller, pos, item);
-        b.mode = parseMode(tag.getString("Mode"));
+        b.mode = Mode.fromName(tag.getString("Mode"));
         b.value = tag.getBoolean("Value");
         b.nextValue = b.value;
         return b;
-    }
-
-    private static Mode parseMode(String name) {
-        try {
-            return Mode.valueOf(name);
-        } catch (IllegalArgumentException e) {
-            return Mode.NONE;
-        }
     }
 }

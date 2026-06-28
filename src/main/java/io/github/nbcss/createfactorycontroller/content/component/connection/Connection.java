@@ -145,8 +145,7 @@ public abstract class Connection {
 
         public Component successMessage(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
             return Component.translatable("createfactorycontroller.connection.connected",
-                    new ItemStack(source.getItem()).getHoverName(),
-                    new ItemStack(sink.getItem()).getHoverName()).withStyle(ChatFormatting.GREEN);
+                    source.getName(), sink.getName()).withStyle(ChatFormatting.GREEN);
         }
 
         private static final List<Type> TYPES = List.of(LOGISTICS, REDSTONE);

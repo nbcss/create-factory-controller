@@ -86,7 +86,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     @Override
     public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();
-        lines.add(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(0xFC8068).component());
+        lines.add(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(behaviour.getColor()).component());
         String modeKey = behaviour.receive
             ? "createfactorycontroller.gui.redstone_link.mode.receive"
             : "createfactorycontroller.gui.redstone_link.mode.send";

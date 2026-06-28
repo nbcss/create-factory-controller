@@ -135,7 +135,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         addWidget(relocateButton);
 
         // Respect-/ignore-data toggle (reuses Create's brass-filter icons), in the bottom button row.
-        int ignoreDataX = panelX + 25;
+        int ignoreDataX = panelX + 98;
         respectDataButton = new IconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
         respectDataButton.withCallback(() -> { ignoreData = false; updateIgnoreDataButtons(); });
         addWidget(respectDataButton);
@@ -215,7 +215,9 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         } else renderTooltip(gfx, mouseX, mouseY);
         // Draw the icon-button tooltips LAST so the menu slots/items (drawn after renderBg) can't cover them.
         // Use isMouseOver (not isHoveredOrFocused) so a focused-but-not-hovered button doesn't trail the cursor.
-        if (relocateButton.isMouseOver(mouseX, mouseY))
+        if (confirm.isMouseOver(mouseX, mouseY))
+            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
+        else if (relocateButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
         else if (respectDataButton.visible && respectDataButton.isMouseOver(mouseX, mouseY))
             gfx.renderComponentTooltip(font, dataButtonTooltip(respectDataName, respectDataDesc), mouseX, mouseY);

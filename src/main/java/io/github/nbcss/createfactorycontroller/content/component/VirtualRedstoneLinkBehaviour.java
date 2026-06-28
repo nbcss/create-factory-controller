@@ -99,6 +99,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override public ResourceLocation getTexture() { return TEXTURE; }
 
+    @Override public int getColor() { return 0xFC8068; }
+
     /** A link speaks REDSTONE only; its mode is decisive for direction (RECEIVE drives gauges = SOURCE, SEND reads
      *  them = SINK), so a wired gauge follows the link. */
     @Override

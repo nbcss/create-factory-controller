@@ -529,6 +529,32 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
+    /** Swaps the direction of the wire {@code from → to} (→ {@code to → from}), if the reversed orientation is legal
+     *  (rejected for a redstone link, whose role fixes direction) and doesn't collide with an existing {@code to → from}
+     *  edge. {@code connectionGraph.reverse} keeps the rendered path shape stable (only the arrow flips). */
+    public void reverseConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
+        Connection conn = connectionGraph.get(from, to);
+        if (conn == null) return;
+        VirtualComponentBehaviour newSource = components.get(to);
+        VirtualComponentBehaviour newSink = components.get(from);
+        if (newSource == null || newSink == null) return;
+        if (connectionGraph.get(to, from) != null
+                || !ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess()) {
+            playDenySound();
+            return;
+        }
+        connectionGraph.reverse(conn);
+        // Re-evaluate both endpoints in their new roles (publish output + re-fold input), then settle once.
+        for (VirtualComponentPosition p : List.of(from, to)) {
+            VirtualComponentBehaviour c = components.get(p);
+            if (c != null) { c.publish(conn.type); markSinkDirty(p, conn.type); }
+        }
+        settleConnections();
+        playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
+        setChanged();
+        sendData();
+    }
+
     /** Disconnects every NON-logistics wire touching the gauge at {@code gaugePos} (the "link reset" slot): redstone
      *  links and logic tubes, in either direction. Leaves ingredient (logistics) wires intact. Each removal re-folds
      *  the surviving sink. Does not touch the gauge's recipe config. */
@@ -552,6 +578,13 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void cycleOperationMode(VirtualComponentPosition pos) {
         VirtualComponentBehaviour behaviour = components.get(pos);
         if (behaviour != null) behaviour.cycleOperationMode();
+    }
+
+    /** Applies Logical Tube settings (currently the operation {@code mode}). The output follows one tick later (preTick).
+     *  {@code setMode} syncs only when it actually changes. */
+    public void configureLogicalTube(VirtualComponentPosition pos, String modeName) {
+        if (components.get(pos) instanceof LogicalTubeBehaviour tube)
+            tube.setMode(LogicalTubeBehaviour.Mode.fromName(modeName));
     }
 
     /** Cycles a component's connection arrow-bend mode. */

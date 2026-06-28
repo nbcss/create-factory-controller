@@ -22,7 +22,8 @@ public interface VirtualComponentWidget {
 
     VirtualComponentBehaviour behaviour();
 
-    /** Back layer, drawn before the connection arrows. */
+    /** Back layer, drawn before the connection arrows. The Logical Tube settings screen reuses this (and
+     *  {@link #renderFront}) for its slots via a pose translation — see {@code LogicalTubeSettingsScreen#atSlot}. */
     void renderBack(GuiGraphics gfx);
 
     /** Front layer (over the arrows). {@code glow} is the indicator chase value. */

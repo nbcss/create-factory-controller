@@ -172,7 +172,22 @@ public final class VirtualConnectionRenderer {
             }
         }
         gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
+        drawPathSegments(gfx, path, animated);
+        gfx.setColor(1f, 1f, 1f, 1f);
+    }
 
+    /** Draws a static connection {@code path} (cell waypoints) in {@code color} (0xRRGGBB) — for the Logical Tube
+     *  settings grids. Translate the pose so cell {@code (0,0)} sits at the desired screen origin. */
+    public static void drawGuiPath(GuiGraphics gfx, List<Vector2i> path, int color) {
+        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
+        drawPathSegments(gfx, path, false);
+        gfx.setColor(1f, 1f, 1f, 1f);
+    }
+
+    /** Walks a cell-space polyline and blits the arrow strip per segment (head at the last point, tail at the first).
+     *  The caller sets the colour via {@code gfx.setColor} first; cells are {@link #CELL} px, so translate the pose to
+     *  position the path. */
+    public static void drawPathSegments(GuiGraphics gfx, List<Vector2i> path, boolean animated) {
         // Walk every line of the path and blit.
         for (int i = 0; i < path.size() - 1; i++) {
             Vector2i a = path.get(i), b = path.get(i + 1);
@@ -228,8 +243,6 @@ public final class VirtualConnectionRenderer {
                 }
             }
         }
-
-        gfx.setColor(1f, 1f, 1f, 1f);
     }
 
     /**

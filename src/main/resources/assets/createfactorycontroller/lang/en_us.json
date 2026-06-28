@@ -9,11 +9,18 @@
   "createfactorycontroller.connection.connected": "Connect %1$s to %2$s",
 
   "createfactorycontroller.component.logical_tube": "Logical Tube",
-  "createfactorycontroller.component.logical_tube.mode.none": "NONE",
   "createfactorycontroller.component.logical_tube.mode.and": "AND",
+  "createfactorycontroller.component.logical_tube.mode.and.desc": "Output on when ALL connected inputs are on.",
   "createfactorycontroller.component.logical_tube.mode.or": "OR",
+  "createfactorycontroller.component.logical_tube.mode.or.desc": "Output on when ANY connected input is on.",
   "createfactorycontroller.component.logical_tube.mode.nor": "NOR",
+  "createfactorycontroller.component.logical_tube.mode.nor.desc": "Output on when NO connected input is on.",
   "createfactorycontroller.component.logical_tube.mode.nand": "NAND",
+  "createfactorycontroller.component.logical_tube.mode.nand.desc": "Output on unless ALL connected inputs are on.",
+
+  "createfactorycontroller.gui.logical_tube_settings": "Logical Tube Settings",
+  "createfactorycontroller.gui.logical_tube.disconnect": "Shift-click to disconnect",
+  "createfactorycontroller.gui.logical_tube.reverse": "Click to reverse direction",
 
   "createfactorycontroller.gui.capacity": "Capacity",
   "createfactorycontroller.gui.zoom": "Zoom",

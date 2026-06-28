@@ -152,9 +152,9 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();
         if (behaviour.filter.isEmpty()) {
-            lines.add(CreateLang.translate("factory_panel.new_factory_task").color(0xFBDC7D).component());
+            lines.add(CreateLang.translate("factory_panel.new_factory_task").color(behaviour.getColor()).component());
         }else{
-            var title = CreateLang.text(FluidCompat.filterName(behaviour.filter).getString()).color(0xFBDC7D);
+            var title = CreateLang.text(FluidCompat.filterName(behaviour.filter).getString()).color(behaviour.getColor());
             if (behaviour.ignoreData) {
                 String label = " (" + CreateLang.translate("gui.filter.ignore_data").string() + ")";
                 title.add(Component.literal(label));

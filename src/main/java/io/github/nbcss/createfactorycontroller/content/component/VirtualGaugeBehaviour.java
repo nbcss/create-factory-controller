@@ -242,6 +242,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent {
         return TEXTURE;
     }
 
+    @Override public int getColor() { return 0xFBDC7D; }
+
     public ResourceLocation getFrontTexture() {
         return FRONT_TEXTURE;
     }

@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.Collection;
 import java.util.List;
@@ -73,6 +74,12 @@ public interface VirtualComponentBehaviour {
      * content between them. Custom gauges return their own folder to supply their own look.
      */
     ResourceLocation getTexture();
+
+    int getColor();
+
+    default Component getName() {
+        return new ItemStack(getItem()).getHoverName();
+    }
 
     // ── Lifecycle ───────────────────────────────────────────────────────────
 

@@ -4,7 +4,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -19,9 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A logic tube on the canvas. Reuses the gauge {@code back}/{@code front} sprites (interim) and renders the current
- * {@link LogicalTubeBehaviour.Mode} as centered text on the front (nothing for {@code NONE}); no indicator bulb. Empty-hand
- * click cycles the mode; shift-click removes (handled by the screen).
+ * A logical tube on the canvas. Draws its {@code back}/{@code front_on|off} sprites and the current
+ * {@link LogicalTubeBehaviour.Mode} icon (½-size, value-tinted; nothing for {@code NONE}); no indicator bulb. Empty-hand
+ * click opens the {@link LogicalTubeSettingsScreen}; shift-click removes (handled by the screen).
  */
 @OnlyIn(Dist.CLIENT)
 public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implements VirtualComponentWidget {
@@ -55,7 +54,6 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
         gfx.blitSprite(sprite(powered ? "front_on" : "front_off"), x0, y0, CELL, CELL);
 
         LogicalTubeBehaviour.Mode mode = behaviour.getMode();
-        if (mode == LogicalTubeBehaviour.Mode.NONE) return;   // NONE → no mode icon
         // Mode symbol: 16×16 sprite drawn at half size (8×8), centred, tinted by the value state.
         int rgb = powered ? ICON_POWERED : ICON_UNPOWERED;
         gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
@@ -66,7 +64,7 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
     @Override
     public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.component.logical_tube").withColor(0xFC688D));
+        lines.add(Component.translatable("createfactorycontroller.component.logical_tube").withColor(behaviour.getColor()));
         lines.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
                 Component.translatable("createfactorycontroller.component.logical_tube.mode." + behaviour.getMode().name().toLowerCase())
                         .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
@@ -79,8 +77,9 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
 
     @Override
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
-        if (!carried.isEmpty()) return false;   // no item interaction for now
-        PacketDistributor.sendToServer(new CycleOperationModePacket(screen.getMenu().controllerPos, behaviour.position()));
+        if (!carried.isEmpty()) return false;   // no item interaction
+        screen.clearSelection();
+        net.minecraft.client.Minecraft.getInstance().setScreen(new LogicalTubeSettingsScreen(screen, behaviour.position()));
         return true;
     }
 

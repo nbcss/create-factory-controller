@@ -100,6 +100,8 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         return FRONT_TEXTURE;
     }
 
+    @Override public int getColor() { return 0xE2816C; }
+
     public static FluidGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                               CompoundTag tag,
                                               net.minecraft.core.HolderLookup.Provider registries) {
