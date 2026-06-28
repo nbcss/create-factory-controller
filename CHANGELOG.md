@@ -1,16 +1,27 @@
 ## 0.3.0
+IMPORTANT: this version changed Factory Controller block data structure, once migrate to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.
+
 Features:
-- Allow drag-to-select components and perform batch relocate & remove.
+- Allow drag-to-select components and perform batch relocate & remove
+- Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform Redstone Logical Operation (1 tick delay)
+- Display Link can now read pending orders from Factory Controller
+- Added new keybinding (default F) to change component operation mode
+- Added new keybindings to relocate component and start connection
+
+Changes:
+- Request limit for unit item & stack are increased to 1000.
+- Existing keybinding "Interact" (R) changed to "cycle arrow mode".
 
 Optimization:
-- Controller GUI will not render out-of-board components now.
+- Controller GUI will not render out-of-board components now
 
 Compatibility:
-- Allow Fluid Gauge from Repackaged mod to be used in Factory Controller.
+- Allow Fluid Gauge from Repackaged mod to be used in Factory Controller
 
 Bugfixes:
 - Fixed fluid cannot properly work to create production order
 - Fixed connection arrow tip does not have flow animation
+- Fixed place configured controller block will keep dirty data from item
 
 ## 0.2.1
 Features:

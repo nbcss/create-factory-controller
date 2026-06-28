@@ -32,7 +32,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     /** Boolean gate applied to the folded inputs. The fold starts at the identities ({@code all=true, any=false}), so
      *  with no input wires AND and NOR are true, OR and NAND are false. */
     public enum Mode {
-        AND, OR, NOR, NAND;
+        OR, AND, NOR, NAND;
 
         public boolean apply(boolean any, boolean all) {
             return switch (this) {
@@ -51,7 +51,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
             try {
                 return Mode.valueOf(name);
             } catch (IllegalArgumentException e) {
-                return OR;   // default / legacy "NONE"
+                return OR;
             }
         }
     }

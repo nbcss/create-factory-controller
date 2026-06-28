@@ -135,7 +135,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         addWidget(relocateButton);
 
         // Respect-/ignore-data toggle (reuses Create's brass-filter icons), in the bottom button row.
-        int ignoreDataX = panelX + 98;
+        int ignoreDataX = panelX + 97;
         respectDataButton = new IconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
         respectDataButton.withCallback(() -> { ignoreData = false; updateIgnoreDataButtons(); });
         addWidget(respectDataButton);

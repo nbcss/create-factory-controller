@@ -103,7 +103,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         // Mode button group (AND/OR/NOR/NAND), to the LEFT of the confirm button. Each blits its mode sprite; the
         // live mode glows green. Selecting commits immediately (the output then follows one tick later via preTick).
         LogicalTubeBehaviour.Mode[] modes = LogicalTubeBehaviour.Mode.values();
-        int groupX = panelX + 161 - modes.length * 18 - 4;
+        int groupX = panelX + 160 - modes.length * 18 - 4;
         for (int i = 0; i < modes.length; i++) {
             LogicalTubeBehaviour.Mode m = modes[i];
             ScreenElement element = modeButtonIcon(m);
@@ -318,6 +318,21 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                 tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse").withStyle(ChatFormatting.GRAY));
             tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.disconnect")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
+            return;
+        }
+        if (in(mouseX, mouseY, cellScreenX(TUBE_COL), cellScreenY(MID_ROW))) {
+            int nIn = inputs().size(), nOut = outputs().size();
+            List<Component> tip = new ArrayList<>();
+            tip.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
+                    Component.translatable("createfactorycontroller.component.logical_tube.mode." + currentMode().name().toLowerCase())
+                            .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
+            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.input_connections",
+                    Component.literal(String.valueOf(nIn)).withStyle(nIn > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
+                    .withStyle(ChatFormatting.GRAY));
+            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.output_connections",
+                    Component.literal(String.valueOf(nOut)).withStyle(nOut > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
+                    .withStyle(ChatFormatting.GRAY));
             gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
             return;
         }

@@ -23,6 +23,8 @@
   "createfactorycontroller.gui.logical_tube_settings": "Logical Tube Settings",
   "createfactorycontroller.gui.logical_tube.disconnect": "Shift-click to disconnect",
   "createfactorycontroller.gui.logical_tube.reverse": "Click to reverse direction",
+  "createfactorycontroller.gui.logical_tube.input_connections": "Inputs: %1$s",
+  "createfactorycontroller.gui.logical_tube.output_connections": "Outputs: %1$s",
 
   "createfactorycontroller.gui.capacity": "Capacity",
   "createfactorycontroller.gui.zoom": "Zoom",
@@ -41,7 +43,7 @@
   "createfactorycontroller.gui.redstone_link.mode": "Redstone Link Mode",
   "createfactorycontroller.gui.redstone_link.mode.send": "Send",
   "createfactorycontroller.gui.redstone_link.mode.receive": "Receive",
-  "createfactorycontroller.gui.gauge_status.redstone_link_paused": "Paused by Redstone Link",
+  "createfactorycontroller.gui.gauge_status.redstone_paused": "Paused by Redstone Signal",
   "createfactorycontroller.gui.network_selector": "Network Selector",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",

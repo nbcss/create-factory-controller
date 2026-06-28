@@ -114,7 +114,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         // Add-connection: same icon/flow as the recipe screen's "connect input" — start board connection mode from this
         // link. The wire is stored on the link regardless of which side starts it, and its arrow follows the link's
         // Send/Receive mode (see VirtualConnectionRenderer), so this needs no direction choice here.
-        addConnectionButton = new IconButton(panelX + 52, panelY + 79, AllIcons.I_ADD);
+        addConnectionButton = new IconButton(panelX + 30, panelY + 79, AllIcons.I_ADD);
         addConnectionButton.withCallback(() -> {
             controller.beginConnectionMode(linkPos);
             Minecraft.getInstance().setScreen(controller);   // commit happens in removed()
@@ -122,7 +122,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         addWidget(addConnectionButton);
 
         ScreenElement modeIcon = (gfx, x, y) -> gfx.blitSprite(receive ? WIRELESS_RECEIVE : WIRELESS_TRANSMIT, x, y, 16, 16);
-        modeButton = new IconButton(panelX + 30, panelY + 79, modeIcon);
+        modeButton = new IconButton(panelX + 138, panelY + 79, modeIcon);
         modeButton.withCallback(() -> receive = !receive);   // staged; icon lambda reads it live
         addWidget(modeButton);
 
