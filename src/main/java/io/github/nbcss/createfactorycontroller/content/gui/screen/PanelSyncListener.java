@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 /**
  * A client screen that shows the controller's panel and therefore must refresh its cached view when a

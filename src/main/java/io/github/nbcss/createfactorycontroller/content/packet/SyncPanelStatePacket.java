@@ -3,7 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.gui.PanelSyncListener;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;

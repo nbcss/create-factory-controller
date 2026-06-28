@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllItems;
@@ -15,6 +15,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureLogicalTubePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
@@ -213,7 +214,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         RenderSystem.clear(256, Minecraft.ON_OSX);
 
         // Decorative electron tube item on the right (off-panel), like the link model.
-        GuiGameElement.of(AllItems.ELECTRON_TUBE.asStack()).scale(2.5).at(0, 0, 100).render(gfx, panelX + 206, panelY + 50);
+        GuiGameElement.of(AllItems.ELECTRON_TUBE.asStack()).scale(2.0).at(0, 0, 100).render(gfx, panelX + 206, panelY + 67);
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         addConnectionButton.render(gfx, mouseX, mouseY, partialTick);
@@ -304,7 +305,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     @Override
     public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(panelX + 196, panelY + 38, 48, 48));   // the decorative electron tube on the right
+        return List.of(new Rect2i(panelX + 196, panelY + 60, 40, 40));   // the decorative electron tube on the right
     }
 
     @Override

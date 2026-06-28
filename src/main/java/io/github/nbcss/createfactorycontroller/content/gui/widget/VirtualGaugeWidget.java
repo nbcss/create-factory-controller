@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -6,6 +6,9 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRecipeScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;

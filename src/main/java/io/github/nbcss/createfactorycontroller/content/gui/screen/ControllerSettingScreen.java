@@ -1,4 +1,6 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.screen;
+
+import io.github.nbcss.createfactorycontroller.content.gui.widget.ScrollListWindow;
 
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.AllIcons;

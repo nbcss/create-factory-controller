@@ -1,9 +1,11 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.LogicalTubeSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -53,6 +55,15 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
         LogicalTubeBehaviour.Mode mode = behaviour.getMode();
         // Mode symbol: 16×16 sprite drawn at half size (8×8), centred, tinted by the value state.
         gfx.blitSprite(sprite(mode.name().toLowerCase()), x0 + CELL / 4, y0 + CELL / 4, CELL / 2, CELL / 2);
+    }
+
+    /** Ghost = back + bare front frame only; the mode icon is configured state, so it's omitted from the preview. */
+    @Override
+    public void renderGhost(GuiGraphics gfx) {
+        int x0 = position().x() * CELL, y0 = position().y() * CELL;
+        RenderSystem.enableBlend();
+        gfx.blitSprite(sprite("back"), x0, y0, CELL, CELL);
+        gfx.blitSprite(sprite("front_off"), x0, y0, CELL, CELL);
     }
 
     @Override

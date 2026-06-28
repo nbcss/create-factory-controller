@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
@@ -16,6 +16,10 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TexturedButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -183,6 +187,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private boolean batchRelocating = false;
     @Nullable private VirtualComponentPosition batchAnchor = null;
     private int batchDx = 0, batchDy = 0;
+
+    // Pending batch relocate: after sending the move, the selection must follow the components across the old→new
+    // position transition, which can span several syncs (a pre-move/old-position sync may arrive before the move's own).
+    // rebuildGaugeWidgets re-keys the selection from these until the destinations appear (or it times out), instead of
+    // letting its retainAll drop the not-yet-present positions.
+    @Nullable private Set<VirtualComponentPosition> pendingMoveSources = null;
+    @Nullable private Set<VirtualComponentPosition> pendingMoveDestinations = null;
+    private int pendingMoveSyncs = 0;
 
     // Network selector widget
     private NetworkSelectorWidget networkSelector;
@@ -686,13 +698,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         } else if (pendingRelocateTarget != null) {
             // Relocate mode: white over a valid (empty) destination, red over an occupied cell.
-            renderTarget(graphics, hoveredPosition, hoverHasGauge ? TARGET_RED : TARGET_WHITE);
+            boolean valid = !hoverHasGauge && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            VirtualComponentBehaviour moving = componentAt(pendingRelocateTarget);
+            if (valid && moving != null) renderGhostAt(graphics, hoveredPosition, moving.getItem());   // preview at destination
         } else if (ComponentRegistry.containsItem(carried)) {
             // Holding a component: white over an empty cell (valid placement), red over an occupied cell —
             // or red anywhere if a gauge placement would fail for lack of a network (links need none).
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
-            renderTarget(graphics, hoveredPosition, (hoverHasGauge || noNetwork) ? TARGET_RED : TARGET_WHITE);
+            boolean valid = !hoverHasGauge && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // translucent preview of the placement
         } else if (!carried.isEmpty()) {
             // Holding a non-component item: white over an unconfigured gauge (sets filter) or any link (sets frequency).
             if (componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
@@ -703,6 +720,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Empty cursor: white over a hovered gauge.
             if (hoverHasGauge) renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         }
+    }
+
+    /** Draws a half-translucent preview of {@code item}'s component at {@code pos} (its back + front, as a fresh/blank
+     *  component — no bulb, filter, or other content). Built from a throwaway client behaviour and drawn in the canvas
+     *  pose, so it lands on {@code pos}. Used both for cursor placement and for relocate destinations. */
+    private void renderGhostAt(GuiGraphics graphics, VirtualComponentPosition pos, net.minecraft.world.item.Item item) {
+        VirtualComponentBehaviour ghost = ComponentRegistry.createFromItem(null, pos, item, null);
+        VirtualComponentWidget widget = ghost == null ? null : ComponentWidgetRegistry.create(ghost);
+        if (widget == null) return;
+        RenderSystem.enableBlend();   // the gauge widget doesn't enable blend itself, so the alpha below would be ignored
+        graphics.setColor(1f, 1f, 1f, 0.5f);
+        widget.renderGhost(graphics);
+        graphics.setColor(1f, 1f, 1f, 1f);
     }
 
     /** Whether a component at {@code cell} could contribute any pixel to the visible canvas rectangle
@@ -778,9 +808,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // (one that is itself moving away) draws over its green mark instead of being hidden behind it.
         if (batchRelocating && (batchDx != 0 || batchDy != 0)) {
             for (VirtualComponentPosition p : selected) {
-                if (!componentWidgets.containsKey(p)) continue;
+                VirtualComponentBehaviour moving = componentAt(p);
+                if (moving == null) continue;
                 VirtualComponentPosition to = new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy);
-                renderTarget(graphics, to, batchDestValid(to) ? TARGET_WHITE : TARGET_RED);
+                boolean valid = batchDestValid(to);
+                renderTarget(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
+                if (valid) renderGhostAt(graphics, to, moving.getItem());   // preview each moved component at its destination
             }
         }
     }
@@ -838,12 +871,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
 
         PacketDistributor.sendToServer(new BatchMoveComponentPacket(menu.controllerPos, sources, batchDx, batchDy));
-        // Keep the selection, re-anchored at the new positions (server validated identically, so this matches).
-        Set<VirtualComponentPosition> moved = new LinkedHashSet<>();
-        for (VirtualComponentPosition p : selected)
-            moved.add(new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy));
-        selected.clear();
-        selected.addAll(moved);
+        // Track the pending move so the selection follows it across syncs (see rebuildGaugeWidgets). The selection
+        // stays on the sources for now (the client hasn't moved the components yet); it snaps to the destinations the
+        // first sync that shows them. Re-anchoring eagerly here is wiped by any in-flight old-position sync.
+        pendingMoveSources = new LinkedHashSet<>(sources);
+        pendingMoveDestinations = new LinkedHashSet<>();
+        for (VirtualComponentPosition p : sources)
+            pendingMoveDestinations.add(new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy));
+        pendingMoveSyncs = 20;   // bound: a rejected/lost move can't pin the selection forever
+    }
+
+    private void clearPendingMove() {
+        pendingMoveSources = null;
+        pendingMoveDestinations = null;
+        pendingMoveSyncs = 0;
     }
 
     // ── Mouse interaction ──────────────────────────────────────────────────
@@ -1330,16 +1371,27 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return toCycle.isEmpty() ? null : toCycle.getFirst().arrowBendMode;
     }
 
-    /** Rebuilds the position→widget index from the synced component list (one widget per component type). */
+    /** Rebuilds the position→widget index from the synced component list (one widget per component, via the registry). */
     private void rebuildGaugeWidgets() {
         componentWidgets.clear();
         for (VirtualComponentBehaviour b : menu.components) {
-            if (b instanceof VirtualGaugeBehaviour gauge)
-                componentWidgets.put(gauge.position(), new VirtualGaugeWidget(gauge));
-            else if (b instanceof VirtualRedstoneLinkBehaviour link)
-                componentWidgets.put(link.position(), new VirtualRedstoneLinkWidget(link));
-            else if (b instanceof LogicalTubeBehaviour tube)
-                componentWidgets.put(tube.position(), new VirtualLogicalTubeWidget(tube));
+            VirtualComponentWidget widget = ComponentWidgetRegistry.create(b);
+            if (widget != null) componentWidgets.put(b.position(), widget);
+        }
+        // Follow a pending batch relocate across the old→new transition: keep the selection on the sources until the
+        // destinations appear, then snap to them. Without this, the retainAll below would drop the not-yet-present set
+        // (a pre-move sync prunes the new cells; the move sync then prunes the old → empty).
+        if (pendingMoveDestinations != null) {
+            if (componentWidgets.keySet().containsAll(pendingMoveDestinations)) {
+                selected.clear();
+                selected.addAll(pendingMoveDestinations);
+                clearPendingMove();
+            } else if (--pendingMoveSyncs <= 0) {
+                clearPendingMove();   // move never landed (rejected/lost) → fall through to normal retainAll
+            } else {
+                selected.clear();     // still waiting: hold the selection on the sources that remain
+                selected.addAll(pendingMoveSources);
+            }
         }
         // Drop selected cells that no longer hold a component (removed, or relocated away — possibly by another
         // player), so the selection count and marks stay in sync with the board.

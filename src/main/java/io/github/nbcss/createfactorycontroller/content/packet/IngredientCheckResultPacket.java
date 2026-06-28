@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.gui.IngredientCheckClient;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.IngredientCheckClient;
 import io.github.nbcss.createfactorycontroller.content.production.IngredientDemandResolver.Shortfall;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;

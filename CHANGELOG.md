@@ -9,6 +9,7 @@ Features:
 - Added new keybindings to relocate component and start connection
 - Gauge recipe output slot now supports up to 9 stacks of expecting product
 - If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
+- Relocate/Placing components now render component ghost
 
 Changes:
 - Request limit for unit item & stack are increased to 1000.

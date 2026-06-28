@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import com.simibubi.create.content.logistics.BigItemStack;
 import io.github.nbcss.createfactorycontroller.ClientConfig;

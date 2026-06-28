@@ -1,8 +1,9 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -28,6 +29,14 @@ public interface VirtualComponentWidget {
 
     /** Front layer (over the arrows). {@code glow} is the indicator chase value. */
     void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow);
+
+    /** Blank placement/relocate preview (back + bare front frame, no configured content). Drawn translucent by the
+     *  screen's ghost render; the caller sets the alpha. Defaults to back + front; a component whose front carries
+     *  state-dependent content (e.g. the logical tube's mode icon) overrides to omit it. */
+    default void renderGhost(GuiGraphics gfx) {
+        renderBack(gfx);
+        renderFront(gfx, -10000, -10000, 0f);   // off-screen mouse (no hover highlight), no bulb glow
+    }
 
     /** Top-most overlay (the gauge's count label), drawn AFTER the hover/selection target marks so those never cover
      *  it. {@code showCount} gates the label (full-overlay mode, or this is the hovered cell). Default: nothing. */

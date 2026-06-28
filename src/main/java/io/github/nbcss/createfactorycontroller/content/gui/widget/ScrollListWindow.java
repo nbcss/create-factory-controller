@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui;
+package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import net.minecraft.util.Mth;
 
@@ -16,16 +16,16 @@ import java.util.List;
  * <p>A marker is only ever shown when it hides <b>two or more</b> options — the window slides by whole pairs as the
  * selection moves, so a marker never wastes a line standing in for a single hidden option.</p>
  */
-final class ScrollListWindow {
+public final class ScrollListWindow {
 
     /** A {@code "> ..."} row (hidden options) rather than a concrete option index. */
-    static final int MARKER = -1;
+    public static final int MARKER = -1;
     /** Fixed option-area height (rows), markers included, whenever there are at least this many options. */
-    static final int SIZE = 7;
+    public static final int SIZE = 7;
 
     private ScrollListWindow() {}
 
-    static List<Integer> rows(int n, int selected) {
+    public static List<Integer> rows(int n, int selected) {
         List<Integer> rows = new ArrayList<>();
         if (n <= 0) return rows;
 

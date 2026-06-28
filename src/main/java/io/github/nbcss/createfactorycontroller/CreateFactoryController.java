@@ -4,7 +4,7 @@ import com.simibubi.create.AllCreativeModeTabs;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlock;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.gui.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;

@@ -1,8 +1,8 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import io.github.nbcss.createfactorycontroller.content.gui.ConfigureRecipeScreen;
-import io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRecipeScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 
