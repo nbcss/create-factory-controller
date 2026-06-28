@@ -53,8 +53,10 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     private static final ResourceLocation PANEL_TEX =   // TEMP: reuse the redstone-link panel texture
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/logical_tube.png");
-    private static final ResourceLocation LOGIC_GATE_ICONS =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/logic_gates");
+    private static final ResourceLocation MODE_BUTTON_ICON_PREFIX =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/logic_gates/");
+    private static final ResourceLocation LOGIC_GATE_ICON_PREFIX =
+            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/logical_tube/");
     private static final int PANEL_W = 200, PANEL_H = 103;
 
     private static final int CELL = 16;
@@ -122,7 +124,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     }
 
     private static ScreenElement modeButtonIcon(LogicalTubeBehaviour.Mode mode) {
-        ResourceLocation icon = LOGIC_GATE_ICONS.withSuffix("/" + mode.name().toLowerCase());
+        ResourceLocation icon = MODE_BUTTON_ICON_PREFIX.withSuffix(mode.name().toLowerCase());
         return (gfx, x, y) -> gfx.blitSprite(icon, x, y, 16, 16);
     }
 
@@ -202,6 +204,11 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         renderConnections(gfx, inputs, outputs);    // then wires (above backs, below fronts)
         renderIconFronts(gfx, inputs, outputs, mouseX, mouseY);   // fronts cover the arrow ends
 
+        // Logic gate at center
+        gfx.blitSprite(
+                LOGIC_GATE_ICON_PREFIX.withSuffix(currentMode().name().toLowerCase()),
+                cellScreenX(TUBE_COL), cellScreenY(MID_ROW), 16 ,16);
+
         gfx.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);
 
@@ -251,7 +258,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             backAt(gfx, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)));
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
             backAt(gfx, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)));
-        backAt(gfx, tubePos, cellScreenX(TUBE_COL), cellScreenY(MID_ROW));
     }
 
     private void renderIconFronts(GuiGraphics gfx, List<Connection> inputs, List<Connection> outputs, int mouseX, int mouseY) {
@@ -259,10 +265,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             frontAt(gfx, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
             frontAt(gfx, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
-        // Centre slot: the tube's own canvas front (live mode + powered visual), reused like every other slot.
-        VirtualComponentWidget tubeWidget = controller.componentWidgetAt(tubePos);
-        if (tubeWidget != null) atSlot(gfx, tubeWidget, cellScreenX(TUBE_COL), cellScreenY(MID_ROW),
-                () -> tubeWidget.renderFront(gfx, -10000, -10000, 1f));
     }
 
     private void backAt(GuiGraphics gfx, VirtualComponentPosition pos, int x, int y) {
@@ -293,7 +295,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     @Override
     protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         Component title = getTitle();
-        gfx.drawString(font, title, panelX + PANEL_W / 2 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
+        gfx.drawString(font, title, panelX + PANEL_W / 2 - font.width(title) / 2, panelY + 4, 0x741A41, false);
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 
