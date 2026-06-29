@@ -81,6 +81,13 @@ public interface VirtualComponentBehaviour {
         return new ItemStack(getItem()).getHoverName();
     }
 
+    /** Extra info lines describing this component's current config (a gauge's monitored item, a link's frequencies +
+     *  mode, a tube's mode). Shown under the component name in tooltips (e.g. the Logical Tube screen's connection
+     *  slots). Empty by default. */
+    default List<Component> infoTooltip() {
+        return List.of();
+    }
+
     // ── Lifecycle ───────────────────────────────────────────────────────────
 
     /** Called on every component at the very start of the controller tick, <b>before</b> any connection settle.

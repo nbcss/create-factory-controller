@@ -1,30 +1,20 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
-import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
-import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
-import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.createmod.catnip.animation.AnimationTickHolder;
-import net.createmod.catnip.theme.Color;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.util.Mth;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -83,40 +73,9 @@ public final class VirtualConnectionRenderer {
         }
     }
 
-    // Flash mix targets (Create's renderPath): on each request attempt the line flashes toward whitish
-    // if the source can supply, or red if it can't. The flash decays over FLASH_DECAY ticks from the
-    // gauge's last-attempt tick, so it pulses once per request (cooldown), not continuously.
-    private static final int FLASH_OK   = 0xEAF2EC;
-    private static final int FLASH_FAIL = 0xE5654B;
-    private static final float FLASH_DECAY = 8f;   // ticks for the attempt flash to fade out
-
-    /**
-     * Draws every incoming connection in the panel. Call inside the canvas scissor, before the
-     * components are drawn, so the gauge icons sit on top of the line ends.
-     *
-     * <p>A connection whose source/target cells span a rectangle that doesn't overlap the visible canvas rectangle
-     * {@code [minX,maxX]×[minY,maxY]} (canvas-world px) is skipped — its whole grid path (any bend included) stays
-     * inside that rectangle, so it can contribute nothing on screen.</p>
-     */
-    public static void renderConnections(GuiGraphics gfx, FactoryControllerMenu menu,
-                                         int minX, int minY, int maxX, int maxY) {
-        Set<VirtualComponentPosition> occupied = new HashSet<>();
-        Map<VirtualComponentPosition, VirtualComponentBehaviour> byPos = new HashMap<>();
-        for (VirtualComponentBehaviour c : menu.components) {
-            occupied.add(c.position());
-            byPos.put(c.position(), c);
-        }
-        for (VirtualComponentBehaviour sink : menu.components) {
-            for (Connection conn : sink.targetedBy().values()) {
-                if (!spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
-                drawConnection(gfx, menu, conn, byPos.get(conn.from), byPos.get(conn.to), occupied);
-            }
-        }
-    }
-
     /** Whether the cell-bounding rectangle of the two connection ends overlaps the visible canvas rectangle. */
-    private static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b,
-                                       int minX, int minY, int maxX, int maxY) {
+    public static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b,
+                                      int minX, int minY, int maxX, int maxY) {
         int x0 = Math.min(a.x(), b.x()) * CELL;
         int y0 = Math.min(a.y(), b.y()) * CELL;
         int x1 = (Math.max(a.x(), b.x()) + 1) * CELL;
@@ -125,55 +84,29 @@ public final class VirtualConnectionRenderer {
     }
 
     /**
-     * Draws one grid-following connection. The stored {@code conn.from -> conn.to} direction is the signal/item flow;
-     * redstone link mode changes rewrite that direction in the graph instead of being special-cased here.
+     * Resolves the cell-space path for {@code conn}, or {@code null} if the endpoints are identical.
+     * Auto bend (-1) tries the four modes in canonical order and picks the first clear path.
      */
-    private static void drawConnection(GuiGraphics gfx,
-                                       ComponentHolder holder, Connection conn,
-                                       VirtualComponentBehaviour source,
-                                       VirtualComponentBehaviour sink,
-                                       Set<VirtualComponentPosition> occupied) {
-        VirtualComponentPosition from = conn.from;
-        VirtualComponentPosition to = conn.to;
-        if (from.equals(to)) return;
+    @Nullable
+    public static List<Vector2i> resolvePath(Connection conn, Set<VirtualComponentPosition> occupied) {
+        VirtualComponentPosition from = conn.from, to = conn.to;
+        if (from.equals(to)) return null;
 
-        // Resolve the bend mode. Auto (-1) mirrors Create: try the four modes in order and use the
-        // first whose path runs through no other component cell; if all are blocked, fall to V→H.
+        assert Minecraft.getInstance().level != null;
+
         int mode;
         if (conn.arrowBendMode < 0) {
-            // Resolve auto on a canonical (flow-direction-independent) endpoint order, then translate back to from→to,
-            // so flipping a redstone wire's direction doesn't reshape its path — only the arrowhead flips.
             boolean swap = from.x() > to.x() || (from.x() == to.x() && from.y() > to.y());
             VirtualComponentPosition pa = swap ? to : from, pb = swap ? from : to;
             int m = 0;
             for (int k = 0; k < 4; k++) {
                 if (pathClear(buildCellPath(pa, pb, k), occupied, pa, pb)) { m = k; break; }
             }
-            mode = !swap ? m : (m == 0 ? 1 : m == 1 ? 0 : m);   // translate canonical mode → from→to orientation
+            mode = !swap ? m : (m == 0 ? 1 : m == 1 ? 0 : m);
         } else {
             mode = conn.arrowBendMode % 4;
         }
-
-        List<Vector2i> path = new ArrayList<>(buildCellPath(from, to, mode));
-
-        assert Minecraft.getInstance().level != null;
-
-        int color = conn.getConnectionColor(holder);
-        long animationTick = conn.getAnimationTick(holder);
-        boolean animated = animationTick >= 0;
-        if (animated) {
-            // Flash once per request attempt, decaying from the gauge's last-attempt tick.
-            float age = animationTick + AnimationTickHolder.getPartialTicks();
-            float glow = Mth.clamp(1f - age / FLASH_DECAY, 0f, 1f);
-            if (glow > 0f) {
-                float p = 1f - (1f - glow) * (1f - glow);
-                boolean success = conn instanceof LogisticsConnection lc && lc.success;
-                color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
-            }
-        }
-        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
-        drawPathSegments(gfx, path, animated);
-        gfx.setColor(1f, 1f, 1f, 1f);
+        return new ArrayList<>(buildCellPath(from, to, mode));
     }
 
     /** Draws a static connection {@code path} (cell waypoints) in {@code color} (0xRRGGBB) — for the Logical Tube

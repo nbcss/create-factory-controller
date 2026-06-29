@@ -7,6 +7,11 @@
   "createfactorycontroller.tooltip.configured_controller": "Controller configured",
 
   "createfactorycontroller.connection.connected": "Connect %1$s to %2$s",
+  "createfactorycontroller.connection.type.logistics": "Logistics Connection",
+  "createfactorycontroller.connection.type.redstone": "Redstone Connection",
+  "createfactorycontroller.connection.overlapping": "Overlapping %s",
+  "createfactorycontroller.connection.scroll_hint": "Shift-Scroll to cycle",
+  "createfactorycontroller.connection.cycle_arrow": "Arrow path mode %s",
 
   "createfactorycontroller.display_source.factory_controller_pending_orders": "Pending Orders",
 
@@ -45,9 +50,13 @@
   "createfactorycontroller.gui.redstone_link.mode.receive": "Receive",
   "createfactorycontroller.gui.gauge_status.redstone_paused": "Paused by Redstone Signal",
   "createfactorycontroller.gui.network_selector": "Network Selector",
+  "createfactorycontroller.gui.network_selector_no_network_tip": "Place first tuned gauge to active",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
   "createfactorycontroller.gui.mode_prefix": "Mode: %1$s",
+  "createfactorycontroller.gui.info.monitoring": "Monitoring: %1$s",
+  "createfactorycontroller.gui.info.frequency": "Freq #%1$s: %2$s",
+  "createfactorycontroller.gui.info.none": "—",
   "createfactorycontroller.gui.action_configure": "Click to configure",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
   "createfactorycontroller.gui.threshold.auto_managed": "Auto managed on demand",

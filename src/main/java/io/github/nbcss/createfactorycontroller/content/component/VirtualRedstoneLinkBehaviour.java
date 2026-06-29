@@ -101,6 +101,27 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override public int getColor() { return 0xFC8068; }
 
+    /** Info lines: the two type frequencies and the current Send/Receive mode. */
+    @Override
+    public java.util.List<net.minecraft.network.chat.Component> infoTooltip() {
+        return java.util.List.of(
+            freqLine(1, redFreq),
+            freqLine(2, blueFreq),
+            net.minecraft.network.chat.Component.translatable("createfactorycontroller.gui.mode_prefix",
+                net.minecraft.network.chat.Component.translatable(receive
+                        ? "createfactorycontroller.gui.redstone_link.mode.receive"
+                        : "createfactorycontroller.gui.redstone_link.mode.send").withStyle(ChatFormatting.WHITE))
+                .withStyle(ChatFormatting.GRAY));
+    }
+
+    private static net.minecraft.network.chat.Component freqLine(int index, ItemStack freq) {
+        net.minecraft.network.chat.Component value = freq.isEmpty()
+            ? net.minecraft.network.chat.Component.translatable("createfactorycontroller.gui.info.none")
+            : freq.getHoverName().copy();
+        return net.minecraft.network.chat.Component.translatable("createfactorycontroller.gui.info.frequency",
+                index, value.copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY);
+    }
+
     /** A link speaks REDSTONE only; its mode is decisive for direction (RECEIVE drives gauges = SOURCE, SEND reads
      *  them = SINK), so a wired gauge follows the link. */
     @Override

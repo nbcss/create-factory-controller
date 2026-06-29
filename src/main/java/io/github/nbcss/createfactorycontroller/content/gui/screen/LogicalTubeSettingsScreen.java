@@ -290,7 +290,11 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     }
 
     private static void highlight(GuiGraphics gfx, int x, int y) {
+        // Above the slot's item/icon (rendered at z≈150 by renderItem), so the hover cover sits on top of it.
+        gfx.pose().pushPose();
+        gfx.pose().translate(0, 0, 300);
         gfx.fill(x, y, x + CELL, y + CELL, 0x80FFFFFF);
+        gfx.pose().popPose();
     }
 
     @Override
@@ -315,8 +319,10 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         if (hovered != null) {
             VirtualComponentBehaviour partner = menu.componentAt(isOutputSlot(mouseX, mouseY) ? hovered.to : hovered.from);
             List<Component> tip = new ArrayList<>();
-            if (partner != null)
+            if (partner != null) {
                 tip.add(partner.getName().copy().withColor(partner.getColor()));
+                tip.addAll(partner.infoTooltip());   // component-specific info (monitored item / frequencies+mode / mode)
+            }
             if (canReverse(hovered))   // click = reverse (only when legal — a link wire can't)
                 tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse").withStyle(ChatFormatting.GRAY));
             tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.disconnect")

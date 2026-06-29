@@ -259,6 +259,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return filter.isEmpty() ? ItemStack.EMPTY.getHoverName() : FluidCompat.filterName(filter);
     }
 
+    /** Info line: the monitored filter item (omitted when no filter is set). */
+    @Override
+    public List<Component> infoTooltip() {
+        if (filter.isEmpty()) return List.of();
+        return List.of(Component.translatable("createfactorycontroller.gui.info.monitoring",
+                FluidCompat.filterName(filter).copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
+    }
+
     /** A gauge outputs/accepts item-fluid ingredients (LOGISTICS) and is read/gated by redstone (REDSTONE); both
      *  types defer their direction (BOTH), so a wired link's mode dictates the redstone arrow. */
     @Override

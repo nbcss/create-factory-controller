@@ -232,6 +232,10 @@ public class NetworkSelectorWidget extends AbstractWidget {
             lines.add(Component.literal(selected ? "-> " : "> ").append(entryName(e)).withStyle(color));
         }
 
+        if (menu.knownNetworks.isEmpty())
+            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_no_network_tip")
+                    .withStyle(ChatFormatting.RED));
+
         if (heldComponent().isEmpty()) {
             lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_highlight_tip")
                     .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));

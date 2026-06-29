@@ -25,6 +25,7 @@
   "createfactorycontroller.gui.redstone_link.mode.receive": "接收",
   "createfactorycontroller.gui.gauge_status.redstone_link_paused": "被红石信号终端暂停",
   "createfactorycontroller.gui.network_selector": "网络选择器",
+  "createfactorycontroller.gui.network_selector_no_network_tip": "放置首个已调谐的工厂仪表以启用",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "滚动以高亮组件",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "滚动以设定网络",
   "createfactorycontroller.gui.action_remove_component": "按住 Shift 点击以移除",

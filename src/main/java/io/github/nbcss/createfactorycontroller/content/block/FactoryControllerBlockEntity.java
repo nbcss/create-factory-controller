@@ -532,6 +532,16 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         sendData();
     }
 
+    /** Cycles one specific wire's arrow-bend mode through the four fixed bends (0 → 1 → 2 → 3 → 0; auto excluded, and
+     *  exited on the first press). Purely visual, so (like {@link #cycleArrowMode}) it only re-syncs — no re-fold/settle. */
+    public void cycleConnectionArrowMode(VirtualComponentPosition from, VirtualComponentPosition to) {
+        Connection conn = connectionGraph.get(from, to);
+        if (conn == null) return;
+        conn.arrowBendMode = (conn.arrowBendMode + 1) % 4;   // auto (-1) → 0 on the first press
+        setChanged();
+        sendData();
+    }
+
     /** Swaps the direction of the wire {@code from → to} (→ {@code to → from}), if the reversed orientation is legal
      *  (rejected for a redstone link, whose role fixes direction) and doesn't collide with an existing {@code to → from}
      *  edge. {@code connectionGraph.reverse} keeps the rendered path shape stable (only the arrow flips). */

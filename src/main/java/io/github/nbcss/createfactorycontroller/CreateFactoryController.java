@@ -221,6 +221,7 @@ public class CreateFactoryController {
         registrar.playToServer(DisconnectIngredientPacket.TYPE, DisconnectIngredientPacket.STREAM_CODEC, DisconnectIngredientPacket::handle);
         registrar.playToServer(DisconnectLinksPacket.TYPE, DisconnectLinksPacket.STREAM_CODEC, DisconnectLinksPacket::handle);
         registrar.playToServer(CycleArrowModePacket.TYPE, CycleArrowModePacket.STREAM_CODEC, CycleArrowModePacket::handle);
+        registrar.playToServer(CycleConnectionArrowModePacket.TYPE, CycleConnectionArrowModePacket.STREAM_CODEC, CycleConnectionArrowModePacket::handle);
         registrar.playToServer(CycleOperationModePacket.TYPE, CycleOperationModePacket.STREAM_CODEC, CycleOperationModePacket::handle);
         registrar.playToServer(ReverseConnectionPacket.TYPE, ReverseConnectionPacket.STREAM_CODEC, ReverseConnectionPacket::handle);
         registrar.playToServer(ConfigureLogicalTubePacket.TYPE, ConfigureLogicalTubePacket.STREAM_CODEC, ConfigureLogicalTubePacket::handle);

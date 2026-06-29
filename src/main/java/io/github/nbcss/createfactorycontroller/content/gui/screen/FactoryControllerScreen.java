@@ -17,10 +17,12 @@ import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TexturedButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
+import io.github.nbcss.createfactorycontroller.content.packet.CycleConnectionArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -33,6 +35,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacke
 import io.github.nbcss.createfactorycontroller.content.packet.AttachComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.BatchMoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RenameControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RetuneCarriedPacket;
 import net.minecraft.client.KeyMapping;
@@ -157,6 +160,25 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // Interaction state
     @Nullable private VirtualComponentPosition hoveredPosition = null;
+    // The connection currently hovered/highlighted (resolved fresh each frame from the persistent selection below).
+    @Nullable private ConnectionWidget hoveredConn = null;
+    // Persistent identity of the chosen wire across frames: the ConnectionWidgets are rebuilt every frame, but the
+    // underlying Connection refs are stable between syncs, so the hover survives hit-set changes (see reconcileConnectionSelection).
+    @Nullable private Connection selectedConnection = null;
+    // All wires under the cursor this frame (after carried-item / pass-through filters), in stable order. Drives the
+    // tooltip box count/index and shift+scroll cycling.
+    private final List<ConnectionWidget> hoverHits = new ArrayList<>();
+    // Wall-clock ms when the current continuous connection-hover began; 0 ⇒ not hovering any wire. Accumulates across
+    // mouse movement and connection switches, resets only when the hit set goes empty.
+    private long connHoverSinceMs = 0;
+    private static final long CONN_TOOLTIP_DELAY_MS = 500;
+    // Arrow-mode lock: pressing the cycle-arrow key on the selected wire pins it (its path may reshape off the cursor),
+    // keeping it selected until the cursor moves. While locked, shift+scroll is a no-op and the tooltip shows the
+    // arrow-mode boxes instead of the overlap selector. lockMouse* is the cursor position captured when locking.
+    private boolean connArrowLocked = false;
+    private int lockMouseX, lockMouseY;
+    // Last cursor position seen by render(), so keyPressed (which has no mouse coords) can capture the lock anchor.
+    private int lastMouseX, lastMouseY;
 
     private final Map<VirtualComponentPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
 
@@ -413,12 +435,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
+        lastMouseX = mouseX;   // remembered so keyPressed (no mouse coords) can anchor the arrow-mode lock
+        lastMouseY = mouseY;
         super.render(graphics, mouseX, mouseY, partialTick);
-        VirtualComponentWidget hovered = componentWidgetAt(hoveredPosition);
+        VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
         // No hover tooltips while a selection drag (rubber-band rectangle or batch relocate) is in progress.
         boolean selectionDragging = rubberBanding || batchRelocating;
         if (pendingConnectionTarget == null && pendingRelocateTarget == null && !selectionDragging) {
-            if (hovered != null)
+            if (hoveredConn != null) {
+                // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
+                if (Util.getMillis() - connHoverSinceMs >= CONN_TOOLTIP_DELAY_MS)
+                    graphics.renderComponentTooltip(font, connectionTooltipLines(), mouseX, mouseY);
+            } else if (hovered != null)
                 graphics.renderComponentTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
             else if (networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
@@ -535,18 +563,46 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (isCellVisible(component.position(), minX, minY, maxX, maxY))
                 component.renderBack(graphics);
 
-        VirtualConnectionRenderer.renderConnections(graphics, menu, minX, minY, maxX, maxY);
-
-        boolean fullOverlay = ClientConfig.fullOverlay();
+        // Build connection widgets, find the hovered one, then do the layered draw:
+        //   pass 1 — all non-hovered connections
+        //   pass 2 — hovered white highlight then hovered connection on top
+        // All three passes happen before renderFront so component fronts naturally sit above connections.
+        List<ConnectionWidget> connWidgets = buildConnectionWidgets(minX, minY, maxX, maxY);
         // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
         double worldMouseX = viewX + (mouseX - centerX) / getZoomFactor();
         double worldMouseY = viewY + (mouseY - centerY) / getZoomFactor();
+        // A cursor move releases the arrow-mode lock (so the pinned wire goes back to normal hover resolution).
+        if (connArrowLocked && (mouseX != lockMouseX || mouseY != lockMouseY)) connArrowLocked = false;
+
+        hoverHits.clear();
+        boolean carrying = !menu.getCarried().isEmpty();   // holding an item skips connection hover entirely
+        boolean overComponent = componentWidgetAt(hoveredPosition) != null;
+        // No connection hover while dragging a selection rectangle or a batch relocate.
+        if (isInCanvasArea(mouseX, mouseY) && !carrying && !rubberBanding && !batchRelocating
+                && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+            for (ConnectionWidget w : connWidgets) {
+                // A component sitting on a cell this wire merely passes through wins the hover; but a wire is still
+                // hoverable inside its own endpoint cells (the only place a short adjacent-pair wire exists).
+                if (overComponent && !hoveredPosition.equals(w.connection.from)
+                                  && !hoveredPosition.equals(w.connection.to)) continue;
+                if (w.hitTest(worldMouseX, worldMouseY)) hoverHits.add(w);
+            }
+        }
+        hoveredConn = reconcileConnectionSelection(connWidgets);
+        for (ConnectionWidget w : connWidgets)
+            if (w != hoveredConn) w.render(graphics, menu);
+        if (hoveredConn != null) {
+            hoveredConn.renderHighlight(graphics);
+            hoveredConn.render(graphics, menu);
+        }
+
+        boolean fullOverlay = ClientConfig.fullOverlay();
         for (VirtualComponentWidget component : componentWidgets.values())
             if (isCellVisible(component.position(), minX, minY, maxX, maxY))
                 component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
 
         renderSelectedNetworkMask(graphics);
-        renderHoverTarget(graphics);
+        if (hoveredConn == null) renderHoverTarget(graphics);
         renderSelectionTargets(graphics);
 
         // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
@@ -645,6 +701,50 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
+    /**
+     * Resolves which wire is hovered this frame from {@link #hoverHits}, keeping {@link #selectedConnection} stable:
+     * the selection is retained as long as it's still under the cursor, falling to the first hit only when it drops
+     * out of the hit set. Also drives the {@link #connHoverSinceMs} tooltip timer (started on first hover, reset only
+     * when nothing is hovered). Returns the matching widget, or {@code null} when no wire is hovered.
+     */
+    @Nullable
+    private ConnectionWidget reconcileConnectionSelection(List<ConnectionWidget> connWidgets) {
+        // Arrow-mode lock: keep the pinned wire selected even if its (reshaped) path no longer sits under the cursor,
+        // resolving it from all visible wires rather than just the hit set. Released on cursor move (see renderBoard).
+        if (connArrowLocked && selectedConnection != null) {
+            for (ConnectionWidget w : connWidgets)
+                if (sameConnection(w.connection, selectedConnection)) return w;
+            connArrowLocked = false;   // the wire is gone (e.g. removed) → drop the lock and fall through
+        }
+        if (hoverHits.isEmpty()) {
+            selectedConnection = null;
+            connHoverSinceMs = 0;
+            return null;
+        }
+        ConnectionWidget keep = null;
+        for (ConnectionWidget w : hoverHits)
+            if (sameConnection(w.connection, selectedConnection)) { keep = w; break; }
+        if (keep == null) keep = hoverHits.getFirst();
+        selectedConnection = keep.connection;
+        if (connHoverSinceMs == 0) connHoverSinceMs = Util.getMillis();
+        return keep;
+    }
+
+    /** Value identity for a wire, stable across panel syncs (which replace the {@link Connection} instances): a wire is
+     *  uniquely identified by its kind and its two endpoints. */
+    private static boolean sameConnection(@Nullable Connection a, @Nullable Connection b) {
+        return a != null && b != null && a.type.equals(b.type) && a.from.equals(b.from) && a.to.equals(b.to);
+    }
+
+    /** Tooltip lines for the hovered wire — the widget owns the format; we supply the overlap count and selected index. */
+    private List<Component> connectionTooltipLines() {
+        int count = hoverHits.size();
+        int sel = 0;
+        for (int i = 0; i < count; i++)
+            if (sameConnection(hoverHits.get(i).connection, selectedConnection)) { sel = i; break; }
+        return hoveredConn.getTooltip(count, sel, connArrowLocked);
+    }
+
     /** Caller is responsible for any z-translation (see renderBg). */
     private void renderInventoryBackground(GuiGraphics gfx) {
         int texX    = leftPos + invOriginX - INV_TEX_SLOT_LEFT;
@@ -699,17 +799,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         } else if (pendingRelocateTarget != null) {
             // Relocate mode: white over a valid (empty) destination, red over an occupied cell.
             boolean valid = !hoverHasGauge && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
-            renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
             VirtualComponentBehaviour moving = componentAt(pendingRelocateTarget);
-            if (valid && moving != null) renderGhostAt(graphics, hoveredPosition, moving.getItem());   // preview at destination
+            if (valid && moving != null) renderGhostAt(graphics, hoveredPosition, moving.getItem());   // ghost under the target
+            renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (ComponentRegistry.containsItem(carried)) {
             // Holding a component: white over an empty cell (valid placement), red over an occupied cell —
             // or red anywhere if a gauge placement would fail for lack of a network (links need none).
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
             boolean valid = !hoverHasGauge && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
-            renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
-            if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // translucent preview of the placement
+            if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
+            renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
             // Holding a non-component item: white over an unconfigured gauge (sets filter) or any link (sets frequency).
             if (componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
@@ -756,6 +856,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.disableBlend();
     }
 
+    /** Same as {@link #renderTarget} but pushed to a higher z, so the reticle sits ON TOP of the translucent
+     *  placement/relocate ghost (both otherwise draw at z 0, where blitSprite ordering doesn't reliably win). */
+    private void renderTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 200);
+        renderTarget(graphics, pos, rgb);
+        graphics.pose().popPose();
+    }
+
     // ── Selection mode ───────────────────────────────────────────────────────
 
     /** Drops all selected components (and any in-progress selection drag). Client-only; called when a controller
@@ -796,9 +905,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Green mark on selected components; white/red ghosts during a batch drag; and a live green preview of every
      *  component currently inside the rubber-band rectangle while drag-selecting. */
     private void renderSelectionTargets(GuiGraphics graphics) {
+        // A plain (non-Selection-Mode) drag replaces the selection, so don't preview the prior marks — they're about
+        // to be cleared; only the rectangle's contents below should read as selected.
+        boolean replacing = rubberBanding && rubberMoved && !rubberCtrl;
         // Green selected marks first...
-        for (VirtualComponentPosition p : selected)
-            if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
+        if (!replacing)
+            for (VirtualComponentPosition p : selected)
+                if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
         if (rubberBanding && rubberMoved) {   // live preview: components the drag would select show the mark too
             int[] box = rubberCellBox();
             for (VirtualComponentPosition p : componentWidgets.keySet())
@@ -812,13 +925,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 if (moving == null) continue;
                 VirtualComponentPosition to = new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy);
                 boolean valid = batchDestValid(to);
-                renderTarget(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
-                if (valid) renderGhostAt(graphics, to, moving.getItem());   // preview each moved component at its destination
+                if (valid) renderGhostAt(graphics, to, moving.getItem());   // ghost under the target...
+                renderTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);   // ...reticle on top
             }
         }
     }
 
-    /** Adds every component whose cell lies within the rubber-band rectangle to the selection (additive). */
+    /** Adds every component whose cell lies within the rubber-band rectangle to the selection (the caller clears first
+     *  for a replace-drag; a Selection-Mode drag keeps the prior selection so this stays additive). */
     private void selectInRect() {
         int[] box = rubberCellBox();
         for (VirtualComponentPosition p : componentWidgets.keySet())
@@ -835,14 +949,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             : null;
     }
 
-    /** The selection count, including the live rubber-band rectangle contents while drag-selecting. */
+    /** The selection count, including the live rubber-band rectangle contents while drag-selecting. A plain drag
+     *  replaces the selection, so it counts only the rectangle; a Selection-Mode drag counts the union with the prior. */
     private int effectiveSelectedCount() {
         if (!rubberBanding || !rubberMoved) return selected.size();
-        Set<VirtualComponentPosition> union = new LinkedHashSet<>(selected);
+        Set<VirtualComponentPosition> result = rubberCtrl ? new LinkedHashSet<>(selected) : new LinkedHashSet<>();
         int[] box = rubberCellBox();
         for (VirtualComponentPosition p : componentWidgets.keySet())
-            if (inBox(box, p)) union.add(p);
-        return union.size();
+            if (inBox(box, p)) result.add(p);
+        return result.size();
     }
 
     /** A selection-mode click that didn't drag: toggle the component under the cursor, or clear all on empty space. */
@@ -1043,6 +1158,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualComponentWidget widget = componentWidgetAt(clicked);
             boolean leftOrRight = button == 0 || button == 1;
 
+            // Shift-click on a hovered wire removes it (takes priority over selection / rubber-band / placement, which
+            // is consistent with the hover already suppressing component interaction).
+            if (hoveredConn != null && leftOrRight && hasShiftDown()) {
+                PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos,
+                        hoveredConn.connection.from, hoveredConn.connection.to));
+                selectedConnection = null;   // it's gone; let the hover re-resolve next frame
+                playWrenchSound();
+                return true;
+            }
+
             boolean ctrl = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
             if (button == 0 && carried.isEmpty() && pendingConnectionTarget == null && pendingRelocateTarget == null
                     && (ctrl || widget == null)) {
@@ -1075,8 +1200,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Selection handling
-            if (leftOrRight && widget != null) {
+            // Selection handling — suppressed when hovering a connection (connection takes priority).
+            if (leftOrRight && widget != null && hoveredConn == null) {
                 double worldX = viewX + (mouseX - centerX) / getZoomFactor();
                 double worldY = viewY + (mouseY - centerY) / getZoomFactor();
                 if (hasShiftDown()) {
@@ -1139,7 +1264,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (button == 0 && rubberBanding) {
             rubberBanding = false;
             if (rubberMoved) {
-                selectInRect();                     // a drag → additive rectangle select
+                // A drag merges with the existing selection only while the Selection-Mode key is held; a plain drag
+                // replaces it (clear first).
+                if (!rubberCtrl) selected.clear();
+                selectInRect();
             } else if (rubberCtrl) {
                 toggleOrClearAt(mouseX, mouseY);    // a Ctrl click → toggle the component, or clear on empty
             } else {
@@ -1171,8 +1299,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerY = (y0 + y1) / 2;
 
             // Shift+scroll over the canvas (the inventory panel and selector are already excluded by
-            // isInCanvasArea) changes the network selection instead of zooming.
+            // isInCanvasArea): cycle the selected wire when hovering connections, else change the network selection.
             if (hasShiftDown()) {
+                // A scroll releases the arrow-mode lock; reconcile then resolves the tooltip to the hovered wire.
+                if (connArrowLocked) { connArrowLocked = false; return true; }
+                if (!hoverHits.isEmpty()) {
+                    int idx = 0;
+                    for (int i = 0; i < hoverHits.size(); i++)
+                        if (sameConnection(hoverHits.get(i).connection, selectedConnection)) { idx = i; break; }
+                    idx = Math.floorMod(idx + (int) Math.signum(-scrollY), hoverHits.size());
+                    selectedConnection = hoverHits.get(idx).connection;   // timer keeps running across the switch
+                    return true;
+                }
                 networkSelector.scrollSelection(scrollY);
                 return true;
             }
@@ -1336,17 +1474,31 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        if (CreateFactoryControllerClient.CYCLE_ARROW_MODE.matches(keyCode, scanCode) && hover != null) {
-            Integer mode = outgoingArrowBendMode(hoveredPosition);
-            if (mode != null) {
-                char[] dots = {'□', '□', '□', '□'};   // □□□□
-                dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
-                setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
-                        .style(ChatFormatting.WHITE).component(), 3000);
+        if (CreateFactoryControllerClient.CYCLE_ARROW_MODE.matches(keyCode, scanCode)) {
+            // A selected wire takes priority: cycle just that wire through all 5 bend modes (auto included), and lock it
+            // so a reshaped path that moves off the cursor stays selected until the cursor moves.
+            if (hoveredConn != null) {
+                connArrowLocked = true;
+                lockMouseX = lastMouseX;
+                lockMouseY = lastMouseY;
                 playWrenchSound();
-                PacketDistributor.sendToServer(new CycleArrowModePacket(menu.controllerPos, hoveredPosition));
+                PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
+                        hoveredConn.connection.from, hoveredConn.connection.to));
+                return true;
             }
-            return true;
+            // Otherwise fall back to the hovered component's outgoing wires (shared 4-mode cycle, auto excluded).
+            if (hover != null) {
+                Integer mode = outgoingArrowBendMode(hoveredPosition);
+                if (mode != null) {
+                    char[] dots = {'□', '□', '□', '□'};   // □□□□
+                    dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
+                    setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
+                            .style(ChatFormatting.WHITE).component(), 3000);
+                    playWrenchSound();
+                    PacketDistributor.sendToServer(new CycleArrowModePacket(menu.controllerPos, hoveredPosition));
+                }
+                return true;
+            }
         }
 
         if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode) && hover != null) {
@@ -1369,6 +1521,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (self == null) return null;
         List<Connection> toCycle = self.connectionsToCycle();
         return toCycle.isEmpty() ? null : toCycle.getFirst().arrowBendMode;
+    }
+
+    /** Builds a {@link ConnectionWidget} for every visible incoming connection this frame. */
+    private List<ConnectionWidget> buildConnectionWidgets(int minX, int minY, int maxX, int maxY) {
+        Set<VirtualComponentPosition> occupied = new java.util.HashSet<>();
+        for (VirtualComponentWidget w : componentWidgets.values()) occupied.add(w.position());
+
+        List<ConnectionWidget> result = new ArrayList<>();
+        for (VirtualComponentWidget sink : componentWidgets.values()) {
+            for (var conn : sink.behaviour().targetedBy().values()) {
+                if (!VirtualConnectionRenderer.spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
+                List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(conn, occupied);
+                if (path != null) result.add(new ConnectionWidget(conn, path));
+            }
+        }
+        return result;
     }
 
     /** Rebuilds the position→widget index from the synced component list (one widget per component, via the registry). */

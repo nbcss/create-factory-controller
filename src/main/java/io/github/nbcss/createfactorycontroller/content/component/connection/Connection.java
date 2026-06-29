@@ -9,6 +9,8 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBeh
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -96,7 +98,7 @@ public abstract class Connection {
      */
     public static abstract class Type {
         /** Item/fluid ingredient flow (gauge → gauge). */
-        public static final Type LOGISTICS = new Type("LOGISTICS") {
+        public static final Type LOGISTICS = new Type("LOGISTICS", 0x87FF87) {
             @Override
             public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
                 int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;
@@ -120,7 +122,7 @@ public abstract class Connection {
             }
         };
         /** Boolean gating / state signal. */
-        public static final Type REDSTONE = new Type("REDSTONE") {
+        public static final Type REDSTONE = new Type("REDSTONE", 0xFC8068) {
             @Override
             public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
                 return new RedstoneConnection(source.position(), sink.position());
@@ -133,12 +135,22 @@ public abstract class Connection {
         };
 
         private final String name;
+        private final int color;   // tooltip-title colour for this wire kind (0xRRGGBB)
 
-        private Type(String name) {
+        private Type(String name, int color) {
             this.name = name;
+            this.color = color;
         }
 
         public String name() { return name; }
+
+        public int color() { return color; }
+
+        /** Short, human-readable name for this wire kind (kind-coloured), shown in the connection hover tooltip. */
+        public Component displayName() {
+            return Component.translatable("createfactorycontroller.connection.type." + name.toLowerCase(java.util.Locale.ROOT))
+                    .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(color)));
+        }
 
         public abstract Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink);
         public abstract Connection fromNBT(CompoundTag tag);

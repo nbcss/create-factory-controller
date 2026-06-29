@@ -97,6 +97,14 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
         return Component.translatable("createfactorycontroller.component.logical_tube");
     }
 
+    /** Info line: the current logic mode. */
+    @Override
+    public List<Component> infoTooltip() {
+        return List.of(Component.translatable("createfactorycontroller.gui.mode_prefix",
+                Component.translatable("createfactorycontroller.component.logical_tube.mode." + mode.name().toLowerCase())
+                        .withStyle(net.minecraft.ChatFormatting.WHITE)).withStyle(net.minecraft.ChatFormatting.GRAY));
+    }
+
     public Mode getMode() { return mode; }
     public boolean isPowered() { return value; }
 
