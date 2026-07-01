@@ -10,6 +10,7 @@ Features:
 - If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
 - Relocate/Placing components now render component ghost
 - Connections are now selectable, and allow change bend mode & delete specific connection
+- Gauge can set request limit to avoid total number of pending requests overload the chain network.
 - Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).
 - Added alternative compact font for input/output count rendering in recipe settings screen (configurable)
 
