@@ -88,6 +88,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int UNIT_X = 95, UNIT_W = 50;
     private static final int REQUEST_MODE_BTN_X = 150;
     private static final int THRESH_H = 18;
+    private static final int PROMISE_CLEAR_X = 10;
+    private static final int PROMISE_TIMEOUT_X = 44, PROMISE_TIMEOUT_W = 32;
+    private static final int PROMISE_LIMIT_X = 92, PROMISE_LIMIT_W = 42;
+    private static final int LINK_RESET_X = 160, LINK_RESET_Y = 25;
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
@@ -125,6 +129,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private AddressEditBox addressBox;
     private ScrollInput promiseExpiration;
+    private int promiseLimitState = -1;
     private IconButton confirmButton;
     private IconButton deleteButton;
     private IconButton newInputButton;
@@ -163,6 +168,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         String address = addressBox != null ? addressBox.getValue() : (g == null ? "" : g.recipeAddress);
         int promiseState = promiseExpiration != null ? promiseExpiration.getState()
                                                      : (g == null ? -1 : g.promiseClearingInterval);
+        int limitState = promiseLimitState >= 0 ? promiseLimitState : (g == null ? 0 : g.promiseLimit);
 
         // Create's address box with frogport-address autocomplete (DestinationSuggestions). It caps
         // length at 25 and renders its own suggestion dropdown; we only style it to match the panel.
@@ -173,11 +179,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         addressBox.setValue(address);
         addWidget(addressBox);
 
-        promiseExpiration = new ScrollInput(panelX + 97, panelY + PANEL_H - 24, 28, 16)
+        promiseExpiration = new ScrollInput(panelX + PROMISE_TIMEOUT_X, panelY + PANEL_H - 24, PROMISE_TIMEOUT_W, 16)
             .withRange(-1, 31)
             .titled(CreateLang.translate("gui.factory_panel.promises_expire_title").component());
         promiseExpiration.setState(promiseState);
         addWidget(promiseExpiration);
+
+        promiseLimitState = limitState;
 
         confirmButton = new IconButton(panelX + PANEL_W - 33, panelY + PANEL_H - 25, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::confirmAndReturn);
@@ -524,6 +532,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
         requestMode = g.requestMode;
+        promiseLimitState = g.promiseLimit;
         // Fluid filter: amounts are millibuckets. Coerce the unit into the fluid group,
         // and default a fresh gauge's output to 1000 mB (one bucket).
         fluidMode = FluidCompat.isFluidFilter(g.filter);
@@ -938,7 +947,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         renderThreshold(gfx, g);
 
         // Open-promise package box (left of the promise-interval scroll).
-        int pbx = panelX + 68, pby = panelY + PANEL_H - 24;
+        int pbx = panelX + PROMISE_CLEAR_X, pby = panelY + PANEL_H - 24;
         int promised = g == null ? 0 : g.promisedCount;
         // A fluid gauge's promise is millibuckets — same short mB/B format as the output slot.
         String promisedLabel = g != null && FluidCompat.isFluidFilter(g.filter)
@@ -982,13 +991,26 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         // Promise-interval label over the scroll box.
         int state = promiseExpiration.getState();
-        String label = state == -1 ? " /" : state == 0 ? "30s" : state + "m";
-        gfx.drawString(font, label, promiseExpiration.getX() + 3, promiseExpiration.getY() + 4, 0xFFEEEEEE, true);
+        String label = state == -1 ? "/" : state == 0 ? "30s" : state + "m";
+        drawCenteredBoxLabel(gfx, promiseExpiration.getX(), promiseExpiration.getY(), promiseExpiration.getWidth(), label);
 
-        // Redstone-link reset slot (bottom-left), shown only when a redstone link is wired to this gauge; clicking it
+        int limit = promiseLimitState;
+        int activePromises = g == null ? 0 : g.activePromiseCount;
+        drawPromiseLimitLabel(gfx, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, activePromises, limit);
+
+        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16))
+            tooltip = List.of(
+                Component.translatable("createfactorycontroller.gui.open_requests")
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
+                Component.translatable("createfactorycontroller.gui.open_requests.desc1").withStyle(ChatFormatting.GRAY),
+                Component.translatable("createfactorycontroller.gui.open_requests.desc2").withStyle(ChatFormatting.GRAY),
+                Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+
+        // Redstone-link reset slot (top-right), shown only when a redstone link is wired to this gauge; clicking it
         // disconnects them all (mirrors Create's FactoryPanelScreen).
         if (hasLinkConnections()) {
-            int itemX = panelX + 9, itemY = panelY + PANEL_H - 24;
+            int itemX = panelX + LINK_RESET_X, itemY = panelY + LINK_RESET_Y;
             AllGuiTextures.FROGPORT_SLOT.render(gfx, itemX - 1, itemY - 1);
             gfx.renderItem(AllBlocks.REDSTONE_LINK.asStack(), itemX, itemY);
             if (in(mouseX, mouseY, itemX, itemY, 16, 16))
@@ -1079,6 +1101,23 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (millibuckets < 1000) return millibuckets + "mB";
         return new java.math.BigDecimal(millibuckets).movePointLeft(3)
             .setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "B";
+    }
+
+    private void drawCenteredBoxLabel(GuiGraphics gfx, int x, int y, int width, String label) {
+        gfx.drawString(font, label, x + (width - font.width(label)) / 2, y + 4, 0xFFEEEEEE, true);
+    }
+
+    private void drawPromiseLimitLabel(GuiGraphics gfx, int x, int y, int width, int active, int limit) {
+        String activeText = String.valueOf(active);
+        if (limit == 0) {
+            gfx.drawString(font, activeText, x + (width - font.width(activeText)) / 2, y + 4, 0xFFEEEEEE, true);
+            return;
+        }
+        String limitText = "/" + limit;
+        int totalWidth = font.width(activeText) + font.width(limitText);
+        int textX = x + (width - totalWidth) / 2;
+        gfx.drawString(font, activeText, textX, y + 4, active >= limit ? 0xFFFFBFA8 : 0xFFD7FFA8, true);
+        gfx.drawString(font, limitText, textX + font.width(activeText), y + 4, 0xFFEEEEEE, true);
     }
 
     private void renderThreshold(GuiGraphics gfx, @Nullable VirtualGaugeBehaviour behaviour) {
@@ -1231,7 +1270,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         // Click the open-promise box → clear promises (Create's left-click reset).
-        if (in(mouseX, mouseY, panelX + 68, panelY + PANEL_H - 24, 16, 16)) {
+        if (in(mouseX, mouseY, panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16)) {
             sendConfig(true, false);
             playClickSound();
             return true;
@@ -1239,7 +1278,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         // Click the redstone-link reset slot → disconnect every link wired to this gauge (Create's redstone reset).
         // A dedicated packet (like the ingredient disconnect) so it doesn't commit any pending recipe-config edits.
-        if (hasLinkConnections() && in(mouseX, mouseY, panelX + 9, panelY + PANEL_H - 24, 16, 16)) {
+        if (hasLinkConnections() && in(mouseX, mouseY, panelX + LINK_RESET_X, panelY + LINK_RESET_Y, 16, 16)) {
             PacketDistributor.sendToServer(new DisconnectLinksPacket(menu.controllerPos, gaugePos));
             playClickSound();
             return true;
@@ -1320,6 +1359,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (addressBox.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         int step = hasControlDown() ? 100 : (hasShiftDown() ? 10 : 1);
         int dir = (int) Math.signum(scrollY);
+
+        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
+            if (dir != 0) {
+                int limitStep = hasShiftDown() ? 10 : 1;
+                promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 999);
+                playScrollSound();
+            }
+            return true;
+        }
 
         if (!craftingActive) {
             List<InputSlot> slots = layoutInputSlots();
@@ -1427,7 +1475,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int dimension = craftingActive ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
-            promiseExpiration.getState(), thresholdCount, mode, requestMode,
+            promiseExpiration.getState(), promiseLimitState, thresholdCount, mode, requestMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }
 

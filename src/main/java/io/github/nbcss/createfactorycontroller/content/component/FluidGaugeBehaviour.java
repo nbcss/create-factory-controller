@@ -42,7 +42,10 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
             return gauge.filter.isEmpty() ? 0 : FluidCompat.fluidPromised(gauge.networkId, gauge.filter, gauge.getPromiseExpiryTimeInTicks());
         }
         @Override public void forceClearPromise(UUID networkId, ItemStack filter) { FluidCompat.forceClearFluid(networkId, filter); }
-        @Override public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
+        @Override public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount,
+                                         String ownerKey, String targetAddress, int ttl) {
+            // Fluids ride CreateFluidLogistic's own promise system, not Create's RequestPromiseQueue, so the
+            // controller-promise tagging (owner/address/ttl) doesn't apply here yet.
             FluidCompat.addFluidPromise(networkId, filter, amount);
         }
     };

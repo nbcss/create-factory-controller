@@ -27,7 +27,7 @@ public final class OrderableStockAugment {
         if (patterns.isEmpty()) return base;
         InventorySummary copy = base.copy();
         for (OrderableGaugeRegistry.Entry e : patterns) {
-            ProductionTarget target = new ProductionTarget(e.network(), e.patternId(), e.display());
+            ProductionTarget target = new ProductionTarget(e.network(), e.gaugeId(), e.display());
             copy.add(new BigItemStack(ProductionPatternItem.of(target), BigItemStack.INF));
         }
         return copy;

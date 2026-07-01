@@ -86,7 +86,7 @@ public class CreateFactoryController {
                 .build());
 
     /** Minimal board setup (connections / request amounts / modes) carried by a broken controller item so it
-     *  restores on placement. Holds the stripped-down BE NBT (no runtime/bulb state, no patternId). */
+     *  restores on placement. Holds the stripped-down BE NBT. */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<net.minecraft.nbt.CompoundTag>> CONTROLLER_SETUP =
         DATA_COMPONENTS.register("controller_setup", () ->
             DataComponentType.<net.minecraft.nbt.CompoundTag>builder()

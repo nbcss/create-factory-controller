@@ -31,6 +31,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Vali
 import io.github.nbcss.createfactorycontroller.content.display.DisplayDataProvider;
 import io.github.nbcss.createfactorycontroller.content.display.DisplayMode;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
+import io.github.nbcss.createfactorycontroller.content.promise.ControllerPromise;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -132,9 +133,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             if (gauge.filter.isEmpty()) return 0;
             RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(gauge.networkId);
             if (promises == null) return 0;
-            int expiry = gauge.getPromiseExpiryTimeInTicks();
+            // Pass EXPIRED_TICKS as the expiry: this removes only OUR promises that have latched to that sentinel
+            // (past their own ttl) — a base promise's real ticksExisted never reaches it, so we never clear another
+            // gauge's or Create's live promises. Our not-yet-aged promises sit at ticksExisted 0 and are untouched.
             if (!gauge.ignoreData || FluidCompat.isFluidFilter(gauge.filter))
-                return promises.getTotalPromisedAndRemoveExpired(gauge.filter, expiry);
+                return promises.getTotalPromisedAndRemoveExpired(gauge.filter, ControllerPromise.EXPIRED_TICKS);
             List<ItemStack> variants = new ArrayList<>();
             for (RequestPromise p : promises.flatten(false)) {
                 ItemStack s = p.promisedStack.stack;
@@ -146,7 +149,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             }
             int total = 0;
             for (ItemStack v : variants)
-                total += promises.getTotalPromisedAndRemoveExpired(v, expiry);
+                total += promises.getTotalPromisedAndRemoveExpired(v, ControllerPromise.EXPIRED_TICKS);
             return total;
         }
 
@@ -157,12 +160,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         }
 
         @Override
-        public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
+        public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount,
+                               String ownerKey, String targetAddress, int ttl) {
             RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
             if (promises != null) {
                 ItemStack promiseStack = filter.copy();
                 if (ignoreData) promiseStack.set(CreateFactoryController.FUZZY_PROMISE.get(), true);
-                promises.add(new RequestPromise(new BigItemStack(promiseStack, amount)));
+                promises.add(new ControllerPromise(new BigItemStack(promiseStack, amount), ownerKey, targetAddress, ttl));
             }
         }
     };
@@ -173,7 +177,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     // Identity
     public final UUID networkId;
-    public UUID patternId = null;
+    /** Stable server-side identity for promises and orderable production patterns. Not synced/exported. */
+    public UUID gaugeId = null;
 
     // Filter config
     public ItemStack filter = ItemStack.EMPTY;
@@ -234,12 +239,16 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     /** Game tick of the last request attempt; the client decays the connection flash from it. */
     public long lastRequestTick = Long.MIN_VALUE;
     private boolean forceClearPromises = false;
+    /** Owned in-flight promise count, synced for the recipe screen's promise-limit display. */
+    public int activePromiseCount = 0;
     public String recipeAddress = "";
     public int recipeOutput = 1;
     /** Crafts carried per request package in mechanical-crafting mode (≥1); 1 = a single craft. */
     public int craftBatch = 1;
     public int craftDimension = 0;
     public int promiseClearingInterval = -1;
+    /** Max owned in-flight requests before this gauge pauses dispatching; 0 = unlimited. */
+    public int promiseLimit = 0;
 
     public VirtualGaugeBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position,
                                  UUID networkId, Item gaugeItem) {
@@ -513,10 +522,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             demand += conn.amount() * parentBatch;
         }
         // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
-        // order acts like another downstream consumer, so the passive gauge produces to satisfy it too. Only
-        // orderable gauges have a patternId, so non-orderable ones skip this entirely.
-        if (patternId != null && controller.getLevel() != null)
-            demand += ProductionOrderManager.externalDemand(controller.getLevel(), networkId, patternId);
+        // order acts like another downstream consumer, so the passive gauge produces to satisfy it too.
+        if (gaugeId != null && controller.getLevel() != null)
+            demand += ProductionOrderManager.externalDemand(controller.getLevel(), networkId, gaugeId);
         count = demand <= 0 ? 0 : Math.ceilDiv(demand, unit.toCountMultiplier(filter));
     }
 
@@ -538,6 +546,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             waitingForNetwork = false;
             stockLevel = 0;
             promisedCount = 0;
+            activePromiseCount = 0;
             updateRedstoneOutput();
             return;
         }
@@ -565,11 +574,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // own fluid logic uses — rather than the merged network summary, which may not carry the virtual tanks.
         int inStorage = networkStockOf(filter);
         int promised = getPromised();
+        int activePromises = countOwnedPromises();
         int rawSum = inStorage + promised;
 
         // Snapshot the committed state for the satisfy chime and the sync dirty-check.
         boolean wasSatisfied = satisfied;
-        int prevStock = stockLevel, prevPromised = promisedCount;
+        int prevStock = stockLevel, prevPromised = promisedCount, prevActivePromises = activePromiseCount;
         boolean prevPromiseSatisfy = promisedSatisfied, prevWait = waitingForNetwork;
 
         if (inStorage >= stockLevel)   { stockLevel = inStorage; stockDropPending = false; }
@@ -580,6 +590,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         else if (refreshed)            { sumDropPending = true; }
 
         promisedCount = promised;              // the open-promise number is always shown live (the ⏶ box)
+        activePromiseCount = activePromises;   // owner-scoped count for the promise-limit UI
 
         // Total-demand strategy: fold the solver's raw target into the gauge's count, holding a DECREASE against the
         // summary-refresh signal exactly like the stock/sum holds above. An increase (more downstream demand) applies
@@ -599,7 +610,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
         boolean redstoneChanged = updateRedstoneOutput();
 
-        if (!redstoneChanged && stockLevel == prevStock && promisedCount == prevPromised && satisfied == wasSatisfied
+        if (!redstoneChanged && stockLevel == prevStock && promisedCount == prevPromised
+                && activePromiseCount == prevActivePromises && satisfied == wasSatisfied
                 && promisedSatisfied == prevPromiseSatisfy && waitingForNetwork == prevWait
                 && lastReportedCount == count && lastReportedUnloadedLinks == unloadedLinkCount)
             return;
@@ -660,7 +672,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     }
 
     public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
-        logisticsControl().addPromise(networkId, filter, ignoreData, amount);
+        logisticsControl().addPromise(networkId, filter, ignoreData, amount,
+                gaugeId == null ? null : gaugeId.toString(), recipeAddress, getPromiseExpiryTimeInTicks());
+    }
+
+    private int countOwnedPromises() {
+        if (gaugeId == null) return 0;
+        RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(networkId);
+        if (promises == null) return 0;
+        String ownerKey = gaugeId.toString();
+        int total = 0;
+        for (RequestPromise p : promises.flatten(false))
+            if (p instanceof ControllerPromise cp && ownerKey.equals(cp.ownerKey)) total++;
+        return total;
     }
 
     // ── Recipe-mode requests ─────────────────────────────────────────────────
@@ -687,6 +711,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             timer--;
             return;
         }
+        if (promiseLimit > 0 && countOwnedPromises() >= promiseLimit) return;
         resetTimer();                                   // we're attempting now; throttle the next one
         // Stamp the attempt so the client can flash the connections once per request (not continuously).
         lastRequestTick = controller.getLevel() == null ? 0 : controller.getLevel().getGameTime();
@@ -922,6 +947,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         tag.putInt("CraftBatch", craftBatch);
         tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
+        tag.putInt("PromiseLimit", promiseLimit);
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
 
         if (profile.includesRuntime()) {
@@ -931,11 +957,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             tag.putBoolean("RedstonePowered", redstonePowered);
             tag.putInt("Stock", stockLevel);
             tag.putInt("Promised", promisedCount);
+            tag.putInt("ActivePromises", activePromiseCount);
             tag.putLong("LastRequestTick", lastRequestTick);
             tag.putInt("Timer", timer);
         }
-        if (profile.includesServerOnly() && patternId != null)
-            tag.putUUID("PatternId", patternId);
+        if (profile.includesServerOnly() && gaugeId != null)
+            tag.putUUID("GaugeId", gaugeId);
 
         // Connections live in the controller's central graph, not per-component.
         return tag;
@@ -981,9 +1008,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         requestMode = tag.contains("RequestMode")
                 ? RequestMode.fromName(tag.getString("RequestMode"))
                 : tag.getBoolean("Passive") ? RequestMode.PASSIVE : RequestMode.NORMAL;
-        if (tag.hasUUID("PatternId")) patternId = tag.getUUID("PatternId");
+        if (tag.hasUUID("GaugeId")) gaugeId = tag.getUUID("GaugeId");
+        else if (tag.hasUUID("PatternId")) gaugeId = tag.getUUID("PatternId");
+        else if (controller != null && !filter.isEmpty()) gaugeId = UUID.randomUUID();
         stockLevel = tag.getInt("Stock");
         promisedCount = tag.getInt("Promised");
+        activePromiseCount = tag.getInt("ActivePromises");
         lastRequestTick = tag.getLong("LastRequestTick");
         activeCraftingArrangement = readStacks(tag.getList("CraftingArrangement", Tag.TAG_COMPOUND), registries);
 
@@ -997,6 +1027,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         craftBatch = Math.max(1, tag.getInt("CraftBatch"));
         craftDimension = Math.max(0, tag.getInt("CraftDimension"));
         promiseClearingInterval = tag.getInt("PromiseClearingInterval");
+        promiseLimit = tag.contains("PromiseLimit") ? Math.max(0, tag.getInt("PromiseLimit")) : 0;
 
         if (controller != null) timer = getConfigRequestIntervalInTicks();
     }

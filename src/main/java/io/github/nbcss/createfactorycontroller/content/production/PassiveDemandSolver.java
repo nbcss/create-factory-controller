@@ -65,8 +65,8 @@ public final class PassiveDemandSolver {
         // Seed terminal demand from open production orders (player Stock-Keeper blueprints) on orderable passive gauges.
         for (int i = 0; i < n; i++) {
             VirtualGaugeBehaviour g = nodes.get(i);
-            if (g.requestMode.isPassive() && g.patternId != null && level != null)
-                dem[i] += ProductionOrderManager.externalDemand(level, g.networkId, g.patternId);
+            if (g.requestMode.isPassive() && g.gaugeId != null && level != null)
+                dem[i] += ProductionOrderManager.externalDemand(level, g.networkId, g.gaugeId);
         }
 
         Deque<Integer> queue = new ArrayDeque<>();

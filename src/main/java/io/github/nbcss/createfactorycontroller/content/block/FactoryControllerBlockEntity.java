@@ -202,29 +202,45 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         orderableDirty = true;
     }
 
-    /** Heartbeats this controller's orderable gauges (those with a {@code patternId}, i.e. allow-order + configured)
+    /** Heartbeats this controller's orderable gauges (allow-order + configured)
      *  to {@link OrderableGaugeRegistry}, refreshing their freshness so their tasks stay live. */
     private void heartbeatOrderableGauges() {
         if (!(level instanceof ServerLevel serverLevel)) return;
         long now = serverLevel.getServer().overworld().getGameTime();
         List<OrderableGaugeRegistry.Entry> entries = new ArrayList<>();
         for (VirtualComponentBehaviour c : components.values())
-            if (c instanceof VirtualGaugeBehaviour g && g.patternId != null)
-                entries.add(new OrderableGaugeRegistry.Entry(g.networkId, g.patternId, g.filter.copy()));
+            if (c instanceof VirtualGaugeBehaviour g && g.gaugeId != null && isOrderable(g))
+                entries.add(new OrderableGaugeRegistry.Entry(g.networkId, g.gaugeId, g.filter.copy()));
         OrderableGaugeRegistry.heartbeat(level.dimension(), getBlockPos(), entries, now);
     }
 
-    /** Mints/clears a gauge's {@code patternId} as it gains/loses orderability (allow-order + filter + address). On
-     *  losing orderability, its active production tasks are aborted (the gauge can no longer fulfil them). */
+    private static boolean isOrderable(VirtualGaugeBehaviour g) {
+        return g.requestMode.allowsOrder() && !g.filter.isEmpty() && !g.recipeAddress.isBlank();
+    }
+
+    private void invalidateGaugeTasks(VirtualGaugeBehaviour g) {
+        if (level != null && !level.isClientSide() && g.gaugeId != null)
+            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.gaugeId);
+    }
+
+    private void refreshGaugeIdentity(VirtualGaugeBehaviour g, boolean filterIdentityChanged) {
+        if (g.filter.isEmpty()) {
+            invalidateGaugeTasks(g);
+            g.gaugeId = null;
+            return;
+        }
+        if (filterIdentityChanged || g.gaugeId == null) {
+            invalidateGaugeTasks(g);
+            g.gaugeId = java.util.UUID.randomUUID();
+        }
+    }
+
+    /** Ensures a filtered gauge has a stable server-side id, and invalidates open production tasks when it is no
+     *  longer orderable. */
     private void updateGaugeOrderable(VirtualGaugeBehaviour g) {
         if (level == null || level.isClientSide()) return;
-        boolean eligible = g.requestMode.allowsOrder() && !g.filter.isEmpty() && !g.recipeAddress.isBlank();
-        if (eligible && g.patternId == null) {
-            g.patternId = java.util.UUID.randomUUID();
-        } else if (!eligible && g.patternId != null) {
-            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
-            g.patternId = null;
-        }
+        refreshGaugeIdentity(g, false);
+        if (!isOrderable(g)) invalidateGaugeTasks(g);
     }
 
     @Override
@@ -303,8 +319,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (behaviour == null) return;
 
         // The gauge is gone → abort any production tasks targeting it.
-        if (behaviour instanceof VirtualGaugeBehaviour g && g.patternId != null && level != null)
-            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
+        if (behaviour instanceof VirtualGaugeBehaviour g && g.gaugeId != null && level != null)
+            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.gaugeId);
         // A link is gone → leave Create's frequency network.
         if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
             link.removeFromNetwork();
@@ -410,17 +426,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         if (!gauge.filterResolver().acceptsFilter(filter)) return;
         boolean fluid = FluidCompat.isFluidFilter(filter);
+        ItemStack oldFilter = gauge.filter.copy();
         // Ignore-data never applies to a fluid filter (the set-item screen hides the toggle there).
         gauge.ignoreData = ignoreData && !fluid;
         // With ignore-data on, store the filter as a "pure" item (a fresh stack with no NBT/components) so
         // its identity is the item type alone — matching the type-only stock/promise/ingredient matching.
         gauge.filter = gauge.ignoreData ? new ItemStack(filter.getItem()) : filter.copy();
+        refreshGaugeIdentity(gauge, !ItemStack.isSameItemSameComponents(oldFilter, gauge.filter));
         // Keep the threshold unit in the right group for the new filter so the count label/tooltip read
         // correctly immediately, before the recipe screen is ever opened: a fluid filter defaults to B,
         // an item filter to items. Only switch when crossing groups, so a later mB/B (or stacks) choice survives.
         if (fluid && !gauge.unit.isFluid()) gauge.unit = ThresholdUnit.FLUID_BUCKET;
         else if (!fluid && gauge.unit.isFluid()) gauge.unit = ThresholdUnit.ITEMS;
-        updateGaugeOrderable(gauge);   // filter change can make it (in)eligible → mint/abort patternId
+        updateGaugeOrderable(gauge);   // filter change can make it (in)eligible
         gauge.publishRedstoneOutput();
         settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
         markOrderableDirty();   // filter (the blueprint's display item) changed
@@ -435,7 +453,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
-                                int craftDimension, int promiseInterval, int count, ThresholdUnit mode,
+                                int craftDimension, int promiseInterval, int promiseLimit, int count, ThresholdUnit mode,
                                 RequestMode requestMode,
                                 Map<VirtualComponentPosition, Integer> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
@@ -451,9 +469,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.craftBatch = 1;
             gauge.craftDimension = 0;
             gauge.promiseClearingInterval = -1;
+            gauge.promiseLimit = 0;
             gauge.activeCraftingArrangement = new ArrayList<>();
             gauge.disconnectAll();
-            updateGaugeOrderable(gauge);   // no longer orderable → abort tasks + clear patternId
+            refreshGaugeIdentity(gauge, true);
+            updateGaugeOrderable(gauge);   // no longer orderable → abort tasks
             markOrderableDirty();
             setChanged();
             sendData();
@@ -469,6 +489,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.craftBatch = Math.max(1, craftBatch);
         gauge.craftDimension = Math.max(0, craftDimension);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
+        gauge.promiseLimit = Math.max(0, Math.min(999, promiseLimit));
         gauge.unit = mode;
         gauge.requestMode = requestMode;
         if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
@@ -481,7 +502,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
                     conn.amount = Math.max(1, e.getValue());
         if (clearPromises) gauge.requestClearPromises();
-        updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible → mint/abort patternId
+        updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible
         gauge.publishRedstoneOutput();
         settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
         markOrderableDirty();   // request mode / filter / address may have changed
@@ -785,8 +806,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void abortAllTasks() {
         if (level == null || level.isClientSide()) return;
         for (VirtualComponentBehaviour b : components.values())
-            if (b instanceof VirtualGaugeBehaviour g && g.patternId != null)
-                ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.patternId);
+            if (b instanceof VirtualGaugeBehaviour g && g.gaugeId != null)
+                ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.gaugeId);
     }
 
     // ── Setup preservation (controller item carries the board on break) ─────────
@@ -798,7 +819,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /**
      * The minimal board setup to persist on a dropped controller item: each component's config with the
-     * runtime/bulb state and the runtime-minted {@code PatternId} stripped, plus the tuned networks and name.
+     * runtime/bulb state and the runtime-minted gauge id stripped, plus the tuned networks and name.
      */
     public CompoundTag writeSetup(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();

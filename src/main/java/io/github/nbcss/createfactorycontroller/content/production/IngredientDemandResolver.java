@@ -77,7 +77,7 @@ public final class IngredientDemandResolver {
 
     private static VirtualGaugeBehaviour findGauge(FactoryControllerBlockEntity controller, UUID patternId) {
         for (VirtualComponentBehaviour c : controller.components.values())
-            if (c instanceof VirtualGaugeBehaviour g && patternId.equals(g.patternId)) return g;
+            if (c instanceof VirtualGaugeBehaviour g && patternId.equals(g.gaugeId)) return g;
         return null;
     }
 
