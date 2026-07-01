@@ -115,6 +115,8 @@
   "createfactorycontroller.config.check_ingredients.tooltip": "Show whether the network has enough ingredients to produce an order when hovering the Stock Keeper's Send button. Requires both the client and server config enabled.",
   "createfactorycontroller.config.order_from_material_list": "Order From Material List",
   "createfactorycontroller.config.order_from_material_list.tooltip": "When right-clicking a Stock Keeper with a material list (clipboard), request a Production Order for any listed item that is short in stock but producible by an orderable gauge on the network.",
+  "createfactorycontroller.config.compact_recipe_count_font": "Compact recipe count font",
+  "createfactorycontroller.config.compact_recipe_count_font.tooltip": "Draw input/output item counts in the recipe config screen with Create's compact number sprite (the same glyphs as the stock icon) instead of the vanilla item-count font.",
   "createfactorycontroller.config.preserve_controller_data": "Preserve controller data in item",
   "createfactorycontroller.config.preserve_controller_data.tooltip": "Keep a Factory Controller's board setup on the dropped item when broken, and restore it when re-placed. When off, the controller drops empty and its gauges drop as separate items.",
   "createfactorycontroller.config.passive_total_demand": "[Experimental] Full Passive Demand Strategy",

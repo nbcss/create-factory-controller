@@ -13,6 +13,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -137,6 +138,15 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         return String.format(java.util.Locale.US, "%,d", value);
     }
 
+    /** Dark-gray " | &lt;stacks&gt;▤ +&lt;overflow&gt;" suffix breaking {@code count} of a stack-{@code ss} item into full
+     *  stacks plus remainder — mirrors the recipe screen's slot-title breakdown, but the {@code +overflow} shows even
+     *  below one stack (e.g. {@code | 0▤ +5}) since this line always displays it. */
+    private static MutableComponent stackBreakdown(int count, int ss) {
+        int stacks = count / ss, overflow = count % ss;
+        return Component.literal(" | " + stacks + "▤" + (overflow > 0 ? " +" + overflow : ""))
+                .withStyle(ChatFormatting.DARK_GRAY);
+    }
+
     /** Stock/promise amount for this gauge: millibuckets in the gauge's own unit (mB/B) for a fluid filter,
      *  else a grouped item count. */
     private String formatAmount(int value) {
@@ -165,10 +175,15 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             lines.add(title.component());
         }
         if (!behaviour.filter.isEmpty()) {
-            lines.add(Component.translatable("createfactorycontroller.gui.in_stock",
+            MutableComponent stockLine = Component.translatable("createfactorycontroller.gui.in_stock",
                             Component.literal(behaviour.isInfiniteStock() ? "∞" : formatAmount(behaviour.stockLevel))
                                     .withStyle(ChatFormatting.WHITE))
-                    .withStyle(ChatFormatting.GRAY));
+                    .withStyle(ChatFormatting.GRAY);
+            // Item filters get the recipe-screen stack breakdown, always shown (even below one stack); fluids are
+            // already in their own unit and ∞ has no stack meaning.
+            if (!FluidCompat.isFluidFilter(behaviour.filter) && !behaviour.isInfiniteStock())
+                stockLine.append(stackBreakdown(behaviour.stockLevel, Math.max(1, behaviour.filter.getMaxStackSize())));
+            lines.add(stockLine);
             lines.add(Component.translatable("createfactorycontroller.gui.promised",
                             Component.literal((behaviour.promisedCount > 0 ? "+" : "") + formatAmount(behaviour.promisedCount))
                                     .withStyle(behaviour.promisedCount > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))

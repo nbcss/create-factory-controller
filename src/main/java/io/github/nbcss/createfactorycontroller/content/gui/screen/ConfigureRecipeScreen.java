@@ -18,6 +18,7 @@ import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -797,7 +798,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 if (i < slots.size()) {
                     CraftSlot slot = slots.get(i);
                     gfx.renderItem(slot.stack(), ix, iy);
-                    gfx.renderItemDecorations(font, slot.stack(), ix, iy, String.valueOf(slot.amount()));
+                    drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount()));
                 }
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
             }
@@ -829,7 +830,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 // With a batch > 1 each grid slot consumes (slot amount × batch) of its item — show it.
                 int dispBatch = effectiveBatch();
                 if (!stack.isEmpty() && dispBatch > 1)
-                    gfx.renderItemDecorations(font, stack, ix, iy,
+                    drawItemCount(gfx, stack, ix, iy,
                         String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
             }
@@ -865,7 +866,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 FluidGuiRender.filterIcon(gfx, stack, ix, iy);
                 if (!stack.isEmpty()) {
                     if (fluidIng) drawSlotCount(gfx, formatFluidShort(slot.amount()), ix, iy);
-                    else gfx.renderItemDecorations(font, stack, ix, iy, String.valueOf(slot.amount()));
+                    else drawItemCount(gfx, stack, ix, iy, String.valueOf(slot.amount()));
                 }
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
@@ -909,7 +910,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
             if (fluidMode) drawSlotCount(gfx, producedBox, ox, oy);
-            else gfx.renderItemDecorations(font, g.filter, ox, oy, producedBox);
+            else drawItemCount(gfx, g.filter, ox, oy, producedBox);
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
                 // The output scroll changes batch in crafting mode / the output count otherwise; both are
                 // disabled when an ignore-data ingredient is present, so the last line reflects that.
@@ -1089,7 +1090,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.pose().translate(0, 0, 200);
             // Fluid stock uses the bucket-aware format + glyphs (CreateFluidLogistic's mB/B/KB on the same
             // Create NUMBERS sprite); items use the k/m abbreviation. Both share our sprite renderer.
-            drawSpriteCount(gfx, FluidCompat.isFluidFilter(behaviour.filter)
+            SpriteNumbersRender.drawCount(gfx, FluidCompat.isFluidFilter(behaviour.filter)
                 ? formatFluidStock(behaviour.stockLevel) : stockCountText(behaviour.stockLevel), fx, fy);
             gfx.pose().popPose();
         }
@@ -1141,13 +1142,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return String.format(java.util.Locale.ROOT, "%.0f%s", Math.floor(amount / (double) divisor), suffix);  // ">10: "12B"
     }
 
-    /**
-     * Draws a count/amount string over a slot via Create's NUMBERS sprite sheet — digits, {@code .}, {@code k},
-     * {@code m}, {@code b}, {@code +} (chars lower-cased). The {@code b} (bucket) glyph at xOffset 78 is the one
-     * CreateFluidLogistic uses for fluid amounts; we just map it on the same sheet rather than calling its renderer.
-     */
-    private void drawSpriteCount(GuiGraphics gfx, String text, int itemX, int itemY) {
-        SpriteNumbersRender.drawCount(gfx, text, itemX, itemY);
+    /** Draws an input/output slot's item count: the vanilla item-decoration number, or — when the client's
+     *  "Compact recipe count font" option is on — Create's compact NUMBERS sprite (same glyphs as the stock icon),
+     *  z-lifted like the stock so it sits over the item. */
+    private void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, String text) {
+        if (ClientConfig.compactRecipeCountFont()) {
+            gfx.pose().pushPose();
+            gfx.pose().translate(0, 0, 200);
+            // Right-align to the slot's right edge, matching the vanilla item-count placement it replaces.
+            SpriteNumbersRender.drawCountRightAligned(gfx, text, itemX + 17, itemY + 10);
+            gfx.pose().popPose();
+        } else {
+            gfx.renderItemDecorations(font, stack, itemX, itemY, text);
+        }
     }
 
     private void drawSlotCount(GuiGraphics gfx, String text, int slotX, int slotY) {

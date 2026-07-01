@@ -1,13 +1,13 @@
 # 1.0.0
+- [DONE] Alternative Passive Request Strategy
 - [TODO] Promise Limit
-- [TODO] Custom Keybinding Preset
-- [TODO] Alternative Passive Request Strategy
-- [TODO] Dynamic Batch Size
-- [TODO] Configure controller item network by interact with stock link
+- [TODO] Guide Overlay GUI
 
 # Roadmap
+- [TODO] Dynamic Batch Size
+- [TODO] Custom Keybinding Preset
+- [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Paper as component
-- [TODO] Guide Overlay GUI
 - [TODO] Blueprint Save/Load
 - [TODO] Production Order Status Notification
 - [TODO] Set max item data length limit per gauge in configuration

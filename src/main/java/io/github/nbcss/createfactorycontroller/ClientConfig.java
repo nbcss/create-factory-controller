@@ -12,6 +12,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue FULL_OVERLAY;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
+    public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -34,6 +35,11 @@ public final class ClientConfig {
                         "network — instead of only requesting the in-stock amount.")
                 .translation("createfactorycontroller.config.order_from_material_list")
                 .define("orderFromMaterialList", true);
+        COMPACT_RECIPE_COUNT_FONT = builder
+                .comment("Draw input/output item counts in the recipe config screen with Create's compact number",
+                        "sprite (the same glyphs as the stock icon) instead of the vanilla item-count font.")
+                .translation("createfactorycontroller.config.compact_recipe_count_font")
+                .define("compactRecipeCountFont", false);
         SPEC = builder.build();
     }
 
@@ -49,6 +55,10 @@ public final class ClientConfig {
 
     public static boolean orderFromMaterialList() {
         return ORDER_FROM_MATERIAL_LIST.get();
+    }
+
+    public static boolean compactRecipeCountFont() {
+        return COMPACT_RECIPE_COUNT_FONT.get();
     }
 
     public static String getControllerBackground() {
