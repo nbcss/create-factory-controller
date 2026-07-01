@@ -1169,7 +1169,24 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
 
             boolean ctrl = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
-            if (button == 0 && carried.isEmpty() && pendingConnectionTarget == null && pendingRelocateTarget == null
+            if (ctrl && CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && carried.isEmpty()
+                    && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+                rubberBanding = true;
+                rubberMoved = false;
+                rubberCtrl = true;
+                rubberStartX = rubberCurX = mouseX;
+                rubberStartY = rubberCurY = mouseY;
+                return true;
+            }
+
+            if (leftOrRight && widget == null && carried.isEmpty() && !selected.isEmpty()
+                    && pendingConnectionTarget == null && pendingRelocateTarget == null && !ctrl) {
+                clearSelection();
+                return true;
+            }
+            if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button)
+                    && !CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button) && carried.isEmpty()
+                    && pendingConnectionTarget == null && pendingRelocateTarget == null
                     && (ctrl || widget == null)) {
                 rubberBanding = true;
                 rubberMoved = false;
@@ -1202,6 +1219,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
             // Selection handling — suppressed when hovering a connection (connection takes priority).
             if (leftOrRight && widget != null && hoveredConn == null) {
+
                 double worldX = viewX + (mouseX - centerX) / getZoomFactor();
                 double worldY = viewY + (mouseY - centerY) / getZoomFactor();
                 if (hasShiftDown()) {
@@ -1225,7 +1243,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return widget.onClick(this, carried, worldX, worldY, button);
             }
 
-            // Pan-view button (rebindable, middle mouse by default) → start a drag-pan.
+            // Pan-view button → start a drag-pan.
             if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
                 isDragging = true;
                 return true;
@@ -1237,7 +1255,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         // Rubber-band: track the current corner; a few pixels of travel promotes the click to a drag.
-        if (button == 0 && rubberBanding) {
+        if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && rubberBanding) {
             rubberCurX = mouseX;
             rubberCurY = mouseY;
             if (Math.abs(mouseX - rubberStartX) > 3 || Math.abs(mouseY - rubberStartY) > 3) rubberMoved = true;
@@ -1261,7 +1279,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0 && rubberBanding) {
+        if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && rubberBanding) {
             rubberBanding = false;
             if (rubberMoved) {
                 // A drag merges with the existing selection only while the Selection-Mode key is held; a plain drag

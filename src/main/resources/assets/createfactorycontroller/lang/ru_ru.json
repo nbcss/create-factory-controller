@@ -65,6 +65,7 @@
   "key.createfactorycontroller.start_connection": "Начать соединение",
   "key.createfactorycontroller.relocate_component": "Переместить компонент",
   "key.createfactorycontroller.pan_view": "Панорамирование (перетаскивание)",
+  "key.createfactorycontroller.drag_selection": "Выделение перетаскиванием",
   "key.createfactorycontroller.toggle_full_overlay": "Переключить полный оверлей",
   "createfactorycontroller.config.controller_background": "Текстура фона контроллера",
   "createfactorycontroller.config.controller_background.tooltip": "Путь к текстуре фона экрана контроллера. Файл текстуры должен находиться по пути 'createfactorycontroller/textures/gui/controller_background/' и иметь разрешение 16 пикселей.",

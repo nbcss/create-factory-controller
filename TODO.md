@@ -1,13 +1,13 @@
 # 1.0.0
 - [TODO] Promise Limit
 - [TODO] Custom Keybinding Preset
-- [TODO] Guide Overlay GUI
 - [TODO] Alternative Passive Request Strategy
 - [TODO] Dynamic Batch Size
 - [TODO] Configure controller item network by interact with stock link
 
 # Roadmap
 - [TODO] Paper as component
+- [TODO] Guide Overlay GUI
 - [TODO] Blueprint Save/Load
 - [TODO] Production Order Status Notification
 - [TODO] Set max item data length limit per gauge in configuration

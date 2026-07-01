@@ -14,6 +14,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
+import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
@@ -147,9 +148,15 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot, so a multi-stage production
         // chain's demand all derives from the same state, before any gauge ticks/requests. (The redstone-link power +
         // gauge gate are refreshed on the lazy tick — see lazyTick — like Create's redstone links.)
-        for (VirtualComponentBehaviour component : components.values())
-            if (component instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.isPassive())
-                gauge.computeDemand();
+        // With the total-demand strategy a single controller-wide topological solve sizes every passive gauge at once;
+        // otherwise each gauge sizes itself to one recipe set per demanding consumer.
+        if (ServerConfig.passiveTotalDemand()) {
+            PassiveDemandSolver.solve(this);
+        } else {
+            for (VirtualComponentBehaviour component : components.values())
+                if (component instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.isPassive())
+                    gauge.computeDemand();
+        }
 
         for (VirtualComponentBehaviour component : components.values())
             component.tick();

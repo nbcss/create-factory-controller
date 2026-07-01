@@ -65,6 +65,7 @@
   "key.createfactorycontroller.start_connection": "Rozpocznij połączenie",
   "key.createfactorycontroller.relocate_component": "Przenieś komponent",
   "key.createfactorycontroller.pan_view": "Przesuń widok (przeciągnij)",
+  "key.createfactorycontroller.drag_selection": "Przeciągnij zaznaczenie",
   "key.createfactorycontroller.toggle_full_overlay": "Przełącz pełną nakładkę",
   "createfactorycontroller.config.controller_background": "Tekstura tła kontrolera",
   "createfactorycontroller.config.controller_background.tooltip": "Ścieżka tekstury tła ekranu kontrolera. Plik tekstury musi znajdować się w ścieżce 'createfactorycontroller/textures/gui/controller_background/' i mieć rozdzielczość 16 pikseli.",

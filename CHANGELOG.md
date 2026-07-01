@@ -11,10 +11,12 @@ Features:
 - If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
 - Relocate/Placing components now render component ghost
 - Connection is now selectable, and allow change bend mode & delete specific connection
+- Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).
 
 Changes:
 - Request limit for unit item & stack are increased to 1000.
 - Existing keybinding "Interact" (R) changed to "cycle arrow mode".
+- Default drag view key is left mouse button now.
 
 Optimization:
 - Controller GUI will not render out-of-board components now

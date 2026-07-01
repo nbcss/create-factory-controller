@@ -63,7 +63,12 @@ public class CreateFactoryControllerClient {
      */
     public static final KeyMapping PAN_VIEW = new KeyMapping(
             "key.createfactorycontroller.pan_view",
-            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
+            "key.categories.createfactorycontroller");
+
+    public static final KeyMapping DRAG_SELECTION = new KeyMapping(
+            "key.createfactorycontroller.drag_selection",
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_RIGHT,
             "key.categories.createfactorycontroller");
 
     /**
@@ -124,6 +129,7 @@ public class CreateFactoryControllerClient {
         event.register(START_CONNECTION);
         event.register(RELOCATE_COMPONENT);
         event.register(PAN_VIEW);
+        event.register(DRAG_SELECTION);
         event.register(TOGGLE_FULL_OVERLAY);
         event.register(SELECTION_MODE);
     }

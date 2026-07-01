@@ -65,6 +65,7 @@
   "key.createfactorycontroller.start_connection": "开始连接",
   "key.createfactorycontroller.relocate_component": "移动组件",
   "key.createfactorycontroller.pan_view": "移动视角（拖拽）",
+  "key.createfactorycontroller.drag_selection": "拖拽选择",
   "key.createfactorycontroller.toggle_full_overlay": "切换完整信息模式",
   "createfactorycontroller.config.controller_background": "控制台背景材质",
   "createfactorycontroller.config.controller_background.tooltip": "控制台界面的背景材质路径。该材质文件必须位于'createfactorycontroller/textures/gui/controller_background/'路径下，并且为16像素分辨率。",

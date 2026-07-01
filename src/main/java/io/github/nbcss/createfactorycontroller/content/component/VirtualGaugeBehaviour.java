@@ -17,6 +17,7 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
@@ -219,6 +220,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  tick to ride out the mid-move "reads low" blip, then committed — keeps real drops responsive. */
     private boolean stockDropPending = false;
     private boolean sumDropPending = false;
+    /** Total-demand strategy only: the raw target the controller's {@link io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver}
+     *  computed for this gauge this tick (in units). Folded into {@link #count} by the storage monitor, holding a
+     *  DECREASE against the summary-refresh signal (see {@link #demandDropPending}) so the brief downstream-promise
+     *  demand dip doesn't flicker the target. */
+    public int passiveDemandTarget = 0;
+    /** One-refresh hold for a {@link #passiveDemandTarget} decrease, mirroring {@link #stockDropPending}. */
+    private boolean demandDropPending = false;
     /** Last redstone OUTPUT state pushed to wired send-links; gates {@link #updateRedstoneOutput} so a steady gauge
      *  never re-walks its outgoing wires. {@code null} until first computed (forces an initial publish). */
     private RedstoneConnection.State lastRedstoneOutput = null;
@@ -573,6 +581,17 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
         promisedCount = promised;              // the open-promise number is always shown live (the ⏶ box)
 
+        // Total-demand strategy: fold the solver's raw target into the gauge's count, holding a DECREASE against the
+        // summary-refresh signal exactly like the stock/sum holds above. An increase (more downstream demand) applies
+        // at once; a decrease is held one refresh so the transient downstream-promise dip — demand drops a few ticks
+        // before the ingredient it reserved leaves stock — doesn't flicker the count down and back.
+        if (requestMode.isPassive() && ServerConfig.passiveTotalDemand()) {
+            if (passiveDemandTarget >= count) { count = passiveDemandTarget; demandDropPending = false; }
+            else if (demandDropPending)       { count = passiveDemandTarget; demandDropPending = false; }
+            else if (refreshed)               { demandDropPending = true; }
+            // else: hold the current (higher) count until the next refresh confirms the decrease
+        }
+
         int demand = count * unit.toCountMultiplier(filter);
         satisfied = stockLevel >= demand;
         promisedSatisfied = heldSum >= demand;
@@ -614,6 +633,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     public int getPromised() {
         return logisticsControl().promised(this);
+    }
+
+    /** The conserved {@code stock + promised} held against the transient promise→inventory settlement dip (see
+     *  {@link #heldSum}). The gap-safe quantity to subtract when sizing demand: when an item lands the promise clears
+     *  immediately but the network summary lags up to ~20 ticks, so {@code stockLevel + promisedCount} momentarily
+     *  undercounts and would over-size — {@code heldSum} bridges that, exactly as {@code promisedSatisfied} does. */
+    public int effectiveHeld() {
+        return heldSum;
     }
 
     protected VirtualComponentBehaviour.Type componentType() {

@@ -99,6 +99,7 @@
   "key.createfactorycontroller.start_connection": "Start Connection",
   "key.createfactorycontroller.relocate_component": "Relocate Component",
   "key.createfactorycontroller.pan_view": "Pan View (drag)",
+  "key.createfactorycontroller.drag_selection": "Drag Selection",
   "key.createfactorycontroller.toggle_full_overlay": "Toggle Full Overlay",
   "key.createfactorycontroller.selection_mode": "Selection Mode",
 
@@ -116,6 +117,8 @@
   "createfactorycontroller.config.order_from_material_list.tooltip": "When right-clicking a Stock Keeper with a material list (clipboard), request a Production Order for any listed item that is short in stock but producible by an orderable gauge on the network.",
   "createfactorycontroller.config.preserve_controller_data": "Preserve controller data in item",
   "createfactorycontroller.config.preserve_controller_data.tooltip": "Keep a Factory Controller's board setup on the dropped item when broken, and restore it when re-placed. When off, the controller drops empty and its gauges drop as separate items.",
+  "createfactorycontroller.config.passive_total_demand": "[Experimental] Full Passive Demand Strategy",
+  "createfactorycontroller.config.passive_total_demand.tooltip": "Each passive gauge's target storage is sized to the total remaining downstream demand, so the whole chain stays active and produces continuously. Warning: this strategy could overload your logistics network if the system cannot handle the load!",
 
   "createfactorycontroller.network.default": "Network #%1$s",
   "createfactorycontroller.network.none": "No network",
