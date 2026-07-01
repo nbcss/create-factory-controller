@@ -12,7 +12,6 @@ import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
-import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -135,6 +134,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private IconButton newInputButton;
     private IconButton relocateButton;
     @Nullable private IconButton craftingButton;
+    @Nullable private IconButton disconnectLinkButton;
     /** Cycles the gauge's {@link RequestMode}; its icon reflects the current mode. */
     @Nullable private IconButton requestModeButton;
 
@@ -234,6 +234,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         requestModeButton = new IconButton(panelX + REQUEST_MODE_BTN_X, panelY + THRESH_TOP - 1, iconFor(requestMode));
         requestModeButton.withCallback(this::cycleRequestMode);
         addWidget(requestModeButton);
+
+        disconnectLinkButton = null;
+        if (hasLinkConnections()) {
+            disconnectLinkButton = new IconButton(panelX + LINK_RESET_X - 1, panelY + LINK_RESET_Y - 1,
+                    (gfx, x, y) -> gfx.blitSprite(
+                            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/connected"),
+                            x, y, 16, 16)
+            ).withCallback(() -> {
+                PacketDistributor.sendToServer(new DisconnectLinksPacket(menu.controllerPos, gaugePos));
+                removeWidget(disconnectLinkButton);
+                disconnectLinkButton = null;
+            });
+            addWidget(disconnectLinkButton);
+        }
     }
 
     /** The button icon for each request mode. */
@@ -1009,15 +1023,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         // Redstone-link reset slot (top-right), shown only when a redstone link is wired to this gauge; clicking it
         // disconnects them all (mirrors Create's FactoryPanelScreen).
-        if (hasLinkConnections()) {
-            int itemX = panelX + LINK_RESET_X, itemY = panelY + LINK_RESET_Y;
-            AllGuiTextures.FROGPORT_SLOT.render(gfx, itemX - 1, itemY - 1);
-            gfx.renderItem(AllBlocks.REDSTONE_LINK.asStack(), itemX, itemY);
-            if (in(mouseX, mouseY, itemX, itemY, 16, 16))
+        if (disconnectLinkButton != null) {
+            disconnectLinkButton.render(gfx, mouseX, mouseY, partialTick);
+            if (disconnectLinkButton.isMouseOver(mouseX, mouseY)) {
                 tooltip = List.of(
-                    CreateLang.translate("gui.factory_panel.has_link_connections").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                        CreateLang.translate("gui.factory_panel.has_link_connections")
+                                .color(ScrollInput.HEADER_RGB).component(),
+                        CreateLang.translate("gui.factory_panel.left_click_disconnect")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()
+                );
+            }
         }
 
         // Count box tooltip
@@ -1272,14 +1287,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Click the open-promise box → clear promises (Create's left-click reset).
         if (in(mouseX, mouseY, panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16)) {
             sendConfig(true, false);
-            playClickSound();
-            return true;
-        }
-
-        // Click the redstone-link reset slot → disconnect every link wired to this gauge (Create's redstone reset).
-        // A dedicated packet (like the ingredient disconnect) so it doesn't commit any pending recipe-config edits.
-        if (hasLinkConnections() && in(mouseX, mouseY, panelX + LINK_RESET_X, panelY + LINK_RESET_Y, 16, 16)) {
-            PacketDistributor.sendToServer(new DisconnectLinksPacket(menu.controllerPos, gaugePos));
             playClickSound();
             return true;
         }
