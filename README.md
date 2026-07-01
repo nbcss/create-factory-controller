@@ -32,6 +32,11 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 | Create                 | 6.0.10   |
 | Deployer (Recommended) | 0.1.2    |
 
+## Links
+
+Crowdin Translation: https://crowdin.com/project/createfactorycontroller
+Discord Support: https://discord.gg/yv77dsgeVx
+
 ## Credits
 
 Graphics:
