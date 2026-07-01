@@ -6,7 +6,7 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 
 - **Factory Controller**: Provides a centralized place for you to keep and managing up to 256 gauges (configurable).
 - **Virtual Board**: You can move & zoom view in the virtual board like a 2D canvas; the board size also automatically adjusted by screen size.
-- **Full Overlay**: You can see the count label of ALL gauges by toggle Full Overlay mode (default keybinding: Alt).
+- **Always Show Label**: You can see the count label of all gauges by toggling Always Show Label mode (default keybinding: Alt).
 - **Connection Rotate**: You can cycle arrow mode like real gauge by press "R" key (could be changed in keybinding).
 - **Network Selector**: A component in the GUI which keeps list of known networks on the virtual board, and you can scroll it to highlight the gauges which belong to chosen network.
 - **Quick Tune**: When holding a gauge item on cursor and scroll the Network Selector component in GUI (or just Shift+Scroll), you can directly tune the gauge to a known network.

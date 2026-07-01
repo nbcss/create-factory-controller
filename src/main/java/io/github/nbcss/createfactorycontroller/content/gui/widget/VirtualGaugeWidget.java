@@ -107,7 +107,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     }
 
     /**
-     * Count overlay — shown for every gauge in "full overlay" mode, otherwise only for the hovered one. Drawn in the
+     * Count overlay — shown for every gauge in "always show label" mode, otherwise only for the hovered one. Drawn in the
      * top-most pass (after the hover/selection target marks) so the reticle never covers the number.
      */
     @Override

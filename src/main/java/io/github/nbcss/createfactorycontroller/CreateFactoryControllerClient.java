@@ -72,12 +72,12 @@ public class CreateFactoryControllerClient {
             "key.categories.createfactorycontroller");
 
     /**
-     * Toggles "full overlay" (every gauge shows its count label vs. only the hovered one). Handled inside
+     * Toggles "always show label" (every gauge shows its count label vs. only the hovered one). Handled inside
      * {@code FactoryControllerScreen#keyPressed}, so it only fires while the controller GUI is open — never
      * in-world or on another screen. Rebindable from Options ▸ Controls; defaults to Left Alt.
      */
-    public static final KeyMapping TOGGLE_FULL_OVERLAY = new KeyMapping(
-            "key.createfactorycontroller.toggle_full_overlay",
+    public static final KeyMapping TOGGLE_ALWAYS_SHOW_LABEL = new KeyMapping(
+            "key.createfactorycontroller.toggle_always_show_label",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT,
             "key.categories.createfactorycontroller");
 
@@ -130,7 +130,7 @@ public class CreateFactoryControllerClient {
         event.register(RELOCATE_COMPONENT);
         event.register(PAN_VIEW);
         event.register(DRAG_SELECTION);
-        event.register(TOGGLE_FULL_OVERLAY);
+        event.register(TOGGLE_ALWAYS_SHOW_LABEL);
         event.register(SELECTION_MODE);
     }
 

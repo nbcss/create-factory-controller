@@ -596,7 +596,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             hoveredConn.render(graphics, menu);
         }
 
-        boolean fullOverlay = ClientConfig.fullOverlay();
+        boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
         for (VirtualComponentWidget component : componentWidgets.values())
             if (isCellVisible(component.position(), minX, minY, maxX, maxY))
                 component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
@@ -608,7 +608,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
         for (VirtualComponentWidget component : componentWidgets.values())
             if (isCellVisible(component.position(), minX, minY, maxX, maxY))
-                component.renderOverlay(graphics, fullOverlay || component.position().equals(hoveredPosition));
+                component.renderOverlay(graphics, alwaysShowLabel || component.position().equals(hoveredPosition));
 
         graphics.pose().popPose();
         graphics.disableScissor();
@@ -1484,10 +1484,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        // Toggle "full overlay" (rebindable, Left Alt by default). Handled here — never in-world or on
+        // Toggle "always show label" (rebindable, Left Alt by default). Handled here — never in-world or on
         // another screen — and persisted client-side via ClientConfig so it survives controllers/sessions.
-        if (CreateFactoryControllerClient.TOGGLE_FULL_OVERLAY.matches(keyCode, scanCode)) {
-            ClientConfig.toggleFullOverlay();
+        if (CreateFactoryControllerClient.TOGGLE_ALWAYS_SHOW_LABEL.matches(keyCode, scanCode)) {
+            ClientConfig.toggleAlwaysShowLabel();
             // todo update some indicator button
             return true;
         }
