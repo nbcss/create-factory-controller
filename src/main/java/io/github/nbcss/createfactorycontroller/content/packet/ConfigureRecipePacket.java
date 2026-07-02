@@ -27,7 +27,8 @@ import java.util.Map;
  */
 public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panelPos, String address,
                                     int recipeOutput, int craftBatch, int craftDimension, int promiseInterval,
-                                    int promiseLimit, int count, ThresholdUnit mode, RequestMode requestMode,
+                                    int promiseLimit, boolean promiseLimitByAddress, int count, ThresholdUnit mode,
+                                    RequestMode requestMode,
                                     List<VirtualComponentPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, boolean clearPromises,
                                     boolean reset) implements CustomPacketPayload {
@@ -47,6 +48,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 buf.writeInt(pkt.craftDimension);
                 buf.writeInt(pkt.promiseInterval);
                 buf.writeInt(pkt.promiseLimit);
+                buf.writeBoolean(pkt.promiseLimitByAddress);
                 buf.writeInt(pkt.count);
                 buf.writeVarInt(pkt.mode.ordinal());
                 buf.writeVarInt(pkt.requestMode.ordinal());
@@ -72,6 +74,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 int craftDimension = buf.readInt();
                 int promiseInterval = buf.readInt();
                 int promiseLimit = buf.readInt();
+                boolean promiseLimitByAddress = buf.readBoolean();
                 int count = buf.readInt();
                 ThresholdUnit mode = ThresholdUnit.values()[
                     Math.floorMod(buf.readVarInt(), ThresholdUnit.values().length)];
@@ -90,8 +93,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 for (int i = 0; i < m; i++)
                     arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
                 return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, craftDimension,
-                    promiseInterval, promiseLimit, count, mode, requestMode, positions, amounts, arrangement,
-                    clearPromises, reset);
+                    promiseInterval, promiseLimit, promiseLimitByAddress, count, mode, requestMode, positions, amounts,
+                    arrangement, clearPromises, reset);
             });
 
     @Override
@@ -107,8 +110,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
             for (int i = 0; i < n; i++)
                 inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
-                packet.craftDimension(), packet.promiseInterval(), packet.promiseLimit(), packet.count(), packet.mode(),
-                packet.requestMode(), inputs, packet.craftingArrangement(),
+                packet.craftDimension(), packet.promiseInterval(), packet.promiseLimit(), packet.promiseLimitByAddress(),
+                packet.count(), packet.mode(), packet.requestMode(), inputs, packet.craftingArrangement(),
                 packet.clearPromises(), packet.reset());
         });
     }

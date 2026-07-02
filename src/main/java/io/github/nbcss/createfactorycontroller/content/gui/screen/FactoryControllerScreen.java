@@ -38,6 +38,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacke
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RenameControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RetuneCarriedPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -1519,7 +1520,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         }
 
-        if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode) && hover != null) {
+        if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode)) {
+            if (hoveredConn != null && !Connection.Type.LOGISTICS.equals(hoveredConn.connection.type)) {
+                Connection conn = hoveredConn.connection;
+                if (canReverseConnection(conn)) {
+                    playWrenchSound();
+                    PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, conn.from, conn.to));
+                } else {
+                    playDenySound();
+                }
+                return true;
+            }
+            if (hover == null) return super.keyPressed(keyCode, scanCode, modifiers);
             playWrenchSound();
             PacketDistributor.sendToServer(new CycleOperationModePacket(menu.controllerPos, hoveredPosition));
             return true;
@@ -1539,6 +1551,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (self == null) return null;
         List<Connection> toCycle = self.connectionsToCycle();
         return toCycle.isEmpty() ? null : toCycle.getFirst().arrowBendMode;
+    }
+
+    private boolean canReverseConnection(Connection conn) {
+        VirtualComponentBehaviour newSource = componentAt(conn.to);
+        VirtualComponentBehaviour newSink = componentAt(conn.from);
+        return newSource != null && newSink != null
+            && !newSink.targetedBy().containsKey(conn.to)
+            && ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess();
     }
 
     /** Builds a {@link ConnectionWidget} for every visible incoming connection this frame. */

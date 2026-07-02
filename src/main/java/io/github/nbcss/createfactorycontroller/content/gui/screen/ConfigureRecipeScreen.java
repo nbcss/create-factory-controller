@@ -32,6 +32,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.RequestGaugePromiseInfoPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -90,7 +91,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int PROMISE_CLEAR_X = 10;
     private static final int PROMISE_TIMEOUT_X = 44, PROMISE_TIMEOUT_W = 32;
     private static final int PROMISE_LIMIT_X = 92, PROMISE_LIMIT_W = 42;
-    private static final int LINK_RESET_X = 160, LINK_RESET_Y = 25;
+    private static final int LINK_RESET_X = 12, LINK_RESET_Y = 48;
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
@@ -129,6 +130,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private AddressEditBox addressBox;
     private ScrollInput promiseExpiration;
     private int promiseLimitState = -1;
+    /** Local edit of the limit scope (click the limit box to cycle): false = this gauge's own in-flight requests,
+     *  true = all requests network-wide to this gauge's address. */
+    private boolean promiseLimitByAddress = false;
+    /** Ticks until the next on-demand poll of the gauge's live promise counts (server round-trip). */
+    private int promiseInfoPollCooldown = 0;
     private IconButton confirmButton;
     private IconButton deleteButton;
     private IconButton newInputButton;
@@ -164,11 +170,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         VirtualGaugeBehaviour g = gauge();
 
-        // Preserve any unsaved edits across re-init (the crafting toggle re-runs init()).
+        // Preserve any unsaved edits across re-init (the crafting toggle re-runs init()). promiseExpiration is null
+        // only on the very first init, so it doubles as the "already initialized from the gauge" signal.
         String address = addressBox != null ? addressBox.getValue() : (g == null ? "" : g.recipeAddress);
-        int promiseState = promiseExpiration != null ? promiseExpiration.getState()
-                                                     : (g == null ? -1 : g.promiseClearingInterval);
+        boolean firstInit = promiseExpiration == null;
+        int promiseState = !firstInit ? promiseExpiration.getState() : (g == null ? -1 : g.promiseClearingInterval);
         int limitState = promiseLimitState >= 0 ? promiseLimitState : (g == null ? 0 : g.promiseLimit);
+        promiseLimitByAddress = !firstInit ? promiseLimitByAddress : (g != null && g.promiseLimitByAddress);
 
         // Create's address box with frogport-address autocomplete (DestinationSuggestions). It caps
         // length at 25 and renders its own suggestion dropdown; we only style it to match the panel.
@@ -248,6 +256,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             });
             addWidget(disconnectLinkButton);
         }
+
+        GaugePromiseInfoClient.clear();   // drop any stale count; the next tick polls fresh
+        promiseInfoPollCooldown = 0;
     }
 
     /** The button icon for each request mode. */
@@ -272,6 +283,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         super.containerTick();
         addressBox.tick();          // drives the address autocomplete (DestinationSuggestions)
         controller.tickBulbs();     // keep the background board's indicator bulbs animating
+        // Poll the gauge's live in-flight promise counts every 10 ticks for the promise-limit box (on-demand, so the
+        // server computes them only while this screen is open).
+        if (--promiseInfoPollCooldown <= 0) {
+            promiseInfoPollCooldown = 10;
+            PacketDistributor.sendToServer(new RequestGaugePromiseInfoPacket(menu.controllerPos, gaugePos));
+        }
     }
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -547,6 +564,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         mode = g.unit;
         requestMode = g.requestMode;
         promiseLimitState = g.promiseLimit;
+        promiseLimitByAddress = g.promiseLimitByAddress;
         // Fluid filter: amounts are millibuckets. Coerce the unit into the fluid group,
         // and default a fresh gauge's output to 1000 mB (one bucket).
         fluidMode = FluidCompat.isFluidFilter(g.filter);
@@ -1009,17 +1027,36 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         drawCenteredBoxLabel(gfx, promiseExpiration.getX(), promiseExpiration.getY(), promiseExpiration.getWidth(), label);
 
         int limit = promiseLimitState;
-        int activePromises = g == null ? 0 : g.activePromiseCount;
-        drawPromiseLimitLabel(gfx, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, activePromises, limit);
+        // Live count polled from the server (on-demand), by the current scope; -1 until the first reply → show 0.
+        int scoped = promiseLimitByAddress
+            ? GaugePromiseInfoClient.address(gaugePos) : GaugePromiseInfoClient.owned(gaugePos);
+        int activePromises = Math.max(0, scoped);
+        drawPromiseLimitLabel(gfx, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W,
+            activePromises, limit, promiseLimitByAddress);
 
-        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16))
-            tooltip = List.of(
-                Component.translatable("createfactorycontroller.gui.open_requests")
-                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
-                Component.translatable("createfactorycontroller.gui.open_requests.desc1").withStyle(ChatFormatting.GRAY),
-                Component.translatable("createfactorycontroller.gui.open_requests.desc2").withStyle(ChatFormatting.GRAY),
-                Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
+            boolean addr = promiseLimitByAddress;
+            List<Component> t = new ArrayList<>();
+            t.add(Component.translatable("createfactorycontroller.gui.open_requests.title")
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
+            t.add(Component.translatable("createfactorycontroller.gui.open_requests.desc1").withStyle(ChatFormatting.GRAY));
+            t.add(Component.translatable("createfactorycontroller.gui.open_requests.desc2").withStyle(ChatFormatting.GRAY));
+            t.add(Component.empty());
+            t.add(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(0xb88218)));
+            // The two scope options: the active one is white with an "->" arrow, the other dim gray with ">".
+            t.add(Component.literal(!addr ? "-> " : "> ")
+                    .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_gauge"))
+                    .withStyle(!addr ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+            t.add(Component.literal(addr ? "-> " : "> ")
+                    .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_address"))
+                    .withStyle(addr ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+            t.add(Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            t.add(Component.translatable("createfactorycontroller.gui.open_requests.click_scope")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            tooltip = t;
+        }
 
         // Redstone-link reset slot (top-right), shown only when a redstone link is wired to this gauge; clicking it
         // disconnects them all (mirrors Create's FactoryPanelScreen).
@@ -1122,12 +1159,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.drawString(font, label, x + (width - font.width(label)) / 2, y + 4, 0xFFEEEEEE, true);
     }
 
-    private void drawPromiseLimitLabel(GuiGraphics gfx, int x, int y, int width, int active, int limit) {
-        String activeText = String.valueOf(active);
+    private void drawPromiseLimitLabel(GuiGraphics gfx, int x, int y, int width, int active, int limit,
+                                       boolean byAddress) {
+        // Address scope prefixes "@" so the shared-quota mode is distinguishable at a glance.
+        String prefix = byAddress ? "@" : "";
         if (limit == 0) {
-            gfx.drawString(font, activeText, x + (width - font.width(activeText)) / 2, y + 4, 0xFFEEEEEE, true);
+            String text = prefix + active;
+            gfx.drawString(font, text, x + (width - font.width(text)) / 2, y + 4, 0xFFEEEEEE, true);
             return;
         }
+        String activeText = prefix + active;
         String limitText = "/" + limit;
         int totalWidth = font.width(activeText) + font.width(limitText);
         int textX = x + (width - totalWidth) / 2;
@@ -1291,6 +1332,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
+        // Click the promise-limit box → cycle the limit scope (own ⟷ address); scroll still edits the value.
+        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
+            promiseLimitByAddress = !promiseLimitByAddress;
+            playClickSound();
+            return true;
+        }
+
         if (!craftingActive) {
             List<InputSlot> slots = layoutInputSlots();
             for (int i = 0; i < slots.size(); i++) {
@@ -1370,7 +1418,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
             if (dir != 0) {
                 int limitStep = hasShiftDown() ? 10 : 1;
-                promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 999);
+                promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 99);
                 playScrollSound();
             }
             return true;
@@ -1482,7 +1530,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int dimension = craftingActive ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
-            promiseExpiration.getState(), promiseLimitState, thresholdCount, mode, requestMode,
+            promiseExpiration.getState(), promiseLimitState, promiseLimitByAddress, thresholdCount, mode, requestMode,
             positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
     }
 

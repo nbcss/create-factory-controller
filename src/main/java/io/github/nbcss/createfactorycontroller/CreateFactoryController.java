@@ -231,9 +231,11 @@ public class CreateFactoryController {
         registrar.playToServer(RequestProductionOrdersPacket.TYPE, RequestProductionOrdersPacket.STREAM_CODEC, RequestProductionOrdersPacket::handle);
         registrar.playToServer(RemoveProductionOrderPacket.TYPE, RemoveProductionOrderPacket.STREAM_CODEC, RemoveProductionOrderPacket::handle);
         registrar.playToServer(RequestIngredientCheckPacket.TYPE, RequestIngredientCheckPacket.STREAM_CODEC, RequestIngredientCheckPacket::handle);
+        registrar.playToServer(RequestGaugePromiseInfoPacket.TYPE, RequestGaugePromiseInfoPacket.STREAM_CODEC, RequestGaugePromiseInfoPacket::handle);
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
         registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);
         registrar.playToClient(IngredientCheckResultPacket.TYPE, IngredientCheckResultPacket.STREAM_CODEC, IngredientCheckResultPacket::handle);
+        registrar.playToClient(GaugePromiseInfoPacket.TYPE, GaugePromiseInfoPacket.STREAM_CODEC, GaugePromiseInfoPacket::handle);
     }
 
     private void registerScreens(RegisterMenuScreensEvent event) {

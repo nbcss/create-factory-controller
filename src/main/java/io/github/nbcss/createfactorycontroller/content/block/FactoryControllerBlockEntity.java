@@ -453,7 +453,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
-                                int craftDimension, int promiseInterval, int promiseLimit, int count, ThresholdUnit mode,
+                                int craftDimension, int promiseInterval, int promiseLimit, boolean promiseLimitByAddress,
+                                int count, ThresholdUnit mode,
                                 RequestMode requestMode,
                                 Map<VirtualComponentPosition, Integer> inputAmounts,
                                 List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
@@ -470,6 +471,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.craftDimension = 0;
             gauge.promiseClearingInterval = -1;
             gauge.promiseLimit = 0;
+            gauge.promiseLimitByAddress = false;
             gauge.activeCraftingArrangement = new ArrayList<>();
             gauge.disconnectAll();
             refreshGaugeIdentity(gauge, true);
@@ -490,6 +492,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.craftDimension = Math.max(0, craftDimension);
         gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
         gauge.promiseLimit = Math.max(0, Math.min(999, promiseLimit));
+        gauge.promiseLimitByAddress = promiseLimitByAddress;
         gauge.unit = mode;
         gauge.requestMode = requestMode;
         if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
