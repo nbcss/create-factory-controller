@@ -679,14 +679,24 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             PromiseCounts.onAdded(networkId, ownerKey, recipeAddress, controller.getLevel().getGameTime());
     }
 
+    /** In-flight promises this gauge minted (its own scope). Read from the per-tick {@link PromiseCounts} cache (O(1)).
+     *  {@link FluidGaugeBehaviour} overrides to read the fluid backend instead. */
+    public int ownedPromiseCount(long now) {
+        return PromiseCounts.owned(networkId, gaugeId == null ? null : gaugeId.toString(), now);
+    }
+
+    /** In-flight promises network-wide targeting this gauge's address (address scope). {@link FluidGaugeBehaviour}
+     *  overrides to read the fluid backend instead. */
+    public int addressPromiseCount(long now) {
+        return PromiseCounts.address(networkId, recipeAddress, now);
+    }
+
     /** In-flight promises counting against this gauge's limit — its own, or (address scope) all requests network-wide
-     *  to its address. Read from the per-tick {@link PromiseCounts} cache (O(1)). */
+     *  to its address, per {@link #promiseLimitByAddress}. */
     public int countLimitedPromises() {
         if (controller == null || controller.getLevel() == null) return 0;
         long now = controller.getLevel().getGameTime();
-        return promiseLimitByAddress
-            ? PromiseCounts.address(networkId, recipeAddress, now)
-            : PromiseCounts.owned(networkId, gaugeId == null ? null : gaugeId.toString(), now);
+        return promiseLimitByAddress ? addressPromiseCount(now) : ownedPromiseCount(now);
     }
 
     // ── Recipe-mode requests ─────────────────────────────────────────────────

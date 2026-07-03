@@ -61,4 +61,29 @@ final class RepackagedFluidProvider implements FluidFilterProvider {
         return RepackagedFluidStock.dispatchWithOrderId(network, getFilterFluid(filter).copyWithAmount(amount),
                 address, orderId, linkIndex, finalLink);
     }
+
+    @Override
+    public boolean supportsPromiseLimit() {
+        return true;
+    }
+
+    @Override
+    public void addControllerPromise(UUID network, ItemStack filter, int amount, String ownerKey, String address) {
+        RepackagedFluidStock.addPromise(network, getFilterFluid(filter), amount, ownerKey, address);
+    }
+
+    @Override
+    public int ownedPromises(UUID network, String ownerKey, long gameTime) {
+        return RepackagedFluidStock.owned(network, ownerKey, gameTime);
+    }
+
+    @Override
+    public int addressPromises(UUID network, String address, long gameTime) {
+        return RepackagedFluidStock.address(network, address, gameTime);
+    }
+
+    @Override
+    public void onPromiseAdded(UUID network, String ownerKey, String address, long gameTime) {
+        RepackagedFluidStock.onAdded(network, ownerKey, address, gameTime);
+    }
 }

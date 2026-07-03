@@ -44,9 +44,10 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         @Override public void forceClearPromise(UUID networkId, ItemStack filter) { FluidCompat.forceClearFluid(networkId, filter); }
         @Override public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount,
                                          String ownerKey, String targetAddress, int ttl) {
-            // Fluids ride CreateFluidLogistic's own promise system, not Create's RequestPromiseQueue, so the
-            // controller-promise tagging (owner/address/ttl) doesn't apply here yet.
-            FluidCompat.addFluidPromise(networkId, filter, amount);
+            // A dedicated (Repackaged) fluid backend tags its promises with the minting gauge/address so they count
+            // toward the promise limit; other backends fall back to an untagged promise (ttl still rides the backend's
+            // own timeout, not our per-owner sentinel — the fluid-side timeout isolation is a future step).
+            FluidCompat.addControllerFluidPromise(networkId, filter, amount, ownerKey, targetAddress);
         }
     };
 
@@ -92,6 +93,32 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
 
     @Override public GaugeFilterResolver filterResolver() { return FILTER_RESOLVER; }
     @Override public LogisticsControl logisticsControl() { return LOGISTICS; }
+
+    /** Fold the fresh promise into the FLUID count cache (not the item {@code PromiseCounts}), so a fluid gauge firing
+     *  later this tick sees it. Mirrors the base gauge's item-side fold. */
+    @Override
+    public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount) {
+        String ownerKey = gaugeId == null ? null : gaugeId.toString();
+        logisticsControl().addPromise(networkId, filter, ignoreData, amount, ownerKey, recipeAddress,
+                getPromiseExpiryTimeInTicks());
+        if (controller != null && controller.getLevel() != null)
+            FluidCompat.onFluidPromiseAdded(networkId, filter, ownerKey, recipeAddress,
+                    controller.getLevel().getGameTime());
+    }
+
+    // Count this fluid gauge's in-flight promises from the FLUID backend, instead of the item PromiseCounts the base
+    // gauge reads (both the promise-limit gate and the config screen's live count route through these). Zero on a
+    // backend that can't count them (e.g. no dedicated fluid backend installed).
+
+    @Override
+    public int ownedPromiseCount(long now) {
+        return FluidCompat.fluidOwnedPromises(networkId, filter, gaugeId == null ? null : gaugeId.toString(), now);
+    }
+
+    @Override
+    public int addressPromiseCount(long now) {
+        return FluidCompat.fluidAddressPromises(networkId, filter, recipeAddress, now);
+    }
 
     @Override
     protected VirtualComponentBehaviour.Type componentType() {

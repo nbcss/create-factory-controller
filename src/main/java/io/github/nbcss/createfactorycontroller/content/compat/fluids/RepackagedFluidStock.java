@@ -81,6 +81,67 @@ final class RepackagedFluidStock {
         queue.deployer$add((StockInventoryType) type, new GenericRequestPromise(fluid.copyWithAmount(amount)));
     }
 
+    /** As {@link #addPromise(UUID, FluidStack, int)} but tags the promise with the minting gauge/address (a
+     *  {@link ControllerFluidPromise}), so it counts against that gauge's / address's promise limit. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static void addPromise(UUID network, FluidStack fluid, int amount, String ownerKey, String targetAddress) {
+        if (network == null || fluid.isEmpty() || amount <= 0) return;
+        StockInventoryType<?, ?, ?> type = fluidType();
+        RPQExtension queue = promiseQueue(network);
+        if (type == null || queue == null) return;
+        queue.deployer$add((StockInventoryType) type,
+            new ControllerFluidPromise(fluid.copyWithAmount(amount), ownerKey, targetAddress));
+    }
+
+    // ── Promise-limit counting (fluid analogue of PromiseCounts) ────────────────
+    // Per-network, per-tick cache of ControllerFluidPromise counts bucketed by owner (gaugeId) and target address,
+    // built lazily from one deployer$flatten pass and only for networks queried this tick.
+
+    private static long countTick = Long.MIN_VALUE;
+    private static final Map<UUID, Counts> countCache = new HashMap<>();
+
+    private record Counts(Map<String, Integer> owned, Map<String, Integer> address) {
+        Counts() { this(new HashMap<>(), new HashMap<>()); }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Counts counts(UUID network, long gameTime) {
+        if (gameTime != countTick) { countTick = gameTime; countCache.clear(); }
+        return countCache.computeIfAbsent(network, n -> {
+            Counts c = new Counts();
+            StockInventoryType<?, ?, ?> type = fluidType();
+            RPQExtension queue = promiseQueue(n);
+            if (type == null || queue == null) return c;
+            for (GenericRequestPromise<?> p : (List<GenericRequestPromise<?>>) (List<?>)
+                    queue.deployer$flatten((StockInventoryType) type, false))
+                if (p instanceof ControllerFluidPromise cp) {
+                    if (cp.ownerKey != null && !cp.ownerKey.isBlank()) c.owned.merge(cp.ownerKey, 1, Integer::sum);
+                    if (cp.targetAddress != null && !cp.targetAddress.isBlank())
+                        c.address.merge(cp.targetAddress, 1, Integer::sum);
+                }
+            return c;
+        });
+    }
+
+    /** Active fluid promises this tick minted by gauge {@code ownerKey} on {@code network}. */
+    static int owned(UUID network, String ownerKey, long gameTime) {
+        return ownerKey == null || ownerKey.isBlank() ? 0 : counts(network, gameTime).owned().getOrDefault(ownerKey, 0);
+    }
+
+    /** Active fluid promises this tick targeting {@code address} on {@code network}. */
+    static int address(UUID network, String address, long gameTime) {
+        return address == null || address.isBlank() ? 0 : counts(network, gameTime).address().getOrDefault(address, 0);
+    }
+
+    /** Fold a just-dispatched promise into this tick's cache (if built) so a gauge firing later this tick sees it. */
+    static void onAdded(UUID network, String ownerKey, String address, long gameTime) {
+        if (gameTime != countTick) return;
+        Counts c = countCache.get(network);
+        if (c == null) return;
+        if (ownerKey != null && !ownerKey.isBlank()) c.owned().merge(ownerKey, 1, Integer::sum);
+        if (address != null && !address.isBlank()) c.address().merge(address, 1, Integer::sum);
+    }
+
     /** Force-clears all open promises of {@code fluid} (a player-triggered reset). */
     @SuppressWarnings({"unchecked", "rawtypes"})
     static void forceClear(UUID network, FluidStack fluid) {

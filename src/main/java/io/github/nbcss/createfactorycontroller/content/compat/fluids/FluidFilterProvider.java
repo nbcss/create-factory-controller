@@ -63,4 +63,35 @@ public interface FluidFilterProvider {
         PackageOrderWithCrafts order = PackageOrderWithCrafts.simple(List.of(new BigItemStack(filter.copy(), amount)));
         return LogisticsManager.broadcastPackageRequest(network, RequestType.RESTOCK, order, null, address);
     }
+
+    // ── Promise-limit support (dedicated fluid backends only) ───────────────────
+    // Whether this backend's promises can be counted per-gauge / per-address (the promise-limit feature). Only a
+    // dedicated fluid backend (Repackaged) whose promises don't ride Create's item queue overrides these; the default
+    // is "unsupported" (a gauge on this backend behaves as if no limit is set), which is correct for the item-queue
+    // backends whose promises are already counted on the item side.
+
+    /** Whether {@link #ownedPromises}/{@link #addressPromises} are meaningful for this backend. */
+    default boolean supportsPromiseLimit() {
+        return false;
+    }
+
+    /** Promises the fluid {@code filter} while tagging it with the minting gauge/address, so it counts toward the
+     *  promise limit. Default: an untagged promise (uncounted). */
+    default void addControllerPromise(UUID network, ItemStack filter, int amount, String ownerKey, String address) {
+        addPromise(network, filter, amount);
+    }
+
+    /** Active tagged promises minted by gauge {@code ownerKey} on {@code network} this tick (0 if unsupported). */
+    default int ownedPromises(UUID network, String ownerKey, long gameTime) {
+        return 0;
+    }
+
+    /** Active tagged promises targeting {@code address} on {@code network} this tick (0 if unsupported). */
+    default int addressPromises(UUID network, String address, long gameTime) {
+        return 0;
+    }
+
+    /** Folds a just-dispatched promise into this tick's count cache (no-op if unsupported). */
+    default void onPromiseAdded(UUID network, String ownerKey, String address, long gameTime) {
+    }
 }

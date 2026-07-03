@@ -123,6 +123,40 @@ public final class FluidCompat {
         if (provider != null) provider.addPromise(network, filter, amount);
     }
 
+    // ── Promise limit (dedicated fluid backends) ────────────────────────────────
+
+    /** Whether the backend behind {@code filter} counts promises per gauge/address (so a promise limit applies). */
+    public static boolean fluidSupportsPromiseLimit(ItemStack filter) {
+        FluidFilterProvider provider = providerOf(filter);
+        return provider != null && provider.supportsPromiseLimit();
+    }
+
+    /** Promises {@code filter} tagged with the minting gauge/address, so it counts toward the promise limit. */
+    public static void addControllerFluidPromise(java.util.UUID network, ItemStack filter, int amount,
+                                                 String ownerKey, String address) {
+        FluidFilterProvider provider = providerOf(filter);
+        if (provider != null) provider.addControllerPromise(network, filter, amount, ownerKey, address);
+    }
+
+    /** Active tagged fluid promises minted by {@code ownerKey} on {@code network} this tick (0 if unsupported). */
+    public static int fluidOwnedPromises(java.util.UUID network, ItemStack filter, String ownerKey, long gameTime) {
+        FluidFilterProvider provider = providerOf(filter);
+        return provider == null ? 0 : provider.ownedPromises(network, ownerKey, gameTime);
+    }
+
+    /** Active tagged fluid promises targeting {@code address} on {@code network} this tick (0 if unsupported). */
+    public static int fluidAddressPromises(java.util.UUID network, ItemStack filter, String address, long gameTime) {
+        FluidFilterProvider provider = providerOf(filter);
+        return provider == null ? 0 : provider.addressPromises(network, address, gameTime);
+    }
+
+    /** Folds a just-dispatched tagged fluid promise into this tick's count cache. */
+    public static void onFluidPromiseAdded(java.util.UUID network, ItemStack filter, String ownerKey,
+                                           String address, long gameTime) {
+        FluidFilterProvider provider = providerOf(filter);
+        if (provider != null) provider.onPromiseAdded(network, ownerKey, address, gameTime);
+    }
+
     public static void forceClearFluid(java.util.UUID network, ItemStack filter) {
         FluidFilterProvider provider = providerOf(filter);
         if (provider != null) provider.forceClear(network, filter);

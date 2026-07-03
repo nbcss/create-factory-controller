@@ -26,6 +26,10 @@ public class CfcMixinPlugin implements IMixinConfigPlugin {
 
     private static final String DEPLOYER_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.LogisticsGenericManagerMixin";
+    /** Redirects Deployer's generic-promise codec; targets methods Deployer mixes into RequestPromiseQueue, so it only
+     *  applies when Deployer is present. */
+    private static final String GENERIC_PROMISE_CODEC_MIXIN =
+        "io.github.nbcss.createfactorycontroller.mixin.GenericPromiseCodecMixin";
     private static final String REPACKAGE_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.PackageRepackageHelperMixin";
 
@@ -43,6 +47,7 @@ public class CfcMixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (DEPLOYER_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
+        if (GENERIC_PROMISE_CODEC_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
         if (REPACKAGE_MIXIN.equals(mixinClassName)) return !EXTRA_GAUGES_PRESENT;
         return true;
     }

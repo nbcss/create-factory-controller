@@ -4,7 +4,6 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.promise.PromiseCounts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -18,7 +17,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 /**
  * C2S: the recipe screen (open on one gauge) polls the gauge's live in-flight promise counts — its own and its
  * address's — for the promise-limit box. On-demand only, so nothing is computed when no one is viewing. The server
- * reads the per-tick {@link PromiseCounts} cache and replies with a {@link GaugePromiseInfoPacket}.
+ * reads the gauge's per-tick count cache (item or fluid backend) and replies with a {@link GaugePromiseInfoPacket}.
  */
 public record RequestGaugePromiseInfoPacket(BlockPos pos, VirtualComponentPosition gaugePos)
     implements CustomPacketPayload {
@@ -42,8 +41,9 @@ public record RequestGaugePromiseInfoPacket(BlockPos pos, VirtualComponentPositi
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             if (!(be.components.get(packet.gaugePos()) instanceof VirtualGaugeBehaviour g) || g.gaugeId == null) return;
             long now = player.level().getGameTime();
-            int owned = PromiseCounts.owned(g.networkId, g.gaugeId.toString(), now);
-            int address = PromiseCounts.address(g.networkId, g.recipeAddress, now);
+            // Route through the gauge so a fluid gauge reports its fluid-backend counts, not the item cache.
+            int owned = g.ownedPromiseCount(now);
+            int address = g.addressPromiseCount(now);
             PacketDistributor.sendToPlayer(player, new GaugePromiseInfoPacket(packet.gaugePos(), owned, address));
         });
     }

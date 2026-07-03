@@ -906,8 +906,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 ItemStack stack = ingredientOf(inputConnections.get(slot.connectionIndex()));
                 FluidGuiRender.filterIcon(gfx, stack, ix, iy);
                 if (!stack.isEmpty()) {
-                    if (fluidIng) drawSlotCount(gfx, formatFluidShort(slot.amount()), ix, iy);
-                    else drawItemCount(gfx, stack, ix, iy, String.valueOf(slot.amount()));
+                    drawItemCount(gfx, stack, ix, iy, fluidIng ?
+                            formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
                 }
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
@@ -947,11 +947,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int ox = panelX + 160, oy = panelY + 48;
             int producedCount = craftingActive ? outputCount * effectiveBatch() : outputCount;
             // Output is always magnitude-scaled (mB/B) regardless of the unit box: short ≤1-dp label, full tooltip.
-            String producedBox = fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount);
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
-            if (fluidMode) drawSlotCount(gfx, producedBox, ox, oy);
-            else drawItemCount(gfx, g.filter, ox, oy, producedBox);
+            drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount));
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
                 // The output scroll changes batch in crafting mode / the output count otherwise; both are
                 // disabled when an ignore-data ingredient is present, so the last line reflects that.
@@ -1285,7 +1283,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (text.isBlank()) return;
         gfx.pose().pushPose();
         gfx.pose().translate(0, 0, 200);
-        gfx.drawString(font, text, slotX + 19 - 2 - font.width(text), slotY + 6 + 3, 0xFFFFFF, true);
+        gfx.drawString(font, text, slotX + 17 - font.width(text), slotY + 9, 0xFFFFFF, true);
         gfx.pose().popPose();
     }
 
