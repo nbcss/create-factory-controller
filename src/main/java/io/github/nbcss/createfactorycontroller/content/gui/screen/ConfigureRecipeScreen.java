@@ -1159,21 +1159,50 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.drawString(font, label, x + (width - font.width(label)) / 2, y + 4, 0xFFEEEEEE, true);
     }
 
+    /** 8×8 scope symbols drawn like a leading glyph on the promise-limit box. */
+    private static final ResourceLocation SYMBOL_ADDRESS =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "symbols/address_tag");
+    private static final ResourceLocation SYMBOL_GAUGE =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "symbols/factory_gauge");
+    /** Symbol glyph width + the 1px trailing gap, so it advances like a character. */
+    private static final int SYMBOL_ADVANCE = 9;
+
     private void drawPromiseLimitLabel(GuiGraphics gfx, int x, int y, int width, int active, int limit,
                                        boolean byAddress) {
-        // Address scope prefixes "@" so the shared-quota mode is distinguishable at a glance.
-        String prefix = byAddress ? "@" : "";
+        ResourceLocation symbol = byAddress ? SYMBOL_ADDRESS : SYMBOL_GAUGE;
         if (limit == 0) {
-            String text = prefix + active;
-            gfx.drawString(font, text, x + (width - font.width(text)) / 2, y + 4, 0xFFEEEEEE, true);
+            String text = String.valueOf(active);
+            int startX = x + (width - (SYMBOL_ADVANCE + font.width(text))) / 2;
+            drawScopeSymbol(gfx, symbol, startX, y + 4, 0xFFEEEEEE);
+            gfx.drawString(font, text, startX + SYMBOL_ADVANCE, y + 4, 0xFFEEEEEE, true);
             return;
         }
-        String activeText = prefix + active;
+        int activeColor = active >= limit ? 0xFFFFBFA8 : 0xFFD7FFA8;   // red when at/over limit, else green
+        String activeText = String.valueOf(active);
         String limitText = "/" + limit;
-        int totalWidth = font.width(activeText) + font.width(limitText);
-        int textX = x + (width - totalWidth) / 2;
-        gfx.drawString(font, activeText, textX, y + 4, active >= limit ? 0xFFFFBFA8 : 0xFFD7FFA8, true);
-        gfx.drawString(font, limitText, textX + font.width(activeText), y + 4, 0xFFEEEEEE, true);
+        int startX = x + (width - (SYMBOL_ADVANCE + font.width(activeText) + font.width(limitText))) / 2;
+        drawScopeSymbol(gfx, symbol, startX, y + 4, activeColor);
+        int tx = startX + SYMBOL_ADVANCE;
+        gfx.drawString(font, activeText, tx, y + 4, activeColor, true);
+        gfx.drawString(font, limitText, tx + font.width(activeText), y + 4, 0xFFEEEEEE, true);
+    }
+
+    /** Blits an 8×8 scope symbol tinted {@code color}, with a font-style drop shadow (offset 1,1, colour >> 2), so it
+     *  reads as a coloured leading glyph matching the adjacent count text. */
+    private void drawScopeSymbol(GuiGraphics gfx, ResourceLocation symbol, int x, int y, int color) {
+        int shadow = (color & 0xFF000000) | ((color >> 2) & 0x3F3F3F);
+        RenderSystem.enableBlend();
+        setColor(gfx, shadow);
+        gfx.blitSprite(symbol, x + 1, y + 1, 8, 8);
+        setColor(gfx, color);
+        gfx.blitSprite(symbol, x, y, 8, 8);
+        gfx.setColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+    }
+
+    private static void setColor(GuiGraphics gfx, int argb) {
+        gfx.setColor(((argb >> 16) & 0xFF) / 255f, ((argb >> 8) & 0xFF) / 255f, (argb & 0xFF) / 255f,
+            ((argb >>> 24) & 0xFF) / 255f);
     }
 
     private void renderThreshold(GuiGraphics gfx, @Nullable VirtualGaugeBehaviour behaviour) {

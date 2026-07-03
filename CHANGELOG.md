@@ -1,15 +1,15 @@
-## 0.3.0
+## 1.0.0
 IMPORTANT: this version changed Factory Controller block data structure, once upgraded to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.
 
 Features:
 - Allow drag-to-select components and perform batch relocate & remove
 - Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform Redstone Logical Operation (1 tick delay)
 - Display Link can now read pending orders from Factory Controller
-- Added new keybinding (default F) to change component operation mode, works on Redstone Link and Logical Tube
-- Added new keybindings to relocate component and start connection
+- Added new keybinding (default F) to change component operation mode, works on Redstone Link, Logical Tube and Connection
+- Added new optional keybindings to relocate component and start connection
 - If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
 - Relocate/Placing components now render component ghost
-- Connections are now selectable, and allow change bend mode & delete specific connection
+- Connections are now selectable, and allow change bend mode / reverse direction / delete specific connection
 - Gauge can set request limit to avoid total number of pending requests overload the chain network.
 - Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).
 - Added alternative compact font for input/output count rendering in recipe settings screen (configurable)
@@ -19,6 +19,7 @@ Changes:
 - Existing keybinding "Interact" (R) changed to "cycle arrow mode"
 - Default drag view key is left mouse button now
 - Gauge recipe output slot now supports up to 9 stacks of expecting product
+- Gauge timeout will now only apply to requests created by this gauge.
 
 Optimization:
 - Controller GUI will not render out-of-viewport components now
