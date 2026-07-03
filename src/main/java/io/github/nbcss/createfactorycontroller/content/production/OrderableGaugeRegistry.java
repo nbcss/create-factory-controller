@@ -28,8 +28,9 @@ public final class OrderableGaugeRegistry {
     /** A controller heartbeats every 20 ticks; entries older than this are treated as unloaded (2-beat grace). */
     public static final long TTL_TICKS = 40;
 
-    /** One orderable gauge: its network, stable id, and produced (display) item. */
-    public record Entry(UUID network, UUID gaugeId, ItemStack display) {}
+    /** One orderable gauge: its network, stable id, produced (display) item, per-request ingredient list
+     *  (deduped, one stack per distinct source item, count = per-request amount), and packager address. */
+    public record Entry(UUID network, UUID gaugeId, ItemStack display, List<ItemStack> ingredients, String address) {}
 
     /** The dimension + position of the controller that owns a gauge (for resolving its live recipe graph). */
     public record Located(ResourceKey<Level> dim, BlockPos pos) {}

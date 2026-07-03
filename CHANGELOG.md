@@ -3,7 +3,7 @@ IMPORTANT: this version changed Factory Controller block data structure, once up
 
 Features:
 - Allow drag-to-select components and perform batch relocate & remove
-- Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform Redstone Logical Operation (1 tick delay)
+- Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform redstone logical operations (1 tick delay)
 - Display Link can now read pending orders from Factory Controller
 - Added new keybinding (default F) to change component operation mode, works on Redstone Link, Logical Tube and Connection
 - Added new optional keybindings to relocate component and start connection
@@ -13,6 +13,7 @@ Features:
 - Gauge can set request limit to avoid total number of pending requests overload the chain network.
 - Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).
 - Added alternative compact font for input/output count rendering in recipe settings screen (configurable)
+- Create Production Task icon in Stock Keeper GUI will now include associated gauge ingredients and target address in tooltip.
 
 Changes:
 - Request limit for unit item & stack are increased to 1000

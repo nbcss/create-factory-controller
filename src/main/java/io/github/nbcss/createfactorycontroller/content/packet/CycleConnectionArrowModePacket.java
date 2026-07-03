@@ -11,8 +11,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client → server: cycle the arrow-bend mode of one specific wire ({@code from → to}) through its 5 states
- *  (auto + the four fixed bends). Used by the connection-selected cycle-arrow keybinding. */
+/** Client → server: cycle the arrow-bend mode of one specific wire ({@code from → to}) through its four fixed bends
+ *  (auto is excluded — the first press leaves auto for bend 0). Used by the connection-selected cycle-arrow keybinding. */
 public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
     implements CustomPacketPayload {
 

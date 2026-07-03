@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.item;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -75,6 +76,33 @@ public class ProductionPatternItem extends Item {
             for (int i = 1; i < lines.size(); i++) tooltip.add(lines.get(i));
         } else {
             display.getItem().appendHoverText(display, context, tooltip, flag);
+        }
+        appendRecipeInfo(stack, tooltip);
+    }
+
+    /** Appends the gauge's recipe (ingredients + target address), baked into {@link ProductionTarget} at heartbeat
+     *  time so this reads purely from the item — no server round-trip needed on hover. */
+    private static void appendRecipeInfo(ItemStack stack, List<Component> tooltip) {
+        ProductionTarget target = getTarget(stack);
+        if (target == null) return;
+        List<ItemStack> ingredients = target.ingredients();
+        if (!ingredients.isEmpty()) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("createfactorycontroller.gui.production_ingredients_header")
+                    .withColor(0x528FDE));
+            for (ItemStack ingredient : ingredients) {
+                String name = FluidCompat.filterName(ingredient).getString();
+                String amount = FluidCompat.isFluidFilter(ingredient)
+                    ? ThresholdUnit.formatFluidAmount(ingredient.getCount())
+                    : String.valueOf(ingredient.getCount());
+                tooltip.add(Component.literal("- " + name + " x" + amount).withStyle(ChatFormatting.GRAY));
+            }
+        }
+        String address = target.address();
+        if (!address.isBlank()) {
+            tooltip.add(Component.translatable("createfactorycontroller.gui.production_address_header")
+                .withColor(0x528FDE));
+            tooltip.add(Component.literal("'" + address + "'").withStyle(ChatFormatting.GRAY));
         }
     }
 }

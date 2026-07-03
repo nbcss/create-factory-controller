@@ -86,6 +86,8 @@
   "createfactorycontroller.gui.request_mode.allow_order.desc2": "ordering from a Stock Keeper",
   "createfactorycontroller.gui.request_mode.change_tip": "Click to cycle",
   "item.createfactorycontroller.production_pattern": "Add new production task",
+  "createfactorycontroller.gui.production_ingredients_header": "Ingredients:",
+  "createfactorycontroller.gui.production_address_header": "To address:",
   "item.createfactorycontroller.fluid_filter": "Fluid Filter",
   "createfactorycontroller.gui.production_orders": "Production Orders",
   "createfactorycontroller.gui.no_production_orders": "No open production orders",

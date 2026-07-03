@@ -210,12 +210,32 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<OrderableGaugeRegistry.Entry> entries = new ArrayList<>();
         for (VirtualComponentBehaviour c : components.values())
             if (c instanceof VirtualGaugeBehaviour g && g.gaugeId != null && isOrderable(g))
-                entries.add(new OrderableGaugeRegistry.Entry(g.networkId, g.gaugeId, g.filter.copy()));
+                entries.add(new OrderableGaugeRegistry.Entry(g.networkId, g.gaugeId, g.filter.copy(),
+                    gaugeIngredients(g), g.recipeAddress));
         OrderableGaugeRegistry.heartbeat(level.dimension(), getBlockPos(), entries, now);
     }
 
     private static boolean isOrderable(VirtualGaugeBehaviour g) {
         return g.requestMode.allowsOrder() && !g.filter.isEmpty() && !g.recipeAddress.isBlank();
+    }
+
+    private List<ItemStack> gaugeIngredients(VirtualGaugeBehaviour g) {
+        List<ItemStack> ingredients = new ArrayList<>();
+        for (Map.Entry<VirtualComponentPosition, Connection> e : g.targetedBy().entrySet()) {
+            if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
+            if (!(components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
+            ItemStack item = source.filter;
+            if (item.isEmpty()) continue;
+            boolean merged = false;
+            for (ItemStack existing : ingredients)
+                if (ItemStack.isSameItemSameComponents(existing, item)) {
+                    existing.grow(conn.amount());
+                    merged = true;
+                    break;
+                }
+            if (!merged) ingredients.add(item.copyWithCount(conn.amount()));
+        }
+        return ingredients;
     }
 
     private void invalidateGaugeTasks(VirtualGaugeBehaviour g) {
@@ -579,11 +599,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void reverseConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
         Connection conn = connectionGraph.get(from, to);
         if (conn == null) return;
-        VirtualComponentBehaviour newSource = components.get(to);
-        VirtualComponentBehaviour newSink = components.get(from);
-        if (newSource == null || newSink == null) return;
-        if (connectionGraph.get(to, from) != null
-                || !ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess()) {
+        if (!conn.canReverse(this)) {   // one authority (shared with the UI): kind is reversible + reversed edge is legal
             playDenySound();
             return;
         }
@@ -876,9 +892,34 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             networks.add(id);
             if (entry.contains("Name")) networkNicknames.put(id, entry.getString("Name"));
         }
+        reinitSignalGraph();
         setChanged();
         sendData();
         markOrderableDirty();
+    }
+
+    /**
+     * Re-derives the whole redstone signal graph from a clean baseline after a setup restore. The imported edges still
+     * carry the pre-break signal snapshot (edge {@code State} is serialized unconditionally), but the EXPORT profile
+     * stripped every component's runtime power — so a source whose power reset to its default while its edge kept the
+     * opposite value can never reconcile: its change-detected publish/commit sees no change and the stale edge sticks
+     * (a RECEIVE link or logic tube frozen powered, gating gauges that shouldn't be). Unlike a world reload — where the
+     * full save profile keeps edges and components consistent — an export snapshot must be re-derived, not trusted.
+     *
+     * <p>Every source rewrites its edges from its (reset) output, redstone links (re)join their frequency network and
+     * pull real power now, then every flagged sink folds once. Subsequent ticks self-heal the rest (gauges from stock,
+     * tubes commit on their next preTick).</p>
+     */
+    private void reinitSignalGraph() {
+        for (VirtualComponentBehaviour c : components.values())
+            for (Connection.Type type : Connection.Type.values())
+                c.publish(type);   // overwrite the stale imported edges with each source's clean baseline output
+        for (VirtualComponentBehaviour c : components.values())
+            if (c instanceof VirtualRedstoneLinkBehaviour link) {
+                link.addToNetwork();   // idempotent; the lazy tick would also do this
+                link.updatePower();    // RECEIVE pulls real network power (may re-publish POWERED); SEND re-notifies
+            }
+        settleConnections();
     }
 
     /** Stamps the controller's setup onto {@code stack} (if any) — used when it's dropped on break. */

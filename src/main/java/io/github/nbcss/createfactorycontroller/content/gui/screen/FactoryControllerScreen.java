@@ -1521,9 +1521,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode)) {
-            if (hoveredConn != null && !Connection.Type.LOGISTICS.equals(hoveredConn.connection.type)) {
+            if (hoveredConn != null && hoveredConn.connection.type.reversible()) {
                 Connection conn = hoveredConn.connection;
-                if (canReverseConnection(conn)) {
+                if (conn.canReverse(this::componentAt)) {
                     playWrenchSound();
                     PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, conn.from, conn.to));
                 } else {
@@ -1551,14 +1551,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (self == null) return null;
         List<Connection> toCycle = self.connectionsToCycle();
         return toCycle.isEmpty() ? null : toCycle.getFirst().arrowBendMode;
-    }
-
-    private boolean canReverseConnection(Connection conn) {
-        VirtualComponentBehaviour newSource = componentAt(conn.to);
-        VirtualComponentBehaviour newSink = componentAt(conn.from);
-        return newSource != null && newSink != null
-            && !newSink.targetedBy().containsKey(conn.to)
-            && ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess();
     }
 
     /** Builds a {@link ConnectionWidget} for every visible incoming connection this frame. */

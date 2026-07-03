@@ -78,6 +78,18 @@ public abstract class Connection {
     @Nullable
     public ConnectionValue value() { return null; }
 
+    /** Whether this wire may be flipped ({@code from → to} becomes {@code to → from}) <i>right now</i>: its
+     *  {@link Type#reversible() kind} allows reversal, both endpoints still exist, and the reversed orientation
+     *  passes {@link ConnectionResolver#validate} (which already rejects a pre-existing {@code to → from} edge). One
+     *  authority for both the client gate and the server apply, so the server can't be more permissive than the UI. */
+    public boolean canReverse(ComponentHolder holder) {
+        if (!type.reversible()) return false;
+        VirtualComponentBehaviour newSource = holder.componentAt(to);
+        VirtualComponentBehaviour newSink = holder.componentAt(from);
+        return newSource != null && newSink != null
+                && ConnectionResolver.validate(type, newSource, newSink).isSuccess();
+    }
+
     @Nullable
     public static Connection fromNBT(CompoundTag tag) {
         var type = Type.get(tag.getString("Type"));
@@ -109,6 +121,11 @@ public abstract class Connection {
             public Connection fromNBT(CompoundTag tag) {
                 return LogisticsConnection.fromNBT(tag);
             }
+
+            /** Ingredient wires are not reversible: direction encodes producer→consumer (and carries an ingredient
+             *  {@code amount}), so a flip would silently swap the recipe's roles — redraw instead. */
+            @Override
+            public boolean reversible() { return false; }
 
             /** Ingredient flow: names the two gauges' filters (Create's own "panels connected" prompt). */
             @Override
@@ -159,6 +176,10 @@ public abstract class Connection {
             return Component.translatable("createfactorycontroller.connection.connected",
                     source.getName(), sink.getName()).withStyle(ChatFormatting.GREEN);
         }
+
+        /** Whether a wire of this kind may be direction-flipped by the player. Signal wires (redstone/logic) default
+         *  to reversible; {@link #LOGISTICS} overrides to false (direction is semantic). */
+        public boolean reversible() { return true; }
 
         private static final List<Type> TYPES = List.of(LOGISTICS, REDSTONE);
         private static final Map<String, Type> REGISTRY = Map.of(
