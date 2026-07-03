@@ -34,6 +34,7 @@
   "createfactorycontroller.gui.logical_tube.input_connections": "Inputs: %1$s",
   "createfactorycontroller.gui.logical_tube.output_connections": "Outputs: %1$s",
 
+  "createfactorycontroller.gui.help_button": "Help",
   "createfactorycontroller.gui.capacity": "Capacity",
   "createfactorycontroller.gui.zoom": "Zoom",
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",

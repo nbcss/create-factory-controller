@@ -18,6 +18,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
@@ -143,7 +144,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings");
     private static final ResourceLocation SETTINGS_BTN_HOVER_SPRITE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings_hover");
+    private static final String HELP_URL = "https://github.com/nbcss/create-factory-controller/wiki/Dashboard";
     @Nullable private GraphicButton settingsButton = null;
+    @Nullable private HelpButton helpButton = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
     private static final int CONTROLLER_MODEL_SCALE = 4;
@@ -292,13 +295,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
 
-        int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
-        int selectorY = topPos + CANVAS_TOP_PADDING + 6;
-        if (networkSelector == null)
-            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
-        else
-            networkSelector.setPosition(selectorX, selectorY);
-
         // Rebuild the rename field at the new layout, preserving any in-progress edit across resize.
         // Geometry mirrors Create's station name box (y+4, height 10, unbordered) so the text baseline
         // is identical whether or not it's focused (the box is always rendered — no idle/focus shift).
@@ -312,6 +308,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         nameBox.setValue(currentName);
         if (wasFocused) nameBox.setFocused(true);
         addWidget(nameBox);
+
+        if (helpButton != null) removeWidget(helpButton);
+        helpButton = new HelpButton(leftPos + imageWidth - HelpButton.WIDTH - 5, topPos + 3,
+                HelpButton.ColorPalette.BRASS, HELP_URL);
+        addWidget(helpButton);
+
+        int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
+        int selectorY = topPos + CANVAS_TOP_PADDING + 6;
+        if (networkSelector == null)
+            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
+        else
+            networkSelector.setPosition(selectorX, selectorY);
 
         lastPanFrameMs = 0;   // fresh frame-delta base on (re)entry, so the first pan frame doesn't jump
     }
@@ -474,6 +482,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY)
                     && settingsButton.getTooltipText() != null)
                 graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
+            else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY)
+                    && helpButton.getTooltipText() != null)
+                graphics.renderTooltip(font, helpButton.getTooltipText(), mouseX, mouseY);
         }
     }
 
@@ -693,6 +704,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         // Settings button, top-right corner (event-only widget; drawn here over the board frame).
         if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
+
+        // Help button, far-right corner of the title bar.
+        if (helpButton != null) helpButton.render(graphics, mouseX, mouseY, partialTick);
 
         // Reset depth for network icons & helper text
         graphics.flush();
