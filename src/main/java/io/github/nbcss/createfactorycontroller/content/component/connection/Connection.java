@@ -110,7 +110,7 @@ public abstract class Connection {
      */
     public static abstract class Type {
         /** Item/fluid ingredient flow (gauge → gauge). */
-        public static final Type LOGISTICS = new Type("LOGISTICS", 0x87FF87) {
+        public static final Type LOGISTICS = new Type("LOGISTICS", 0x409DF7) {
             @Override
             public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
                 int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;

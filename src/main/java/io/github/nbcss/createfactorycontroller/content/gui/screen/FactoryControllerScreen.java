@@ -191,6 +191,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Board action mode (e.g. connecting).
     @Nullable private VirtualComponentPosition pendingConnectionTarget = null;
     @Nullable private VirtualComponentPosition pendingRelocateTarget = null;
+    /** Connection-mode preview bend override: the bend mode the cycle-arrow key set for the wire being previewed, and
+     *  the target it applies to. Reset to -1 (auto) whenever the hovered target changes. Applied to the created wire. */
+    private int previewArrowMode = -1;
+    @Nullable private VirtualComponentPosition previewArrowTarget = null;
     @Nullable private Component actionPrompt = null;
     // When the prompt should disappear (millis). Long.MAX_VALUE for the persistent mode prompts;
     // a finite value for transient messages (e.g. the arrow-mode chime), which fade out near expiry.
@@ -774,6 +778,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int TARGET_RED   = 0xFF3333;
     private static final int TARGET_GREEN = 0x33CC33;   // also the selected-component mark
     private static final int TARGET_BLUE  = 0x55AAFF;
+    private static final long PREVIEW_FLASH_MS = 900;
 
     /** Blue reticle over every component on the network currently selected in the network selector. */
     private void renderSelectedNetworkMask(GuiGraphics graphics) {
@@ -794,13 +799,27 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         ItemStack carried = menu.getCarried();
 
         if (pendingConnectionTarget != null) {
+            // The preview bend override only holds while hovering the same target; a change resets it to auto.
+            if (!java.util.Objects.equals(hoveredPosition, previewArrowTarget)) {
+                previewArrowTarget = hoveredPosition;
+                previewArrowMode = -1;
+            }
             // Connect mode: hovering another component shows white if it can be wired (same validation the click and
             // the server run), red otherwise — via the shared ConnectionResolver, no pairwise instanceof here.
-            if (hoverHasGauge && !hoveredPosition.equals(pendingConnectionTarget)) {
-                VirtualComponentBehaviour initiator = componentAt(pendingConnectionTarget);
-                VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
-                boolean valid = ConnectionResolver.resolve(hovered, initiator, initiator).ok();
-                renderTarget(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            ConnectionResolver.Result result = connectionHoverResult();
+            if (result != null) {
+                if (result.ok()) {
+                    // Preview the wire a click would create — resolved source → sink, at the cycled bend mode, in the
+                    // wire kind's colour, flashing alpha so it reads as a not-yet-committed hint.
+                    List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(
+                            result.source(), result.sink(), previewArrowMode, occupiedCells());
+                    if (path != null) {
+                        float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
+                        float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);   // 1.0 at phase 0, 0.6 at half
+                        VirtualConnectionRenderer.drawGuiPath(graphics, path, result.type().color(), alpha);
+                    }
+                }
+                renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
             }
         } else if (pendingRelocateTarget != null) {
             // Relocate mode: white over a valid (empty) destination, red over an occupied cell.
@@ -826,6 +845,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Empty cursor: white over a hovered gauge.
             if (hoverHasGauge) renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         }
+    }
+
+    /** In connection mode, the resolver result for wiring the currently-hovered component to the pending target, or
+     *  {@code null} when the hover isn't a wireable partner (empty cell, or the initiator itself). {@code ok()}
+     *  distinguishes a valid target from an invalid one. Shared by the hover preview and the cycle-arrow key. */
+    @Nullable
+    private ConnectionResolver.Result connectionHoverResult() {
+        if (pendingConnectionTarget == null || hoveredPosition == null
+                || hoveredPosition.equals(pendingConnectionTarget)) return null;
+        VirtualComponentBehaviour initiator = componentAt(pendingConnectionTarget);
+        VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
+        if (initiator == null || hovered == null) return null;
+        return ConnectionResolver.resolve(hovered, initiator, initiator);
     }
 
     /** Draws a half-translucent preview of {@code item}'s component at {@code pos} (its back + front, as a fresh/blank
@@ -1013,6 +1045,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
     public void beginConnectionMode(VirtualComponentPosition target) {
         pendingConnectionTarget = target;
+        previewArrowMode = -1;             // fresh mode: preview starts on auto bend
+        previewArrowTarget = null;
         setPersistentPrompt(Component.translatable("createfactorycontroller.connection.mode_prompt")
                 .withStyle(ChatFormatting.WHITE));
     }
@@ -1113,7 +1147,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             playDenySound();
             return;
         }
-        PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, result.type().name(), result.source(), result.sink()));
+        // Apply the previewed bend override, but only if it still belongs to this target (auto otherwise).
+        int bendMode = clickedPos.equals(previewArrowTarget) ? previewArrowMode : -1;
+        PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, result.type().name(),
+                result.source(), result.sink(), bendMode));
         showConnectionMessage(result);
     }
 
@@ -1573,6 +1610,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         hoveredConn.connection.from, hoveredConn.connection.to));
                 return true;
             }
+            // In connection mode, cycle the PREVIEW wire's bend (applied when the wire is created), not existing wires.
+            // Always consume the key here so it never falls through to the hovered component's outgoing-wire cycle.
+            if (pendingConnectionTarget != null) {
+                ConnectionResolver.Result result = connectionHoverResult();
+                if (result != null && result.ok()) {
+                    if (!java.util.Objects.equals(hoveredPosition, previewArrowTarget)) {
+                        previewArrowTarget = hoveredPosition;
+                        previewArrowMode = -1;
+                    }
+                    previewArrowMode = (previewArrowMode + 1) % 4;   // auto(-1) → 0 → 1 → 2 → 3 → 0
+                    playWrenchSound();
+                }
+                return true;
+            }
             // Otherwise fall back to the hovered component's outgoing wires (shared 4-mode cycle, auto excluded).
             if (hover != null) {
                 Integer mode = outgoingArrowBendMode(hoveredPosition);
@@ -1622,9 +1673,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Builds a {@link ConnectionWidget} for every visible incoming connection this frame. */
-    private List<ConnectionWidget> buildConnectionWidgets(int minX, int minY, int maxX, int maxY) {
+    /** Board cells holding a component — the obstacle set connection paths route around (endpoints excepted). */
+    private Set<VirtualComponentPosition> occupiedCells() {
         Set<VirtualComponentPosition> occupied = new java.util.HashSet<>();
         for (VirtualComponentWidget w : componentWidgets.values()) occupied.add(w.position());
+        return occupied;
+    }
+
+    private List<ConnectionWidget> buildConnectionWidgets(int minX, int minY, int maxX, int maxY) {
+        Set<VirtualComponentPosition> occupied = occupiedCells();
 
         List<ConnectionWidget> result = new ArrayList<>();
         for (VirtualComponentWidget sink : componentWidgets.values()) {

@@ -89,13 +89,20 @@ public final class VirtualConnectionRenderer {
      */
     @Nullable
     public static List<Vector2i> resolvePath(Connection conn, Set<VirtualComponentPosition> occupied) {
-        VirtualComponentPosition from = conn.from, to = conn.to;
+        return resolvePath(conn.from, conn.to, conn.arrowBendMode, occupied);
+    }
+
+    /** As {@link #resolvePath(Connection, Set)} but from raw endpoints + bend mode — used to preview a not-yet-created
+     *  wire while in connection mode. {@code arrowBendMode} {@code -1} auto-picks the first clear bend. */
+    @Nullable
+    public static List<Vector2i> resolvePath(VirtualComponentPosition from, VirtualComponentPosition to,
+                                             int arrowBendMode, Set<VirtualComponentPosition> occupied) {
         if (from.equals(to)) return null;
 
         assert Minecraft.getInstance().level != null;
 
         int mode;
-        if (conn.arrowBendMode < 0) {
+        if (arrowBendMode < 0) {
             boolean swap = from.x() > to.x() || (from.x() == to.x() && from.y() > to.y());
             VirtualComponentPosition pa = swap ? to : from, pb = swap ? from : to;
             int m = 0;
@@ -104,7 +111,7 @@ public final class VirtualConnectionRenderer {
             }
             mode = !swap ? m : (m == 0 ? 1 : m == 1 ? 0 : m);
         } else {
-            mode = conn.arrowBendMode % 4;
+            mode = arrowBendMode % 4;
         }
         return new ArrayList<>(buildCellPath(from, to, mode));
     }
@@ -112,9 +119,17 @@ public final class VirtualConnectionRenderer {
     /** Draws a static connection {@code path} (cell waypoints) in {@code color} (0xRRGGBB) — for the Logical Tube
      *  settings grids. Translate the pose so cell {@code (0,0)} sits at the desired screen origin. */
     public static void drawGuiPath(GuiGraphics gfx, List<Vector2i> path, int color) {
-        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
+        drawGuiPath(gfx, path, color, 1f);
+    }
+
+    /** As {@link #drawGuiPath(GuiGraphics, List, int)} but with an {@code alpha} (0..1) — used to pulse the
+     *  connection-mode wire preview. Blend is forced on so a translucent tint actually shows. */
+    public static void drawGuiPath(GuiGraphics gfx, List<Vector2i> path, int color, float alpha) {
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, alpha);
         drawPathSegments(gfx, path, false);
         gfx.setColor(1f, 1f, 1f, 1f);
+        com.mojang.blaze3d.systems.RenderSystem.disableBlend();
     }
 
     /** Walks a cell-space polyline and blits the arrow strip per segment (head at the last point, tail at the first).

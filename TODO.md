@@ -3,12 +3,12 @@
 - [DONE] Promise Limit
 - [DONE] Recipe tooltip for production order item
 - [DONE] Set gauge item via JEI in controller screen
+- [DONE] Draw preview connection when in connect mode
 - [SKIP] Guide Overlay GUI; move to web link first
 - [TBC] Tooltip to hint placeable item?
 
 # 1.1.0
 - [TODO] Integer Connection & Arithmetic Component
-- [TODO] Draw preview connection when in connect mode
 - [TODO] Dynamic Batch Size
 - [TODO] Paper as component
 - [TODO] Network Rename/Set Icon

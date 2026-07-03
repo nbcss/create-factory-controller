@@ -540,7 +540,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Connections ────────────────────────────────────────────────────────
 
-    public void addConnection(String typeName, VirtualComponentPosition sourcePos, VirtualComponentPosition sinkPos) {
+    public void addConnection(String typeName, VirtualComponentPosition sourcePos, VirtualComponentPosition sinkPos,
+                              int arrowBendMode) {
         Connection.Type type = Connection.Type.get(typeName);
         VirtualComponentBehaviour source = components.get(sourcePos);
         VirtualComponentBehaviour sink = components.get(sinkPos);
@@ -554,6 +555,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             return;
         }
         Connection conn = type.create(source, sink);
+        conn.arrowBendMode = arrowBendMode < 0 ? -1 : arrowBendMode % 4;   // client-chosen preview bend (or -1 = auto)
         connectionGraph.add(conn);
         source.publish(type);          // write the new edge's value + flag the sink (new edge enters at fold identity)
         settleConnections();           // fold the sink once

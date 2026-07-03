@@ -9,6 +9,7 @@ Features:
 - Added new keybindings to relocate component (default Q) and start connection (default C)
 - If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
 - Relocate/Placing components now render component ghost
+- Connecting new component now render connection ghost; you can also change connection ghost arrow mode before connect
 - Connections are now selectable, and allow change bend mode / reverse direction / delete specific connection
 - Gauge can set request limit to avoid total number of pending requests overload the chain network.
 - Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).

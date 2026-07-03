@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 public record AddConnectionPacket(BlockPos pos, String connectionType,
-                                  VirtualComponentPosition source, VirtualComponentPosition sink)
+                                  VirtualComponentPosition source, VirtualComponentPosition sink, int arrowBendMode)
     implements CustomPacketPayload {
 
     public static final Type<AddConnectionPacket> TYPE =
@@ -31,6 +31,7 @@ public record AddConnectionPacket(BlockPos pos, String connectionType,
             ByteBufCodecs.STRING_UTF8, AddConnectionPacket::connectionType,
             POS_CODEC, AddConnectionPacket::source,
             POS_CODEC, AddConnectionPacket::sink,
+            ByteBufCodecs.INT, AddConnectionPacket::arrowBendMode,
             AddConnectionPacket::new
         );
 
@@ -41,7 +42,7 @@ public record AddConnectionPacket(BlockPos pos, String connectionType,
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.addConnection(packet.connectionType(), packet.source(), packet.sink());
+            be.addConnection(packet.connectionType(), packet.source(), packet.sink(), packet.arrowBendMode());
         });
     }
 }
