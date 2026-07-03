@@ -323,8 +323,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                 tip.add(partner.getName().copy().withColor(partner.getColor()));
                 tip.addAll(partner.infoTooltip());   // component-specific info (monitored item / frequencies+mode / mode)
             }
-            if (canReverse(hovered))   // click = reverse (only when legal — a link wire can't)
-                tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse").withStyle(ChatFormatting.GRAY));
+            if (hovered.canReverse(menu))
+                tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.disconnect")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
@@ -380,14 +381,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
             if (in(mx, my, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)))) return true;
         return false;
-    }
-
-    /** Whether the reversed orientation of {@code c} would be legal (mirrors the server check) — false for a link wire.
-     *  The no-collision rule is enforced authoritatively server-side; this only gates the tooltip hint. */
-    private boolean canReverse(Connection c) {
-        VirtualComponentBehaviour newSource = menu.componentAt(c.to), newSink = menu.componentAt(c.from);
-        return newSource != null && newSink != null
-                && ConnectionResolver.validate(c.type, newSource, newSink).isSuccess();
     }
 
     @Override

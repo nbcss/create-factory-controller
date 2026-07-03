@@ -220,7 +220,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             controller.beginRelocateMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
-        relocateButton.setToolTip(CreateLang.translate("gui.factory_panel.relocate").component());
+        relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
         // Mechanical-crafting toggle — only when the inputs+output match a crafting recipe.

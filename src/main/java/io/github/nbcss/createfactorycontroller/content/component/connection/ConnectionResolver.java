@@ -50,13 +50,13 @@ public final class ConnectionResolver {
 
             boolean abValid = ca.canSource() && cb.canSink();   // a → b
             boolean baValid = cb.canSource() && ca.canSink();   // b → a
-            if (!abValid && !baValid) return Result.fail(ConnectionResolver::aborted);
+            if (!abValid && !baValid) return Result.fail(() -> cannotConnect(a, b));
 
             if (abValid && !baValid) return result(type, a, b);
             if (!abValid) return result(type, b, a);
             return creationSink == a ? result(type, b, a) : result(type, a, b);
         }
-        return Result.fail(ConnectionResolver::aborted);   // no shared type
+        return Result.fail(() -> cannotConnect(a, b));   // no shared type
     }
 
     private static Result result(Connection.Type type, VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
@@ -72,12 +72,12 @@ public final class ConnectionResolver {
         ConnectionCapability.Role sourceCap = capabilityOf(source, type);
         ConnectionCapability.Role sinkCap = capabilityOf(sink, type);
         if (sourceCap == null || sinkCap == null || !sourceCap.canSource() || !sinkCap.canSink())
-            return ValidationResult.fail(ConnectionResolver::aborted);
+            return ValidationResult.fail(() -> cannotConnect(source, sink));
         ValidationResult vr = source.validateAsSource(type, sink);
         if (vr.isSuccess()) vr = sink.validateAsSink(type, source);
         if (vr.isSuccess() && alreadyConnected(source, sink))
-            vr = ValidationResult.fail(() -> CreateLang.translate("factory_panel.already_connected")
-                    .style(ChatFormatting.RED).component());
+            vr = ValidationResult.fail(() -> Component.translatable("createfactorycontroller.connection.already_connected")
+                    .withStyle(ChatFormatting.RED));
         return vr.isSuccess() ? new ValidationResult(true, () -> type.successMessage(source, sink)) : vr;
     }
 
@@ -97,6 +97,14 @@ public final class ConnectionResolver {
     }
 
     private static Component aborted() {
-        return CreateLang.translate("factory_panel.connection_aborted").style(ChatFormatting.WHITE).component();
+        return CreateLang.translate("factory_panel.connection_aborted").style(ChatFormatting.RED).component();
+    }
+
+    /** "{@code a} cannot connect to {@code b}" — the generic failure for two identified, incompatible components
+     *  (no shared/matching connection type or direction). Reused by every validator that has resolved both endpoints,
+     *  so a rejection always names them instead of a bare "aborted". */
+    public static Component cannotConnect(VirtualComponentBehaviour a, VirtualComponentBehaviour b) {
+        return Component.translatable("createfactorycontroller.connection.cannot_connect", a.getName(), b.getName())
+                .withStyle(ChatFormatting.RED);
     }
 }

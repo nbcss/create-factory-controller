@@ -226,6 +226,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // can show their one-line tooltips. {x0, y0, x1, y1}; null until first drawn.
     @Nullable private int[] capacityLabelBounds = null;
     @Nullable private int[] zoomLabelBounds = null;
+    @Nullable private int[] nameAreaBounds = null;
 
     // Inline, station-style rename field shown in the title bar. Blank ⇒ the default block name is
     // drawn instead (see the title section of renderBoard). Edits commit on Enter / screen close.
@@ -625,9 +626,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             String shownStr = !nameBox.isFocused() && blank
                     ? menu.controllerDisplayName().getString()
                     : nameBox.getValue();
-            int nameWidth = nameBox == null ? imageWidth - 16 : nameBox.getWidth();
-            int x = leftPos + imageWidth / 2 - (Math.min(font.width(shownStr), nameWidth) + 10) / 2;
+            int textW = font.width(shownStr);
+            int x = leftPos + imageWidth / 2 - (textW + 10) / 2;
             nameBox.setX(x);
+            nameBox.setWidth(Math.max(textW + (nameBox.isFocused() ? 6 : 0), 1));
+            nameAreaBounds = new int[]{x, topPos, x + textW + 5 + RENAME_BUTTON_SIZE, topPos + 14};
             nameBox.render(graphics, mouseX, mouseY, partialTick);
             if (!nameBox.isFocused()) {
                 if (blank)
@@ -1008,13 +1011,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
     public void beginConnectionMode(VirtualComponentPosition target) {
         pendingConnectionTarget = target;
-        setPersistentPrompt(CreateLang.translate("factory_panel.click_second_panel").style(ChatFormatting.WHITE).component());
+        setPersistentPrompt(Component.translatable("createfactorycontroller.connection.mode_prompt")
+                .withStyle(ChatFormatting.WHITE));
     }
 
     /** Enters "relocate" mode: the next empty cell clicked becomes {@code target}'s new position. */
     public void beginRelocateMode(VirtualComponentPosition target) {
         pendingRelocateTarget = target;
-        setPersistentPrompt(CreateLang.translate("factory_panel.click_to_relocate").style(ChatFormatting.WHITE).component());
+        VirtualComponentBehaviour behaviour = componentAt(target);
+        Component name = behaviour == null ? Component.empty() : behaviour.getName();
+        setPersistentPrompt(Component.translatable("createfactorycontroller.gui.relocate_mode_prompt", name)
+                .withStyle(ChatFormatting.WHITE));
     }
 
     /** A prompt that stays until the mode ends (no fade). */
@@ -1090,7 +1097,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
         VirtualComponentBehaviour clicked = clickedWidget.behaviour();    // the clickedPos component
         VirtualComponentBehaviour initiator = componentAt(targetPos);    // the component that started the mode (= sink)
-        if (initiator == null) return;
+        if (initiator == null) {   // vanished mid-mode (removed/relocated) — a real failure, not a user abort
+            playDenySound();
+            return;
+        }
 
         // The single shared validator — identical to the hover preview and the server. The server re-validates and
         // performs the storage, so the client just sends the packet on success (no optimistic mutation). The result
@@ -1119,13 +1129,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentPosition from = pendingRelocateTarget;
         pendingRelocateTarget = null;
         actionPrompt = null;
+        VirtualComponentBehaviour moving = componentAt(from);
+        Component name = moving == null ? Component.empty() : moving.getName();
         if (widget == null && !FactoryControllerBlockEntity.isOutBoard(clicked)) {
             PacketDistributor.sendToServer(new MoveComponentPacket(menu.controllerPos, from, clicked));
-            setTimedPrompt(CreateLang.translate("factory_panel.relocated")
-                    .style(ChatFormatting.GREEN).component(), 3000);
+            setTimedPrompt(Component.translatable("createfactorycontroller.gui.relocated", name)
+                    .withStyle(ChatFormatting.GREEN), 3000);
         } else {
-            setTimedPrompt(CreateLang.translate("factory_panel.relocation_aborted")
-                    .style(ChatFormatting.WHITE).component(), 3000);
+            setTimedPrompt(Component.translatable("createfactorycontroller.gui.relocation_aborted", name)
+                    .withStyle(ChatFormatting.WHITE), 3000);
         }
     }
 
@@ -1134,8 +1146,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Name field (title bar): clicking it begins editing with all text selected (mirrors Create's
         // station); clicking anywhere else commits the pending rename and leaves edit mode.
         if (nameBox != null) {
-            boolean inNameBar = mouseY > topPos && mouseY < topPos + 14
-                    && mouseX > leftPos && mouseX < leftPos + imageWidth;
+            boolean inNameBar = inBounds(nameAreaBounds, mouseX, mouseY);
             if (!nameBox.isFocused() && inNameBar) {
                 nameBox.setFocused(true);
                 nameBox.setCursorPosition(nameBox.getValue().length());

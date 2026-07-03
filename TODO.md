@@ -1,7 +1,7 @@
 # 1.0.0
 - [DONE] Alternative Passive Request Strategy
-- [TODO] Promise Limit
-- [TODO] Recipe tooltip for production order item
+- [DONE] Promise Limit
+- [DONE] Recipe tooltip for production order item
 - [TODO] Guide Overlay GUI
 
 # Roadmap

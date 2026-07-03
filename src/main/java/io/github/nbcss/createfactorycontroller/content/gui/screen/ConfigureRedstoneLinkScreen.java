@@ -179,7 +179,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
                             .getVisualOrderText()), mouseX, mouseY);
         // Icon-button tooltips drawn here (last) so the slots/items from super.render can't cover them.
         else if (relocateButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
+            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.action_relocate"), mouseX, mouseY);
         else if (addConnectionButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.connect_input").component(), mouseX, mouseY);
         else if (confirmButton.isMouseOver(mouseX, mouseY))

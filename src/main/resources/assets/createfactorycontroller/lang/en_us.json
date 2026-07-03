@@ -6,12 +6,15 @@
   "block.createfactorycontroller.factory_controller.tooltip.behaviour1": "_Pause_ all managed gauges.",
   "createfactorycontroller.tooltip.configured_controller": "Controller configured",
 
-  "createfactorycontroller.connection.connected": "Connect %1$s to %2$s",
+  "createfactorycontroller.connection.connected": "Connected %1$s to %2$s",
   "createfactorycontroller.connection.type.logistics": "Logistics Connection",
   "createfactorycontroller.connection.type.redstone": "Redstone Connection",
   "createfactorycontroller.connection.overlapping": "Overlapping %s",
   "createfactorycontroller.connection.scroll_hint": "Shift-Scroll to cycle",
   "createfactorycontroller.connection.cycle_arrow": "Arrow path mode %s",
+  "createfactorycontroller.connection.mode_prompt": "Click a component to connect...",
+  "createfactorycontroller.connection.already_connected": "Components are already connected",
+  "createfactorycontroller.connection.cannot_connect": "%1$s cannot connect to %2$s",
 
   "createfactorycontroller.display_source.factory_controller_pending_orders": "Pending Orders",
 
@@ -59,6 +62,10 @@
   "createfactorycontroller.gui.info.none": "—",
   "createfactorycontroller.gui.action_configure": "Click to configure",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
+  "createfactorycontroller.gui.action_relocate": "Relocate component",
+  "createfactorycontroller.gui.relocate_mode_prompt": "Click a spot to relocate this %1$s to...",
+  "createfactorycontroller.gui.relocated": "%1$s moved to new position",
+  "createfactorycontroller.gui.relocation_aborted": "%1$s relocation aborted",
   "createfactorycontroller.gui.threshold.auto_managed": "Auto managed on demand",
   "createfactorycontroller.gui.unable_to_change": "Unable to change",
   "createfactorycontroller.gui.prompt.no_selected_network": "No network selected",

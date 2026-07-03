@@ -1,13 +1,12 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
-import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
-import net.minecraft.ChatFormatting;
 import net.minecraft.world.item.Item;
 
 import java.util.List;
@@ -83,12 +82,11 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
 
     /** Default wire-endpoint label: the component's item name (a link shows "Redstone Link"). Gauges override to
      *  name their ingredient instead. */
-    @Override public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) { return rejectByDefault(); }
-    @Override public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) { return rejectByDefault(); }
+    @Override public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) { return rejectByDefault(this, sink); }
+    @Override public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) { return rejectByDefault(source, this); }
 
-    private static ValidationResult rejectByDefault() {
-        return ValidationResult.fail(() -> CreateLang.translate("factory_panel.connection_aborted")
-                .style(ChatFormatting.WHITE).component());
+    private static ValidationResult rejectByDefault(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+        return ValidationResult.fail(() -> ConnectionResolver.cannotConnect(source, sink));
     }
 
     // ── Signal propagation ──────────────────────────────────────────────────────

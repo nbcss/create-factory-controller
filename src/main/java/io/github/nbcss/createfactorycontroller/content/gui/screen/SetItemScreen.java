@@ -218,7 +218,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         if (confirm.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
         else if (relocateButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
+            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.action_relocate"), mouseX, mouseY);
         else if (respectDataButton.visible && respectDataButton.isMouseOver(mouseX, mouseY))
             gfx.renderComponentTooltip(font, dataButtonTooltip(respectDataName, respectDataDesc), mouseX, mouseY);
         else if (ignoreDataButton.visible && ignoreDataButton.isMouseOver(mouseX, mouseY))

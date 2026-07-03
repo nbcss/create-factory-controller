@@ -68,7 +68,7 @@ public class CreateFactoryControllerClient {
 
     public static final KeyMapping DRAG_SELECTION = new KeyMapping(
             "key.createfactorycontroller.drag_selection",
-            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_RIGHT,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
             "key.categories.createfactorycontroller");
 
     /**

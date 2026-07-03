@@ -5,12 +5,11 @@ import com.simibubi.create.content.redstone.link.IRedstoneLinkable;
 import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler;
 import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler.Frequency;
 import com.simibubi.create.AllBlocks;
-import com.simibubi.create.foundation.utility.CreateLang;
-
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
@@ -135,19 +134,18 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // decisive role (SOURCE when receive, SINK when send), so the reverse wire is structurally impossible.
     @Override
     public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
-        if (Connection.Type.REDSTONE.equals(type) && !receive) return fail();
-        return sink instanceof VirtualRedstoneLinkBehaviour ? fail() : ValidationResult.SUCCESS;
+        if (Connection.Type.REDSTONE.equals(type) && !receive) return fail(this, sink);
+        return sink instanceof VirtualRedstoneLinkBehaviour ? fail(this, sink) : ValidationResult.SUCCESS;
     }
 
     @Override
     public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) {
-        if (Connection.Type.REDSTONE.equals(type) && receive) return fail();
-        return source instanceof VirtualRedstoneLinkBehaviour ? fail() : ValidationResult.SUCCESS;
+        if (Connection.Type.REDSTONE.equals(type) && receive) return fail(source, this);
+        return source instanceof VirtualRedstoneLinkBehaviour ? fail(source, this) : ValidationResult.SUCCESS;
     }
 
-    private static ValidationResult fail() {
-        return ValidationResult.fail(() -> CreateLang.translate("factory_panel.connection_aborted")
-                .style(ChatFormatting.WHITE).component());
+    private static ValidationResult fail(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+        return ValidationResult.fail(() -> ConnectionResolver.cannotConnect(source, sink));
     }
 
     // ── Power computation ──────────────────────────────────────────────────────
