@@ -43,7 +43,6 @@ import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionP
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
@@ -125,11 +124,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int MAIN_INV_H = 54;
     private static final int INV_GAP = 4;
     private static final int SLOT_ROW_W = 162;
-    private static final int EXPAND_BTN_SIZE = 12;
+    private static final int EXPAND_BTN_SIZE = 9;
+    private static final ResourceLocation EXPAND_BTN_BASE_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tiny_button/base_general");
+    private static final ResourceLocation EXPAND_BTN_EXPAND_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tiny_button/expand");
+    private static final ResourceLocation EXPAND_BTN_COLLAPSE_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tiny_button/collapse");
     private int invOriginX;
     private int invHotbarY;
     private boolean inventoryExpanded = false;
-    @Nullable private Button expandButton = null;
+    @Nullable private GraphicButton expandButton = null;
 
     // Settings button (top-right of the board); opens the client-side background-picker overlay.
     private static final int SETTINGS_BTN_W = 23;
@@ -271,13 +276,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         invOriginX = (imageWidth - SLOT_ROW_W) / 2 + 1;
         menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
 
-        if (expandButton != null) removeWidget(expandButton);
-        expandButton = Button.builder(Component.literal(inventoryExpanded ? "-" : "+"), btn -> toggleInventory())
-                .pos(expandButtonX(), expandButtonY())
-                .size(EXPAND_BTN_SIZE, EXPAND_BTN_SIZE)
-                .build();
-        // Event-only: rendered manually in renderBg at the inventory panel's elevated z.
-        addWidget(expandButton);
+        rebuildExpandButton();
 
         // Settings button, top-right corner of the board. Event-only (rendered manually in renderBoard);
         // its area is excluded from the canvas hit-test so clicks reach the widget instead of panning.
@@ -374,23 +373,30 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return topPos + CANVAS_TOP_PADDING + 8;
     }
 
-    private int expandButtonX() {
-        return leftPos + invOriginX + SLOT_ROW_W - 13;
-    }
-
-    private int expandButtonY() {
-        int topOfInv = invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0);
-        return topPos + topOfInv - EXPAND_BTN_SIZE - 2;
-    }
-
     private void toggleInventory() {
         inventoryExpanded = !inventoryExpanded;
         menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
+        rebuildExpandButton();
+    }
+
+    private void rebuildExpandButton() {
         if (expandButton != null) removeWidget(expandButton);
-        expandButton = Button.builder(Component.literal(inventoryExpanded ? "-" : "+"), btn -> toggleInventory())
-                .pos(expandButtonX(), expandButtonY())
-                .size(EXPAND_BTN_SIZE, EXPAND_BTN_SIZE)
-                .build();
+
+        int expandButtonX = leftPos + invOriginX + SLOT_ROW_W - 10;
+        int topOfInv = invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0);
+        int expandButtonY = topPos + topOfInv - EXPAND_BTN_SIZE - 3;
+
+        ResourceLocation icon = inventoryExpanded ? EXPAND_BTN_COLLAPSE_SPRITE : EXPAND_BTN_EXPAND_SPRITE;
+        expandButton = new GraphicButton(expandButtonX, expandButtonY, EXPAND_BTN_SIZE, EXPAND_BTN_SIZE,
+                () -> {
+                    toggleInventory();
+                    return true;
+                })
+                .addGraphic(GraphicButton.DISPLAY_BOTH, EXPAND_BTN_BASE_SPRITE)
+                .addGraphic(GraphicButton.DISPLAY_HOVER, 0x44FFFFFF, 1, 1, 7, 7)
+                .addGraphic(GraphicButton.DISPLAY_NORMAL, icon, 0x555555, 2, 2, 5, 5)
+                .addGraphic(GraphicButton.DISPLAY_HOVER, icon, 0xFFFFFF, 2, 2, 5, 5);
+        // Event-only: rendered manually in renderBg at the inventory panel's elevated z.
         addWidget(expandButton);
     }
 

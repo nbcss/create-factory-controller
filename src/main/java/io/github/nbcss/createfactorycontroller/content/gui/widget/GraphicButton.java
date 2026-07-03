@@ -55,7 +55,7 @@ public class GraphicButton extends AbstractWidget {
     }
 
     public GraphicButton addGraphic(int displayedState, ResourceLocation resource, int color, int x, int y, int w, int h) {
-        graphicLayers.add(new GraphicLayer(displayedState, resource, color, x, y, w, h));
+        graphicLayers.add(new GraphicLayer(displayedState, resource, wrapOpaqueColor(color), x, y, w, h));
         return this;
     }
     public GraphicButton addGraphic(int displayedState, ResourceLocation resource, int x, int y, int w, int h) {
@@ -63,7 +63,7 @@ public class GraphicButton extends AbstractWidget {
         return this;
     }
     public GraphicButton addGraphic(int displayedState, int color, int x, int y, int w, int h) {
-        graphicLayers.add(new GraphicLayer(displayedState, null, color, x, y, w, h));
+        graphicLayers.add(new GraphicLayer(displayedState, null, wrapOpaqueColor(color), x, y, w, h));
         return this;
     }
     public GraphicButton addGraphic(int displayedState, ResourceLocation resource, int color) {
@@ -74,6 +74,10 @@ public class GraphicButton extends AbstractWidget {
     }
     public GraphicButton addGraphic(int displayedState, int color) {
         return addGraphic(displayedState, null, color, 0, 0, this.width, this.height);
+    }
+
+    private int wrapOpaqueColor(int color) {
+        return color < (1 << 24) ? (0xFF << 24) | color : color;
     }
 
     @Override
