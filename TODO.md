@@ -2,33 +2,38 @@
 - [DONE] Alternative Passive Request Strategy
 - [DONE] Promise Limit
 - [DONE] Recipe tooltip for production order item
-- [TODO] Guide Overlay GUI
+- [DONE] Set gauge item via JEI in controller screen
+- [SKIP] Guide Overlay GUI; move to web link first
+- [TBC] Tooltip to hint placeable item?
 
-# Roadmap
+# 1.1.0
+- [TODO] Integer Connection & Arithmetic Component
+- [TODO] Draw preview connection when in connect mode
 - [TODO] Dynamic Batch Size
-- [TODO] Custom Keybinding Preset
-- [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Paper as component
+- [TODO] Network Rename/Set Icon
 - [TODO] Blueprint Save/Load
 - [TODO] Production Order Status Notification
+- [TODO] Remote Interface Item
+- [TODO] Alt mode button
+- [TODO] Actual Guide Overlay GUI
+
+# Roadmap
+- [TODO] Custom Keybinding Preset
+- [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration
 - [TODO] Improve panel sync packet (transfer delta only)
-- [TODO] Draw preview connection when in connect mode
 - [TODO] Connection tab in recipe / redstone link setting screen
 - [TODO] Item monitoring mode in Display Link Mode
-- [TODO] Network Rename/Set Icon
-- [TODO] Integer Connection & Arithmetic Component
 - [TODO] Component Search
 - [TODO] Proxy/Projection Mode
 - [TODO] Infinite Request
 - [TBC] Custom arrow bend mode
 - [TBC] No promise request
 - [TODO] Controller disabled indicator
-- [TODO] Alt mode button
 - [TODO] Per gauge request interval
 - [TODO] Quick Request Mode
 - [TODO] Show Active Promise Timer
-- [TODO] Remote Interface Item
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
 - [TBC] Redstone Frequency from clipboard

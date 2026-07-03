@@ -33,6 +33,7 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.AttachComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.BatchMoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
@@ -55,6 +56,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
@@ -1425,6 +1427,61 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int cellX = (int) Math.floor((viewX + (posX - centerX) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
         int cellY = (int) Math.floor((viewY + (posY - centerY) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
         return new VirtualComponentPosition(cellX, cellY);
+    }
+
+    // ── JEI ghost drop (drag an item/fluid from JEI onto an empty board gauge to set its filter) ──────────────
+    // Called from FactoryControllerGhostHandler (JEI plugin), which stays JEI-gated; the screen exposes only plain
+    // types (Rect2i / stacks), like SetItemScreen does for its own ghost slot.
+
+    /** A board gauge offered as a JEI ghost drop target: its on-screen cell rect + which ingredient kinds its filter
+     *  resolver accepts. */
+    public record GhostGaugeTarget(Rect2i area, VirtualComponentPosition pos, boolean acceptsItems, boolean acceptsFluids) {}
+
+    /** The ghost drop hitbox is the central {@value #GHOST_TARGET_SIZE}×{@value #GHOST_TARGET_SIZE} of the gauge (the
+     *  gauge body), not the whole {@link #CANVAS_COMPONENT_SIZE} cell — so a drop only registers over the gauge itself. */
+    private static final int GHOST_TARGET_SIZE = 8;
+
+    /** Screen rect of the gauge's central drop area, inverting {@link #at}: {@code screen = (world − view)·zoom + center},
+     *  where the world span is the middle {@link #GHOST_TARGET_SIZE} of the cell. */
+    private Rect2i cellScreenRect(VirtualComponentPosition pos) {
+        int x0 = leftPos + CANVAS_SIDE_PADDING, y0 = topPos + CANVAS_TOP_PADDING;
+        int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING, y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
+        int centerX = (x0 + x1) / 2, centerY = (y0 + y1) / 2;
+        double zoom = getZoomFactor();
+        double margin = (CANVAS_COMPONENT_SIZE - GHOST_TARGET_SIZE) / 2.0;   // centre the 8×8 area in the 16 cell
+        int sx = (int) Math.round((pos.x() * (double) CANVAS_COMPONENT_SIZE + margin - viewX) * zoom) + centerX;
+        int sy = (int) Math.round((pos.y() * (double) CANVAS_COMPONENT_SIZE + margin - viewY) * zoom) + centerY;
+        int size = (int) Math.ceil(GHOST_TARGET_SIZE * zoom);
+        return new Rect2i(sx, sy, size, size);
+    }
+
+    /** Every empty, on-screen gauge, as a JEI drop target. Only empty gauges (setting a filter), and only those whose
+     *  cell centre lies in the canvas (so off-board / panel-covered gauges get no stray target). */
+    public List<GhostGaugeTarget> ghostGaugeTargets() {
+        List<GhostGaugeTarget> out = new ArrayList<>();
+        for (VirtualComponentWidget w : componentWidgets.values()) {
+            if (!(w.behaviour() instanceof VirtualGaugeBehaviour g) || !g.filter.isEmpty()) continue;
+            Rect2i area = cellScreenRect(w.position());
+            if (!isInCanvasArea(area.getX() + area.getWidth() / 2.0, area.getY() + area.getHeight() / 2.0)) continue;
+            GaugeFilterResolver r = g.filterResolver();
+            out.add(new GhostGaugeTarget(area, w.position(), r.acceptsItemDrop(), r.acceptsFluidDrop()));
+        }
+        return out;
+    }
+
+    /** JEI item drop onto {@code pos}: set the gauge's filter to the dragged item if it's still an empty gauge that
+     *  accepts the stack. Reuses the same {@link GaugeSetItemPacket} the carried-item click path sends. */
+    public void setGaugeFilterFromJei(VirtualComponentPosition pos, ItemStack stack) {
+        if (!(componentAt(pos) instanceof VirtualGaugeBehaviour g) || !g.filter.isEmpty()) return;
+        if (!g.filterResolver().acceptsFilter(stack)) return;
+        PacketDistributor.sendToServer(new GaugeSetItemPacket(menu.controllerPos, pos, stack.copyWithCount(1), false));
+    }
+
+    /** JEI fluid drop onto {@code pos}: convert to the gauge's fluid-filter token (addon wrapper) and set it. */
+    public void setGaugeFluidFromJei(VirtualComponentPosition pos, FluidStack fluid) {
+        if (!(componentAt(pos) instanceof VirtualGaugeBehaviour g) || !g.filter.isEmpty()) return;
+        ItemStack stack = g.filterResolver().fromFluid(fluid);
+        if (!stack.isEmpty()) setGaugeFilterFromJei(pos, stack);
     }
 
     private boolean isInCanvasArea(double x, double y) {

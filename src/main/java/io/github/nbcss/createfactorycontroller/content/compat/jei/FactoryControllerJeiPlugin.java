@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.compat.jei;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedstoneLinkScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -50,6 +51,38 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
             }
         });
         registration.addGhostIngredientHandler(ConfigureRedstoneLinkScreen.class, new RedstoneLinkGhostHandler());
+        // Drag an item/fluid from JEI straight onto an empty board gauge to set its filter (no set-item overlay).
+        registration.addGhostIngredientHandler(FactoryControllerScreen.class, new FactoryControllerGhostHandler());
+    }
+
+    /**
+     * Offers every empty board gauge as a drop target: an item sets an item gauge's filter, a fluid sets a fluid
+     * gauge's (converted to the addon wrapper). JEI re-queries targets each frame, so they follow the board's camera
+     * pan/zoom; the board's normal hover stays active under the cursor.
+     */
+    private static class FactoryControllerGhostHandler implements IGhostIngredientHandler<FactoryControllerScreen> {
+
+        @Override
+        public <I> @NotNull List<Target<I>> getTargetsTyped(FactoryControllerScreen screen,
+                                                            @NotNull ITypedIngredient<I> ingredient, boolean doStart) {
+            List<Target<I>> targets = new ArrayList<>();
+            Optional<ItemStack> stack = ingredient.getItemStack();
+            Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK);
+            for (FactoryControllerScreen.GhostGaugeTarget t : screen.ghostGaugeTargets()) {
+                if (t.acceptsItems() && stack.isPresent() && !stack.get().isEmpty()) {
+                    ItemStack filter = stack.get();
+                    targets.add(dropTarget(t.area(), () -> screen.setGaugeFilterFromJei(t.pos(), filter)));
+                }
+                if (t.acceptsFluids() && fluid.isPresent() && !fluid.get().isEmpty()) {
+                    FluidStack dropped = fluid.get();
+                    targets.add(dropTarget(t.area(), () -> screen.setGaugeFluidFromJei(t.pos(), dropped)));
+                }
+            }
+            return targets;
+        }
+
+        @Override
+        public void onComplete() {}
     }
 
     /** Offers the two frequency slots (Red/Blue) of the redstone-link config screen as JEI drop targets.
