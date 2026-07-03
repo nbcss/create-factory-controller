@@ -685,10 +685,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return PromiseCounts.owned(networkId, gaugeId == null ? null : gaugeId.toString(), now);
     }
 
-    /** In-flight promises network-wide targeting this gauge's address (address scope). {@link FluidGaugeBehaviour}
-     *  overrides to read the fluid backend instead. */
+    /** In-flight promises network-wide targeting this gauge's address (address scope) — the UNION of item and fluid
+     *  promises, so an item gauge and a fluid gauge pointed at the same address share one quota. Owner scope stays
+     *  kind-specific (a gauge only ever mints one kind), but the address quota spans both backends. */
     public int addressPromiseCount(long now) {
-        return PromiseCounts.address(networkId, recipeAddress, now);
+        return PromiseCounts.address(networkId, recipeAddress, now)
+             + FluidCompat.fluidAddressPromises(networkId, recipeAddress, now);
     }
 
     /** In-flight promises counting against this gauge's limit — its own, or (address scope) all requests network-wide

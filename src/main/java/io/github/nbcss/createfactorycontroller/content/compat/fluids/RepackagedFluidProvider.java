@@ -63,11 +63,6 @@ final class RepackagedFluidProvider implements FluidFilterProvider {
     }
 
     @Override
-    public boolean supportsPromiseLimit() {
-        return true;
-    }
-
-    @Override
     public void addControllerPromise(UUID network, ItemStack filter, int amount, String ownerKey, String address) {
         RepackagedFluidStock.addPromise(network, getFilterFluid(filter), amount, ownerKey, address);
     }

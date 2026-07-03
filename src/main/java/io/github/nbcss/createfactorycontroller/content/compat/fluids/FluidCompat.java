@@ -125,12 +125,6 @@ public final class FluidCompat {
 
     // ── Promise limit (dedicated fluid backends) ────────────────────────────────
 
-    /** Whether the backend behind {@code filter} counts promises per gauge/address (so a promise limit applies). */
-    public static boolean fluidSupportsPromiseLimit(ItemStack filter) {
-        FluidFilterProvider provider = providerOf(filter);
-        return provider != null && provider.supportsPromiseLimit();
-    }
-
     /** Promises {@code filter} tagged with the minting gauge/address, so it counts toward the promise limit. */
     public static void addControllerFluidPromise(java.util.UUID network, ItemStack filter, int amount,
                                                  String ownerKey, String address) {
@@ -144,10 +138,15 @@ public final class FluidCompat {
         return provider == null ? 0 : provider.ownedPromises(network, ownerKey, gameTime);
     }
 
-    /** Active tagged fluid promises targeting {@code address} on {@code network} this tick (0 if unsupported). */
-    public static int fluidAddressPromises(java.util.UUID network, ItemStack filter, String address, long gameTime) {
-        FluidFilterProvider provider = providerOf(filter);
-        return provider == null ? 0 : provider.addressPromises(network, address, gameTime);
+    /** Active tagged fluid promises targeting {@code address} on {@code network} this tick, summed over every
+     *  dedicated fluid backend — no filter needed, so an <b>item</b> gauge can fold the fluid side into its
+     *  address-scope quota (shared cross-kind limit). 0 with no dedicated backend installed (item-only installs never
+     *  touch Deployer here). */
+    public static int fluidAddressPromises(java.util.UUID network, String address, long gameTime) {
+        int total = 0;
+        for (FluidFilterProvider provider : providers())
+            total += provider.addressPromises(network, address, gameTime);   // default 0 → only dedicated backends add
+        return total;
     }
 
     /** Folds a just-dispatched tagged fluid promise into this tick's count cache. */

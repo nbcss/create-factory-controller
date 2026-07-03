@@ -106,18 +106,12 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
                     controller.getLevel().getGameTime());
     }
 
-    // Count this fluid gauge's in-flight promises from the FLUID backend, instead of the item PromiseCounts the base
-    // gauge reads (both the promise-limit gate and the config screen's live count route through these). Zero on a
-    // backend that can't count them (e.g. no dedicated fluid backend installed).
-
+    // Owner scope counts this fluid gauge's own promises from the FLUID backend, instead of the item PromiseCounts the
+    // base gauge reads (a gauge only ever mints one kind). Address scope is NOT overridden: the base already sums item
+    // + fluid promises to the address, so a fluid gauge and an item gauge sharing an address share one quota.
     @Override
     public int ownedPromiseCount(long now) {
         return FluidCompat.fluidOwnedPromises(networkId, filter, gaugeId == null ? null : gaugeId.toString(), now);
-    }
-
-    @Override
-    public int addressPromiseCount(long now) {
-        return FluidCompat.fluidAddressPromises(networkId, filter, recipeAddress, now);
     }
 
     @Override

@@ -70,11 +70,6 @@ public interface FluidFilterProvider {
     // is "unsupported" (a gauge on this backend behaves as if no limit is set), which is correct for the item-queue
     // backends whose promises are already counted on the item side.
 
-    /** Whether {@link #ownedPromises}/{@link #addressPromises} are meaningful for this backend. */
-    default boolean supportsPromiseLimit() {
-        return false;
-    }
-
     /** Promises the fluid {@code filter} while tagging it with the minting gauge/address, so it counts toward the
      *  promise limit. Default: an untagged promise (uncounted). */
     default void addControllerPromise(UUID network, ItemStack filter, int amount, String ownerKey, String address) {
