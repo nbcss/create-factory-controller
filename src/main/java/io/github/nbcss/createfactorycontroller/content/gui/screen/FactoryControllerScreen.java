@@ -19,7 +19,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
-import io.github.nbcss.createfactorycontroller.content.gui.widget.TexturedButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleConnectionArrowModePacket;
@@ -138,7 +138,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings");
     private static final ResourceLocation SETTINGS_BTN_HOVER_SPRITE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings_hover");
-    @Nullable private TexturedButton settingsButton = null;
+    @Nullable private GraphicButton settingsButton = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
     private static final int CONTROLLER_MODEL_SCALE = 4;
@@ -282,14 +282,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Settings button, top-right corner of the board. Event-only (rendered manually in renderBoard);
         // its area is excluded from the canvas hit-test so clicks reach the widget instead of panning.
         if (settingsButton != null) removeWidget(settingsButton);
-        settingsButton = new TexturedButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
-                SETTINGS_BTN_SPRITE, SETTINGS_BTN_HOVER_SPRITE,
+        settingsButton = new GraphicButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
                 () -> {
                     clearSelection();   // entering an overlay clears the selection
                     Minecraft.getInstance().setScreen(new ControllerSettingScreen(this));
                     return true;
                 })
-            .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
+                .addGraphic(GraphicButton.DISPLAY_NORMAL, SETTINGS_BTN_SPRITE)
+                .addGraphic(GraphicButton.DISPLAY_HOVER, SETTINGS_BTN_HOVER_SPRITE)
+                .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
