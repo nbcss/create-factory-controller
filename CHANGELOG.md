@@ -2,11 +2,11 @@
 IMPORTANT: this version changed Factory Controller block data structure, once upgraded to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.
 
 Features:
-- Allow drag-to-select components and perform batch relocate & remove
+- Allow drag-to-select components (hold ctrl by default) and perform batch relocate & remove
 - Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform redstone logical operations (1 tick delay)
 - Display Link can now read pending orders from Factory Controller
 - Added new keybinding (default F) to change component operation mode, works on Redstone Link, Logical Tube and Connection
-- Added new optional keybindings to relocate component and start connection
+- Added new keybindings to relocate component (default Q) and start connection (default C)
 - If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
 - Relocate/Placing components now render component ghost
 - Connections are now selectable, and allow change bend mode / reverse direction / delete specific connection

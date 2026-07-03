@@ -48,13 +48,13 @@ public class CreateFactoryControllerClient {
     /** Starts connection mode from the hovered component. Unbound by default. */
     public static final KeyMapping START_CONNECTION = new KeyMapping(
             "key.createfactorycontroller.start_connection",
-            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C,
             "key.categories.createfactorycontroller");
 
     /** Starts relocate mode for the hovered component. Unbound by default. */
     public static final KeyMapping RELOCATE_COMPONENT = new KeyMapping(
             "key.createfactorycontroller.relocate_component",
-            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Q,
             "key.categories.createfactorycontroller");
 
     /**
