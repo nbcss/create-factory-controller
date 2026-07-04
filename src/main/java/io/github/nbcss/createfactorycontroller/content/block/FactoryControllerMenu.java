@@ -2,14 +2,13 @@ package io.github.nbcss.createfactorycontroller.content.block;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.Container;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -21,15 +20,19 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class FactoryControllerMenu extends AbstractContainerMenu {
+public class FactoryControllerMenu extends AbstractContainerMenu implements ComponentHolder {
     public final List<VirtualComponentBehaviour> components = new ArrayList<>();
     /** Position → component index for O(1) lookup; mirrors {@link #components}. */
-    private final Map<VirtualPanelPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
+    private final Map<VirtualComponentPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
+    /** Client-side connection store the menu's components are views into (the server's components use the controller's
+     *  graph instead). Populated from the synced per-component wires (see the client constructor). */
+    private final ConnectionGraph connectionGraph = new ConnectionGraph();
     public final List<UUID> knownNetworks = new ArrayList<>();
     /** Client mirror of the controller's per-network nicknames (synced); see {@link #networkName}. */
     public final Map<UUID, String> networkNicknames = new HashMap<>();
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";
+    public boolean controllerPowered = false;
     public final BlockPos controllerPos;
 
     // Server-side: reference to the actual BE
@@ -51,8 +54,9 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         setComponents(be.components.values());
         this.knownNetworks.addAll(be.networks);
         this.controllerName = be.customName;
+        this.controllerPowered = be.isRedstonePowered();
 
-        addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
+        addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
 
     /** Client-side constructor (called via IMenuTypeExtension). */
@@ -68,6 +72,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, helper.tag(), playerInventory.player.level().registryAccess());
             if (b != null) addComponent(b);
         }
+        int connectionCount = buf.readVarInt();
+        List<net.minecraft.nbt.CompoundTag> connectionTags = new ArrayList<>(connectionCount);
+        for (int i = 0; i < connectionCount; i++) connectionTags.add(new CompoundTagHelper(buf).tag());
+        loadConnections(connectionTags);   // build the client graph from the synced central edge list
 
         int networkCount = buf.readVarInt();
         for (int i = 0; i < networkCount; i++) {
@@ -78,21 +86,16 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         }
 
         this.controllerName = buf.readUtf();
+        this.controllerPowered = buf.readBoolean();
 
-        addExtraSlots(OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, OFF_SCREEN, false);
+        addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
 
     private int extraSlotsStart = -1;
     private int invSlotsStart = -1;
-    private int ghostSlotIndex = -1;
-    /** Client-side 1-slot holder behind the ghost filter slot (UI only; committed via a packet). */
-    public final SimpleContainer ghostInventory = new SimpleContainer(1);
 
-    private void addExtraSlots(int ghostX, int ghostY, int originX, int hotbarY, boolean expanded) {
+    private void addExtraSlots(int originX, int hotbarY, boolean expanded) {
         extraSlotsStart = slots.size();
-        ghostSlotIndex = slots.size();
-        addSlot(new GhostSlot(ghostInventory, 0, ghostX, ghostY));
-
         invSlotsStart = slots.size();
         // Main inventory (3 rows × 9): off-screen when collapsed, above hotbar when expanded.
         for (int row = 0; row < 3; row++) {
@@ -107,37 +110,16 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
             addSlot(new Slot(cachedPlayerInventory, col, originX + col * 18, hotbarY));
     }
 
-    /** Rebuilds the ghost + inventory slots at new positions (client-side only). */
-    public void rebuildSlots(int ghostX, int ghostY, int originX, int hotbarY, boolean expanded) {
+    /** Rebuilds the inventory slots at new positions (client-side only). */
+    public void rebuildSlots(int originX, int hotbarY, boolean expanded) {
         if (extraSlotsStart >= 0)
             slots.subList(extraSlotsStart, slots.size()).clear();
-        addExtraSlots(ghostX, ghostY, originX, hotbarY, expanded);
+        addExtraSlots(originX, hotbarY, expanded);
     }
 
-    /** Controller view: reposition the player inventory, keeping the ghost slot off-screen. */
+    /** Reposition the player inventory for the active overlay. */
     public void repositionSlots(int originX, int hotbarY, boolean expanded) {
-        rebuildSlots(OFF_SCREEN, OFF_SCREEN, originX, hotbarY, expanded);
-    }
-
-    /** Set-item view: show the ghost slot at the given position alongside the inventory. */
-    public void showGhostSlot(int ghostX, int ghostY, int originX, int hotbarY) {
-        rebuildSlots(ghostX, ghostY, originX, hotbarY, true);
-    }
-
-    public int ghostSlotIndex() { return ghostSlotIndex; }
-    public ItemStack getGhostFilter() { return ghostInventory.getItem(0); }
-
-    /** Sets the ghost filter to a single-count copy of {@code stack} (empty clears it). */
-    public void setGhostFilter(ItemStack stack) {
-        ghostInventory.setItem(0, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
-    }
-
-    /** Display-only filter slot — vanilla renders it (icon + hover highlight); the screen sets it. */
-    private static class GhostSlot extends Slot {
-        GhostSlot(Container container, int index, int x, int y) { super(container, index, x, y); }
-        @Override public boolean mayPlace(@NotNull ItemStack stack) { return false; }
-        @Override public boolean mayPickup(@NotNull Player player) { return false; }
-        @Override public int getMaxStackSize() { return 1; }
+        rebuildSlots(originX, hotbarY, expanded);
     }
 
     @Override
@@ -152,7 +134,6 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     @Override
     public @NotNull ItemStack quickMoveStack(@NotNull Player player, int index) {
         if (invSlotsStart < 0) return ItemStack.EMPTY;
-        if (index == ghostSlotIndex) return ItemStack.EMPTY;   // never shift-move the ghost slot
 
         Slot slot = slots.get(index);
         if (!slot.hasItem()) return ItemStack.EMPTY;
@@ -194,6 +175,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
     public void addComponent(VirtualComponentBehaviour component) {
         components.add(component);
         componentsByPosition.put(component.position(), component);
+        // Client behaviours carry no controller; give them the sibling lookup + the client connection graph so
+        // validation and targetedBy()/targeting() resolve. Both are harmless on the server (the controller wins).
+        component.setSiblingLookup(this::componentAt);
+        component.setGraph(connectionGraph);
     }
 
     /** Replaces all components (used on the full sync), rebuilding the position index. */
@@ -202,16 +187,31 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         for (VirtualComponentBehaviour c : newComponents) addComponent(c);
     }
 
-    /** Removes every component and clears the position index. */
+    /** Removes every component and clears the position index + the (client) connection graph. */
     public void clearComponents() {
         components.clear();
         componentsByPosition.clear();
+        connectionGraph.clear();
+    }
+
+    /** Replaces the client connection graph from a synced central edge list (the components' positions are already in). */
+    public void loadConnections(List<net.minecraft.nbt.CompoundTag> edges) {
+        connectionGraph.readTagList(edges);
+        bindConnectionHooks();
+    }
+
+    private void bindConnectionHooks() {
+        // Edges arrive with their value; each sink re-folds from them (no callbacks to rebind in the new model).
+        for (io.github.nbcss.createfactorycontroller.content.component.connection.Connection conn : connectionGraph.connections()) {
+            VirtualComponentBehaviour sink = componentAt(conn.to);
+            if (sink != null) sink.onInputChanged(conn.type);
+        }
     }
 
     /** O(1) lookup of the component occupying {@code pos}, or {@code null} if the cell is empty. */
-    @Nullable
-    public VirtualComponentBehaviour getComponent(@Nullable VirtualPanelPosition pos) {
-        return pos == null ? null : componentsByPosition.get(pos);
+    @Override
+    public VirtualComponentBehaviour componentAt(VirtualComponentPosition position) {
+        return position == null ? null : componentsByPosition.get(position);
     }
 
     /** Number of components currently on the given network (used by the network selector). */
@@ -230,9 +230,13 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
 
         buf.writeVarInt(be.components.size());
         for (VirtualComponentBehaviour b : be.components.values()) {
-            net.minecraft.nbt.CompoundTag tag = b.toClientNBT(be.getLevel().registryAccess());
+            net.minecraft.nbt.CompoundTag tag = b.toNBT(be.getLevel().registryAccess(), VirtualComponentBehaviour.NbtProfile.CLIENT);
             writeCompoundTag(buf, tag);
         }
+
+        List<net.minecraft.nbt.CompoundTag> connectionTags = be.connectionGraph().toTagList();
+        buf.writeVarInt(connectionTags.size());
+        for (net.minecraft.nbt.CompoundTag tag : connectionTags) writeCompoundTag(buf, tag);
 
         buf.writeVarInt(be.networks.size());
         for (UUID id : be.networks) {
@@ -242,15 +246,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu {
         }
 
         buf.writeUtf(be.customName);
+        buf.writeBoolean(be.isRedstonePowered());
     }
 
-    /** True while the controller block is redstone-powered (gauges paused). Derived from the synced
-     *  gauge state, so it reflects the live server signal on both sides. */
     public boolean isRedstonePowered() {
-        for (VirtualComponentBehaviour component : components)
-            if (component instanceof VirtualGaugeBehaviour gauge && gauge.controllerPowered)
-                return true;
-        return false;
+        return controllerPowered;
     }
 
     /** Controller display name: the custom name, or the default translated block name when unset. */

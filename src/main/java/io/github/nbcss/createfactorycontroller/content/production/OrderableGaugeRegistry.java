@@ -28,8 +28,9 @@ public final class OrderableGaugeRegistry {
     /** A controller heartbeats every 20 ticks; entries older than this are treated as unloaded (2-beat grace). */
     public static final long TTL_TICKS = 40;
 
-    /** One orderable gauge: its network, stable id, and produced (display) item. */
-    public record Entry(UUID network, UUID patternId, ItemStack display) {}
+    /** One orderable gauge: its network, stable id, produced (display) item, per-request ingredient list
+     *  (deduped, one stack per distinct source item, count = per-request amount), and packager address. */
+    public record Entry(UUID network, UUID gaugeId, ItemStack display, List<ItemStack> ingredients, String address) {}
 
     /** The dimension + position of the controller that owns a gauge (for resolving its live recipe graph). */
     public record Located(ResourceKey<Level> dim, BlockPos pos) {}
@@ -37,9 +38,9 @@ public final class OrderableGaugeRegistry {
     private record Bucket(ResourceKey<Level> dim, BlockPos pos, List<Entry> entries, long lastSeen) {}
 
     private static final Map<String, Bucket> BY_CONTROLLER = new ConcurrentHashMap<>();
-    /** Reverse index patternId → owning controller key, so {@link #locate} is O(1) instead of scanning every
+    /** Reverse index gaugeId → owning controller key, so {@link #locate} is O(1) instead of scanning every
      *  controller's entries. Kept in sync with {@link #BY_CONTROLLER} by the mutators below. */
-    private static final Map<UUID, String> BY_PATTERN = new ConcurrentHashMap<>();
+    private static final Map<UUID, String> BY_GAUGE = new ConcurrentHashMap<>();
 
     private OrderableGaugeRegistry() {}
 
@@ -52,20 +53,20 @@ public final class OrderableGaugeRegistry {
         String k = key(dim, pos);
         Bucket old = entries.isEmpty() ? BY_CONTROLLER.remove(k)
                                        : BY_CONTROLLER.put(k, new Bucket(dim, pos, List.copyOf(entries), now));
-        // Reverse-index upkeep: drop patternIds this controller no longer publishes, (re)add current ones.
+        // Reverse-index upkeep: drop gaugeIds this controller no longer publishes, (re)add current ones.
         Set<UUID> current = new HashSet<>();
-        for (Entry e : entries) current.add(e.patternId());
+        for (Entry e : entries) current.add(e.gaugeId());
         if (old != null)
             for (Entry e : old.entries())
-                if (!current.contains(e.patternId())) BY_PATTERN.remove(e.patternId(), k);
-        for (UUID id : current) BY_PATTERN.put(id, k);
+                if (!current.contains(e.gaugeId())) BY_GAUGE.remove(e.gaugeId(), k);
+        for (UUID id : current) BY_GAUGE.put(id, k);
     }
 
     /** Promptly drop a controller's entries (on unload/break); the TTL prune is the fallback if this is missed. */
     public static void remove(ResourceKey<Level> dim, BlockPos pos) {
         String k = key(dim, pos);
         Bucket b = BY_CONTROLLER.remove(k);
-        if (b != null) for (Entry e : b.entries()) BY_PATTERN.remove(e.patternId(), k);
+        if (b != null) for (Entry e : b.entries()) BY_GAUGE.remove(e.gaugeId(), k);
     }
 
     /** Evicts every controller whose heartbeat is stale (or whose timestamp is in the future, e.g. after a
@@ -74,7 +75,7 @@ public final class OrderableGaugeRegistry {
     public static void pruneStale(long now) {
         BY_CONTROLLER.entrySet().removeIf(en -> {
             if (fresh(en.getValue(), now)) return false;
-            for (Entry e : en.getValue().entries()) BY_PATTERN.remove(e.patternId(), en.getKey());
+            for (Entry e : en.getValue().entries()) BY_GAUGE.remove(e.gaugeId(), en.getKey());
             return true;
         });
     }
@@ -82,7 +83,7 @@ public final class OrderableGaugeRegistry {
     /** Drops everything — called on server stop so this static index never bleeds across worlds in one JVM. */
     public static void clear() {
         BY_CONTROLLER.clear();
-        BY_PATTERN.clear();
+        BY_GAUGE.clear();
     }
 
     private static boolean fresh(Bucket b, long now) {
@@ -101,15 +102,15 @@ public final class OrderableGaugeRegistry {
         return out;
     }
 
-    /** The loaded controller owning gauge {@code network}+{@code patternId}, or null if no fresh controller has it
+    /** The loaded controller owning gauge {@code network}+{@code gaugeId}, or null if no fresh controller has it
      *  (unloaded / removed). O(1) via the reverse index, then a verify against the (small) bucket. */
-    public static Located locate(UUID network, UUID patternId, long now) {
-        String k = BY_PATTERN.get(patternId);
+    public static Located locate(UUID network, UUID gaugeId, long now) {
+        String k = BY_GAUGE.get(gaugeId);
         if (k == null) return null;
         Bucket b = BY_CONTROLLER.get(k);
         if (b == null || !fresh(b, now)) return null;
         for (Entry e : b.entries())   // confirm the (possibly slightly stale) index still matches
-            if (e.patternId().equals(patternId) && e.network().equals(network))
+            if (e.gaugeId().equals(gaugeId) && e.network().equals(network))
                 return new Located(b.dim(), b.pos());
         return null;
     }

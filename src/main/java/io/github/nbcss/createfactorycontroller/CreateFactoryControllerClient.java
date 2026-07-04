@@ -4,8 +4,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
-import io.github.nbcss.createfactorycontroller.content.gui.FactoryControllerScreen;
-import io.github.nbcss.createfactorycontroller.content.gui.ProductionOrdersTab;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersTab;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
@@ -33,13 +33,28 @@ import org.lwjgl.glfw.GLFW;
 @EventBusSubscriber(modid = CreateFactoryController.MODID, value = Dist.CLIENT)
 public class CreateFactoryControllerClient {
 
-    /**
-     * Interacts with the hovered component in the controller GUI: a gauge cycles its outgoing arrow-bend mode, a
-     * redstone link toggles Send/Receive. Rebindable from Options ▸ Controls; defaults to R.
-     */
-    public static final KeyMapping INTERACT = new KeyMapping(
-            "key.createfactorycontroller.interact",
+    /** Cycles the hovered component's connection arrow-bend mode. Rebindable from Options ▸ Controls; defaults to R. */
+    public static final KeyMapping CYCLE_ARROW_MODE = new KeyMapping(
+            "key.createfactorycontroller.cycle_arrow_mode",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,
+            "key.categories.createfactorycontroller");
+
+    /** Cycles the hovered component's operation mode. Rebindable from Options ▸ Controls; defaults to T. */
+    public static final KeyMapping CYCLE_OPERATION_MODE = new KeyMapping(
+            "key.createfactorycontroller.cycle_operation_mode",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F,
+            "key.categories.createfactorycontroller");
+
+    /** Starts connection mode from the hovered component. Unbound by default. */
+    public static final KeyMapping START_CONNECTION = new KeyMapping(
+            "key.createfactorycontroller.start_connection",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C,
+            "key.categories.createfactorycontroller");
+
+    /** Starts relocate mode for the hovered component. Unbound by default. */
+    public static final KeyMapping RELOCATE_COMPONENT = new KeyMapping(
+            "key.createfactorycontroller.relocate_component",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Q,
             "key.categories.createfactorycontroller");
 
     /**
@@ -48,17 +63,33 @@ public class CreateFactoryControllerClient {
      */
     public static final KeyMapping PAN_VIEW = new KeyMapping(
             "key.createfactorycontroller.pan_view",
-            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
+            "key.categories.createfactorycontroller");
+
+    public static final KeyMapping DRAG_SELECTION = new KeyMapping(
+            "key.createfactorycontroller.drag_selection",
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
             "key.categories.createfactorycontroller");
 
     /**
-     * Toggles "full overlay" (every gauge shows its count label vs. only the hovered one). Handled inside
+     * Toggles "always show label" (every gauge shows its count label vs. only the hovered one). Handled inside
      * {@code FactoryControllerScreen#keyPressed}, so it only fires while the controller GUI is open — never
      * in-world or on another screen. Rebindable from Options ▸ Controls; defaults to Left Alt.
      */
-    public static final KeyMapping TOGGLE_FULL_OVERLAY = new KeyMapping(
-            "key.createfactorycontroller.toggle_full_overlay",
+    public static final KeyMapping TOGGLE_ALWAYS_SHOW_LABEL = new KeyMapping(
+            "key.createfactorycontroller.toggle_always_show_label",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT,
+            "key.categories.createfactorycontroller");
+
+    /**
+     * Held (not toggled) to put the controller GUI into "selection mode": rubber-band drag selects components and
+     * left-clicking a component toggles its selection. Polled directly from the window (like {@link #PAN_VIEW}'s
+     * keyboard companions) since {@link KeyMapping#isDown()} doesn't update while a screen is open. Rebindable from
+     * Options ▸ Controls; defaults to Left Control.
+     */
+    public static final KeyMapping SELECTION_MODE = new KeyMapping(
+            "key.createfactorycontroller.selection_mode",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL,
             "key.categories.createfactorycontroller");
 
     public CreateFactoryControllerClient(ModContainer container) {
@@ -93,9 +124,14 @@ public class CreateFactoryControllerClient {
 
     @SubscribeEvent
     static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(INTERACT);
+        event.register(CYCLE_ARROW_MODE);
+        event.register(CYCLE_OPERATION_MODE);
+        event.register(START_CONNECTION);
+        event.register(RELOCATE_COMPONENT);
         event.register(PAN_VIEW);
-        event.register(TOGGLE_FULL_OVERLAY);
+        event.register(DRAG_SELECTION);
+        event.register(TOGGLE_ALWAYS_SHOW_LABEL);
+        event.register(SELECTION_MODE);
     }
 
     @SubscribeEvent

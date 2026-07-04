@@ -1,3 +1,40 @@
+## 1.0.0
+IMPORTANT: this version changed Factory Controller block data structure, once upgraded to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.
+
+Features:
+- Allow drag-to-select components (hold ctrl by default) and perform batch relocate & remove
+- Electron Tube is now a valid component in Factory Controller. It acts as "Logical Tube" component, which can perform redstone logical operations (1 tick delay)
+- Display Link can now read pending orders from Factory Controller
+- Added new keybinding (default F) to change component operation mode, works on Redstone Link, Logical Tube and Connection
+- Added new keybindings to relocate component (default Q) and start connection (default C)
+- If gauge input/output slot item > 1 stack, stack count label will appear in slot tooltip
+- Relocate/Placing components now render component ghost
+- Connecting new component now render connection ghost; you can also change connection ghost arrow mode before connect
+- Connections are now selectable, and allow change bend mode / reverse direction / delete specific connection
+- Gauge can set request limit to avoid total number of pending requests overload the chain network.
+- Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).
+- Added alternative compact font for input/output count rendering in recipe settings screen (configurable)
+- JEI/EMI support for drag-to-set empty gauge item while in Controller Screen
+- Create Production Task icon in Stock Keeper GUI will now include associated gauge ingredients and target address in tooltip.
+
+Changes:
+- Request limit for unit item & stack are increased to 1000
+- Existing keybinding "Interact" (R) changed to "cycle arrow mode"
+- Default drag view key is left mouse button now
+- Gauge recipe output slot now supports up to 9 stacks of expecting product
+- Gauge timeout will now only apply to requests created by this gauge.
+
+Optimization:
+- Controller GUI will not render out-of-viewport components now
+
+Compatibility:
+- Allow Fluid Gauge from Repackaged mod to be used in Factory Controller
+
+Bugfixes:
+- Fixed fluid cannot properly work to create production order
+- Fixed connection arrow tip does not have flow animation
+- Fixed place configured controller block will keep dirty data from item
+
 ## 0.2.1
 Features:
 - Allow to type number to set gauge request amount
@@ -14,7 +51,7 @@ Features:
   - Warning: the feature does have performance cost, so only enable Ignore Data when needed.
 
 Changes:
-- Default background texture is cardboard_block_side now
+- Default background texture is plain_cardboard now
 - Increase the hardness of Factory Controller block
 - Add Summary to Factory Controller item
 - Fluid System Compatibility: Bucket Unit can set request up to 1000B fluid now

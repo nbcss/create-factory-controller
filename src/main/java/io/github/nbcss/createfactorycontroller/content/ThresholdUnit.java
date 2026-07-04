@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
  * box can cycle between states.
  */
 public enum ThresholdUnit {
-    ITEMS("", Type.ITEM, 100) {
+    ITEMS("", Type.ITEM, 1_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -20,7 +20,7 @@ public enum ThresholdUnit {
             return CreateLang.translate("schedule.condition.threshold.items").component();
         }
     },
-    STACKS("▤", Type.ITEM, 100) {
+    STACKS("▤", Type.ITEM, 1_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return Math.max(1, stack.getMaxStackSize());

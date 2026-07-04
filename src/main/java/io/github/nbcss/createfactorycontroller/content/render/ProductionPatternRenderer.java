@@ -1,18 +1,23 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
+import net.createmod.catnip.platform.NeoForgeCatnipServices;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 import org.joml.Matrix4f;
 
 /**
@@ -61,13 +66,23 @@ public class ProductionPatternRenderer extends BlockEntityWithoutLevelRenderer {
         if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
-        // Bound target item on top. renderStatic centres the item at the pose origin, which here is the slot corner,
-        // so shift +0.5,+0.5 to centre it like the background.
+        // Bound target on top, centred (+0.5,+0.5) like the background. A fluid filter draws itself as a wrapper item
+        // (bucket/addon model); render the fluid as a flat front-facing slab instead, so fluid patterns show the fluid.
         pose.pushPose();
         pose.translate(0.5f, 0.5f, 0f);
-        RenderSystem.enableBlend();
-        ItemRenderer ir = Minecraft.getInstance().getItemRenderer();
-        ir.renderStatic(display, context, light, overlay, pose, buffers, Minecraft.getInstance().level, 0);
+        FluidStack fluid = FluidCompat.getFilterFluid(display);
+        if (!fluid.isEmpty()) {
+            Lighting.setupForFlatItems();
+            // Thin slab (z ∈ [-1/32, 0]), 14×16px of the 16px slot (±7/16) so the fluid sits slightly inset, like
+            // FluidGuiRender.icon — only the +Z face shows.
+            NeoForgeCatnipServices.FLUID_RENDERER.renderFluidBox(
+                fluid, -7 / 16f, -7 / 16f, -1 / 32f, 7 / 16f, 7 / 16f, 0f, buffers, pose, LightTexture.FULL_BRIGHT, true, false);
+            if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+        } else {
+            RenderSystem.enableBlend();
+            ItemRenderer ir = Minecraft.getInstance().getItemRenderer();
+            ir.renderStatic(display, context, light, overlay, pose, buffers, Minecraft.getInstance().level, 0);
+        }
         pose.popPose();
     }
 

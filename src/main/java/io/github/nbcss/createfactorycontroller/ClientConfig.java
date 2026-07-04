@@ -9,9 +9,10 @@ public final class ClientConfig {
 
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<String> CONTROLLER_BACKGROUND;
-    public static final ModConfigSpec.BooleanValue FULL_OVERLAY;
+    public static final ModConfigSpec.BooleanValue ALWAYS_SHOW_LABEL;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
+    public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -19,10 +20,10 @@ public final class ClientConfig {
                 .comment("Background texture path of Controller Screen. The texture file must locate in 'createfactorycontroller/textures/gui/controller_background/' path, and in 16 pixel resolution.")
                 .translation("createfactorycontroller.config.controller_background")
                 .define("controllerBackground", "plain_cardboard");
-        FULL_OVERLAY = builder
-                .comment("Show the count label on every gauge in the controller overlay (on), or only the hovered gauge (off).")
-                .translation("createfactorycontroller.config.full_overlay")
-                .define("fullOverlay", true);
+        ALWAYS_SHOW_LABEL = builder
+                .comment("Show the count label on every gauge in the controller interface, instead of only the hovered gauge.")
+                .translation("createfactorycontroller.config.always_show_label")
+                .define("alwaysShowLabel", true);
         CHECK_INGREDIENTS_ON_SEND = builder
                 .comment("Show the ingredient-availability tooltip when hovering the Stock Keeper's Send button over",
                         "an order containing Production Patterns. Must also be enabled in the server config.")
@@ -34,13 +35,18 @@ public final class ClientConfig {
                         "network — instead of only requesting the in-stock amount.")
                 .translation("createfactorycontroller.config.order_from_material_list")
                 .define("orderFromMaterialList", true);
+        COMPACT_RECIPE_COUNT_FONT = builder
+                .comment("Draw input/output item counts in the recipe config screen with Create's compact number",
+                        "sprite (the same glyphs as the stock icon) instead of the vanilla item-count font.")
+                .translation("createfactorycontroller.config.compact_recipe_count_font")
+                .define("compactRecipeCountFont", false);
         SPEC = builder.build();
     }
 
     private ClientConfig() {}
 
-    public static boolean fullOverlay() {
-        return FULL_OVERLAY.get();
+    public static boolean alwaysShowLabel() {
+        return ALWAYS_SHOW_LABEL.get();
     }
 
     public static boolean checkIngredientsOnSend() {
@@ -49,6 +55,10 @@ public final class ClientConfig {
 
     public static boolean orderFromMaterialList() {
         return ORDER_FROM_MATERIAL_LIST.get();
+    }
+
+    public static boolean compactRecipeCountFont() {
+        return COMPACT_RECIPE_COUNT_FONT.get();
     }
 
     public static String getControllerBackground() {
@@ -76,9 +86,9 @@ public final class ClientConfig {
     }
 
     /** Flips the setting and persists it; returns the new value. Safe to call only once the config is loaded. */
-    public static boolean toggleFullOverlay() {
-        boolean next = !FULL_OVERLAY.get();
-        FULL_OVERLAY.set(next);
+    public static boolean toggleAlwaysShowLabel() {
+        boolean next = !ALWAYS_SHOW_LABEL.get();
+        ALWAYS_SHOW_LABEL.set(next);
         return next;
     }
 }

@@ -46,7 +46,7 @@ authors="nbcss, FiveYellowMice"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Create: Factory Controller addon introduced a new block "Factory Controller" to allow you to easily manage your Factory Gauges in a GUI.
+Centralized Factory Gauge management with a virtual dashboard and advanced logistics control.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

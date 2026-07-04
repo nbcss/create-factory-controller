@@ -8,7 +8,6 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -135,7 +134,7 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
             } else {
                 List<ItemStack> drops = new ArrayList<>(super.getDrops(state, params));
                 for (VirtualComponentBehaviour b : be.components.values()) {
-                    drops.add(new ItemStack(BuiltInRegistries.ITEM.get(b.getItemId())));
+                    drops.add(new ItemStack(b.getItem()));
                 }
                 return drops;
             }
@@ -163,8 +162,14 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
         super.setPlacedBy(level, pos, state, placer, stack);
         if (level.isClientSide()) return;
         CompoundTag setup = stack.get(CreateFactoryController.CONTROLLER_SETUP.get());
-        if (setup != null)
-            withBlockEntityDo(level, pos, be -> be.applySetup(setup, level.registryAccess()));
+        if (setup != null) {
+            withBlockEntityDo(level, pos, be -> {
+                be.applySetup(setup, level.registryAccess());
+                // Vanilla copies item data components into the placed block entity before setPlacedBy.
+                // This component is only a placement payload; keeping it on the BE duplicates setup data on save/drop.
+                be.setComponents(be.components().filter(type -> !type.equals(CreateFactoryController.CONTROLLER_SETUP.get())));
+            });
+        }
     }
 
     /** Plain wrench does nothing (no rotation). Overridden to a no-op so the IWrenchable default — which assumes a

@@ -178,8 +178,11 @@ public class ProductionOrderManager extends SavedData {
         for (BigItemStack b : patterns) {
             ProductionTarget t = ProductionPatternItem.getTarget(b.stack);
             if (t == null || b.count <= 0) continue;
+            // A fluid pattern is ordered in buckets (B), not millibuckets — the keeper count the player scrolls is a
+            // bucket count. Store the task in mB (the unit all stock/dispatch/demand below speak) by ×1000.
+            int amount = FluidCompat.isFluidFilter(t.display()) ? b.count * 1000 : b.count;
             produced.add(new Task(t.network(), t.patternId(),
-                t.display().copy(), b.count, address, orderId, linkIndex++, false));
+                t.display().copy(), amount, address, orderId, linkIndex++, false));
         }
         if (produced.isEmpty()) return false;   // patterns present but none resolvable → let normal dispatch run
                                                  // (inStock items still ship; the dead patterns just produce nothing)
@@ -266,6 +269,8 @@ public class ProductionOrderManager extends SavedData {
      *  Read-only: {@code -1} expiry means no promises are removed. */
     private static int networkPromisedOf(UUID network, ItemStack stack) {
         if (stack.isEmpty()) return 0;
+        if (FluidCompat.isFluidFilter(stack))
+            return FluidCompat.fluidPromised(network, stack, -1);
         RequestPromiseQueue promises = Create.LOGISTICS.getQueuedPromises(network);
         return promises == null ? 0 : promises.getTotalPromisedAndRemoveExpired(stack, -1);
     }
@@ -273,12 +278,15 @@ public class ProductionOrderManager extends SavedData {
     private static int networkStockOf(UUID network, ItemStack stack) {
         if (stack.isEmpty()) return 0;
         return FluidCompat.isFluidFilter(stack)
-            ? LogisticsManager.getStockOf(network, stack, null)
+            ? FluidCompat.fluidStock(network, stack)
             : LogisticsManager.getSummaryOfNetwork(network, true).getCountOf(stack);
     }
 
     /** Ships {@code req}'s produced item to its address as its assigned link of the shared order (item 9). */
     private boolean dispatch(Task req) {
+        if (FluidCompat.isFluidFilter(req.item))
+            return FluidCompat.dispatchFluid(req.network, req.item, req.amount, req.address,
+                    req.orderId, req.linkIndex, req.finalLink);
         PackageOrderWithCrafts order =
             PackageOrderWithCrafts.simple(List.of(new BigItemStack(req.item.copy(), req.amount)));
         return dispatchWithOrderId(req.network, RequestType.RESTOCK, order, req.address, req.orderId,

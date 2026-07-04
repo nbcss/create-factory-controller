@@ -13,6 +13,7 @@ public final class ServerConfig {
     public static final ModConfigSpec.IntValue MAX_CRAFT_GRID_SIZE;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue PRESERVE_CONTROLLER_DATA;
+    public static final ModConfigSpec.BooleanValue PASSIVE_TOTAL_DEMAND;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -32,11 +33,20 @@ public final class ServerConfig {
                 .translation("createfactorycontroller.config.check_ingredients")
                 .define("checkIngredientsOnSend", false);
         PRESERVE_CONTROLLER_DATA = builder
-                .comment("Preserve a Factory Controller's board setup (gauge connections, request amounts and modes)",
+                .comment("Preserve a Factory Controller's board setup ",
                         "on the dropped controller item when the block is broken, restoring it when re-placed.",
                         "When off, the controller drops empty and its gauges drop as separate items instead.")
                 .translation("createfactorycontroller.config.preserve_controller_data")
                 .define("preserveControllerData", true);
+        PASSIVE_TOTAL_DEMAND = builder
+                .comment("Alternative passive-request strategy. When disabled, a passive gauge's target tracks one",
+                        "recipe set per demanding consumer, so demand ripples one hop per tick. When enabled, the controller",
+                        "sizes each passive gauge's target storage to the TOTAL remaining downstream demand (scaled by",
+                        "recipe ratios, minus stock and open promises at every stage) in one consistent pass — so the",
+                        "whole chain stays active and produces continuously until the total is met, ramping far faster",
+                        "for deep production chains.")
+                .translation("createfactorycontroller.config.passive_total_demand")
+                .define("passiveTotalDemand", false);
         SPEC = builder.build();
     }
 
@@ -56,5 +66,9 @@ public final class ServerConfig {
 
     public static boolean preserveControllerData() {
         return PRESERVE_CONTROLLER_DATA.get();
+    }
+
+    public static boolean passiveTotalDemand() {
+        return PASSIVE_TOTAL_DEMAND.get();
     }
 }

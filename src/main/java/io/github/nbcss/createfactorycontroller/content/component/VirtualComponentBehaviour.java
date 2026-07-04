@@ -1,33 +1,75 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelConnection;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.component.connection.*;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * A component that can be placed in the controller's virtual panel.
  */
 public interface VirtualComponentBehaviour {
+    enum NbtProfile {
+        SERVER(true, true),
+        CLIENT(true, false),
+        EXPORT(false, false);
+
+        private final boolean runtime;
+        private final boolean serverOnly;
+
+        NbtProfile(boolean runtime, boolean serverOnly) {
+            this.runtime = runtime;
+            this.serverOnly = serverOnly;
+        }
+
+        public boolean includesRuntime() { return runtime; }
+        public boolean includesServerOnly() { return serverOnly; }
+    }
+
+    interface Type {
+        String id();
+        List<ResourceLocation> items();
+        /** Accent colour (0xRRGGBB) of this component kind — the bulb/label colour ({@link #getColor()}) and the
+         *  colour its name is shown in (e.g. the controller help tooltip's allowed-components list). */
+        int color();
+        boolean isRequireNetwork();
+        VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
+                                          VirtualComponentPosition pos,
+                                          Item item,
+                                          UUID networkId);
+        VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
+                                          CompoundTag tag,
+                                          HolderLookup.Provider registries);
+    }
 
     // ── Identity & placement ────────────────────────────────────────────────
 
     /** Where this component sits on the board. */
-    VirtualPanelPosition position();
+    VirtualComponentPosition position();
 
     /** Repositions this component on the board. The controller re-keys the component map and the
      *  connection graph around it (see {@code FactoryControllerBlockEntity#moveComponent}). */
-    void setPosition(VirtualPanelPosition pos);
+    void setPosition(VirtualComponentPosition pos);
 
     /** Item id this component renders as / refunds to. */
-    ResourceLocation getItemId();
+    default ResourceLocation getItemId(){
+        return BuiltInRegistries.ITEM.getKey(getItem());
+    }
 
-    /** Discriminator used to dispatch NBT deserialization (see {@link ComponentRegistry}). */
-    ResourceLocation getTypeId();
+    /** Item this component renders as / refunds to. */
+    Item getItem();
 
     /**
      * GUI-sprite folder for this component's body. The canvas widget renders {@code {folder}/back}
@@ -36,7 +78,25 @@ public interface VirtualComponentBehaviour {
      */
     ResourceLocation getTexture();
 
+    int getColor();
+
+    default Component getName() {
+        return new ItemStack(getItem()).getHoverName();
+    }
+
+    /** Extra info lines describing this component's current config (a gauge's monitored item, a link's frequencies +
+     *  mode, a tube's mode). Shown under the component name in tooltips (e.g. the Logical Tube screen's connection
+     *  slots). Empty by default. */
+    default List<Component> infoTooltip() {
+        return List.of();
+    }
+
     // ── Lifecycle ───────────────────────────────────────────────────────────
+
+    /** Called on every component at the very start of the controller tick, <b>before</b> any connection settle.
+     *  Sequential components (logic tubes) commit their previously-computed output here, which — because it runs ahead
+     *  of this tick's settles — gives a deterministic one-tick delay; combinational components do nothing. */
+    default void preTick() {}
 
     /** Server tick. No-op on the client snapshot. */
     void tick();
@@ -44,39 +104,61 @@ public interface VirtualComponentBehaviour {
     // ── Connection graph (shared by all component kinds) ─────────────────────
 
     /** Incoming connections, keyed by the source component's position. */
-    Map<VirtualPanelPosition, VirtualPanelConnection> targetedBy();
+    Map<VirtualComponentPosition, Connection> targetedBy();
 
     /** Positions this component points at. */
-    Set<VirtualPanelPosition> targeting();
+    Set<VirtualComponentPosition> targeting();
 
-    /** Adds an incoming connection from {@code fromPos} (the controller validates existence). */
-    void addConnection(VirtualPanelPosition fromPos);
+    /** Outgoing connections (this component as source). Symmetric to {@link #targetedBy()}, but as a value collection. */
+    Collection<Connection> outgoingConnections();
 
-    /** Removes the incoming connection from {@code fromPos}, if any. */
-    void removeConnection(VirtualPanelPosition fromPos);
+    /** The connection {@link ConnectionCapability types} this component participates in (its static capabilities). Read by
+     *  {@link ConnectionResolver} to decide whether a wire is possible — no {@code instanceof} pair matrix. */
+    List<ConnectionCapability> ports();
+
+    /** Validates this component acting as the SOURCE of a {@code type} wire to {@code sink}. (E.g. a gauge source
+     *  must carry a filter.) */
+    ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink);
+
+    /** Validates this component acting as the SINK of a {@code type} wire from {@code source}. (E.g. a gauge sink
+     *  caps its ingredient slots; a link rejects a link partner.) */
+    ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source);
+
+    /** Injects a sibling-component lookup for cross-component checks when this behaviour has no controller (client
+     *  snapshot). The server leaves it unset and uses the controller. See {@code AbstractVirtualComponent#siblingAt}. */
+    void setSiblingLookup(Function<VirtualComponentPosition, VirtualComponentBehaviour> lookup);
+
+    /** Injects the central {@link ConnectionGraph} this component is a view into (client snapshot — the server uses the
+     *  controller's graph). */
+    void setGraph(ConnectionGraph graph);
 
     /** Removes this component from the graph entirely (called before removal). */
     void disconnectAll();
 
-    void onInteract();
+    // ── Signal propagation (REDSTONE today; generic for future value types) ──────
+
+    /** My current output value for {@code type} (REDSTONE → a {@link RedstoneConnection.State}), or {@code null} if I
+     *  am not a source of it. Pure — no side effects; {@link #publish} reads it. */
+    ConnectionValue outputValue(Connection.Type type);
+
+    /** Write my {@link #outputValue} onto every outgoing {@code type} edge and, for each edge whose value actually
+     *  changed, flag its sink dirty on the controller (folded once at the next {@code settleConnections} drain — see
+     *  the coalescing note on {@code FactoryControllerBlockEntity#settleConnections}). A source calls this when its
+     *  output may have changed (and on connect). The single, generic implementation lives in
+     *  {@code AbstractVirtualComponent}. */
+    void publish(Connection.Type type);
+
+    /** Re-fold my incoming wires of {@code type} and apply the result (a gauge refreshes its request gate; a SEND link
+     *  its network transmit). Called once per dirty sink by the settle pass, and directly on load/sync reconcile. */
+    void onInputChanged(Connection.Type type);
+
+    List<Connection> connectionsToCycle();
+
+    void cycleArrowMode();
+
+    void cycleOperationMode();
 
     // ── Persistence ─────────────────────────────────────────────────────────
 
-    CompoundTag toNBT(HolderLookup.Provider registries);
-
-    /**
-     * Serialization for client sync — only the fields the canvas needs (position, item/texture,
-     * status, connections). Defaults to the full {@link #toNBT}; components trim it to keep the
-     * broadcast small. Detailed config (recipe counts, addresses, …) is pulled on demand instead.
-     */
-    default CompoundTag toClientNBT(HolderLookup.Provider registries) {
-        return toNBT(registries);
-    }
-
-    /**
-     * Used when sync data to item, should not include data which is runtime-determined.
-     */
-    default CompoundTag toItemNBT(HolderLookup.Provider registries) {
-        return toNBT(registries);
-    }
+    CompoundTag toNBT(HolderLookup.Provider registries, NbtProfile profile);
 }

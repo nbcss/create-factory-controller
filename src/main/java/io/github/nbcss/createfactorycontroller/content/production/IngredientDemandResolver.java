@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.production;
 
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
-import io.github.nbcss.createfactorycontroller.content.component.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
@@ -77,7 +77,7 @@ public final class IngredientDemandResolver {
 
     private static VirtualGaugeBehaviour findGauge(FactoryControllerBlockEntity controller, UUID patternId) {
         for (VirtualComponentBehaviour c : controller.components.values())
-            if (c instanceof VirtualGaugeBehaviour g && patternId.equals(g.patternId)) return g;
+            if (c instanceof VirtualGaugeBehaviour g && patternId.equals(g.gaugeId)) return g;
         return null;
     }
 

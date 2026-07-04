@@ -1,57 +1,52 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
-import com.simibubi.create.AllBlocks;
-import io.github.nbcss.createfactorycontroller.content.VirtualPanelPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Central registry for virtual components.
  */
 public final class ComponentRegistry {
 
-    private ComponentRegistry() {}
+    /** Registration order preserved ({@link LinkedHashMap}) so the allowed-components listing is stable. */
+    private static final Map<String, VirtualComponentBehaviour.Type> TYPE_REGISTRY = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, VirtualComponentBehaviour.Type> ITEM_REGISTRY = new HashMap<>();
 
-    /** Deserializes a component of a known type from its NBT tag. */
-    @FunctionalInterface
-    public interface ComponentFactory {
-        VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
-                                          CompoundTag tag, HolderLookup.Provider registries);
+    public static void registerType(VirtualComponentBehaviour.Type type) {
+        TYPE_REGISTRY.put(type.id(), type);
+        for (ResourceLocation item : type.items())
+            registerItem(item, type);
     }
 
-    private static final Set<ResourceLocation> ITEM_IDS = new HashSet<>();
-    private static final Map<ResourceLocation, ComponentFactory> TYPE_FACTORIES = new HashMap<>();
-
-    /** Item ids that don't require a logistics network to attach (e.g. the redstone link). */
-    private static final Set<ResourceLocation> NETWORKLESS_ITEMS = new HashSet<>();
+    public static void registerItem(ResourceLocation item, VirtualComponentBehaviour.Type type) {
+        ITEM_REGISTRY.put(item, type);
+    }
 
     static {
-        // Create's factory gauge → virtual gauge component.
-        ITEM_IDS.add(AllBlocks.FACTORY_GAUGE.getId());
-        registerType(VirtualGaugeBehaviour.TYPE_ID, VirtualGaugeBehaviour::fromNBT);
+        registerType(VirtualGaugeBehaviour.TYPE);
+        registerType(VirtualRedstoneLinkBehaviour.TYPE);
+        registerType(LogicalTubeBehaviour.TYPE);
 
-        // Create's redstone link → virtual redstone-link component (no logistics network required).
-        ITEM_IDS.add(AllBlocks.REDSTONE_LINK.getId());
-        NETWORKLESS_ITEMS.add(AllBlocks.REDSTONE_LINK.getId());
-        registerType(VirtualRedstoneLinkBehaviour.TYPE_ID, VirtualRedstoneLinkBehaviour::fromNBT);
+        // Create: Repackaged's Fluid Gauge is registered only when the addon is present.
+        if (RepackagedCompat.isLoaded())
+            registerType(FluidGaugeBehaviour.TYPE);
     }
 
     /** Whether attaching {@code itemId} needs a controller logistics network (gauges do; redstone links don't). */
     public static boolean needsNetwork(ResourceLocation itemId) {
-        return !NETWORKLESS_ITEMS.contains(itemId);
+        VirtualComponentBehaviour.Type type = ITEM_REGISTRY.get(itemId);
+        return type != null && type.isRequireNetwork();
     }
 
     /**
@@ -59,21 +54,22 @@ public final class ComponentRegistry {
      * gauges (ignored by networkless components).
      */
     public static VirtualComponentBehaviour createFromItem(FactoryControllerBlockEntity controller,
-                                                           VirtualPanelPosition pos, ResourceLocation itemId,
+                                                           VirtualComponentPosition pos,
+                                                           Item item,
                                                            @Nullable UUID networkId) {
-        if (AllBlocks.REDSTONE_LINK.getId().equals(itemId))
-            return new VirtualRedstoneLinkBehaviour(controller, pos, itemId);
-        return new VirtualGaugeBehaviour(controller, pos, networkId, itemId);
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(item);
+        VirtualComponentBehaviour.Type type = ITEM_REGISTRY.get(itemId);
+        return type == null ? null : type.create(controller, pos, item, networkId);
     }
 
     // ── Item acceptance ───────────────────────────────────────────────────────
 
-    public static void register(ResourceLocation id) {
-        ITEM_IDS.add(id);
+    public static boolean contains(ResourceLocation id) {
+        return ITEM_REGISTRY.containsKey(id);
     }
 
-    public static boolean contains(ResourceLocation id) {
-        return ITEM_IDS.contains(id);
+    public static Collection<VirtualComponentBehaviour.Type> types() {
+        return TYPE_REGISTRY.values();
     }
 
     /** A stack is a valid component if its item id is registered. */
@@ -93,12 +89,6 @@ public final class ComponentRegistry {
         return contains(id) && needsNetwork(id);
     }
 
-    // ── Type dispatch ─────────────────────────────────────────────────────────
-
-    public static void registerType(ResourceLocation typeId, ComponentFactory factory) {
-        TYPE_FACTORIES.put(typeId, factory);
-    }
-
     /**
      * Reconstructs a component from NBT, dispatching on the stored {@code "Type"} id.
      * Returns {@code null} for an unknown type (e.g. a component from a mod no longer present).
@@ -106,9 +96,8 @@ public final class ComponentRegistry {
     @Nullable
     public static VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                     CompoundTag tag, HolderLookup.Provider registries) {
-        ResourceLocation typeId = ResourceLocation.tryParse(tag.getString("Type"));
-        ComponentFactory factory = typeId == null ? null : TYPE_FACTORIES.get(typeId);
-        if (factory == null) return null;
-        return factory.fromNBT(controller, tag, registries);
+        String typeId = tag.getString("Type");
+        VirtualComponentBehaviour.Type type = TYPE_REGISTRY.get(typeId);
+        return type == null ? null : type.fromNBT(controller, tag, registries);
     }
 }

@@ -5,6 +5,7 @@
   "plugin": "io.github.nbcss.createfactorycontroller.mixin.CfcMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "GenericPromiseCodecMixin",
     "InventorySummaryMixin",
     "LogisticalStockRequestPacketMixin",
     "LogisticsGenericManagerMixin",
