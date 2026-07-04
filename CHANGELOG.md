@@ -13,7 +13,7 @@ Features:
 - Connections are now selectable, and allow change bend mode / reverse direction / delete specific connection
 - Gauge can set request limit to avoid total number of pending requests overload the chain network.
 - Added alternative passive request strategy "Full Passive Demand Strategy" (experimental, need to enable in configuration).
-- Added alternative compact font for input/output count rendering in recipe settings screen (configurable)
+- Added compact font for input/output count rendering in recipe settings screen (configurable)
 - JEI/EMI support for drag-to-set empty gauge item while in Controller Screen
 - Create Production Task icon in Stock Keeper GUI will now include associated gauge ingredients and target address in tooltip.
 

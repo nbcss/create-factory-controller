@@ -39,7 +39,7 @@ public final class ClientConfig {
                 .comment("Draw input/output item counts in the recipe config screen with Create's compact number",
                         "sprite (the same glyphs as the stock icon) instead of the vanilla item-count font.")
                 .translation("createfactorycontroller.config.compact_recipe_count_font")
-                .define("compactRecipeCountFont", false);
+                .define("compactRecipeCountFont", true);
         SPEC = builder.build();
     }
 

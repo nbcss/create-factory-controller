@@ -220,20 +220,23 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     }
 
     private List<ItemStack> gaugeIngredients(VirtualGaugeBehaviour g) {
+        // Amounts are per request, so scale the per-craft connection amount by the crafter batch (as tickRequests does).
+        int batch = g.effectiveBatch();
         List<ItemStack> ingredients = new ArrayList<>();
         for (Map.Entry<VirtualComponentPosition, Connection> e : g.targetedBy().entrySet()) {
             if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
             if (!(components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
             ItemStack item = source.filter;
             if (item.isEmpty()) continue;
+            int amount = conn.amount() * batch;
             boolean merged = false;
             for (ItemStack existing : ingredients)
                 if (ItemStack.isSameItemSameComponents(existing, item)) {
-                    existing.grow(conn.amount());
+                    existing.grow(amount);
                     merged = true;
                     break;
                 }
-            if (!merged) ingredients.add(item.copyWithCount(conn.amount()));
+            if (!merged) ingredients.add(item.copyWithCount(amount));
         }
         return ingredients;
     }

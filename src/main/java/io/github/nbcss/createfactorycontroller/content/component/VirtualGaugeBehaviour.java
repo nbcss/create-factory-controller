@@ -739,7 +739,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // ingredient demand and the produced output are both multiplied by this batch count. Batching is
         // forced off when an ignore-data ingredient is involved (its pattern cells resolve per request).
         boolean crafting = !activeCraftingArrangement.isEmpty();
-        int batch = crafting && !craftingUsesIgnoreData() ? Math.max(1, craftBatch) : 1;
+        int batch = effectiveBatch();
 
         Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
         // The crafting pattern actually dispatched. For an ignore-data ingredient the stored pattern holds the
@@ -887,6 +887,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
                     && s.ignoreData && !FluidCompat.isFluidFilter(s.filter)) return true;
         return false;
+    }
+
+    /** Crafts dispatched per request — {@code craftBatch} in crafter mode, forced to 1 in non-crafting mode or when an
+     *  ignore-data ingredient disables batching. Same value {@link #tickRequests} uses, so a request's real per-craft
+     *  ingredient demand is {@code connection amount × effectiveBatch()}. */
+    public int effectiveBatch() {
+        return activeCraftingArrangement.isEmpty() || craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
     }
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
