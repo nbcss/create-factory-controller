@@ -14,9 +14,6 @@ import java.util.List;
  * Exposes a Factory Controller's live data to a Create Display Link. Each board component that implements
  * {@link DisplayDataProvider} contributes lines for the link's selected {@link DisplayMode}, gathered in board order
  * (stable — {@code components} is insertion-ordered) and capped to the target's row count.
- *
- * <p>Currently the only mode is {@link DisplayMode#ACTIVE_REQUESTS} (active, understocked gauges). The mode is read from
- * the per-link config ({@code "Mode"} = ordinal), so adding modes later needs no change here.</p>
  */
 public class FactoryControllerDisplaySource extends DisplaySource {
 

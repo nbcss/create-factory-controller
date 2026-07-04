@@ -14,12 +14,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.UUID;
 
-/**
- * Item 4 (display side): when a Stock Keeper answers a client's stock request, append one infinite
- * Promise-Blueprint stack per passive gauge exposed on the keeper's network, so they show in the normal item
- * list and can be ordered alongside real items. A {@link InventorySummary#copy() copy} of the recent summary
- * is augmented and sent, so the cached fulfillment summary is never polluted with the virtual stacks.
- */
 @Mixin(LogisticalStockRequestPacket.class)
 public abstract class LogisticalStockRequestPacketMixin {
 

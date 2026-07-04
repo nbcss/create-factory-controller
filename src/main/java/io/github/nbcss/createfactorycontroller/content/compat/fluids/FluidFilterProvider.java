@@ -65,10 +65,6 @@ public interface FluidFilterProvider {
     }
 
     // ── Promise-limit support (dedicated fluid backends only) ───────────────────
-    // Whether this backend's promises can be counted per-gauge / per-address (the promise-limit feature). Only a
-    // dedicated fluid backend (Repackaged) whose promises don't ride Create's item queue overrides these; the default
-    // is "unsupported" (a gauge on this backend behaves as if no limit is set), which is correct for the item-queue
-    // backends whose promises are already counted on the item side.
 
     /** Promises the fluid {@code filter} while tagging it with the minting gauge/address, so it counts toward the
      *  promise limit. Default: an untagged promise (uncounted). */

@@ -16,13 +16,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Fallback ordering hook (item 5): if a Stock Keeper order reaches the vanilla
- * {@code broadcastPackageRequest} (e.g. non-Deployer callers), split off Promise Blueprints and register a
- * Promise Order. The Deployer keeper UI actually routes orders through {@code LogisticsGenericManager
- * .broadcastAllPackageRequest} (see {@code LogisticsGenericManagerMixin}); both delegate to the same
- * {@link ProductionOrderManager#interceptProductionOrder} seam.
- */
 @Mixin(StockTickerBlockEntity.class)
 public abstract class StockTickerBlockEntityMixin extends StockCheckingBlockEntity {
 

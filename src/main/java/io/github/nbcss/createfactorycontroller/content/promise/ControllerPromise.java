@@ -67,9 +67,6 @@ public class ControllerPromise extends RequestPromise {
         this.age = age;
     }
 
-    /** Advance our own age (never {@code super.tick()}, so {@code ticksExisted} stays held). Hold {@code ticksExisted}
-     *  at 0 until we pass {@link #ttl}, then latch it to {@link #EXPIRED_TICKS} so the owning gauge's
-     *  {@code expiry = EXPIRED_TICKS} query removes it — while no smaller foreign expiry ever can. */
     @Override
     public void tick() {
         if (ticksExisted == EXPIRED_TICKS) return;   // latched

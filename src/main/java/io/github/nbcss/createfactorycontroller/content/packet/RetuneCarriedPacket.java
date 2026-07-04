@@ -18,12 +18,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
-/**
- * Client → server: re-tunes (or clears) the player's carried component item's logistics frequency,
- * driven by scrolling the network selector. Writes the same data Create's {@code assignFrequency}
- * does (BLOCK_ENTITY_DATA "Freq"), but without its "Tuned to frequency" chat message — so scrolling
- * doesn't spam. {@code clear == true} fully untunes the item.
- */
+
 public record RetuneCarriedPacket(boolean clear, @Nullable UUID network) implements CustomPacketPayload {
 
     public static final Type<RetuneCarriedPacket> TYPE =

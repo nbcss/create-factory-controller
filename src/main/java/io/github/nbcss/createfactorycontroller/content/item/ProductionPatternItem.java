@@ -14,14 +14,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * A virtual, <b>unobtainable</b> item that represents a standing promise to produce the output of a specific
- * passive gauge. It never exists as a real world/inventory item: a Stock Keeper on the gauge's network shows
- * it (in infinite supply) so the player can order it, and ordering it spawns a tracked Promise Order instead
- * of moving any physical item (see the promise package).
- *
- * <p>The bound gauge + produced item live in the {@link ProductionTarget} data component. The blueprint reads
- * its name and tooltip from the produced item so it looks like "the item, promised"; it's rendered as a
- * blueprint background with that item drawn on top (client renderer).</p>
+ * A item that represents a standing promise to produce the output of a specific passive gauge.
+ * For use in Stock Keeper GUI
  */
 public class ProductionPatternItem extends Item {
 

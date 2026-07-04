@@ -8,15 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Per-network, per-tick cache of active {@link ControllerPromise} counts, bucketed by owner ({@code gaugeId}) and by
- * target address. A network's queue is {@code flatten}ed at most once per tick, and only if something asks for its
- * counts that tick — so the promise-limit gate stays O(1) per gauge even when many gauges fire the same tick, and it
- * costs nothing on ticks/networks nobody queries.
- *
- * <p>Server-only. Rebuilt lazily when the game tick advances; a just-dispatched promise is folded in via
- * {@link #onAdded} so a gauge firing later in the same tick sees a peer's fresh promise (no same-tick quota overshoot).</p>
- */
+
 public final class PromiseCounts {
 
     private static long tick = Long.MIN_VALUE;

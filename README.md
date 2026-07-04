@@ -39,8 +39,10 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 
 ## Links
 
-Crowdin Translation: https://crowdin.com/project/createfactorycontroller
-Discord Support: https://discord.gg/yv77dsgeVx
+- Crowdin Translation: https://crowdin.com/project/createfactorycontroller
+- Discord Support: https://discord.gg/yv77dsgeVx
+- CurseForge: https://www.curseforge.com/minecraft/mc-mods/create-factory-controller
+- Modrinth: https://modrinth.com/mod/create-factory-controller
 
 ## Credits
 
@@ -59,4 +61,4 @@ Sounds:
 - Pocket watch. Clicking open and closed, chain noise and picking up by JarredKarp -- https://freesound.org/s/490968/ -- License: Attribution NonCommercial 4.0
 
 ## AI Disclosure
-The system architecture design and graphics assets are produced by human. AI is used for assist part of code implementations to accelerate development but closely reviewed by highly experienced Minecraft mod developer to ensure quality of the content. 
+The system architecture design and graphics assets are produced by human. AI is used for assist part of code implementations and documentations to accelerate development but closely reviewed by highly experienced Minecraft mod developer to ensure quality of the content. 

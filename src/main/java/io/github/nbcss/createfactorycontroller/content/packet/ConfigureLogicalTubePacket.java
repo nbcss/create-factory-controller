@@ -11,8 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client → server: apply the Logical Tube settings at {@code tube}. Currently just its operation {@code mode} (name);
- *  kept as a configure-packet so future tube settings can be added without a new packet. */
+
 public record ConfigureLogicalTubePacket(BlockPos pos, VirtualComponentPosition tube, String mode)
     implements CustomPacketPayload {
 

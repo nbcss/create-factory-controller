@@ -11,7 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client → server: cycle the arrow-bend mode for the hovered component's relevant connections. */
+
 public record CycleArrowModePacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
 
     public static final Type<CycleArrowModePacket> TYPE =

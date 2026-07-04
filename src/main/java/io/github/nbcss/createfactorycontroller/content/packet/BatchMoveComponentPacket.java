@@ -13,12 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 
-/**
- * Relocates a whole selection of components by a uniform cell delta {@code (dx, dy)} — the Selection-Mode batch
- * relocate. The server moves them <b>atomically</b>: it commits only if EVERY source lands on an in-board cell that is
- * empty or vacated by another moving component, and otherwise moves nothing (deny blip). Which positions move is driven
- * by the client-only selection state.
- */
+
 public record BatchMoveComponentPacket(BlockPos pos, List<VirtualComponentPosition> sources, int dx, int dy)
     implements CustomPacketPayload {
 

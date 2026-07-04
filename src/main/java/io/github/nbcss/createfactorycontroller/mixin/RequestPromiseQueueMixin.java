@@ -15,12 +15,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Lets an ignore-data gauge's request promise be settled by ANY data-variant of its item type.
- *
- * <p>An ignore-data gauge promises its produced output as a "pure" item (no NBT/components), but the real
- * output that arrives may carry data, so Create's exact-component match in {@link RequestPromiseQueue} would
- * never clear the promise — it would leak and wedge the gauge into a permanently "promised" state. We mark
- * such promises with {@link CreateFactoryController#FUZZY_PROMISE} and relax the match for them to item-only,
- * leaving all other promises (and Create's leftover/ordering logic) untouched.</p>
  */
 @Mixin(value = RequestPromiseQueue.class, remap = false)
 public abstract class RequestPromiseQueueMixin {
@@ -38,7 +32,7 @@ public abstract class RequestPromiseQueueMixin {
     // ── Durable ControllerPromise round-trip ────────────────────────────────────
     // Both write() and read() serialize the promise list via Codec.list(RequestPromise.CODEC). We swap in our
     // CFC_CODEC (transparent for base promises; carries our owner/address/ttl/age and rebuilds the subclass) so a
-    // ControllerPromise survives save/load. Scoped to these two methods only.
+    // ControllerPromise survives save/load.
 
     private static final String CODEC_FIELD =
         "Lcom/simibubi/create/content/logistics/packagerLink/RequestPromise;CODEC:Lcom/mojang/serialization/Codec;";

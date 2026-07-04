@@ -11,7 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client → server: cycle the hovered component's operation mode, if it has one. */
+
 public record CycleOperationModePacket(BlockPos pos, VirtualComponentPosition panelPos) implements CustomPacketPayload {
 
     public static final Type<CycleOperationModePacket> TYPE =

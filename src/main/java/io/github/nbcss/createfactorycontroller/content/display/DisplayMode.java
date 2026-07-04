@@ -2,8 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.display;
 
 /**
  * A category of data the Factory Controller exposes to a Create Display Link. The selected mode is stored per-link in
- * the display source config ({@code "Mode"} int = ordinal). Only {@link #ACTIVE_REQUESTS} exists today; more can be
- * added without touching the source or the per-component {@link DisplayDataProvider}s.
+ * the display source config ({@code "Mode"} int = ordinal).
  */
 public enum DisplayMode {
     /** Every gauge that is active and understocked (stock &lt; demand) — the open production requests. */

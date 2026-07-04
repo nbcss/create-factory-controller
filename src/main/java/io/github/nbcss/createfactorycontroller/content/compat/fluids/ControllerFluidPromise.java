@@ -15,11 +15,6 @@ import net.neoforged.neoforge.fluids.FluidStack;
  * minted it — the fluid analogue of {@code ControllerPromise}. The tags let the promise-limit gate count a fluid
  * gauge's (or an address's) in-flight fluid requests, by scanning the queue's generic promises
  * ({@code RPQExtension.deployer$flatten}) and bucketing our subclass by owner/address.
- *
- * <p>Apart from the tags this behaves exactly like a plain generic promise (same {@code tick()}/expiry), so the fluid
- * gauge's existing timeout is unchanged. Every reference here is to a Deployer class, so this loads only on the
- * fluid-gauge path (Repackaged, hence Deployer, installed) — see {@link RepackagedFluidStock} and the
- * {@code GenericPromiseCodecMixin} that keeps the tags durable across save/load.</p>
  */
 public class ControllerFluidPromise extends GenericRequestPromise<FluidStack> {
 

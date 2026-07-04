@@ -12,10 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * The data-component payload of a {@link ProductionPatternItem}: a robust reference to the specific orderable
- * gauge that backs the blueprint ({@link #network} + position-independent {@link #patternId}), plus cached
- * {@link #display} (the item that gauge produces), {@link #ingredients} and {@link #address} (its recipe, for the
- * blueprint's tooltip without resolving the gauge client-side).
+ * The data-component payload of a {@link ProductionPatternItem}
  */
 public record ProductionTarget(UUID network, UUID patternId, ItemStack display, List<ItemStack> ingredients,
                                String address) {

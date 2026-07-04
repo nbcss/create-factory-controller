@@ -13,10 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Makes orderable Production Blueprints present in the Stock Keeper's <i>initial</i> stock snapshot (the one sent
- * straight from the interaction handler on GUI open, which bypasses {@code LogisticalStockRequestPacket.applySettings}).
- * Without this the patterns only appear on the first periodic refresh a tick or two later — enough to make the
- * material-list auto-order miss orderable items on the opening frame. See {@link OrderableStockAugment}.
+ * Makes orderable Production Blueprints present in the Stock Keeper's <i>initial</i> stock snapshot
  */
 @Mixin(StockTickerInteractionHandler.class)
 public abstract class StockTickerInteractionHandlerMixin {

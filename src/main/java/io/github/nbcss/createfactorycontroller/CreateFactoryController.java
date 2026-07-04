@@ -61,17 +61,12 @@ public class CreateFactoryController {
             new io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem(
                 FACTORY_CONTROLLER.get(), new Properties()));
 
-    /** Virtual, unobtainable Promise Blueprint — intentionally NOT added to any creative tab. */
+    /** Unobtainable, just for Stock Keeper GUI */
     public static final DeferredItem<ProductionPatternItem> PRODUCTION_PATTERN =
         ITEMS.register("production_pattern", () ->
             new ProductionPatternItem(new Properties()));
 
-    /** Generic, unobtainable fluid-filter token: an item carrying a {@link #FLUID_CONTENT} fluid, used as a gauge's
-     *  filter so the entire item-filter pipeline (rendering, label, set-item / recipe screens) is reused for fluid
-     *  gauges. Addon-agnostic — unlike the CFL/CreateFluid wrapper items it rides no item logistics (the fluid stock
-     *  backend reads its fluid separately). NOT in any creative tab; only ever drawn as the fluid itself.
-     *  <p>Registered ONLY when Create: Repackaged is installed (the only source of fluid gauges) — see the
-     *  constructor — so it stays out of the registry on a plain Create install. {@code null} when absent.</p> */
+    /** For Mod Repackaged fluid compat */
     @org.jetbrains.annotations.Nullable
     public static DeferredItem<net.minecraft.world.item.Item> FLUID_FILTER;
 
@@ -85,8 +80,7 @@ public class CreateFactoryController {
                 .networkSynchronized(ProductionTarget.STREAM_CODEC)
                 .build());
 
-    /** Minimal board setup (connections / request amounts / modes) carried by a broken controller item so it
-     *  restores on placement. Holds the stripped-down BE NBT. */
+    /** Minimal board setup carried by a broken controller item */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<net.minecraft.nbt.CompoundTag>> CONTROLLER_SETUP =
         DATA_COMPONENTS.register("controller_setup", () ->
             DataComponentType.<net.minecraft.nbt.CompoundTag>builder()
@@ -94,9 +88,7 @@ public class CreateFactoryController {
                 .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.COMPOUND_TAG)
                 .build());
 
-    /** Marker placed on an ignore-data gauge's request promise so the promise queue clears it by item type
-     *  (fuzzy), not exact components — the produced output may arrive as any data-variant of the item.
-     *  Used only on the internal promise stack; see {@code RequestPromiseQueueMixin}. */
+    /** Marker placed on an ignore-data gauge's request promise so the promise queue clears it by item type */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> FUZZY_PROMISE =
         DATA_COMPONENTS.register("fuzzy_promise", () ->
             DataComponentType.<Boolean>builder()
@@ -104,8 +96,6 @@ public class CreateFactoryController {
                 .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.BOOL)
                 .build());
 
-    /** The fluid carried by a {@link #FLUID_FILTER} token. Uses {@code SimpleFluidContent} (not a raw {@code FluidStack},
-     *  which can't be a data component — it has no equals/hashCode). Registered alongside it (only with Repackaged). */
     @org.jetbrains.annotations.Nullable
     public static DeferredHolder<DataComponentType<?>, DataComponentType<net.neoforged.neoforge.fluids.SimpleFluidContent>> FLUID_CONTENT;
 
@@ -152,10 +142,7 @@ public class CreateFactoryController {
 
     // ── Constructor ────────────────────────────────────────────────────────
     public CreateFactoryController(IEventBus modEventBus, ModContainer modContainer) {
-        // Create: Repackaged compat — register the generic fluid-filter token + its fluid component ONLY when the
-        // addon is present (its fluid gauges are the only thing that uses them). Done here (not in a field
-        // initializer) because ModList is ready by the mod constructor, and before the DeferredRegisters are attached
-        // to the bus so the entries make it into the RegisterEvent.
+        // Create: Repackaged compat
         if (io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat.isLoaded()) {
             FLUID_FILTER = ITEMS.register("fluid_filter", () -> new net.minecraft.world.item.Item(new Properties()));
             FLUID_CONTENT = DATA_COMPONENTS.register("fluid_content", () ->

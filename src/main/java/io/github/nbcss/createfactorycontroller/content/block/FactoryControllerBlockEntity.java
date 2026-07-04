@@ -456,11 +456,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // its identity is the item type alone — matching the type-only stock/promise/ingredient matching.
         gauge.filter = gauge.ignoreData ? new ItemStack(filter.getItem()) : filter.copy();
         refreshGaugeIdentity(gauge, !ItemStack.isSameItemSameComponents(oldFilter, gauge.filter));
-        // Keep the threshold unit in the right group for the new filter so the count label/tooltip read
-        // correctly immediately, before the recipe screen is ever opened: a fluid filter defaults to B,
-        // an item filter to items. Only switch when crossing groups, so a later mB/B (or stacks) choice survives.
-        if (fluid && !gauge.unit.isFluid()) gauge.unit = ThresholdUnit.FLUID_BUCKET;
-        else if (!fluid && gauge.unit.isFluid()) gauge.unit = ThresholdUnit.ITEMS;
+        if (fluid && !gauge.unit.isFluid())
+            gauge.unit = ThresholdUnit.FLUID_BUCKET;
+        else if (!fluid && gauge.unit.isFluid())
+            gauge.unit = ThresholdUnit.ITEMS;
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible
         gauge.publishRedstoneOutput();
         settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
@@ -910,10 +909,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * opposite value can never reconcile: its change-detected publish/commit sees no change and the stale edge sticks
      * (a RECEIVE link or logic tube frozen powered, gating gauges that shouldn't be). Unlike a world reload — where the
      * full save profile keeps edges and components consistent — an export snapshot must be re-derived, not trusted.
-     *
-     * <p>Every source rewrites its edges from its (reset) output, redstone links (re)join their frequency network and
-     * pull real power now, then every flagged sink folds once. Subsequent ticks self-heal the rest (gauges from stock,
-     * tubes commit on their next preTick).</p>
      */
     private void reinitSignalGraph() {
         for (VirtualComponentBehaviour c : components.values())

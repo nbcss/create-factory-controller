@@ -14,11 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
-/**
- * Attaches the carried gauge at the given panel position. {@code network} carries the client-side selected
- * network so untuned gauges can be assigned without the server tracking a selection. It is null
- * for tuned gauges (the server derives the network from the item itself).
- */
+
 public record AttachComponentPacket(BlockPos pos, VirtualComponentPosition panelPos, @Nullable UUID network) implements CustomPacketPayload {
 
     public static final Type<AttachComponentPacket> TYPE =

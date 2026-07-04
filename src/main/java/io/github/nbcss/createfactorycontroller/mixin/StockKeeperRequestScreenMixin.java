@@ -33,10 +33,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 /**
- * Hides the stock-count label on Promise Blueprint entries in the Stock Keeper item list, adds the Send-button
- * ingredient pre-check tooltip (see {@link IngredientCheckClient}), and — when ordering from a material list
- * (clipboard) — substitutes a Production Order for any listed item that is short in stock but producible by an
- * orderable gauge on the network ({@link #cfc$orderMissingFromGauges}).
+ * Hides the stock-count label on Promise Blueprint entries in the Stock Keeper item list
  */
 @Mixin(StockKeeperRequestScreen.class)
 public abstract class StockKeeperRequestScreenMixin {
@@ -54,8 +51,6 @@ public abstract class StockKeeperRequestScreenMixin {
                                     @Local(argsOnly = true, ordinal = 1) boolean isRenderingOrders) {
         if (ProductionPatternItem.isPattern(entry.stack)) {
             if (!isRenderingOrders) return;   // stock-list blueprint: infinite supply, no count
-            // A fluid order is counted in buckets — draw the count with a "b" suffix at drawItemCount's own
-            // (pose-relative) bottom-right placement, which SpriteNumbersRender mirrors.
             if (FluidCompat.isFluidFilter(ProductionPatternItem.displayOf(entry.stack))) {
                 SpriteNumbersRender.drawCount(graphics, SpriteNumbersRender.abbreviate(customCount) + "b", 0, 0);
                 return;
@@ -64,12 +59,6 @@ public abstract class StockKeeperRequestScreenMixin {
         original.call(self, graphics, count, customCount);
     }
 
-    /**
-     * After Create stages the in-stock amounts from the clipboard, replace each short item that an orderable gauge can
-     * produce with a Production Order for the full listed amount. The production task nets against current network
-     * stock (it ships the full amount once stock catches up, producing only the shortfall), so a single order both
-     * pulls the existing stock and makes up the difference — see ProductionOrderManager.
-     */
     @Inject(method = "requestSchematicList", at = @At("TAIL"))
     private void cfc$orderMissingFromGauges(CallbackInfo ci) {
         if (!ClientConfig.orderFromMaterialList() || clipboardItem == null) return;
@@ -113,12 +102,6 @@ public abstract class StockKeeperRequestScreenMixin {
     /** The Production Orders gutter button, present only when Deployer is absent. White (vs. green on the orders page). */
     @Unique private IconButton cfc$ordersButton;
 
-    /**
-     * When Deployer is absent there's no keeper tab strip, so place a Create IconButton in the gutter (the spot
-     * Deployer's tabs would occupy) that opens the standalone {@link ProductionOrdersScreen}. It carries the Production
-     * Pattern icon and stays white here (green marks the orders page). With Deployer installed its tab provides this
-     * entry instead, so the button is suppressed to avoid a duplicate.
-     */
     @Inject(method = "renderForeground(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("TAIL"))
     private void cfc$renderProductionOrdersButton(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
         if (DeployerCompat.isLoaded()) return;

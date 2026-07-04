@@ -85,8 +85,7 @@ public enum ThresholdUnit {
     }
 
     /**
-     * Formats a fluid amount (millibuckets) for display: {@code "XmB"} below one bucket, otherwise buckets with up
-     * to three decimals and trailing zeros trimmed ({@code 512→"512mB"}, {@code 2000→"2B"}, {@code 12511→"12.511B"}).
+     * Formats a fluid amount (millibuckets) for display
      */
     public static String formatFluidAmount(int millibuckets) {
         if (millibuckets < 1000) return millibuckets + "mB";
@@ -94,10 +93,7 @@ public enum ThresholdUnit {
     }
 
     /**
-     * Formats a millibucket amount in THIS fluid unit (respecting the gauge's choice): the mB unit always shows
-     * {@code "XmB"}; the bucket unit shows buckets rounded to one decimal with the trailing {@code .0} trimmed
-     * ({@code 2000→"2B"}, {@code 2500→"2.5B"}, {@code 512→"0.5B"}), even below one bucket. Non-fluid units fall
-     * back to the magnitude-based {@link #formatFluidAmount}.
+     * Formats a millibucket amount in THIS fluid unit
      */
     public String formatInUnit(int millibuckets) {
         if (this == FLUID_BUCKET)
@@ -113,8 +109,6 @@ public enum ThresholdUnit {
     /** Display label for the unit box / tooltip. */
     public abstract Component label();
 
-    /** One selectable line of the unit-box tooltip: the active mode gets an arrow + white, others a
-     *  bullet + gray. */
     public Component tooltipLine(boolean active) {
         return Component.literal(active ? "-> " : "> ").append(label())
             .withStyle(active ? ChatFormatting.WHITE : ChatFormatting.GRAY);

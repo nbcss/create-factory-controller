@@ -13,11 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * Configures a redstone-link component in one shot: its Send/Receive mode ({@code receive}) and both type
- * frequency items ({@code red}/{@code blue}). The client resends the unchanged fields, so a single per-type click
- * or an R-key mode toggle round-trips the full state (frequency items are stored count-1 and never consumed).
- */
+
 public record ConfigureRedstoneLinkPacket(BlockPos pos, VirtualComponentPosition panelPos, boolean receive,
                                           ItemStack red, ItemStack blue) implements CustomPacketPayload {
 

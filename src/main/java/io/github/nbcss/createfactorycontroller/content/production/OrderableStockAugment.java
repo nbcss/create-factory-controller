@@ -8,11 +8,7 @@ import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Augments a Stock Keeper's stock summary with one infinite {@link ProductionPatternItem} stack per orderable gauge
- * on the keeper's network, so producible items show up in the request GUI alongside real stock. Shared by both the
- * periodic stock-response path and the initial GUI-open summary, so orderable items are present from the first frame.
- */
+
 public final class OrderableStockAugment {
 
     private OrderableStockAugment() {}

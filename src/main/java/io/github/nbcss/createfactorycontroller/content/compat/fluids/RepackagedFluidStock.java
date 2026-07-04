@@ -28,11 +28,6 @@ import java.util.function.IntSupplier;
  * Reads and promises fluid stock through Create: Repackaged's Deployer-backed fluid stock system — the generic
  * equivalents of Create's item {@code LogisticsManager.getStockOf} / {@code RequestPromiseQueue}, over Deployer's
  * {@code repackaged:fluid} {@link StockInventoryType}.
- *
- * <p>All Deployer references live here, NOT in {@code VirtualGaugeBehaviour} — that class is loaded for item gauges on
- * installs without Deployer, so a direct link would break class loading. Every method is reached only from a
- * FLUID-gauge branch, which can only run when Repackaged (hence Deployer) is installed, so this class loads lazily.
- * Deployer is {@code compileOnly}, so this compiles without it on the runtime classpath.</p>
  */
 final class RepackagedFluidStock {
 
@@ -94,8 +89,6 @@ final class RepackagedFluidStock {
     }
 
     // ── Promise-limit counting (fluid analogue of PromiseCounts) ────────────────
-    // Per-network, per-tick cache of ControllerFluidPromise counts bucketed by owner (gaugeId) and target address,
-    // built lazily from one deployer$flatten pass and only for networks queried this tick.
 
     private static long countTick = Long.MIN_VALUE;
     private static final Map<UUID, Counts> countCache = new HashMap<>();

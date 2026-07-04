@@ -70,17 +70,10 @@ public final class ClientConfig {
         return CONTROLLER_BACKGROUND.getDefault();
     }
 
-    /** Sets the background selection; takes effect immediately (the controller reads it each frame), but only updates
-     *  the in-memory config — call {@link #save()} to persist it to disk. */
     public static void setControllerBackground(String name) {
         CONTROLLER_BACKGROUND.set(name);
     }
 
-    /**
-     * Flushes the in-memory client config to disk. NeoForge's {@code ConfigValue.set} only mutates the loaded
-     * in-memory config and never writes the file, so changes made through the settings screens are lost on restart
-     * unless this is called (e.g. when closing the background settings screen). No-op until the config is loaded.
-     */
     public static void save() {
         if (SPEC.isLoaded()) SPEC.save();
     }

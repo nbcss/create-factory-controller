@@ -92,9 +92,6 @@ public class ProductionOrderManager extends SavedData {
             List<ProductionOrderView.RequestView> rs = new ArrayList<>();
             for (Task r : o.tasks()) {
                 int stock = networkStockOf(r.network, r.item);
-                // For an active task, refine the displayed state: WAITING while the network holds no promise for the
-                // item yet, PROCESSING once it does (promises are shared per-network/per-item). Terminal tasks keep
-                // their stored SENT/ABORTED.
                 Task.State display = r.state;
                 if (display != Task.State.SENT && display != Task.State.INVALID_PATTERN) {
                     if (stock >= r.amount || networkPromisedOf(r.network, r.item) > 0)
@@ -205,7 +202,7 @@ public class ProductionOrderManager extends SavedData {
         return true;
     }
 
-    // ── Demand (item 6) ──────────────────────────────────────────────────────
+    // ── Demand ──────────────────────────────────────────────────────
 
     /** Total still-to-produce amount (item count / mB) that active requests demand of one gauge. */
     public int externalDemand(UUID network, UUID patternId) {

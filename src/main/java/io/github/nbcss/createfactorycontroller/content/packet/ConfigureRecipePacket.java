@@ -18,13 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Sent by {@code ConfigureRecipeScreen} when the player confirms (or deletes) a gauge's recipe
- * configuration. Carries the editable fields: recipe address, output-per-craft, promise-clearing
- * interval, promise limit, target threshold + unit, passive mode flag, per-incoming-connection ingredient amounts,
- * the optional mechanical-crafting arrangement, and the clear-promises / reset flags.
- * {@code reset == true} wipes the gauge's whole recipe config (mirrors Create's trash button).
- */
+
 public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panelPos, String address,
                                     int recipeOutput, int craftBatch, int craftDimension, int promiseInterval,
                                     int promiseLimit, boolean promiseLimitByAddress, int count, ThresholdUnit mode,

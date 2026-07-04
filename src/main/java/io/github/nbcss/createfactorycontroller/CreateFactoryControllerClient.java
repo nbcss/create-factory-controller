@@ -57,10 +57,6 @@ public class CreateFactoryControllerClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Q,
             "key.categories.createfactorycontroller");
 
-    /**
-     * Drag this button on the controller canvas to pan the view. Rebindable from Options ▸ Controls;
-     * defaults to the middle mouse button (the original hard-wired behaviour).
-     */
     public static final KeyMapping PAN_VIEW = new KeyMapping(
             "key.createfactorycontroller.pan_view",
             InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
@@ -71,22 +67,11 @@ public class CreateFactoryControllerClient {
             InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
             "key.categories.createfactorycontroller");
 
-    /**
-     * Toggles "always show label" (every gauge shows its count label vs. only the hovered one). Handled inside
-     * {@code FactoryControllerScreen#keyPressed}, so it only fires while the controller GUI is open — never
-     * in-world or on another screen. Rebindable from Options ▸ Controls; defaults to Left Alt.
-     */
     public static final KeyMapping TOGGLE_ALWAYS_SHOW_LABEL = new KeyMapping(
             "key.createfactorycontroller.toggle_always_show_label",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT,
             "key.categories.createfactorycontroller");
 
-    /**
-     * Held (not toggled) to put the controller GUI into "selection mode": rubber-band drag selects components and
-     * left-clicking a component toggles its selection. Polled directly from the window (like {@link #PAN_VIEW}'s
-     * keyboard companions) since {@link KeyMapping#isDown()} doesn't update while a screen is open. Rebindable from
-     * Options ▸ Controls; defaults to Left Control.
-     */
     public static final KeyMapping SELECTION_MODE = new KeyMapping(
             "key.createfactorycontroller.selection_mode",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL,
@@ -94,8 +79,6 @@ public class CreateFactoryControllerClient {
 
     public CreateFactoryControllerClient(ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
-        // The config screen is accessed by going to the Mods screen > clicking on your mod > clicking on config.
-        // Do not forget to add translations for your config options to the en_us.json file.
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         container.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
     }
@@ -103,13 +86,9 @@ public class CreateFactoryControllerClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            // Deployer is optional: only register the keeper TAB when it's present (this also keeps the JVM from
-            // loading ProductionOrdersTab, which extends a Deployer class). Without Deployer the Production Orders
-            // page is reached via a button on the Stock Keeper instead — see StockKeeperRequestScreenMixin.
+            // Deployer is optional: only register the keeper TAB when it's present
             if (DeployerCompat.isLoaded())
                 ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
-            // Shift/Ctrl item summary for the controller, driven by Create's tooltip pipeline (reads the
-            // <item>.tooltip.summary / .condition*/.behaviour* lang keys). Reuses Create's ItemDescription.
             Item controllerItem = CreateFactoryController.FACTORY_CONTROLLER_ITEM.get();
             TooltipModifier.REGISTRY.register(controllerItem,
                 new ItemDescription.Modifier(controllerItem, FontHelper.Palette.STANDARD_CREATE));

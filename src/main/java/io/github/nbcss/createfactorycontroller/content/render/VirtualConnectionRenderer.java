@@ -1,6 +1,5 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
-import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.createmod.catnip.animation.AnimationTickHolder;
@@ -13,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 

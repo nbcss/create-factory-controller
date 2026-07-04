@@ -9,6 +9,7 @@
 
 # 1.1.0
 - [TODO] Integer Connection & Arithmetic Component
+- [TODO] Properly handle stock link not loaded warning
 - [TODO] Dynamic Batch Size
 - [TODO] Paper as component
 - [TODO] Network Rename/Set Icon

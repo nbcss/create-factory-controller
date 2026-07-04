@@ -8,7 +8,6 @@ package io.github.nbcss.createfactorycontroller.content;
  *   <li>{@link #PASSIVE_AND_ALLOW_ORDER} — passive, and also exposed in network Stock Keepers as an
  *       orderable Promise Blueprint so players can add demand by hand.</li>
  * </ul>
- * Replaces the former {@code passiveMode} + {@code exposeInStockKeeper} boolean pair.
  */
 public enum RequestMode {
     NORMAL,

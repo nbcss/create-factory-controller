@@ -9,6 +9,9 @@ import net.minecraft.nbt.Tag;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * For controller data migration
+ */
 public abstract class ControllerDataFixer {
     private static final List<ControllerDataFixer> FIXERS = new ArrayList<>();
     static {

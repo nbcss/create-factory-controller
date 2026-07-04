@@ -13,8 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Sent immediately when the player clicks the redstone-link reset slot in {@code ConfigureRecipeScreen}, to
- * disconnect every redstone link wired to that gauge on the server right away — without committing any recipe
- * config edits (mirrors {@link DisconnectIngredientPacket}, separate from {@code ConfigureRecipePacket}).
+ * disconnect every redstone link wired to that gauge on the server right away
  */
 public record DisconnectLinksPacket(BlockPos pos, VirtualComponentPosition gauge) implements CustomPacketPayload {
 

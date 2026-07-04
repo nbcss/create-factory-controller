@@ -11,10 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client → server: swap the direction of the wire {@code from → to} (becomes {@code to → from}), if the reversed
- *  orientation is legal ({@link io.github.nbcss.createfactorycontroller.content.component.connection.Connection#canReverse
- *  Connection.canReverse}). Used by the Logical Tube settings screen's shift-click and the cycle-operation-mode
- *  keybinding on a hovered signal wire. */
+
 public record ReverseConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
     implements CustomPacketPayload {
 

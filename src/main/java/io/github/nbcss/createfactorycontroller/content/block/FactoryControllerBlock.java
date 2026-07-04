@@ -116,8 +116,6 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
                             @NotNull BlockPos pos,
                             @NotNull BlockState newState,
                             boolean movedByPiston) {
-        //if (ServerConfig.preserveControllerData()) be.abortAllTasks();
-        //else be.dropComponents();
         if (!movedByPiston && !state.is(newState.getBlock()))
             withBlockEntityDo(level, pos, FactoryControllerBlockEntity::abortAllTasks);
         IBE.onRemove(state, level, pos, newState);
@@ -165,8 +163,7 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
         if (setup != null) {
             withBlockEntityDo(level, pos, be -> {
                 be.applySetup(setup, level.registryAccess());
-                // Vanilla copies item data components into the placed block entity before setPlacedBy.
-                // This component is only a placement payload; keeping it on the BE duplicates setup data on save/drop.
+                // Vanilla copies item data components into the placed block entity before setPlacedBy, so remove it.
                 be.setComponents(be.components().filter(type -> !type.equals(CreateFactoryController.CONTROLLER_SETUP.get())));
             });
         }

@@ -16,20 +16,12 @@ import java.util.List;
 /**
  * Lets Create's Re-Packager pack a crafting grid with <b>stacked</b> slots instead of one item per slot, so large
  * and batched mechanical-crafting recipes fit in a package and their ingredients aren't truncated and silently lost.
- *
- * <p>Vanilla {@code PackageRepackageHelper.repackBasedOnRecipes} lays the recipe pattern into a fixed 9-slot package
- * with {@code stack.copyWithCount(1)} — one item per slot, capped at 9 slots — so any recipe with more than 9 cells
- * (or repeated ingredients) loses the overflow. This reproduces the exact fix the "Create: Extra Gauges" mod
- * ({@code net.liukrast.eg}) applies to the same method, so the feature works without it; {@code CfcMixinPlugin} skips
- * this mixin when Extra Gauges is installed so the two never double-patch the same call sites.</p>
  */
 @Mixin(PackageRepackageHelper.class)
 public class PackageRepackageHelperMixin {
 
     /**
-     * Consolidates the recipe pattern (one item per cell) into stacked slots: identical items merge up to their max
-     * stack size, the remaining slots left empty. Targets the second {@code stacks()} call in the method — the one
-     * used to fill the output package, not the earlier ingredient-consume loop (ordinal 0).
+     * Consolidates the recipe pattern (one item per cell) into stacked slots
      */
     @ModifyExpressionValue(method = "repackBasedOnRecipes",
         at = @At(value = "INVOKE",
