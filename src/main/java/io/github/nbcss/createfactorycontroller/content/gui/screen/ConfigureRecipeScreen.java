@@ -378,11 +378,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (ctrl) {
             next = snapToStack(cur, dir, ss);            // snap to the next/previous full-stack value
         } else if (shift) {
-            next = cur + dir * 10;
-            if (cur % ss != 0) {                         // snap across a stack boundary (not from a boundary)
-                int boundary = dir > 0 ? (cur / ss + 1) * ss : (cur / ss) * ss;
-                if (dir > 0 ? next > boundary : next < boundary) next = boundary;
-            }
+            next = shiftStep(cur, dir, ss);              // ±10, snapping across a stack boundary
         } else {
             next = cur + dir;                            // ±1 item
         }
@@ -410,8 +406,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return Math.max(64, 9 * outputStackSize());
     }
 
-    /** Dark-gray " | &lt;stacks&gt;▤ +&lt;overflow&gt;" suffix breaking {@code count} of a stack-{@code ss} item into full
-     *  stacks plus remainder (the {@code +overflow} omitted when {@code count} is a whole number of stacks). */
     private static MutableComponent stackBreakdown(int count, int ss) {
         int stacks = count / ss, overflow = count % ss;
         return Component.literal(" | " + stacks + "▤" + (overflow > 0 ? " +" + overflow : ""))
@@ -423,6 +417,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      *  caller). E.g. ss=64: 100↑→128, 100↓→64, 40↓→0. */
     private static int snapToStack(int cur, int dir, int ss) {
         return dir > 0 ? (cur / ss + 1) * ss : (cur - 1) / ss * ss;
+    }
+
+    /** Shift-scroll step: {@code cur ± 10}, but snapped to the stack boundary it would cross when {@code cur} isn't
+     *  already on one (so shift-scrolling lands cleanly on stack multiples). Shared by the input totals and the output
+     *  count. */
+    private static int shiftStep(int cur, int dir, int ss) {
+        int next = cur + dir * 10;
+        if (cur % ss != 0) {
+            int boundary = dir > 0 ? (cur / ss + 1) * ss : (cur / ss) * ss;
+            if (dir > 0 ? next > boundary : next < boundary) next = boundary;
+        }
+        return next;
     }
 
     /** Crafts per request actually used: forced to 1 when an ignore-data ingredient disables batching. */
@@ -1483,7 +1489,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 outputCount = Mth.clamp(snapToStack(outputCount, dir, outputStackSize()), 1, maxItemOutput());   // full-stack snap
                 playScrollSound();
             } else {
-                outputCount = Mth.clamp(outputCount + dir * step, 1, maxItemOutput());
+                // ±1 item, or (shift) ±10 snapping across a stack boundary — same as the input totals.
+                int next = hasShiftDown() ? shiftStep(outputCount, dir, outputStackSize()) : outputCount + dir;
+                outputCount = Mth.clamp(next, 1, maxItemOutput());
                 playScrollSound();
             }
             return true;

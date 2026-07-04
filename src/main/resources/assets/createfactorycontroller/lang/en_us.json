@@ -55,7 +55,7 @@
   "createfactorycontroller.gui.redstone_link.mode.receive": "Receive",
   "createfactorycontroller.gui.gauge_status.redstone_paused": "Paused by Redstone Signal",
   "createfactorycontroller.gui.network_selector": "Network Selector",
-  "createfactorycontroller.gui.network_selector_no_network_tip": "Place first tuned gauge to active",
+  "createfactorycontroller.gui.network_selector_no_network_tip": "Place first tuned gauge to activate",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
   "createfactorycontroller.gui.mode_prefix": "Mode: %1$s",

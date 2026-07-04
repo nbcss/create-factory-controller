@@ -342,7 +342,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         .append(item.getHoverName().copy().withColor(type.color())));
             }
         }
-        System.out.println("test");
         tooltip.add(Component.empty());
         tooltip.add(Component.translatable("createfactorycontroller.gui.help.open_wiki").withStyle(ChatFormatting.GRAY));
         return tooltip;
