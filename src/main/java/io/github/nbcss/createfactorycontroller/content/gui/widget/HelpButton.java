@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
@@ -46,6 +47,6 @@ public class HelpButton extends GraphicButton {
         addGraphic(DISPLAY_HOVER, 0x44FFFFFF, 1, 1, 7, 7);
         addGraphic(DISPLAY_NORMAL, iconSprite, colorPalette.darkColor, 2, 2, 5, 5);
         addGraphic(DISPLAY_HOVER, iconSprite, colorPalette.lightColor, 2, 2, 5, 5);
-        withTooltip(Component.translatable("createfactorycontroller.gui.help_button"));
+        //withTooltip(Component.translatable("createfactorycontroller.gui.help_button"));
     }
 }

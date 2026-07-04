@@ -63,6 +63,8 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
             return List.of(RepackagedCompat.FLUID_GAUGE);
         }
 
+        @Override public int color() { return 0xE2816C; }
+
         @Override
         public boolean isRequireNetwork() {
             return true;
@@ -124,7 +126,7 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         return FRONT_TEXTURE;
     }
 
-    @Override public int getColor() { return 0xE2816C; }
+    @Override public int getColor() { return TYPE.color(); }
 
     public static FluidGaugeBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                               CompoundTag tag,

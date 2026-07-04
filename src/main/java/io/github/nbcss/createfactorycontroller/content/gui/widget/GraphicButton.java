@@ -1,17 +1,20 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -37,7 +40,7 @@ public class GraphicButton extends AbstractWidget {
 
     private final ArrayList<GraphicLayer> graphicLayers = new ArrayList<>();
     private final Supplier<Boolean> onClick;
-    @Nullable private Component tooltip;
+    @Nullable private List<FormattedCharSequence> tooltip;
 
     public GraphicButton(int x, int y, int width, int height, Supplier<Boolean> onClick) {
         super(x, y, width, height, Component.empty());
@@ -45,12 +48,17 @@ public class GraphicButton extends AbstractWidget {
     }
 
     public GraphicButton withTooltip(@Nullable Component tooltip) {
-        this.tooltip = tooltip;
+        this.tooltip = tooltip == null ? null : List.of(tooltip.getVisualOrderText());
+        return this;
+    }
+
+    public GraphicButton withTooltip(@Nullable List<Component> tooltip) {
+        this.tooltip = tooltip == null ? null : tooltip.stream().map(Component::getVisualOrderText).toList();
         return this;
     }
 
     @Nullable
-    public Component getTooltipText() {
+    public List<FormattedCharSequence> getTooltipText() {
         return tooltip;
     }
 
@@ -83,7 +91,7 @@ public class GraphicButton extends AbstractWidget {
     @Override
     protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         RenderSystem.enableBlend();
-        final int currentState = isHoveredOrFocused() ? DISPLAY_HOVER : DISPLAY_NORMAL;
+        final int currentState = isHovered() ? DISPLAY_HOVER : DISPLAY_NORMAL;
         for (var layer : graphicLayers) {
             if ((layer.displayedState & currentState) == 0) continue;
             if (layer.resource != null) {
@@ -107,7 +115,9 @@ public class GraphicButton extends AbstractWidget {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!isValidClickButton(button) || !clicked(mouseX, mouseY)) return false;
-        return onClick.get();
+        boolean handled = onClick.get();
+        if (handled) playDownSound(Minecraft.getInstance().getSoundManager());
+        return handled;
     }
 
     @Override

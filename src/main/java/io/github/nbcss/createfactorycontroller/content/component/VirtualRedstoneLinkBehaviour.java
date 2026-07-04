@@ -52,6 +52,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
             return List.of(AllBlocks.REDSTONE_LINK.getId());
         }
 
+        @Override public int color() { return 0xFC8068; }
+
         @Override
         public boolean isRequireNetwork() {
             return false;
@@ -98,7 +100,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override public ResourceLocation getTexture() { return TEXTURE; }
 
-    @Override public int getColor() { return 0xFC8068; }
+    @Override public int getColor() { return TYPE.color(); }
 
     /** Info lines: the two type frequencies and the current Send/Receive mode. */
     @Override

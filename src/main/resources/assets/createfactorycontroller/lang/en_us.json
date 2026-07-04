@@ -34,7 +34,8 @@
   "createfactorycontroller.gui.logical_tube.input_connections": "Inputs: %1$s",
   "createfactorycontroller.gui.logical_tube.output_connections": "Outputs: %1$s",
 
-  "createfactorycontroller.gui.help_button": "Help",
+  "createfactorycontroller.gui.help.allowed_components": "Allowed items:",
+  "createfactorycontroller.gui.help.open_wiki": "Click to open online docs",
   "createfactorycontroller.gui.capacity": "Capacity",
   "createfactorycontroller.gui.zoom": "Zoom",
   "createfactorycontroller.gui.in_stock": "In stock: %1$s",
@@ -93,10 +94,8 @@
   "createfactorycontroller.gui.request_mode.allow_order.desc1": "Follow demand, and allow",
   "createfactorycontroller.gui.request_mode.allow_order.desc2": "ordering from a Stock Keeper",
   "createfactorycontroller.gui.request_mode.change_tip": "Click to cycle",
-  "item.createfactorycontroller.production_pattern": "Add new production task",
   "createfactorycontroller.gui.production_ingredients_header": "Ingredients:",
   "createfactorycontroller.gui.production_address_header": "To address:",
-  "item.createfactorycontroller.fluid_filter": "Fluid Filter",
   "createfactorycontroller.gui.production_orders": "Production Orders",
   "createfactorycontroller.gui.no_production_orders": "No open production orders",
   "createfactorycontroller.gui.production_tooltip_request": "Request: ",
@@ -139,6 +138,9 @@
   "createfactorycontroller.config.preserve_controller_data.tooltip": "Keep a Factory Controller's board setup on the dropped item when broken, and restore it when re-placed. When off, the controller drops empty and its gauges drop as separate items.",
   "createfactorycontroller.config.passive_total_demand": "[Experimental] Full Passive Demand Strategy",
   "createfactorycontroller.config.passive_total_demand.tooltip": "Each passive gauge's target storage is sized to the total remaining downstream demand, so the whole chain stays active and produces continuously. Warning: this strategy could overload your logistics network if the system cannot handle the load!",
+
+  "item.createfactorycontroller.production_pattern": "Add new production task",
+  "item.createfactorycontroller.fluid_filter": "Fluid Filter",
 
   "createfactorycontroller.network.default": "Network #%1$s",
   "createfactorycontroller.network.none": "No network",

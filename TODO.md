@@ -4,8 +4,8 @@
 - [DONE] Recipe tooltip for production order item
 - [DONE] Set gauge item via JEI in controller screen
 - [DONE] Draw preview connection when in connect mode
+- [DONE] Tooltip to hint placeable item?
 - [SKIP] Guide Overlay GUI; move to web link first
-- [TBC] Tooltip to hint placeable item?
 
 # 1.1.0
 - [TODO] Integer Connection & Arithmetic Component
@@ -20,6 +20,7 @@
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
+- [TODO] Gauge Ingredient Sequence Mode
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration
 - [TODO] Improve panel sync packet (transfer delta only)

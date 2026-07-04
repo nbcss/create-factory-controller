@@ -41,6 +41,9 @@ public interface VirtualComponentBehaviour {
     interface Type {
         String id();
         List<ResourceLocation> items();
+        /** Accent colour (0xRRGGBB) of this component kind — the bulb/label colour ({@link #getColor()}) and the
+         *  colour its name is shown in (e.g. the controller help tooltip's allowed-components list). */
+        int color();
         boolean isRequireNetwork();
         VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
                                           VirtualComponentPosition pos,

@@ -67,6 +67,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             return List.of(AllBlocks.FACTORY_GAUGE.getId());
         }
 
+        @Override public int color() { return 0xFBDC7D; }
+
         @Override
         public boolean isRequireNetwork() {
             return true;
@@ -263,7 +265,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return TEXTURE;
     }
 
-    @Override public int getColor() { return 0xFBDC7D; }
+    @Override public int getColor() { return TYPE.color(); }
 
     public ResourceLocation getFrontTexture() {
         return FRONT_TEXTURE;

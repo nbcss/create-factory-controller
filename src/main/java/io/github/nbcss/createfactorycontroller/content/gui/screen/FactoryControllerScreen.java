@@ -52,9 +52,12 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -312,6 +315,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (helpButton != null) removeWidget(helpButton);
         helpButton = new HelpButton(leftPos + imageWidth - HelpButton.WIDTH - 5, topPos + 3,
                 HelpButton.ColorPalette.BRASS, HELP_URL);
+        helpButton.withTooltip(buildHelpTooltip());
         addWidget(helpButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
@@ -322,6 +326,26 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             networkSelector.setPosition(selectorX, selectorY);
 
         lastPanFrameMs = 0;   // fresh frame-delta base on (re)entry, so the first pan frame doesn't jump
+    }
+
+    /** Help-button tooltip: a blue "Allowed components:" header, one gray-bulleted line per placeable component kind
+     *  (name in the kind's accent colour, compat kinds included when installed), then the "open wiki" action line. */
+    private List<Component> buildHelpTooltip() {
+        List<Component> tooltip = new ArrayList<>();
+        tooltip.add(Component.translatable("createfactorycontroller.gui.help.allowed_components")
+                .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x528FDE))));
+        for (VirtualComponentBehaviour.Type type : ComponentRegistry.types()) {
+            if (type.items().isEmpty()) continue;
+            for (ResourceLocation itemLocation : type.items()) {
+                ItemStack item = new ItemStack(BuiltInRegistries.ITEM.get(itemLocation));
+                tooltip.add(Component.literal("- ").withStyle(ChatFormatting.GRAY)
+                        .append(item.getHoverName().copy().withColor(type.color())));
+            }
+        }
+        System.out.println("test");
+        tooltip.add(Component.empty());
+        tooltip.add(Component.translatable("createfactorycontroller.gui.help.open_wiki").withStyle(ChatFormatting.GRAY));
+        return tooltip;
     }
 
     /** Sends the edited controller name to the server (if changed) and leaves edit mode. */
@@ -510,10 +534,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         renderInventoryBackground(graphics);
         if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
 
-        // Action prompt above the inventory: an active mode (white) or a fading chime (tan). Each
-        // component carries its own colour; we only modulate the fade alpha here.
-        // The Selection-Mode status line (persistent, yellow) takes precedence over the transient/mode action prompt;
-        // the action prompt still ticks/expires underneath so it reappears once the selection status clears.
         Component selectionStatus = selectionStatusPrompt();
         Component prompt;
         int alpha = 255;
@@ -589,10 +609,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (isCellVisible(component.position(), minX, minY, maxX, maxY))
                 component.renderBack(graphics);
 
-        // Build connection widgets, find the hovered one, then do the layered draw:
-        //   pass 1 — all non-hovered connections
-        //   pass 2 — hovered white highlight then hovered connection on top
-        // All three passes happen before renderFront so component fronts naturally sit above connections.
         List<ConnectionWidget> connWidgets = buildConnectionWidgets(minX, minY, maxX, maxY);
         // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
         double worldMouseX = viewX + (mouseX - centerX) / getZoomFactor();
@@ -607,8 +623,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (isInCanvasArea(mouseX, mouseY) && !carrying && !rubberBanding && !batchRelocating
                 && pendingConnectionTarget == null && pendingRelocateTarget == null) {
             for (ConnectionWidget w : connWidgets) {
-                // A component sitting on a cell this wire merely passes through wins the hover; but a wire is still
-                // hoverable inside its own endpoint cells (the only place a short adjacent-pair wire exists).
                 if (overComponent && !hoveredPosition.equals(w.connection.from)
                                   && !hoveredPosition.equals(w.connection.to)) continue;
                 if (w.hitTest(worldMouseX, worldMouseY)) hoverHits.add(w);
@@ -690,8 +704,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.drawString(font, capacityStr, capTextX, row0Y, capacityColor, true);
         capacityLabelBounds = new int[]{labelX, row0Y, capTextX + font.width(capacityStr), row0Y + font.lineHeight};
 
-        // Zoom: "x<factor>". The world-pixel scale is twice this displayed value, so we halve it (e.g. the
-        // default 2.0 zoom shows "x1"); fractional levels show up to 2 trimmed decimals.
         double zoom = getZoomFactor() / 2.0;
         String zoomStr = String.format(java.util.Locale.ROOT, "%.2f", zoom);
         if (zoomStr.contains(".")) zoomStr = zoomStr.replaceAll("0+$", "").replaceAll("\\.$", "");
@@ -1611,8 +1623,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
-        // Toggle "always show label" (rebindable, Left Alt by default). Handled here — never in-world or on
-        // another screen — and persisted client-side via ClientConfig so it survives controllers/sessions.
         if (CreateFactoryControllerClient.TOGGLE_ALWAYS_SHOW_LABEL.matches(keyCode, scanCode)) {
             ClientConfig.toggleAlwaysShowLabel();
             // todo update some indicator button
@@ -1722,9 +1732,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualComponentWidget widget = ComponentWidgetRegistry.create(b);
             if (widget != null) componentWidgets.put(b.position(), widget);
         }
-        // Follow a pending batch relocate across the old→new transition: keep the selection on the sources until the
-        // destinations appear, then snap to them. Without this, the retainAll below would drop the not-yet-present set
-        // (a pre-move sync prunes the new cells; the move sync then prunes the old → empty).
         if (pendingMoveDestinations != null) {
             if (componentWidgets.keySet().containsAll(pendingMoveDestinations)) {
                 selected.clear();
@@ -1734,6 +1741,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 clearPendingMove();   // move never landed (rejected/lost) → fall through to normal retainAll
             } else {
                 selected.clear();     // still waiting: hold the selection on the sources that remain
+                assert pendingMoveSources != null;
                 selected.addAll(pendingMoveSources);
             }
         }

@@ -9,18 +9,18 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Central registry for virtual components.
  */
 public final class ComponentRegistry {
 
-    private static final Map<String, VirtualComponentBehaviour.Type> TYPE_REGISTRY = new HashMap<>();
+    /** Registration order preserved ({@link LinkedHashMap}) so the allowed-components listing is stable. */
+    private static final Map<String, VirtualComponentBehaviour.Type> TYPE_REGISTRY = new LinkedHashMap<>();
     private static final Map<ResourceLocation, VirtualComponentBehaviour.Type> ITEM_REGISTRY = new HashMap<>();
 
     public static void registerType(VirtualComponentBehaviour.Type type) {
@@ -34,8 +34,8 @@ public final class ComponentRegistry {
     }
 
     static {
-        registerType(VirtualRedstoneLinkBehaviour.TYPE);
         registerType(VirtualGaugeBehaviour.TYPE);
+        registerType(VirtualRedstoneLinkBehaviour.TYPE);
         registerType(LogicalTubeBehaviour.TYPE);
 
         // Create: Repackaged's Fluid Gauge is registered only when the addon is present.
@@ -66,6 +66,10 @@ public final class ComponentRegistry {
 
     public static boolean contains(ResourceLocation id) {
         return ITEM_REGISTRY.containsKey(id);
+    }
+
+    public static Collection<VirtualComponentBehaviour.Type> types() {
+        return TYPE_REGISTRY.values();
     }
 
     /** A stack is a valid component if its item id is registered. */
