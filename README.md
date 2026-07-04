@@ -8,9 +8,11 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
 - **Virtual Board**: You can move & zoom view in the virtual board like a 2D canvas; the board size also automatically adjusted by screen size.
 - **Always Show Label**: You can see the count label of all gauges by toggling Always Show Label mode (default keybinding: Alt).
 - **Connection Rotate**: You can cycle arrow mode on gauge or specific connection by press "R" key (could be changed in keybinding).
+- **Multi-Select Mode**: By hold Selection Mode key (Ctrl by default), you can drag to select multiple components, and perform batch move/delete.
 - **Network Selector**: A component in the GUI which keeps list of known networks on the virtual board, and you can scroll it to highlight the gauges which belong to chosen network.
 - **Quick Tune**: When holding a gauge item on cursor and scroll the Network Selector component in GUI (or just Shift+Scroll), you can directly tune the gauge to a known network.
 - **JEI/EMI Integration**: Allow to set gauge filter without to actually have the item in inventory.
+- **Display Link Integration**: Display Link can read pending orders from Factory Controller block.
 - **Redstone Control**: When controller block is powered by redstone signal, all of stored gauges will temporarily stop sending new requests.
 - **Redstone Link Support**: Redstone Link could be used in controller as well, it is as large as gauge in controller's grid.
 - **Logical Operation**: By place "Electron Tube" in Factory Controller, it acts as a logical operator for your logistics control (constant 1 tick delay).
@@ -23,7 +25,7 @@ Create: Factory Controller addon introduced a new block "Factory Controller" to 
   - **Follow Demand Mode**: You cannot manually set request amount of the Passive mode gauge. Instead, the request amount is automatically set when connected gauges need the item for their craft, so you do not need to keep intermediate items in stock. Chain multiple passive mode gauges is also supported.
   - **Follow Demand and Order**: Beyond automatically set request amount, the recipe of the gauge would be added to Stock Keeper GUI to allow manually initialize production orders. You can also track ongoing production order in Stock Keeper now.
 - **Mod Compatibility**: The mod "replicate" a new gauge system, so it should not conflict with other gauge related mods, but also cannot receive other mod's modification unless implement dedicate support. The compatibility with following mods are supported:
-  - **Create: FluidLogistic**: Gauge recipe allows fluid if installed, you can right-click the gauge with a fluid container item on cursor to set fluid filter.
+  - **Create: FluidLogistic**: Gauge recipe allows fluid if installed, you can right-click the gauge with a fluid container item on cursor to set fluid filter, or drag from JEI/EMI.
   - **Repackaged**: Fluid Gauge is a supported component in Factory Controller.
 
 ## Dependencies
