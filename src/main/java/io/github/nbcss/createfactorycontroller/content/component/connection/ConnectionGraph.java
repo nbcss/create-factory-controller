@@ -28,9 +28,6 @@ public class ConnectionGraph {
     private final Map<VirtualComponentPosition, LinkedHashMap<VirtualComponentPosition, Connection>> outgoing = new LinkedHashMap<>();
 
     // ── Read-only views (what components return from targetedBy()/targeting()) ──
-    // These never create an index entry for an absent position — read-only callers (tick, gating, renderer) far
-    // outnumber mutators, and a creating read would litter the indexes with empty maps. Mutation goes through add/
-    // remove, which create the entries they need.
 
     /** The connections {@code sink} holds, keyed by source position; empty (and immutable) if it has none. */
     public Map<VirtualComponentPosition, Connection> targetedBy(VirtualComponentPosition sink) {
@@ -100,11 +97,11 @@ public class ConnectionGraph {
         VirtualComponentPosition oldFrom = conn.from;
         conn.from = conn.to;
         conn.to = oldFrom;
-        // Keep the rendered path SHAPE stable across the flip — only the arrowhead should change direction. For the
-        // swapped endpoints an explicit V→H (0) is the same L as H→V (1) and vice-versa; staircases (2/3) and auto (-1)
-        // are already direction-symmetric.
-        if (conn.arrowBendMode == 0) conn.arrowBendMode = 1;
-        else if (conn.arrowBendMode == 1) conn.arrowBendMode = 0;
+        // Keep the rendered path SHAPE stable across the flip — only the arrowhead should change direction.
+        if (conn.arrowBendMode == 0)
+            conn.arrowBendMode = 1;
+        else if (conn.arrowBendMode == 1)
+            conn.arrowBendMode = 0;
         add(conn);
     }
 

@@ -44,9 +44,6 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         @Override public void forceClearPromise(UUID networkId, ItemStack filter) { FluidCompat.forceClearFluid(networkId, filter); }
         @Override public void addPromise(UUID networkId, ItemStack filter, boolean ignoreData, int amount,
                                          String ownerKey, String targetAddress, int ttl) {
-            // A dedicated (Repackaged) fluid backend tags its promises with the minting gauge/address so they count
-            // toward the promise limit; other backends fall back to an untagged promise (ttl still rides the backend's
-            // own timeout, not our per-owner sentinel — the fluid-side timeout isolation is a future step).
             FluidCompat.addControllerFluidPromise(networkId, filter, amount, ownerKey, targetAddress);
         }
     };
@@ -108,9 +105,6 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
                     controller.getLevel().getGameTime());
     }
 
-    // Owner scope counts this fluid gauge's own promises from the FLUID backend, instead of the item PromiseCounts the
-    // base gauge reads (a gauge only ever mints one kind). Address scope is NOT overridden: the base already sums item
-    // + fluid promises to the address, so a fluid gauge and an item gauge sharing an address share one quota.
     @Override
     public int ownedPromiseCount(long now) {
         return FluidCompat.fluidOwnedPromises(networkId, filter, gaugeId == null ? null : gaugeId.toString(), now);

@@ -54,7 +54,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements DisplayDataProvider {
-
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
 
         @Override
@@ -292,8 +291,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  types defer their direction (BOTH), so a wired link's mode dictates the redstone arrow. */
     @Override
     public List<ConnectionCapability> ports() {
-        return List.of(new ConnectionCapability(Connection.Type.LOGISTICS, ConnectionCapability.Role.BOTH),
-                       new ConnectionCapability(Connection.Type.REDSTONE, ConnectionCapability.Role.BOTH));
+        return List.of(new ConnectionCapability(LogisticsConnection.TYPE, ConnectionCapability.Role.BOTH),
+                       new ConnectionCapability(RedstoneConnection.TYPE, ConnectionCapability.Role.BOTH));
     }
 
     /** As a LOGISTICS source the gauge feeds its stock, so it must carry a filter. (REDSTONE source: no rule.) */
@@ -311,7 +310,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         if (filter.isEmpty())
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
                     .style(ChatFormatting.RED).component());
-        if (Connection.Type.LOGISTICS.equals(type) && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
+        if (LogisticsConnection.TYPE.equals(type) && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.cannot_add_more_inputs")
                     .style(ChatFormatting.RED).component());
         return ValidationResult.SUCCESS;
@@ -401,28 +400,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  whether its stock is satisfied. (A gauge is not driven by its own redstone input — that only gates requests.) */
     @Override
     public ConnectionValue outputValue(Connection.Type type) {
-        if (!Connection.Type.REDSTONE.equals(type)) return null;
+        if (!RedstoneConnection.TYPE.equals(type)) return null;
         return !isActive() ? RedstoneConnection.State.INACTIVE
              : satisfied   ? RedstoneConnection.State.POWERED
              :               RedstoneConnection.State.UNPOWERED;
     }
 
-    /** The gauge is the reliable arrow-control end of its redstone wires, so its cycle-arrow key cycles the
-     *  bend of its outgoing wires AND its incoming redstone wires (from RECEIVE links), not just outgoing. */
-//    @Override
-//    protected List<Connection> connectionsToCycle() {
-//        List<Connection> result = super.connectionsToCycle();   // outgoing (logistics + redstone to SEND links)
-//        result.addAll(graph().incomingConnections(position, Connection.Type.REDSTONE));   // redstone from RECEIVE links
-//        return result;
-//    }
-
     /** Re-fold the request gate — powered by any wired, powered RECEIVE link. Synced on change so the client gate
      *  colour follows. */
     @Override
     public void onInputChanged(Connection.Type type) {
-        if (!Connection.Type.REDSTONE.equals(type)) return;
+        if (!RedstoneConnection.TYPE.equals(type)) return;
         boolean now = false;
-        for (Connection c : graph().incomingConnections(position, Connection.Type.REDSTONE))
+        for (Connection c : graph().incomingConnections(position, RedstoneConnection.TYPE))
             if (c instanceof RedstoneConnection rc && rc.powered()) { now = true; break; }
         if (now == redstonePowered) return;
         redstonePowered = now;
@@ -434,10 +424,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public void publishRedstoneOutput() { updateRedstoneOutput(); }
 
     private boolean updateRedstoneOutput() {
-        RedstoneConnection.State now = (RedstoneConnection.State) outputValue(Connection.Type.REDSTONE);
+        RedstoneConnection.State now = (RedstoneConnection.State) outputValue(RedstoneConnection.TYPE);
         if (now == lastRedstoneOutput) return false;
         lastRedstoneOutput = now;
-        publish(Connection.Type.REDSTONE);
+        publish(RedstoneConnection.TYPE);
         return true;
     }
 
@@ -460,8 +450,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * current network stock. Shows the stock (in stacks when {@code !upTo}), and when a target
      * {@link #count} is set, "stock⏶/target" coloured by satisfaction, with the request marker.
      */
-    /** Current network stock as shown on the gauge face: {@code ∞} when infinite, the gauge's unit (mB/B) for a fluid
-     *  filter, else count/stacks + suffix. Shared by the count overlay and the Display Link line so they never drift. */
     public String stockText() {
         return isInfiniteStock() ? "∞"
             : FluidCompat.isFluidFilter(filter) ? unit.formatInUnit(stockLevel)
@@ -596,7 +584,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // Total-demand strategy: fold the solver's raw target into the gauge's count, holding a DECREASE against the
         // summary-refresh signal exactly like the stock/sum holds above. An increase (more downstream demand) applies
         // at once; a decrease is held one refresh so the transient downstream-promise dip — demand drops a few ticks
-        // before the ingredient it reserved leaves stock — doesn't flicker the count down and back.
+        // before the ingredient it reserved leaves stock.
         if (requestMode.isPassive() && ServerConfig.passiveTotalDemand()) {
             if (passiveDemandTarget >= count) { count = passiveDemandTarget; demandDropPending = false; }
             else if (demandDropPending)       { count = passiveDemandTarget; demandDropPending = false; }
@@ -772,7 +760,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 int needed = conn.amount();
                 // An ignore-data ingredient may be served by any variant of its item type: resolve the demand
                 // into the concrete in-stock variants (Create's request/extraction matches exact components), so
-                // the recipe consumes whatever is actually on the network. Insufficient total → flash red, abort.
+                // the recipe consumes whatever is actually on the network.
                 if (source.ignoreData && !FluidCompat.isFluidFilter(ingredient)) {
                     InventorySummary summary = LogisticsManager.getSummaryOfNetwork(source.networkId, true);
                     List<BigItemStack> variants = summary.getItemMap().get(ingredient.getItem());
@@ -819,9 +807,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order (its items +
-            // fluids), so Repackaged's Package Shelf groups the resulting fragments under a single orderId. The fluids
-            // ride Deployer's logistics; the items ride Create's — broadcastAllPackageRequest spans both with a shared
-            // orderId, which dispatching them separately would not.
+            // fluids), so Repackaged's Package Shelf groups the resulting fragments under a single orderId.
             List<BigItemStack> externalFluids = netEntry.getValue().stream()
                 .filter(b -> !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
             if (!externalFluids.isEmpty()) {

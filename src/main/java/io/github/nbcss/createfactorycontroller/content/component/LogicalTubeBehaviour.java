@@ -22,10 +22,6 @@ import java.util.UUID;
  * A Logic Tube placed on the controller board. A networkless, REDSTONE-only component that combines any number of
  * incoming redstone wires with a boolean {@link Mode} and drives its outgoing redstone wires with the result.
  *
- * <p><b>Sequential (one-tick delay).</b> Unlike gauges/links (combinational, settled within the tick), the tube's
- * output always lags its input by exactly one controller tick: an input change recomputes {@link #nextValue} (via
- * {@link #onInputChanged}), and {@link #preTick} commits it into {@link #value} at the start of the <em>next</em>
- * tick — before any settle, so the delay is one tick regardless of component order. See {@code LOGIC_TUBE_PLAN.md}.</p>
  */
 public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
@@ -113,7 +109,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
     @Override
     public List<ConnectionCapability> ports() {
-        return List.of(new ConnectionCapability(Connection.Type.REDSTONE, ConnectionCapability.Role.BOTH));
+        return List.of(new ConnectionCapability(RedstoneConnection.TYPE, ConnectionCapability.Role.BOTH));
     }
 
     @Override
@@ -130,18 +126,18 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
     @Override
     public ConnectionValue outputValue(Connection.Type type) {
-        if (!Connection.Type.REDSTONE.equals(type)) return null;
+        if (!RedstoneConnection.TYPE.equals(type)) return null;
         return value ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED;
     }
 
     @Override
     public void onInputChanged(Connection.Type type) {
-        if (Connection.Type.REDSTONE.equals(type)) recomputeNext();
+        if (RedstoneConnection.TYPE.equals(type)) recomputeNext();
     }
 
     private void recomputeNext() {
         boolean any = false, all = true;
-        for (Connection c : graph().incomingConnections(position, Connection.Type.REDSTONE))
+        for (Connection c : graph().incomingConnections(position, RedstoneConnection.TYPE))
             if (c instanceof RedstoneConnection rc) { boolean p = rc.powered(); any |= p; all &= p; }
         nextValue = mode.apply(any, all);
     }
@@ -152,7 +148,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     public void preTick() {
         if (value == nextValue) return;
         value = nextValue;
-        publish(Connection.Type.REDSTONE);
+        publish(RedstoneConnection.TYPE);
         if (controller != null) { controller.setChanged(); controller.sendData(); }
     }
 

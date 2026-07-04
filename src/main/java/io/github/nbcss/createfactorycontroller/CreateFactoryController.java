@@ -128,9 +128,7 @@ public class CreateFactoryController {
     public static final DeferredRegister<MenuType<?>> MENU_TYPES =
         DeferredRegister.create(Registries.MENU, MODID);
     public static final DeferredHolder<MenuType<?>, MenuType<FactoryControllerMenu>> FACTORY_CONTROLLER_MENU =
-        MENU_TYPES.register("factory_controller", () ->
-            IMenuTypeExtension.create(
-                (syncId, inv, buf) -> new FactoryControllerMenu(syncId, inv, buf)));
+        MENU_TYPES.register("factory_controller", () -> IMenuTypeExtension.create(FactoryControllerMenu::new));
 
     // ── Display Link sources (registered into Create's display-source registry) ──
     public static final DeferredRegister<com.simibubi.create.api.behaviour.display.DisplaySource> DISPLAY_SOURCES =

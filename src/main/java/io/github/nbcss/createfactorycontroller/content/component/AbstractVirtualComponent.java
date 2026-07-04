@@ -75,9 +75,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
         return siblingLookup == null ? null : siblingLookup.apply(pos);
     }
 
-    // No connection capabilities by default; gauges and links override. Validation is FAIL-CLOSED: a component must
-    // explicitly permit a connection (by overriding the validateAs* below), so forgetting rules never silently allows
-    // an unintended wire. (The ports() declaration gates which types are even possible; these refine them.)
+    // No connection capabilities by default
     @Override public List<ConnectionCapability> ports() { return List.of(); }
 
     /** Default wire-endpoint label: the component's item name (a link shows "Redstone Link"). Gauges override to
@@ -100,9 +98,6 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     public final void publish(Connection.Type type) {
         ConnectionValue out = outputValue(type);
         if (out == null) return;                       // I'm not a source of this type
-        // Eager edge write, deferred fold: a new edge enters at its fold-identity default (UNPOWERED for the redstone
-        // OR), so writing the source's value here and flagging the sink dirty is enough — the sink folds once at the
-        // next settle, reading every edge already up to date (no per-source double-fold, no mid-tick glitch).
         for (Connection c : graph().outgoingConnections(position, type))
             if (c.setValue(out) && controller != null)
                 controller.markSinkDirty(c.to, type);
@@ -114,8 +109,6 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
                 .filter(c -> position.equals(c.from) || position.equals(c.to))
                 .toList();
         graph().disconnect(position);
-        // Flag every surviving sink that lost an incoming edge from this component (a source partner needs nothing),
-        // then settle once. Off-controller (client) — which never reaches here in practice — folds directly.
         for (Connection conn : affected) {
             if (position.equals(conn.to)) continue;       // we were the sink → the source side is unaffected
             VirtualComponentBehaviour sink = siblingAt(conn.to);

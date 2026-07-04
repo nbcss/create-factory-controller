@@ -11,12 +11,6 @@ import java.util.function.Supplier;
 /**
  * The single, side-agnostic validator for a connection between two components. Used identically by the hover preview,
  * the client commit, and the server apply, so the server can never be more permissive than the UI.
- *
- * <p>Algorithm: pick the first shared {@link Connection.Type} (enum order), lock source/sink direction from port
- * capabilities (or caller intent when both directions are possible), then validate only that locked direction. On
- * success it also attaches the green
- * confirmation message, so the screen renders {@code result.validation().message()} the same way for both outcomes
- * (the message is a lazy supplier — the preview never builds it). See {@code CONNECTION_REWORK_PLAN.md}.</p>
  */
 public final class ConnectionResolver {
 
@@ -101,8 +95,7 @@ public final class ConnectionResolver {
     }
 
     /** "{@code a} cannot connect to {@code b}" — the generic failure for two identified, incompatible components
-     *  (no shared/matching connection type or direction). Reused by every validator that has resolved both endpoints,
-     *  so a rejection always names them instead of a bare "aborted". */
+     *  (no shared/matching connection type or direction).*/
     public static Component cannotConnect(VirtualComponentBehaviour a, VirtualComponentBehaviour b) {
         return Component.translatable("createfactorycontroller.connection.cannot_connect", a.getName(), b.getName())
                 .withStyle(ChatFormatting.RED);

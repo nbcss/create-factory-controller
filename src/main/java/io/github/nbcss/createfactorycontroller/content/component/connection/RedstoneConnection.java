@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.nbt.CompoundTag;
 
@@ -8,6 +9,17 @@ import net.minecraft.nbt.CompoundTag;
  * A redstone connection whose {@link #state} is pushed by the source component and observed by the sink component.
  */
 public class RedstoneConnection extends Connection {
+    public static final Type TYPE = new Type("REDSTONE", 0xFC8068) {
+        @Override
+        public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
+            return new RedstoneConnection(source.position(), sink.position());
+        }
+
+        @Override
+        public Connection fromNBT(CompoundTag tag) {
+            return RedstoneConnection.fromNBT(tag);
+        }
+    };
     public enum State implements ConnectionValue {
         POWERED(0xEF0000), UNPOWERED(0x580101), INACTIVE(0x888898);
 
@@ -23,7 +35,7 @@ public class RedstoneConnection extends Connection {
     private State state;
 
     public RedstoneConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
-        super(Type.REDSTONE, from, to);
+        super(TYPE, from, to);
         this.state = State.UNPOWERED;
     }
 

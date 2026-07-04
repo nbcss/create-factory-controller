@@ -2,6 +2,8 @@ package io.github.nbcss.createfactorycontroller.content;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -26,8 +28,8 @@ public abstract class ControllerDataFixer {
                     String oldType = comp.getString("Type");
                     // Only support gauge & redstone link in 0.2.1.
                     String connType = switch (oldType) {
-                        case "createfactorycontroller:gauge" -> Connection.Type.LOGISTICS.name();
-                        case "createfactorycontroller:redstone_link" -> Connection.Type.REDSTONE.name();
+                        case "createfactorycontroller:gauge" -> LogisticsConnection.TYPE.name();
+                        case "createfactorycontroller:redstone_link" -> RedstoneConnection.TYPE.name();
                         default -> null;
                     };
                     if (connType != null) {
@@ -37,7 +39,7 @@ public abstract class ControllerDataFixer {
                             // keeps From, ArrowBendMode, payload
                             CompoundTag edge = targetedBy.getCompound(j).copy();
                             edge.putString("Type", connType);
-                            if (connType.equals(Connection.Type.REDSTONE.name()) && comp.getBoolean("Receive")) {
+                            if (connType.equals(RedstoneConnection.TYPE.name()) && comp.getBoolean("Receive")) {
                                 CompoundTag gaugePos = edge.getCompound("From").copy();
                                 edge.put("From", ownerPos.copy());
                                 edge.put("To", gaugePos);

@@ -626,9 +626,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (!(components.get(gaugePos) instanceof VirtualGaugeBehaviour)) return;
         List<Connection> toRemove = new ArrayList<>();
         for (Connection conn : connectionGraph.incomingConnections(gaugePos))
-            if (!Connection.Type.LOGISTICS.equals(conn.type)) toRemove.add(conn);
+            if (!LogisticsConnection.TYPE.equals(conn.type)) toRemove.add(conn);
         for (Connection conn : connectionGraph.outgoingConnections(gaugePos))
-            if (!Connection.Type.LOGISTICS.equals(conn.type)) toRemove.add(conn);
+            if (!LogisticsConnection.TYPE.equals(conn.type)) toRemove.add(conn);
         for (Connection conn : toRemove) {
             connectionGraph.remove(conn.to, conn.from);
             markSinkDirty(conn.to, conn.type);   // the gauge (its gate) or the wire's sink re-folds

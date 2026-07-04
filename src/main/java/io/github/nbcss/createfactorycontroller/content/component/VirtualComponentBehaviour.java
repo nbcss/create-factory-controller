@@ -41,8 +41,7 @@ public interface VirtualComponentBehaviour {
     interface Type {
         String id();
         List<ResourceLocation> items();
-        /** Accent colour (0xRRGGBB) of this component kind — the bulb/label colour ({@link #getColor()}) and the
-         *  colour its name is shown in (e.g. the controller help tooltip's allowed-components list). */
+        /** Accent colour (0xRRGGBB) of this component kind */
         int color();
         boolean isRequireNetwork();
         VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
@@ -135,7 +134,7 @@ public interface VirtualComponentBehaviour {
     /** Removes this component from the graph entirely (called before removal). */
     void disconnectAll();
 
-    // ── Signal propagation (REDSTONE today; generic for future value types) ──────
+    // ── Signal propagation ──────
 
     /** My current output value for {@code type} (REDSTONE → a {@link RedstoneConnection.State}), or {@code null} if I
      *  am not a source of it. Pure — no side effects; {@link #publish} reads it. */

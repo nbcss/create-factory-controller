@@ -127,7 +127,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
      *  them = SINK), so a wired gauge follows the link. */
     @Override
     public java.util.List<ConnectionCapability> ports() {
-        return java.util.List.of(new ConnectionCapability(Connection.Type.REDSTONE,
+        return java.util.List.of(new ConnectionCapability(RedstoneConnection.TYPE,
                 receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK));
     }
 
@@ -136,13 +136,13 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // decisive role (SOURCE when receive, SINK when send), so the reverse wire is structurally impossible.
     @Override
     public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
-        if (Connection.Type.REDSTONE.equals(type) && !receive) return fail(this, sink);
+        if (RedstoneConnection.TYPE.equals(type) && !receive) return fail(this, sink);
         return sink instanceof VirtualRedstoneLinkBehaviour ? fail(this, sink) : ValidationResult.SUCCESS;
     }
 
     @Override
     public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) {
-        if (Connection.Type.REDSTONE.equals(type) && receive) return fail(source, this);
+        if (RedstoneConnection.TYPE.equals(type) && receive) return fail(source, this);
         return source instanceof VirtualRedstoneLinkBehaviour ? fail(source, this) : ValidationResult.SUCCESS;
     }
 
@@ -179,7 +179,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         boolean now = strength > 0;
         if (now == powered) return;
         powered = now;
-        publish(Connection.Type.REDSTONE);
+        publish(RedstoneConnection.TYPE);
         if (controller != null) { controller.setChanged(); controller.sendData(); }
     }
 
@@ -199,16 +199,16 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
      *  nothing onto the board — its output is the network transmit, handled in {@link #onInputChanged}.) */
     @Override
     public ConnectionValue outputValue(Connection.Type type) {
-        if (!Connection.Type.REDSTONE.equals(type) || !receive) return null;
+        if (!RedstoneConnection.TYPE.equals(type) || !receive) return null;
         return powered ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED;
     }
 
     /** Re-fold wired gauges into transmit power (SEND link only). */
     @Override
     public void onInputChanged(Connection.Type type) {
-        if (receive || !Connection.Type.REDSTONE.equals(type)) return;
+        if (receive || !RedstoneConnection.TYPE.equals(type)) return;
         boolean any = false;
-        for (Connection c : graph().incomingConnections(position, Connection.Type.REDSTONE))
+        for (Connection c : graph().incomingConnections(position, RedstoneConnection.TYPE))
             if (c instanceof RedstoneConnection rc && rc.powered()) { any = true; break; }
         if (any == powered) return;
         powered = any;
@@ -268,8 +268,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     private void reorientRedstoneConnections() {
         java.util.List<Connection> redstone = new java.util.ArrayList<>();
-        redstone.addAll(graph().incomingConnections(position, Connection.Type.REDSTONE));
-        redstone.addAll(graph().outgoingConnections(position, Connection.Type.REDSTONE));
+        redstone.addAll(graph().incomingConnections(position, RedstoneConnection.TYPE));
+        redstone.addAll(graph().outgoingConnections(position, RedstoneConnection.TYPE));
         java.util.Set<VirtualComponentPosition> affected = new java.util.LinkedHashSet<>();
         for (Connection conn : redstone) {
             affected.add(conn.from);
@@ -282,8 +282,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         for (VirtualComponentPosition p : affected) {
             VirtualComponentBehaviour c = siblingAt(p);
             if (c == null) continue;
-            c.publish(Connection.Type.REDSTONE);
-            if (controller != null) controller.markSinkDirty(p, Connection.Type.REDSTONE);
+            c.publish(RedstoneConnection.TYPE);
+            if (controller != null) controller.markSinkDirty(p, RedstoneConnection.TYPE);
         }
     }
 

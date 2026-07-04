@@ -1579,7 +1579,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private static boolean hasNonLogistics(java.util.Collection<Connection> connections) {
         for (Connection c : connections)
-            if (!Connection.Type.LOGISTICS.equals(c.type)) return true;
+            if (!LogisticsConnection.TYPE.equals(c.type)) return true;
         return false;
     }
 
