@@ -27,14 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Client-only overlay for picking the controller's board background texture. Mirrors {@link ConfigureRecipeScreen}'s
- * structure — shares the controller's {@link FactoryControllerMenu} (no container swap) and draws the live board as a
- * dimmed backdrop — but configures only the client-side {@link ClientConfig#CONTROLLER_BACKGROUND} value.
- *
- * <p>The middle of the panel is a single-slot scroll selector (modelled on {@link NetworkSelectorWidget}): the current
- * texture's name is shown, scrolling the box cycles the available options, and hovering shows a windowed list tooltip.
- * A 16×16 preview slot left of it shows the selected texture. Selection takes effect <b>immediately</b> (the controller
- * re-reads the config each frame), so the tick button just returns to the controller; Reset restores the config default.</p>
+ * Client-only overlay for picking the controller's board background texture.
  */
 @OnlyIn(Dist.CLIENT)
 public class ControllerSettingScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
@@ -157,11 +150,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
             && my >= panelY + SELECTOR_Y && my < panelY + SELECTOR_Y + SELECTOR_H;
     }
 
-    /**
-     * Windowed option list for the hover tooltip — header, a centred window of entries with the selected one
-     * marked {@code "-> "} (others {@code "> "}), {@code "> ..."} rows for hidden entries, and a scroll hint.
-     * Mirrors {@link NetworkSelectorWidget#getTooltipLines()}.
-     */
     private List<Component> selectorTooltip() {
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable("createfactorycontroller.gui.controller_settings")

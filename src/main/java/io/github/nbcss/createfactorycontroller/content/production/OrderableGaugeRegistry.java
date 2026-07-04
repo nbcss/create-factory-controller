@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -84,6 +86,10 @@ public final class OrderableGaugeRegistry {
     public static void clear() {
         BY_CONTROLLER.clear();
         BY_GAUGE.clear();
+    }
+
+    public static void registerEvents() {
+        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> clear());
     }
 
     private static boolean fresh(Bucket b, long now) {

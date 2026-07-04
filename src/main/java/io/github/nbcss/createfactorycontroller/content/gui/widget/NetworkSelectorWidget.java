@@ -204,9 +204,6 @@ public class NetworkSelectorWidget extends AbstractWidget {
      * {@code "-> "} (others {@code "> "}), {@code "> ..."} rows when entries are hidden above/below, and
      * Create's scroll-to-select hint.
      *
-     * <p>The windowing mirrors Create's {@code SelectionScrollInput#updateTooltip}: the window grows toward
-     * an edge to absorb the line a {@code "> ..."} would occupy, and a single hidden row is shown rather
-     * than elided — so the <b>total option-area line count never changes while scrolling</b> (here: 6).</p>
      */
     public List<Component> getTooltipLines() {
         syncSelection();

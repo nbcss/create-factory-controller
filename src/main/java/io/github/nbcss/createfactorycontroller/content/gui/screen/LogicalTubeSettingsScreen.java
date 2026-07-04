@@ -40,13 +40,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Full-config overlay for a Logical Tube. Two 5×3 grids — inputs (left) and outputs (right) — flank the central,
- * scrollable mode slot; the components sit in the top and bottom rows and the <b>middle row is a connection band</b>
- * that draws the wires (V→H, redstone-state coloured) between each component and the tube. Shares the controller
- * {@link FactoryControllerMenu} and draws the live board behind, like {@link ConfigureRedstoneLinkScreen}. No inventory
- * is shown; all edits are immediate packets (click disconnects, shift-click reverses, scroll/click-NONE sets the mode).
- *
- * <p>Background texture is not ready yet — reuses the Redstone Link panel.</p>
+ * Full-config overlay for a Logical Tube.
  */
 @OnlyIn(Dist.CLIENT)
 public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>

@@ -14,9 +14,7 @@ import java.util.function.Function;
 
 /**
  * Client-side map from a component behaviour to its canvas {@link VirtualComponentWidget}, replacing the {@code
- * instanceof} chains that used to live in the screen. Lookup walks up the behaviour's superclasses, so a subclass
- * (e.g. {@code FluidGaugeBehaviour} extends {@link VirtualGaugeBehaviour}) reuses its parent's widget with no extra
- * registration. A new component kind just {@link #register}s its widget here.
+ * instanceof} chains that used to live in the screen.
  */
 @OnlyIn(Dist.CLIENT)
 public final class ComponentWidgetRegistry {

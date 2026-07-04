@@ -33,10 +33,6 @@ import java.util.List;
 /**
  * A single gauge on the canvas: renders it, builds its hover tooltip, and handles clicks on it.
  *
- * <p>Created once per gauge and kept in {@link FactoryControllerScreen}'s position-indexed store
- * (rebuilt only when the panel state syncs), not per frame. All drawing is in canvas-world
- * coordinates — the screen pushes a world→screen pose around the whole canvas, so a cell is just
- * {@code CELL} world px at {@code (position * CELL)} and this class never deals with zoom/pan.</p>
  */
 @OnlyIn(Dist.CLIENT)
 public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements VirtualComponentWidget {
@@ -75,8 +71,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
 
     /**
      * Front layer: the gauge's {@code front} sprite plus the status dot and selection outline.
-     * Rendered after connections so the front frame covers the arrowheads. (Hover feedback is the
-     * {@code target} reticle drawn by the screen.)
+     * Rendered after connections so the front frame covers the arrowheads.
      */
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
@@ -138,17 +133,12 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         return String.format(java.util.Locale.US, "%,d", value);
     }
 
-    /** Dark-gray " | &lt;stacks&gt;▤ +&lt;overflow&gt;" suffix breaking {@code count} of a stack-{@code ss} item into full
-     *  stacks plus remainder — mirrors the recipe screen's slot-title breakdown, but the {@code +overflow} shows even
-     *  below one stack (e.g. {@code | 0▤ +5}) since this line always displays it. */
     private static MutableComponent stackBreakdown(int count, int ss) {
         int stacks = count / ss, overflow = count % ss;
         return Component.literal(" | " + stacks + "▤" + (overflow > 0 ? " +" + overflow : ""))
                 .withStyle(ChatFormatting.DARK_GRAY);
     }
 
-    /** Stock/promise amount for this gauge: millibuckets in the gauge's own unit (mB/B) for a fluid filter,
-     *  else a grouped item count. */
     private String formatAmount(int value) {
         return FluidCompat.isFluidFilter(behaviour.filter)
                 ? behaviour.unit.formatInUnit(value)

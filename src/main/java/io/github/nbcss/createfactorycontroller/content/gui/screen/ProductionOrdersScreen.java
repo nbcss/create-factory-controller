@@ -57,15 +57,6 @@ import java.util.List;
  * Standalone screen for the Production Orders page. Extends {@link AbstractSimiContainerScreen} so it goes through
  * Create's exact render pipeline (same background handling as the Stock Keeper, so no stray blur/dim) and centres
  * the panel identically — which keeps the borrowed Deployer tab strip aligned.
- *
- * <p>Its background is our own {@code stock_keeper_production_orders.png}, laid out exactly like Create's keeper
- * (header 36, body rows 20) but with a footer that is 3 body-rows shorter; to keep the overall frame the same
- * height (so the borrowed tab strip and keeper entity stay aligned) we draw 3 extra body rows before the short
- * footer. Each open {@link ProductionOrderView} renders as a framed entry: address + age timer + cancel button,
- * with a row of up to 9 task slots below. When Deployer is installed, navigation borrows the host
- * {@link StockKeeperRequestScreen}'s tab strip (via {@link ProductionOrdersStrip}) and the page is opened from
- * {@link ProductionOrdersTab}; when it's absent there is no strip, so the page is opened by a gutter button on the
- * Stock Keeper ({@code StockKeeperRequestScreenMixin}) and a matching gutter button here goes back.</p>
  */
 public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKeeperRequestMenu> {
 
@@ -167,10 +158,6 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     }
 
     // ── Gutter button (Deployer-absent navigation) ───────────────────────────
-    // When Deployer is installed it draws a tab strip in the keeper's left gutter to switch pages; without it we put a
-    // single Create IconButton there instead — on the Stock Keeper it opens this page (white; see
-    // StockKeeperRequestScreenMixin), and here it goes back to the keeper (green = currently on this page). Both reuse
-    // this geometry and the same Production Pattern icon drawn onto Create's button texture.
 
     private static final ItemStack GUTTER_ICON = new ItemStack(CreateFactoryController.PRODUCTION_PATTERN.get());
     /** The Production Pattern item drawn as a Create IconButton icon (16×16). */

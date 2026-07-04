@@ -148,10 +148,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                 panelY + bg.getHeight() - 30, 40, 20));
     }
 
-    /** Refreshes the data-toggle buttons on a filter/mode change: hidden for a fluid filter (ignore-data is
-     *  moot there), otherwise the current mode glows green. The tooltips are NOT stored on the buttons (that
-     *  would self-render during renderBg and be covered by the slots/items drawn afterwards); they're drawn
-     *  last in {@link #render} instead. */
     private void updateIgnoreDataButtons() {
         // Ignore-data is an item-gauge concept; hide it for any non-item gauge (fluid/energy have no NBT variants),
         // and for an item gauge once its chosen filter is a fluid.
@@ -164,8 +160,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         ignoreDataButton.green = !noIgnoreData && ignoreData;
     }
 
-    /** Create's filter-button tooltip: name line + hold-shift hint, with the cut description appended while
-     *  Shift is held (mirrors {@code AbstractFilterScreen#handleTooltips}/{@code fillToolTip}). */
     private List<Component> dataButtonTooltip(Component name, Component desc) {
         boolean shift = hasShiftDown();
         List<Component> tip = new ArrayList<>();

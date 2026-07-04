@@ -10,9 +10,14 @@ package io.github.nbcss.createfactorycontroller.content;
  * </ul>
  */
 public enum RequestMode {
-    NORMAL,
-    PASSIVE,
-    PASSIVE_AND_ALLOW_ORDER;
+    NORMAL("createfactorycontroller.gui.request_mode.normal"),
+    PASSIVE("createfactorycontroller.gui.request_mode.passive"),
+    PASSIVE_AND_ALLOW_ORDER("createfactorycontroller.gui.request_mode.allow_order");
+
+    public final String translationKey;
+    RequestMode(String key) {
+        translationKey = key;
+    }
 
     /** Whether the target is demand-driven (was {@code passiveMode}). */
     public boolean isPassive() {

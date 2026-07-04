@@ -111,9 +111,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         // No self-tooltip (it would draw during renderBg and be covered by the slots/items); drawn last in render().
         addWidget(relocateButton);
 
-        // Add-connection: same icon/flow as the recipe screen's "connect input" — start board connection mode from this
-        // link. The wire is stored on the link regardless of which side starts it, and its arrow follows the link's
-        // Send/Receive mode (see VirtualConnectionRenderer), so this needs no direction choice here.
+        // Add-connection: same icon/flow as the recipe screen's "connect input"
         addConnectionButton = new IconButton(panelX + 30, panelY + 79, AllIcons.I_ADD);
         addConnectionButton.withCallback(() -> {
             controller.beginConnectionMode(linkPos);

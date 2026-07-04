@@ -284,8 +284,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         rebuildExpandButton();
 
-        // Settings button, top-right corner of the board. Event-only (rendered manually in renderBoard);
-        // its area is excluded from the canvas hit-test so clicks reach the widget instead of panning.
         if (settingsButton != null) removeWidget(settingsButton);
         settingsButton = new GraphicButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
                 () -> {
@@ -299,8 +297,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         addWidget(settingsButton);
 
         // Rebuild the rename field at the new layout, preserving any in-progress edit across resize.
-        // Geometry mirrors Create's station name box (y+4, height 10, unbordered) so the text baseline
-        // is identical whether or not it's focused (the box is always rendered — no idle/focus shift).
         String currentName = nameBox != null ? nameBox.getValue() : menu.controllerName;
         boolean wasFocused = nameBox != null && nameBox.isFocused();
         nameBox = new EditBox(new NoShadowFontWrapper(font),
@@ -444,10 +440,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /**
      * Advance each gauge's indicator bulb (mirrors FactoryPanelBehaviour#tick): chase satisfied, and
      * flash to full on every fresh request attempt (detected via the synced lastRequestTick).
-     *
-     * <p>Public so a sub-screen ({@link SetItemScreen}, {@link ConfigureRecipeScreen}) that renders this
-     * board as its background can keep the bulbs ticking while it is the active screen — otherwise the
-     * parent's {@code containerTick} never runs and the bulbs freeze.</p>
      */
     public void tickBulbs() {
         for (VirtualComponentWidget w : componentWidgets.values()) {
@@ -686,13 +678,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
 
-        // Status labels, left-aligned just right of the network selector: an icon followed by a value,
-        // capacity on top and zoom below. Each label's icon+text bounds is cached for the hover tooltip.
         int labelX = networkSelector.getX() + networkSelector.getWidth() + 3;
         int row0Y = networkSelector.getY() + 2;
         int row1Y = row0Y + font.lineHeight + 2;
 
-        // Capacity: "<count>/<max>", reddened when full.
         int count = menu.components.size();
         int max = FactoryControllerBlockEntity.maxComponents();   // server config value (synced to client)
         String capacityStr = count + "/" + max;
@@ -713,13 +702,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.drawString(font, zoomStr, zoomTextX, row1Y, 0xFFE2E2E2, true);
         zoomLabelBounds = new int[]{labelX, row1Y, zoomTextX + font.width(zoomStr), row1Y + font.lineHeight};
 
-        // Settings button, top-right corner (event-only widget; drawn here over the board frame).
         if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
 
-        // Help button, far-right corner of the title bar.
         if (helpButton != null) helpButton.render(graphics, mouseX, mouseY, partialTick);
 
-        // Reset depth for network icons & helper text
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
@@ -836,13 +822,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 previewArrowTarget = hoveredPosition;
                 previewArrowMode = -1;
             }
-            // Connect mode: hovering another component shows white if it can be wired (same validation the click and
-            // the server run), red otherwise — via the shared ConnectionResolver, no pairwise instanceof here.
+            // Connect mode: hovering another component shows white if it can be wired
             ConnectionResolver.Result result = connectionHoverResult();
             if (result != null) {
                 if (result.ok()) {
-                    // Preview the wire a click would create — resolved source → sink, at the cycled bend mode, in the
-                    // wire kind's colour, flashing alpha so it reads as a not-yet-committed hint.
+                    assert result.source() != null;
                     List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(
                             result.source(), result.sink(), previewArrowMode, occupiedCells());
                     if (path != null) {
@@ -1170,9 +1154,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return;
         }
 
-        // The single shared validator — identical to the hover preview and the server. The server re-validates and
-        // performs the storage, so the client just sends the packet on success (no optimistic mutation). The result
-        // carries the prompt for both outcomes (green confirmation on success, red reason on failure).
         ConnectionResolver.Result result = ConnectionResolver.resolve(clicked, initiator, initiator);
         if (!result.ok()) {
             showConnectionMessage(result);
@@ -1279,8 +1260,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            // Carrying an item + left-click on an empty cell → place it (the rubber-band path above is skipped while
-            // carrying, so do the placement here, mirroring the old rubber-band release behaviour).
             if (button == 0 && !carried.isEmpty() && widget == null
                     && pendingConnectionTarget == null && pendingRelocateTarget == null) {
                 clearSelection();
@@ -1399,8 +1378,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerX = (x0 + x1) / 2;
             int centerY = (y0 + y1) / 2;
 
-            // Shift+scroll over the canvas (the inventory panel and selector are already excluded by
-            // isInCanvasArea): cycle the selected wire when hovering connections, else change the network selection.
             if (hasShiftDown()) {
                 // A scroll releases the arrow-mode lock; reconcile then resolves the tooltip to the hovered wire.
                 if (connArrowLocked) { connArrowLocked = false; return true; }
@@ -1499,8 +1476,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     // ── JEI ghost drop (drag an item/fluid from JEI onto an empty board gauge to set its filter) ──────────────
-    // Called from FactoryControllerGhostHandler (JEI plugin), which stays JEI-gated; the screen exposes only plain
-    // types (Rect2i / stacks), like SetItemScreen does for its own ghost slot.
 
     /** A board gauge offered as a JEI ghost drop target: its on-screen cell rect + which ingredient kinds its filter
      *  resolver accepts. */
@@ -1689,11 +1664,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    /**
-     * The shared arrow-bend mode {@code pos}'s cycle-arrow key would advance — read from the exact same
-     * {@link VirtualComponentBehaviour#connectionsToCycle()} set the server cycles (single source of truth), so this
-     * preview always matches what the server applies. {@code null} if there are no such connections; may be -1 (auto).
-     */
     @Nullable
     private Integer outgoingArrowBendMode(VirtualComponentPosition pos) {
         VirtualComponentBehaviour self = componentAt(pos);

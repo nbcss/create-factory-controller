@@ -68,8 +68,7 @@ import java.util.stream.Collectors;
 /**
  * Recipe-configuration overlay for a virtual gauge — a replica of Create's {@code FactoryPanelScreen}
  * (recipe mode): threshold row (filter+stock / count / Item-Stack) like {@code ThresholdSwitchScreen},
- * an open-promise package box, and mechanical-crafting recipe detection. Shares the controller's
- * {@link FactoryControllerMenu} and draws the live board as a dimmed backdrop.
+ * an open-promise package box, and mechanical-crafting recipe detection.
  */
 @OnlyIn(Dist.CLIENT)
 public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
@@ -77,7 +76,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/configure_recipe.png");
     private static final int PANEL_W = 200, PANEL_H = 184;
 
-    // Threshold-row geometry (filter slot x24-40, count box x48-112, unit box x118-167, band y≈128-144).
     /** The input arrangement is a 3×3 grid, so at most 9 slots (incl. repeats) can be shown. */
     private static final int MAX_INPUT_SLOTS = 9;
     /** A request's produced output must fit one stack; batch is capped so {@code batch × yield ≤ 64}. */
@@ -283,8 +281,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         super.containerTick();
         addressBox.tick();          // drives the address autocomplete (DestinationSuggestions)
         controller.tickBulbs();     // keep the background board's indicator bulbs animating
-        // Poll the gauge's live in-flight promise counts every 10 ticks for the promise-limit box (on-demand, so the
-        // server computes them only while this screen is open).
+        // Poll the gauge's live in-flight promise counts every 10 ticks for the promise-limit box
         if (--promiseInfoPollCooldown <= 0) {
             promiseInfoPollCooldown = 10;
             PacketDistributor.sendToServer(new RequestGaugePromiseInfoPacket(menu.controllerPos, gaugePos));
@@ -413,15 +410,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** Ctrl-scroll snap: move {@code cur} to the next full-stack multiple of {@code ss} in direction {@code dir} —
-     *  up rounds to the next higher multiple, down to the next lower (below one stack → 0, then clamped to 1 by the
-     *  caller). E.g. ss=64: 100↑→128, 100↓→64, 40↓→0. */
+     *  up rounds to the next higher multiple, down to the next lower. */
     private static int snapToStack(int cur, int dir, int ss) {
         return dir > 0 ? (cur / ss + 1) * ss : (cur - 1) / ss * ss;
     }
 
     /** Shift-scroll step: {@code cur ± 10}, but snapped to the stack boundary it would cross when {@code cur} isn't
-     *  already on one (so shift-scrolling lands cleanly on stack multiples). Shared by the input totals and the output
-     *  count. */
+     *  already on one (so shift-scrolling lands cleanly on stack multiples). */
     private static int shiftStep(int cur, int dir, int ss) {
         int next = cur + dir * 10;
         if (cur % ss != 0) {
@@ -447,8 +442,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /**
      * Ctrl-scroll over the recipe's ingredients: resize the square crafter grid, between the recipe's minimum
-     * bounding square and the configured maximum ({@link ServerConfig#maxCraftGridSize()}). Re-lays the
-     * dispatched pattern.
+     * bounding square and the configured maximum ({@link ServerConfig#maxCraftGridSize()}).
      */
     private void adjustCraftDimension(int dir) {
         int minDim = minCraftDim();
@@ -571,8 +565,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         requestMode = g.requestMode;
         promiseLimitState = g.promiseLimit;
         promiseLimitByAddress = g.promiseLimitByAddress;
-        // Fluid filter: amounts are millibuckets. Coerce the unit into the fluid group,
-        // and default a fresh gauge's output to 1000 mB (one bucket).
         fluidMode = FluidCompat.isFluidFilter(g.filter);
         if (fluidMode && !mode.isFluid()) mode = ThresholdUnit.FLUID_BUCKET;
         if (!fluidMode && mode.isFluid()) mode = ThresholdUnit.ITEMS;
@@ -957,15 +949,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount));
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
-                // The output scroll changes batch in crafting mode / the output count otherwise; both are
-                // disabled when an ignore-data ingredient is present, so the last line reflects that.
                 Component scrollLine = craftingActive && craftingUsesIgnoreData()
                     ? Component.translatable("createfactorycontroller.gui.unable_to_change")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
                     : CreateLang.translate("gui.factory_panel.expected_output_tip_2")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
-                // Header: "Expecting <Item> x<count>", and for an item output a dark-gray stack breakdown
-                // "| <stacks>▤ +<overflow>" (overflow shown only when the count isn't a whole number of stacks).
                 MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
                         FluidCompat.filterName(g.filter).getString() + " x" + producedTip)
                         .color(ScrollInput.HEADER_RGB).component();
@@ -1111,11 +1099,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             for (RequestMode m : RequestMode.values()) {
                 boolean sel = m == requestMode;
                 lines.add(Component.literal(sel ? "-> " : "> ")
-                    .append(Component.translatable(requestModeKey(m)))
+                    .append(Component.translatable(m.translationKey))
                     .withStyle(sel ? ChatFormatting.WHITE : ChatFormatting.GRAY));
             }
-            lines.add(Component.translatable(requestModeKey(requestMode) + ".desc1").withColor(0x777777));
-            lines.add(Component.translatable(requestModeKey(requestMode) + ".desc2").withColor(0x777777));
+            lines.add(Component.translatable(requestMode.translationKey + ".desc1").withColor(0x777777));
+            lines.add(Component.translatable(requestMode.translationKey + ".desc2").withColor(0x777777));
             lines.add(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             tooltip = lines;
@@ -1251,11 +1239,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             : count >= 100 ? count + "" : " " + count;
     }
 
-    /**
-     * Fluid stock text, replicating CreateFluidLogistic's {@code FluidAmountHelper.format}: {@code <100→"XmB"},
-     * {@code <1,000,000→"Y.YB"} (buckets), {@code <1e9→"Y.YKB"} (kilobuckets), else "+". So our label reads the
-     * same as fluid stock in Create's stock keeper, drawn from the same Create NUMBERS sprite.
-     */
     private static String formatFluidStock(int mb) {
         if (mb >= 1_000_000_000) return "+";
         if (mb >= 1_000_000) return compactFluid(mb, 1_000_000, "KB");
@@ -1283,14 +1266,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         } else {
             gfx.renderItemDecorations(font, stack, itemX, itemY, text);
         }
-    }
-
-    private void drawSlotCount(GuiGraphics gfx, String text, int slotX, int slotY) {
-        if (text.isBlank()) return;
-        gfx.pose().pushPose();
-        gfx.pose().translate(0, 0, 200);
-        gfx.drawString(font, text, slotX + 17 - font.width(text), slotY + 9, 0xFFFFFF, true);
-        gfx.pose().popPose();
     }
 
     @Override
@@ -1578,9 +1553,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     private static boolean hasNonLogistics(java.util.Collection<Connection> connections) {
-        for (Connection c : connections)
-            if (!LogisticsConnection.TYPE.equals(c.type)) return true;
-        return false;
+        return connections.stream().anyMatch(c -> !LogisticsConnection.TYPE.equals(c.type));
     }
 
     private void setMode(ThresholdUnit newMode) {
@@ -1607,14 +1580,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         requestMode = next;
         if (requestModeButton != null) requestModeButton.setIcon(iconFor(requestMode));
         playClickSound();
-    }
-
-    private static String requestModeKey(RequestMode m) {
-        return switch (m) {
-            case NORMAL -> "createfactorycontroller.gui.request_mode.normal";
-            case PASSIVE -> "createfactorycontroller.gui.request_mode.passive";
-            case PASSIVE_AND_ALLOW_ORDER -> "createfactorycontroller.gui.request_mode.allow_order";
-        };
     }
 
     private void confirmAndReturn() {

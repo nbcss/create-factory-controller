@@ -1,6 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.compat.fluids;
 
-import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 
@@ -10,22 +10,22 @@ final class RepackagedFluidProvider implements FluidFilterProvider {
 
     @Override
     public boolean isFluidFilter(ItemStack stack) {
-        return CreateFactoryController.FLUID_FILTER != null && stack.is(CreateFactoryController.FLUID_FILTER.get());
+        return RepackagedCompat.FLUID_FILTER != null && stack.is(RepackagedCompat.FLUID_FILTER.get());
     }
 
     @Override
     public FluidStack getFilterFluid(ItemStack stack) {
         return isFluidFilter(stack)
-                ? stack.getOrDefault(CreateFactoryController.FLUID_CONTENT.get(),
+                ? stack.getOrDefault(RepackagedCompat.FLUID_CONTENT.get(),
                         net.neoforged.neoforge.fluids.SimpleFluidContent.EMPTY).copy()
                 : FluidStack.EMPTY;
     }
 
     @Override
     public ItemStack makeFluidFilter(FluidStack fluid) {
-        if (fluid.isEmpty() || CreateFactoryController.FLUID_FILTER == null) return ItemStack.EMPTY;
-        ItemStack stack = new ItemStack(CreateFactoryController.FLUID_FILTER.get());
-        stack.set(CreateFactoryController.FLUID_CONTENT.get(),
+        if (fluid.isEmpty() || RepackagedCompat.FLUID_FILTER == null) return ItemStack.EMPTY;
+        ItemStack stack = new ItemStack(RepackagedCompat.FLUID_FILTER.get());
+        stack.set(RepackagedCompat.FLUID_CONTENT.get(),
                 net.neoforged.neoforge.fluids.SimpleFluidContent.copyOf(fluid.copyWithAmount(1)));
         return stack;
     }

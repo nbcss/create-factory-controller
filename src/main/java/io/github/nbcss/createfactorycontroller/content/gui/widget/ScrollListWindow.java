@@ -7,14 +7,6 @@ import java.util.List;
 
 /**
  * Shared windowing for the scroll-selector hover tooltips (network selector, background-setting selector).
- *
- * <p>Given {@code n} options and a {@code selected} index, it returns the rows to display: each row is either an
- * option index or {@link #MARKER} (a {@code "> ..."} line standing in for hidden options). The option area is always
- * exactly {@link #SIZE} rows when {@code n >= SIZE} (markers included), and the selected option stays centred (3 rows
- * above / 3 below) until it nears an end, where the window slides so the row count never changes.</p>
- *
- * <p>A marker is only ever shown when it hides <b>two or more</b> options — the window slides by whole pairs as the
- * selection moves, so a marker never wastes a line standing in for a single hidden option.</p>
  */
 public final class ScrollListWindow {
 

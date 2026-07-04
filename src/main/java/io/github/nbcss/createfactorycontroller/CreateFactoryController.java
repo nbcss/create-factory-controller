@@ -1,17 +1,26 @@
 package io.github.nbcss.createfactorycontroller;
 
+import com.mojang.serialization.Codec;
 import com.simibubi.create.AllCreativeModeTabs;
+import com.simibubi.create.api.behaviour.display.DisplaySource;
+import com.simibubi.create.api.registry.CreateRegistries;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlock;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
+import io.github.nbcss.createfactorycontroller.content.packet.NetworkHandler;
+import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
-import io.github.nbcss.createfactorycontroller.content.packet.*;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import net.minecraft.core.component.DataComponentType;
-import net.minecraft.world.item.Item.Properties;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.world.item.Item;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -26,17 +35,18 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import org.jetbrains.annotations.Nullable;
 
 @Mod(CreateFactoryController.MODID)
 public class CreateFactoryController {
@@ -56,19 +66,13 @@ public class CreateFactoryController {
 
     // ── Items ──────────────────────────────────────────────────────────────
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
-    public static final DeferredItem<io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem> FACTORY_CONTROLLER_ITEM =
+    public static final DeferredItem<FactoryControllerBlockItem> FACTORY_CONTROLLER_ITEM =
         ITEMS.register("factory_controller", () ->
-            new io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem(
-                FACTORY_CONTROLLER.get(), new Properties()));
+            new FactoryControllerBlockItem(FACTORY_CONTROLLER.get(), new Item.Properties()));
 
     /** Unobtainable, just for Stock Keeper GUI */
     public static final DeferredItem<ProductionPatternItem> PRODUCTION_PATTERN =
-        ITEMS.register("production_pattern", () ->
-            new ProductionPatternItem(new Properties()));
-
-    /** For Mod Repackaged fluid compat */
-    @org.jetbrains.annotations.Nullable
-    public static DeferredItem<net.minecraft.world.item.Item> FLUID_FILTER;
+        ITEMS.register("production_pattern", () -> new ProductionPatternItem(new Item.Properties()));
 
     // ── Data Components ──────────────────────────────────────────────────────
     public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENTS =
@@ -81,23 +85,20 @@ public class CreateFactoryController {
                 .build());
 
     /** Minimal board setup carried by a broken controller item */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<net.minecraft.nbt.CompoundTag>> CONTROLLER_SETUP =
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<CompoundTag>> CONTROLLER_SETUP =
         DATA_COMPONENTS.register("controller_setup", () ->
-            DataComponentType.<net.minecraft.nbt.CompoundTag>builder()
-                .persistent(net.minecraft.nbt.CompoundTag.CODEC)
-                .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.COMPOUND_TAG)
+            DataComponentType.<CompoundTag>builder()
+                .persistent(CompoundTag.CODEC)
+                .networkSynchronized(ByteBufCodecs.COMPOUND_TAG)
                 .build());
 
     /** Marker placed on an ignore-data gauge's request promise so the promise queue clears it by item type */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> FUZZY_PROMISE =
         DATA_COMPONENTS.register("fuzzy_promise", () ->
             DataComponentType.<Boolean>builder()
-                .persistent(com.mojang.serialization.Codec.BOOL)
-                .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.BOOL)
+                .persistent(Codec.BOOL)
+                .networkSynchronized(ByteBufCodecs.BOOL)
                 .build());
-
-    @org.jetbrains.annotations.Nullable
-    public static DeferredHolder<DataComponentType<?>, DataComponentType<net.neoforged.neoforge.fluids.SimpleFluidContent>> FLUID_CONTENT;
 
     // ── Block Entity Types ─────────────────────────────────────────────────
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
@@ -115,7 +116,7 @@ public class CreateFactoryController {
             ResourceLocation.fromNamespaceAndPath(MODID, "factory_controller.open")));
     public static final DeferredHolder<SoundEvent, SoundEvent> CONTROLLER_UI_CLOSE =
         SOUND_EVENTS.register("factory_controller.close", () -> SoundEvent.createVariableRangeEvent(
-            ResourceLocation.fromNamespaceAndPath(MODID, "factory_controller.close")));;
+            ResourceLocation.fromNamespaceAndPath(MODID, "factory_controller.close")));
     // Virtual-gauge configuration overlay open/close
     public static final DeferredHolder<SoundEvent, SoundEvent> GAUGE_UI_OPEN =
         SOUND_EVENTS.register("gauge.open", () -> SoundEvent.createVariableRangeEvent(
@@ -131,24 +132,14 @@ public class CreateFactoryController {
         MENU_TYPES.register("factory_controller", () -> IMenuTypeExtension.create(FactoryControllerMenu::new));
 
     // ── Display Link sources (registered into Create's display-source registry) ──
-    public static final DeferredRegister<com.simibubi.create.api.behaviour.display.DisplaySource> DISPLAY_SOURCES =
-        DeferredRegister.create(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE, MODID);
-    public static final DeferredHolder<com.simibubi.create.api.behaviour.display.DisplaySource,
-            io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource>
-            FACTORY_CONTROLLER_PENDING_ORDERS = DISPLAY_SOURCES.register("factory_controller_pending_orders",
-            io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource::new);
+    public static final DeferredRegister<DisplaySource> DISPLAY_SOURCES =
+        DeferredRegister.create(CreateRegistries.DISPLAY_SOURCE, MODID);
+    public static final DeferredHolder<DisplaySource, FactoryControllerDisplaySource> FACTORY_CONTROLLER_PENDING_ORDERS =
+        DISPLAY_SOURCES.register("factory_controller_pending_orders", FactoryControllerDisplaySource::new);
 
     // ── Constructor ────────────────────────────────────────────────────────
     public CreateFactoryController(IEventBus modEventBus, ModContainer modContainer) {
-        // Create: Repackaged compat
-        if (io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat.isLoaded()) {
-            FLUID_FILTER = ITEMS.register("fluid_filter", () -> new net.minecraft.world.item.Item(new Properties()));
-            FLUID_CONTENT = DATA_COMPONENTS.register("fluid_content", () ->
-                DataComponentType.<net.neoforged.neoforge.fluids.SimpleFluidContent>builder()
-                    .persistent(net.neoforged.neoforge.fluids.SimpleFluidContent.CODEC)
-                    .networkSynchronized(net.neoforged.neoforge.fluids.SimpleFluidContent.STREAM_CODEC)
-                    .build());
-        }
+        RepackagedCompat.register(ITEMS, DATA_COMPONENTS);
 
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
@@ -158,21 +149,14 @@ public class CreateFactoryController {
         SOUND_EVENTS.register(modEventBus);
         DISPLAY_SOURCES.register(modEventBus);
 
-        modEventBus.addListener(this::registerPayloads);
+        modEventBus.addListener((RegisterPayloadHandlersEvent event) ->
+            NetworkHandler.register(event.registrar(MODID)));
         modEventBus.addListener(this::addCreativeTabContents);
         modEventBus.addListener(this::commonSetup);
 
-        // Drive the production-order manager once per server tick (independent of any loaded controller/keeper).
-        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
-            (net.neoforged.neoforge.event.tick.ServerTickEvent.Post event) ->
-                ProductionOrderManager.get(event.getServer()).tick(event.getServer()));
+        ProductionOrderManager.registerEvents();
+        OrderableGaugeRegistry.registerEvents();
 
-        // Clear the static orderable-gauge index on server stop so it never bleeds across worlds in one JVM.
-        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
-            (net.neoforged.neoforge.event.server.ServerStoppedEvent event) ->
-                io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry.clear());
-
-        // Server config (synced to clients): the per-controller component cap.
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -183,44 +167,13 @@ public class CreateFactoryController {
 
     /** Bind the controller's Display Link source to its block (the binding map is not a registry — done in setup,
      *  enqueued so it's on the main thread after all blocks/sources are registered). */
-    private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> com.simibubi.create.api.behaviour.display.DisplaySource.BY_BLOCK.add(
-            FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get()));
+    private void commonSetup(FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> DisplaySource.BY_BLOCK.add(FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get()));
     }
 
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey())
             event.accept(FACTORY_CONTROLLER_ITEM);
-    }
-
-    private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(MODID);
-        registrar.playToServer(AttachComponentPacket.TYPE, AttachComponentPacket.STREAM_CODEC, AttachComponentPacket::handle);
-        registrar.playToServer(RemoveComponentPacket.TYPE, RemoveComponentPacket.STREAM_CODEC, RemoveComponentPacket::handle);
-        registrar.playToServer(MoveComponentPacket.TYPE, MoveComponentPacket.STREAM_CODEC, MoveComponentPacket::handle);
-        registrar.playToServer(BatchMoveComponentPacket.TYPE, BatchMoveComponentPacket.STREAM_CODEC, BatchMoveComponentPacket::handle);
-        registrar.playToServer(GaugeSetItemPacket.TYPE, GaugeSetItemPacket.STREAM_CODEC, GaugeSetItemPacket::handle);
-        registrar.playToServer(ConfigureRecipePacket.TYPE, ConfigureRecipePacket.STREAM_CODEC, ConfigureRecipePacket::handle);
-        registrar.playToServer(AddConnectionPacket.TYPE, AddConnectionPacket.STREAM_CODEC, AddConnectionPacket::handle);
-        registrar.playToServer(RemoveConnectionPacket.TYPE, RemoveConnectionPacket.STREAM_CODEC, RemoveConnectionPacket::handle);
-        registrar.playToServer(DisconnectIngredientPacket.TYPE, DisconnectIngredientPacket.STREAM_CODEC, DisconnectIngredientPacket::handle);
-        registrar.playToServer(DisconnectLinksPacket.TYPE, DisconnectLinksPacket.STREAM_CODEC, DisconnectLinksPacket::handle);
-        registrar.playToServer(CycleArrowModePacket.TYPE, CycleArrowModePacket.STREAM_CODEC, CycleArrowModePacket::handle);
-        registrar.playToServer(CycleConnectionArrowModePacket.TYPE, CycleConnectionArrowModePacket.STREAM_CODEC, CycleConnectionArrowModePacket::handle);
-        registrar.playToServer(CycleOperationModePacket.TYPE, CycleOperationModePacket.STREAM_CODEC, CycleOperationModePacket::handle);
-        registrar.playToServer(ReverseConnectionPacket.TYPE, ReverseConnectionPacket.STREAM_CODEC, ReverseConnectionPacket::handle);
-        registrar.playToServer(ConfigureLogicalTubePacket.TYPE, ConfigureLogicalTubePacket.STREAM_CODEC, ConfigureLogicalTubePacket::handle);
-        registrar.playToServer(ConfigureRedstoneLinkPacket.TYPE, ConfigureRedstoneLinkPacket.STREAM_CODEC, ConfigureRedstoneLinkPacket::handle);
-        registrar.playToServer(RetuneCarriedPacket.TYPE, RetuneCarriedPacket.STREAM_CODEC, RetuneCarriedPacket::handle);
-        registrar.playToServer(RenameControllerPacket.TYPE, RenameControllerPacket.STREAM_CODEC, RenameControllerPacket::handle);
-        registrar.playToServer(RequestProductionOrdersPacket.TYPE, RequestProductionOrdersPacket.STREAM_CODEC, RequestProductionOrdersPacket::handle);
-        registrar.playToServer(RemoveProductionOrderPacket.TYPE, RemoveProductionOrderPacket.STREAM_CODEC, RemoveProductionOrderPacket::handle);
-        registrar.playToServer(RequestIngredientCheckPacket.TYPE, RequestIngredientCheckPacket.STREAM_CODEC, RequestIngredientCheckPacket::handle);
-        registrar.playToServer(RequestGaugePromiseInfoPacket.TYPE, RequestGaugePromiseInfoPacket.STREAM_CODEC, RequestGaugePromiseInfoPacket::handle);
-        registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
-        registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);
-        registrar.playToClient(IngredientCheckResultPacket.TYPE, IngredientCheckResultPacket.STREAM_CODEC, IngredientCheckResultPacket::handle);
-        registrar.playToClient(GaugePromiseInfoPacket.TYPE, GaugePromiseInfoPacket.STREAM_CODEC, GaugePromiseInfoPacket::handle);
     }
 
     private void registerScreens(RegisterMenuScreensEvent event) {

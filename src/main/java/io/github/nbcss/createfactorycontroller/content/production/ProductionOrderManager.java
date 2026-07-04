@@ -22,6 +22,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import com.google.common.collect.Multimap;
 import org.apache.commons.lang3.mutable.MutableBoolean;
@@ -54,6 +56,11 @@ public class ProductionOrderManager extends SavedData {
     private final Map<Integer, Long> completedAt = new java.util.HashMap<>();
 
     public ProductionOrderManager() {}
+
+    /** Drives the manager once per server tick, independent of any loaded controller/keeper. */
+    public static void registerEvents() {
+        NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> get(event.getServer()).tick(event.getServer()));
+    }
 
     // ── Access ────────────────────────────────────────────────────────────────
 

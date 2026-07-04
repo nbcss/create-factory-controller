@@ -20,10 +20,6 @@ import java.util.function.Supplier;
 /**
  * A button with custom graphics: Each graphic layer a sprite or a solid color, drawn on normal state or hover.
  * Each layer on top of previous layers.
- * Runs {@code onPress} on click.
- * It does <b>not</b> draw its own tooltip — the host screen renders that in its {@code render()} pass
- * (after {@code super.render}) so the tooltip stacks above other GUI/JEI overlays rather than under them.
- * Add it via {@code addWidget} for click dispatch and render it manually where wanted.
  */
 @OnlyIn(Dist.CLIENT)
 public class GraphicButton extends AbstractWidget {

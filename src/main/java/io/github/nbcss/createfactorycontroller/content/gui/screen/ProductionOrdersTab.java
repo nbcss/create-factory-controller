@@ -11,10 +11,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
 
 /**
- * The Stock-Keeper tab BUTTON for Promise Orders (registered via Deployer's keeper-tab API). It hosts no content
- * itself: when it becomes the selected tab on the host {@link StockKeeperRequestScreen}, it swaps to the
- * standalone {@link ProductionOrdersScreen} (which reuses this host's tab strip for navigation). Detection runs in
- * {@link #containerTick()} (tick time, not render) to avoid swapping screens mid-render.
+ * The Stock-Keeper tab BUTTON for Promise Orders (registered via Deployer's keeper-tab API).
  */
 public class ProductionOrdersTab extends KeeperTabScreen {
 
