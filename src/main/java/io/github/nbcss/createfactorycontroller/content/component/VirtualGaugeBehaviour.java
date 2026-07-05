@@ -415,8 +415,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             if (c instanceof RedstoneConnection rc && rc.powered()) { now = true; break; }
         if (now == redstonePowered) return;
         redstonePowered = now;
+        resetRequestTimer();
         if (controller != null) { controller.setChanged(); controller.sendData(); }
     }
+
+    public void resetRequestTimer() { timer = 1; }
 
     /** Re-evaluate this gauge's redstone output and push it to wired send-links (no-op unless it changed). Called on
      *  config edits that can flip its active/satisfied output. */
@@ -436,7 +439,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * indicator bulb is coloured separately — green/red — by the screen; see VirtualGaugeWidget.)
      */
     public int getConnectionColor() {
-        return !isActive() || isMissingAddress() || redstonePowered ? 0x888898
+        return !isActive() || isMissingAddress() || isRedstonePaused() ? 0x888898
              : waitingForNetwork ? 0x5B3B3B
              : satisfied         ? 0x9EFF7F
              : promisedSatisfied ? 0x22AFAF
@@ -525,7 +528,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * demand.
      */
     private boolean isDemandingIngredients() {
-        if (count == 0 || waitingForNetwork || redstonePowered || isControllerPowered() || isMissingAddress())
+        if (count == 0 || waitingForNetwork || isRedstonePaused() || isMissingAddress())
             return false;
         return !promisedSatisfied;
     }
@@ -707,7 +710,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // is what prevents over-requesting: the timer never idles at 0 ready to fire, so the one-tick
         // stock/promise flicker as the produced item lands can't trigger an extra request — a request
         // only fires after the gauge has been continuously understocked for the whole interval.
-        if (satisfied || promisedSatisfied || waitingForNetwork || redstonePowered || isControllerPowered()) return;
+        if (satisfied || promisedSatisfied || waitingForNetwork || isRedstonePaused()) return;
         if (isMissingAddress()) return;
         if (timer > 0) {                                // throttle between attempts
             timer = Math.min(timer, getConfigRequestIntervalInTicks());
@@ -1042,5 +1045,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     private boolean isControllerPowered() {
         return controller != null && controller.isRedstonePowered();
+    }
+
+    public boolean isRedstonePaused() {
+        return redstonePowered || isControllerPowered();
     }
 }

@@ -2,6 +2,7 @@
 
 Bugfixes:
 - Fixed gauge connection flow animation won't play without made at least one request attempt.
+- Fixed gauge request timer do not get reset when redstone powered state changes.
 
 ## 1.0.0
 IMPORTANT: this version changed Factory Controller block data structure, once upgraded to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.

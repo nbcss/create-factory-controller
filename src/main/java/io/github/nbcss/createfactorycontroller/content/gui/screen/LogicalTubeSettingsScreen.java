@@ -346,7 +346,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                 return;
             }
         if (relocateButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.relocate").component(), mouseX, mouseY);
+            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.action_relocate"), mouseX, mouseY);
         else if (addConnectionButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.connect_input").component(), mouseX, mouseY);
         else if (confirmButton.isMouseOver(mouseX, mouseY))

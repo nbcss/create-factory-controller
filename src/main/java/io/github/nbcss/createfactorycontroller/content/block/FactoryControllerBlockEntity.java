@@ -284,6 +284,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         boolean powered = level.hasNeighborSignal(getBlockPos());
         if (powered == redstonePowered) return;   // no edge → nothing to propagate
         redstonePowered = powered;
+        // Every managed gauge froze its request throttle while paused; kick it so unpausing doesn't
+        // resume from a stale countdown (mirrors VirtualGaugeBehaviour.onInputChanged for its own link).
+        for (VirtualComponentBehaviour c : components.values())
+            if (c instanceof VirtualGaugeBehaviour g) g.resetRequestTimer();
         sendData();   // push the new powered state to any open GUI
     }
 

@@ -90,7 +90,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
 
         // Indicator bulb — shown once the gauge is active.
         if (behaviour.isActive()) {
-            boolean invalid = behaviour.isMissingAddress() || behaviour.redstonePowered;
+            boolean invalid = behaviour.isMissingAddress() || behaviour.isRedstonePaused();
             int base = invalid ? BULB_RED : BULB_GREEN;
             float b = BULB_MIN_BRIGHTNESS + (1f - BULB_MIN_BRIGHTNESS) * Mth.clamp(glow, 0f, 1f);
             RenderSystem.enableBlend();
@@ -191,7 +191,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
-        else if (behaviour.redstonePowered)
+        else if (behaviour.isRedstonePaused())
             lines.add(Component.translatable("createfactorycontroller.gui.gauge_status.redstone_paused").withStyle(ChatFormatting.RED));
         return lines;
     }
