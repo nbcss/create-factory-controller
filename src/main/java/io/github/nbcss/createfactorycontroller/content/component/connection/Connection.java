@@ -119,10 +119,19 @@ public abstract class Connection {
         public boolean reversible() { return true; }
 
         private static final Map<String, Type> REGISTRY = new LinkedHashMap<>();
+        private static volatile boolean bootstrapped = false;
 
-        static {
-            registerType(LogisticsConnection.TYPE);
-            registerType(RedstoneConnection.TYPE);
+        // Built-in types register lazily rather than from a static initializer: a static block here reading the subclass
+        // TYPE fields re-enters Type while a subclass is still initializing, so its TYPE reads null and registerType
+        // NPEs (a class-init cycle). Registering on first lookup guarantees Type is fully initialized beforehand.
+        private static void ensureBootstrapped() {
+            if (bootstrapped) return;
+            synchronized (REGISTRY) {
+                if (bootstrapped) return;
+                registerType(LogisticsConnection.TYPE);
+                registerType(RedstoneConnection.TYPE);
+                bootstrapped = true;
+            }
         }
 
         public static void registerType(Connection.Type type) {
@@ -130,11 +139,13 @@ public abstract class Connection {
         }
 
         public static Collection<Type> values() {
+            ensureBootstrapped();
             return REGISTRY.values();
         }
 
         @Nullable
         public static Type get(String name) {
+            ensureBootstrapped();
             return REGISTRY.get(name);
         }
 
