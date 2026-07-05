@@ -121,10 +121,7 @@ public abstract class Connection {
         private static final Map<String, Type> REGISTRY = new LinkedHashMap<>();
         private static volatile boolean bootstrapped = false;
 
-        // Built-in types register lazily rather than from a static initializer: a static block here reading the subclass
-        // TYPE fields re-enters Type while a subclass is still initializing, so its TYPE reads null and registerType
-        // NPEs (a class-init cycle). Registering on first lookup guarantees Type is fully initialized beforehand.
-        private static void ensureBootstrapped() {
+        private static void lazyBootstrap() {
             if (bootstrapped) return;
             synchronized (REGISTRY) {
                 if (bootstrapped) return;
@@ -139,13 +136,13 @@ public abstract class Connection {
         }
 
         public static Collection<Type> values() {
-            ensureBootstrapped();
+            lazyBootstrap();
             return REGISTRY.values();
         }
 
         @Nullable
         public static Type get(String name) {
-            ensureBootstrapped();
+            lazyBootstrap();
             return REGISTRY.get(name);
         }
 
