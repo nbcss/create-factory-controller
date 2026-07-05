@@ -238,8 +238,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  never re-walks its outgoing wires. {@code null} until first computed (forces an initial publish). */
     private RedstoneConnection.State lastRedstoneOutput = null;
     protected int timer = 0;
-    /** Game tick of the last request attempt; the client decays the connection flash from it. */
-    public long lastRequestTick = Long.MIN_VALUE;
+    public long lastRequestTick = 0;
     private boolean forceClearPromises = false;
     public String recipeAddress = "";
     public int recipeOutput = 1;

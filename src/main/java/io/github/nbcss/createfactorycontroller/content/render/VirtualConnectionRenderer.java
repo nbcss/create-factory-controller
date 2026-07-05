@@ -33,9 +33,9 @@ public final class VirtualConnectionRenderer {
 
     // Create's connection sprite (16×16).
     private static final ResourceLocation TEX_STATIC =
-            ResourceLocation.fromNamespaceAndPath("create", "textures/block/factory_panel_connections.png");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections.png");
     private static final ResourceLocation TEX_ANIMATED =
-            ResourceLocation.fromNamespaceAndPath("create", "textures/block/factory_panel_connections_animated.png");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections_animated.png");
 
     private static final int FRAME_SIZE = 16; // pixels
     private static final float FRAME_TIME = 2f; // ticks per frame
