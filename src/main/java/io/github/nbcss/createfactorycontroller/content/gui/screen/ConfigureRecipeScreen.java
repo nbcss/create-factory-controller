@@ -1309,9 +1309,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (getFocused() != null && !getFocused().isMouseOver(mouseX, mouseY))
             setFocused(null);
 
-        // Count box click-to-type (non-passive). Clicking elsewhere commits any in-progress edit.
         boolean onCountBox = in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H);
         if (countEditing && !onCountBox) commitCountEdit();
+
+        if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
+            addressBox.setValue("");
+            return true;
+        }
+
+        if (addressBox.mouseClicked(mouseX, mouseY, button)) {
+            setFocused(addressBox);
+            return true;
+        }
+
         if (onCountBox && (button == 0 || button == 1) && !requestMode.isPassive()) {
             countEditing = true;
             countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
@@ -1320,27 +1330,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        // Right-click the address field → clear it.
-        if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
-            addressBox.setValue("");
-            return true;
-        }
-
-        // Let the address box and its suggestion dropdown consume the click first — the dropdown can
-        // overlap the regions checked below, so it must win.
-        if (addressBox.mouseClicked(mouseX, mouseY, button)) {
-            setFocused(addressBox);
-            return true;
-        }
-
-        // Click the open-promise box → clear promises (Create's left-click reset).
         if (in(mouseX, mouseY, panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16)) {
             sendConfig(true, false);
             playClickSound();
             return true;
         }
 
-        // Click the promise-limit box → cycle the limit scope (own ⟷ address); scroll still edits the value.
         if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
             promiseLimitByAddress = !promiseLimitByAddress;
             playClickSound();
@@ -1366,7 +1361,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
         }
 
-        // Click the unit box → cycle Items ↔ Stacks.
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
             setMode(mode.cycle(1));
             return true;

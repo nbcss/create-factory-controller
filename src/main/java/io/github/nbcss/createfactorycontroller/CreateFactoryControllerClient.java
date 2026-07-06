@@ -33,25 +33,25 @@ import org.lwjgl.glfw.GLFW;
 @EventBusSubscriber(modid = CreateFactoryController.MODID, value = Dist.CLIENT)
 public class CreateFactoryControllerClient {
 
-    /** Cycles the hovered component's connection arrow-bend mode. Rebindable from Options ▸ Controls; defaults to R. */
+    /** Cycles the hovered component's connection arrow-bend mode. Rebindable from Options ▸ Controls */
     public static final KeyMapping CYCLE_ARROW_MODE = new KeyMapping(
             "key.createfactorycontroller.cycle_arrow_mode",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,
             "key.categories.createfactorycontroller");
 
-    /** Cycles the hovered component's operation mode. Rebindable from Options ▸ Controls; defaults to T. */
+    /** Cycles the hovered component's operation mode. Rebindable from Options ▸ Controls */
     public static final KeyMapping CYCLE_OPERATION_MODE = new KeyMapping(
             "key.createfactorycontroller.cycle_operation_mode",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F,
             "key.categories.createfactorycontroller");
 
-    /** Starts connection mode from the hovered component. Unbound by default. */
+    /** Starts connection mode from the hovered component */
     public static final KeyMapping START_CONNECTION = new KeyMapping(
             "key.createfactorycontroller.start_connection",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C,
             "key.categories.createfactorycontroller");
 
-    /** Starts relocate mode for the hovered component. Unbound by default. */
+    /** Starts relocate mode for the hovered component */
     public static final KeyMapping RELOCATE_COMPONENT = new KeyMapping(
             "key.createfactorycontroller.relocate_component",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Q,

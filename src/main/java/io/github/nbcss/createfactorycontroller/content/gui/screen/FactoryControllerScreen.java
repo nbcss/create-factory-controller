@@ -665,10 +665,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 if (blank)
                     graphics.drawString(font, menu.controllerDisplayName(), x, nameBox.getY(), NAME_COLOR, false);
                 // Edit-name icon after the text — indicator-only cue, vertically centred on the text.
-                graphics.blitSprite(RENAME_BUTTON_SPRITE,
-                        x + font.width(shownStr) + 5,
-                        nameBox.getY() + (font.lineHeight - RENAME_BUTTON_SIZE) / 2 - 1,
-                        RENAME_BUTTON_SIZE, RENAME_BUTTON_SIZE);
+                if (!inOverlay)
+                    graphics.blitSprite(RENAME_BUTTON_SPRITE,
+                            x + font.width(shownStr) + 5,
+                            nameBox.getY() + (font.lineHeight - RENAME_BUTTON_SIZE) / 2 - 1,
+                            RENAME_BUTTON_SIZE, RENAME_BUTTON_SIZE);
             }
         }
 
@@ -704,7 +705,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
 
-        if (helpButton != null) helpButton.render(graphics, mouseX, mouseY, partialTick);
+        if (helpButton != null && !inOverlay) helpButton.render(graphics, mouseX, mouseY, partialTick);
 
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
