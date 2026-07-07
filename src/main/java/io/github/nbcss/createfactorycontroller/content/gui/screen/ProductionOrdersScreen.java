@@ -273,14 +273,14 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         int timerY = oy + 4;
         int clockX = timerX - 9;
         int timerColor = sent ? 0x55FF55 : 0xF5F5E9;
-        gfx.blit(TEX, clockX, timerY, 0, 49f, 154f, 7, 8, 256, 256);
+        gfx.blit(TEX, clockX, timerY, 0, 49f, 154f, 8, 8, 256, 256);
         gfx.drawString(font, timer, timerX, lineY, timerColor, true);
 
         // Address (top-left), trimmed to the space left of the clock.
         String address = order.address().isBlank() ? "—" : order.address();
         int addrX = fx + 13;
         int addrMaxW = clockX - 4 - addrX;
-        gfx.blit(TEX, fx + 2, timerY, 0, 39f, 154f, 8, 8, 256, 256);
+        gfx.blit(TEX, fx + 2, timerY, 0, 39f, 154f, 9, 8, 256, 256);
         gfx.drawString(font, trim(address, addrMaxW), addrX, lineY, 0xF5F5E9, true);
 
         // Task slots (up to 9) below the frame.
