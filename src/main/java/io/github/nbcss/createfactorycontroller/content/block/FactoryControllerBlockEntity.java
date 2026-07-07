@@ -722,14 +722,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 viewers.add(player);
         if (viewers.isEmpty()) return;
 
-        List<CompoundTag> tags = new ArrayList<>();
-        for (VirtualComponentBehaviour b : components.values())
-            tags.add(b.toNBT(serverLevel.registryAccess(), VirtualComponentBehaviour.NbtProfile.CLIENT));
-        List<CompoundTag> connTags = connectionGraph.toTagList();
+        List<VirtualComponentBehaviour> comps = new ArrayList<>(components.values());
+        List<Connection> conns = connectionGraph.connections();
         List<UUID> netList = new ArrayList<>(networks);
         List<String> nameList = new ArrayList<>(netList.size());
         for (UUID id : netList) nameList.add(networkNicknames.getOrDefault(id, ""));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), tags, connTags, netList, nameList, customName, redstonePowered);
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), comps, conns, netList, nameList, customName, redstonePowered);
         for (ServerPlayer player : viewers)
             PacketDistributor.sendToPlayer(player, packet);
     }

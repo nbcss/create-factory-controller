@@ -3,12 +3,11 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -25,33 +24,52 @@ import java.util.UUID;
  * Sent by FactoryControllerBlockEntity.sendData() to any player who has this menu open.
  */
 public record SyncPanelStatePacket(BlockPos pos,
-                                   List<CompoundTag> gaugeTags,
-                                   List<CompoundTag> connections,
-                                    List<UUID> networks,
-                                    List<String> networkNames,
-                                    String controllerName,
-                                    boolean controllerPowered)
+                                   List<VirtualComponentBehaviour> components,
+                                   List<Connection> connections,
+                                   List<UUID> networks,
+                                   List<String> networkNames,
+                                   String controllerName,
+                                   boolean controllerPowered)
         implements CustomPacketPayload {
 
     public static final Type<SyncPanelStatePacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "sync_panel_state"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<CompoundTag>> TAG_LIST_CODEC =
+    private static final StreamCodec<RegistryFriendlyByteBuf, List<VirtualComponentBehaviour>> COMPONENT_LIST_CODEC =
         new StreamCodec<>() {
             @Override
-            public @NotNull List<CompoundTag> decode(RegistryFriendlyByteBuf buf) {
+            public @NotNull List<VirtualComponentBehaviour> decode(RegistryFriendlyByteBuf buf) {
                 int size = buf.readVarInt();
-                List<CompoundTag> list = new ArrayList<>(size);
+                List<VirtualComponentBehaviour> list = new ArrayList<>(size);
                 for (int i = 0; i < size; i++) {
-                    Tag nbt = buf.readNbt();
-                    if (nbt instanceof CompoundTag tag) list.add(tag);
+                    VirtualComponentBehaviour c = ComponentRegistry.readComponent(buf);
+                    if (c != null) list.add(c);
                 }
                 return list;
             }
             @Override
-            public void encode(RegistryFriendlyByteBuf buf, List<CompoundTag> tags) {
-                buf.writeVarInt(tags.size());
-                for (CompoundTag tag : tags) buf.writeNbt(tag);
+            public void encode(RegistryFriendlyByteBuf buf, List<VirtualComponentBehaviour> components) {
+                buf.writeVarInt(components.size());
+                for (VirtualComponentBehaviour c : components) ComponentRegistry.writeComponent(buf, c);
+            }
+        };
+
+    private static final StreamCodec<RegistryFriendlyByteBuf, List<Connection>> CONNECTION_LIST_CODEC =
+        new StreamCodec<>() {
+            @Override
+            public @NotNull List<Connection> decode(RegistryFriendlyByteBuf buf) {
+                int size = buf.readVarInt();
+                List<Connection> list = new ArrayList<>(size);
+                for (int i = 0; i < size; i++) {
+                    Connection c = Connection.fromClient(buf);
+                    if (c != null) list.add(c);
+                }
+                return list;
+            }
+            @Override
+            public void encode(RegistryFriendlyByteBuf buf, List<Connection> connections) {
+                buf.writeVarInt(connections.size());
+                for (Connection c : connections) c.writeClient(buf);
             }
         };
 
@@ -96,19 +114,19 @@ public record SyncPanelStatePacket(BlockPos pos,
             @Override
             public @NotNull SyncPanelStatePacket decode(RegistryFriendlyByteBuf buf) {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
-                List<CompoundTag> tags = TAG_LIST_CODEC.decode(buf);
-                List<CompoundTag> connections = TAG_LIST_CODEC.decode(buf);
+                List<VirtualComponentBehaviour> components = COMPONENT_LIST_CODEC.decode(buf);
+                List<Connection> connections = CONNECTION_LIST_CODEC.decode(buf);
                 List<UUID> networks = UUID_LIST_CODEC.decode(buf);
                 List<String> names = STRING_LIST_CODEC.decode(buf);
                 String controllerName = buf.readUtf();
                 boolean controllerPowered = buf.readBoolean();
-                return new SyncPanelStatePacket(pos, tags, connections, networks, names, controllerName, controllerPowered);
+                return new SyncPanelStatePacket(pos, components, connections, networks, names, controllerName, controllerPowered);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
                 BlockPos.STREAM_CODEC.encode(buf, packet.pos());
-                TAG_LIST_CODEC.encode(buf, packet.gaugeTags());
-                TAG_LIST_CODEC.encode(buf, packet.connections());
+                COMPONENT_LIST_CODEC.encode(buf, packet.components());
+                CONNECTION_LIST_CODEC.encode(buf, packet.connections());
                 UUID_LIST_CODEC.encode(buf, packet.networks());
                 STRING_LIST_CODEC.encode(buf, packet.networkNames());
                 buf.writeUtf(packet.controllerName());
@@ -130,10 +148,7 @@ public record SyncPanelStatePacket(BlockPos pos,
             if (!menu.controllerPos.equals(packet.pos())) return;
 
             menu.clearComponents();
-            for (CompoundTag tag : packet.gaugeTags()) {
-                VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, tag, mc.level.registryAccess());
-                if (b != null) menu.addComponent(b);
-            }
+            for (VirtualComponentBehaviour b : packet.components()) menu.addComponent(b);
             menu.loadConnections(packet.connections());   // rebuild the client graph from the synced central edge list
             menu.knownNetworks.clear();
             menu.knownNetworks.addAll(packet.networks());

@@ -87,6 +87,15 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                                                  HolderLookup.Provider registries) {
             return VirtualGaugeBehaviour.fromNBT(controller, tag, registries);
         }
+
+        @Override
+        public VirtualComponentBehaviour fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+            VirtualComponentPosition pos = SyncCodecs.readPos(buf);
+            Item item = BuiltInRegistries.ITEM.get(buf.readResourceLocation());
+            VirtualGaugeBehaviour g = new VirtualGaugeBehaviour(null, pos, buf.readUUID(), item);
+            g.readClientBody(buf);
+            return g;
+        }
     };
 
     public static final ResourceLocation TEXTURE =
@@ -938,6 +947,64 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     }
 
     // ── NBT ────────────────────────────────────────────────────────────────
+
+    @Override public String typeId() { return componentType().id(); }
+
+    @Override
+    public void writeClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        SyncCodecs.writePos(buf, position);
+        buf.writeResourceLocation(getItemId());
+        buf.writeUUID(networkId);
+        ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, filter);
+        buf.writeBoolean(ignoreData);
+        SyncCodecs.writeEnum(buf, unit);
+        SyncCodecs.writeEnum(buf, requestMode);
+        buf.writeUtf(recipeAddress);
+        buf.writeVarInt(recipeOutput);
+        buf.writeVarInt(craftBatch);
+        buf.writeVarInt(craftDimension);
+        buf.writeVarInt(promiseClearingInterval + 1);   // -1..31 → 0..32 (non-negative for varint)
+        buf.writeVarInt(promiseLimit);
+        buf.writeBoolean(promiseLimitByAddress);
+        buf.writeVarInt(activeCraftingArrangement.size());
+        for (ItemStack s : activeCraftingArrangement) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, s);
+        // ── runtime ──
+        buf.writeVarInt(count);
+        buf.writeBoolean(satisfied);
+        buf.writeBoolean(promisedSatisfied);
+        buf.writeBoolean(waitingForNetwork);
+        buf.writeBoolean(redstonePowered);
+        buf.writeVarInt(stockLevel);
+        buf.writeVarInt(promisedCount);
+        buf.writeVarLong(lastRequestTick);
+    }
+
+    /** Reads the {@link #writeClient} body (everything after pos/item/network, which the {@code Type.fromClient} reads
+     *  to construct the instance) into this freshly-built client gauge. */
+    protected void readClientBody(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        filter = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+        ignoreData = buf.readBoolean();
+        unit = SyncCodecs.readEnum(buf, ThresholdUnit.values());
+        requestMode = SyncCodecs.readEnum(buf, RequestMode.values());
+        recipeAddress = buf.readUtf();
+        recipeOutput = buf.readVarInt();
+        craftBatch = buf.readVarInt();
+        craftDimension = buf.readVarInt();
+        promiseClearingInterval = buf.readVarInt() - 1;
+        promiseLimit = buf.readVarInt();
+        promiseLimitByAddress = buf.readBoolean();
+        int n = buf.readVarInt();
+        activeCraftingArrangement = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) activeCraftingArrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+        count = buf.readVarInt();
+        satisfied = buf.readBoolean();
+        promisedSatisfied = buf.readBoolean();
+        waitingForNetwork = buf.readBoolean();
+        redstonePowered = buf.readBoolean();
+        stockLevel = buf.readVarInt();
+        promisedCount = buf.readVarInt();
+        lastRequestTick = buf.readVarLong();
+    }
 
     @Override
     public CompoundTag toNBT(net.minecraft.core.HolderLookup.Provider registries, NbtProfile profile) {

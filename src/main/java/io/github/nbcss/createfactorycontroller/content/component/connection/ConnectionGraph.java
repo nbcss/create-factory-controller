@@ -1,7 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.component.connection;
 
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 
 import java.util.ArrayList;
@@ -175,7 +174,7 @@ public class ConnectionGraph {
 
     public void clear() { incoming.clear(); outgoing.clear(); }
 
-    // ── Persistence (flat edge list; the reverse index is rebuilt on read) ──────
+    // ── Persistence (flat edge list; readback lives in the controller so it can validate endpoints) ──
 
     public ListTag toNBT() {
         ListTag list = new ListTag();
@@ -187,31 +186,4 @@ public class ConnectionGraph {
         return list;
     }
 
-    /** Replaces all edges from a {@link #toNBT} list, dispatching each payload by its stored type. */
-    public void readNBT(ListTag list) {
-        clear();
-        for (int i = 0; i < list.size(); i++) {
-            CompoundTag tag = list.getCompound(i);
-            Connection conn = Connection.fromNBT(tag);
-            if (conn != null) add(conn);
-        }
-    }
-
-    /** The edges as a plain {@code List<CompoundTag>} (for menu/packet sync, which serializes tag lists). */
-    public List<CompoundTag> toTagList() {
-        List<CompoundTag> list = new ArrayList<>();
-        for (var e : incoming.entrySet())
-            for (Connection conn : e.getValue().values())
-                list.add(conn.toNBT());
-        return list;
-    }
-
-    /** Replaces all edges from a {@link #toTagList} list (client sync). */
-    public void readTagList(List<CompoundTag> list) {
-        clear();
-        for (CompoundTag tag : list) {
-            Connection conn = Connection.fromNBT(tag);
-            if (conn != null) add(conn);
-        }
-    }
 }

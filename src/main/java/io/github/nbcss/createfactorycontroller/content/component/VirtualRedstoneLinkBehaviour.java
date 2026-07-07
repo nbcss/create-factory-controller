@@ -73,7 +73,31 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
                                                  HolderLookup.Provider registries) {
             return VirtualRedstoneLinkBehaviour.fromNBT(controller, tag, registries);
         }
+
+        @Override
+        public VirtualComponentBehaviour fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+            VirtualComponentPosition pos = SyncCodecs.readPos(buf);
+            Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(buf.readResourceLocation());
+            VirtualRedstoneLinkBehaviour b = new VirtualRedstoneLinkBehaviour(null, pos, item);
+            b.receive = buf.readBoolean();
+            b.redFreq = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+            b.blueFreq = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+            b.powered = buf.readBoolean();
+            return b;
+        }
     };
+
+    @Override public String typeId() { return TYPE.id(); }
+
+    @Override
+    public void writeClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        SyncCodecs.writePos(buf, position);
+        buf.writeResourceLocation(getItemId());
+        buf.writeBoolean(receive);
+        ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, redFreq);
+        ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, blueFreq);
+        buf.writeBoolean(powered);   // runtime
+    }
 
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/redstone_link");

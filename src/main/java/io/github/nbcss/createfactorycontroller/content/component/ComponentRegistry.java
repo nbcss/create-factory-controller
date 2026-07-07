@@ -100,4 +100,19 @@ public final class ComponentRegistry {
         VirtualComponentBehaviour.Type type = TYPE_REGISTRY.get(typeId);
         return type == null ? null : type.fromNBT(controller, tag, registries);
     }
+
+    // ── Client sync (binary) ──────────────────────────────────────────────────
+
+    public static void writeComponent(net.minecraft.network.RegistryFriendlyByteBuf buf, VirtualComponentBehaviour c) {
+        buf.writeUtf(c.typeId());
+        c.writeClient(buf);
+    }
+
+    /** Reconstructs a client component from {@link #writeComponent}. A null (unknown type) desyncs the rest of the
+     *  buffer, but the sync path is only ever same-mod-version client↔server, so every written type is known here. */
+    @Nullable
+    public static VirtualComponentBehaviour readComponent(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        VirtualComponentBehaviour.Type type = TYPE_REGISTRY.get(buf.readUtf());
+        return type == null ? null : type.fromClient(buf);
+    }
 }

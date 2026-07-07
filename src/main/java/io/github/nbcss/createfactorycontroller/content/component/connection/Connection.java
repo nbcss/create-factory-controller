@@ -3,8 +3,10 @@ package io.github.nbcss.createfactorycontroller.content.component.connection;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.SyncCodecs;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
@@ -84,6 +86,28 @@ public abstract class Connection {
             return null;
     }
 
+    // ── Client sync (binary) ──────────────────────────────────────────────────
+
+    public void writeClient(RegistryFriendlyByteBuf buf) {
+        buf.writeUtf(type.name());
+        SyncCodecs.writePos(buf, from);
+        SyncCodecs.writePos(buf, to);
+        buf.writeByte(arrowBendMode);
+        writeClientExtra(buf);
+    }
+
+    /** Per-kind payload after the shared header. Read back by {@link Type#fromClient}. */
+    protected void writeClientExtra(RegistryFriendlyByteBuf buf) {}
+
+    @Nullable
+    public static Connection fromClient(RegistryFriendlyByteBuf buf) {
+        Type type = Type.get(buf.readUtf());
+        VirtualComponentPosition from = SyncCodecs.readPos(buf);
+        VirtualComponentPosition to = SyncCodecs.readPos(buf);
+        int bend = buf.readByte();
+        return type == null ? null : type.fromClient(buf, from, to, bend);
+    }
+
     /**
      * The category of a connection between two components — <i>what flows</i> along the wire.
      */
@@ -109,6 +133,12 @@ public abstract class Connection {
 
         public abstract Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink);
         public abstract Connection fromNBT(CompoundTag tag);
+
+        /** Reconstructs a client edge from {@link Connection#writeClientExtra}; header fields already read. */
+        public abstract Connection fromClient(RegistryFriendlyByteBuf buf,
+                                              VirtualComponentPosition from,
+                                              VirtualComponentPosition to,
+                                              int arrowBendMode);
 
         public Component successMessage(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
             return Component.translatable("createfactorycontroller.connection.connected",

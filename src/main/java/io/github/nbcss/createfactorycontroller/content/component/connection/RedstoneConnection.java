@@ -19,6 +19,15 @@ public class RedstoneConnection extends Connection {
         public Connection fromNBT(CompoundTag tag) {
             return RedstoneConnection.fromNBT(tag);
         }
+
+        @Override
+        public Connection fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf,
+                                     VirtualComponentPosition from, VirtualComponentPosition to, int arrowBendMode) {
+            RedstoneConnection c = new RedstoneConnection(from, to);
+            c.arrowBendMode = arrowBendMode;
+            c.state = io.github.nbcss.createfactorycontroller.content.component.SyncCodecs.readEnum(buf, State.values());
+            return c;
+        }
     };
     public enum State implements ConnectionValue {
         POWERED(0xEF0000), UNPOWERED(0x580101), INACTIVE(0x888898);
@@ -70,6 +79,11 @@ public class RedstoneConnection extends Connection {
         CompoundTag tag = super.toNBT();
         tag.putString("State", state.name());
         return tag;
+    }
+
+    @Override
+    protected void writeClientExtra(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        io.github.nbcss.createfactorycontroller.content.component.SyncCodecs.writeEnum(buf, state);
     }
 
     private RedstoneConnection(CompoundTag tag) {

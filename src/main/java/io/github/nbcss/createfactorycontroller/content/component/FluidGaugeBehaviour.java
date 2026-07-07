@@ -81,6 +81,15 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
                                                  HolderLookup.Provider registries) {
             return FluidGaugeBehaviour.fromNBT(controller, tag, registries);
         }
+
+        @Override
+        public VirtualComponentBehaviour fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+            VirtualComponentPosition pos = SyncCodecs.readPos(buf);
+            Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(buf.readResourceLocation());
+            FluidGaugeBehaviour g = new FluidGaugeBehaviour(null, pos, buf.readUUID(), item);
+            g.readClientBody(buf);
+            return g;
+        }
     };
 
     public FluidGaugeBehaviour(FactoryControllerBlockEntity controller,

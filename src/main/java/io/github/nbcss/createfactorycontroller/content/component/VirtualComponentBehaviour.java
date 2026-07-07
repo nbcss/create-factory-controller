@@ -51,7 +51,17 @@ public interface VirtualComponentBehaviour {
         VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                           CompoundTag tag,
                                           HolderLookup.Provider registries);
+        /** Reconstructs a client-side component (controller null) from {@link #writeClient}. Counterpart to
+         *  {@link #fromNBT} for the live-sync wire — binary, not NBT. */
+        VirtualComponentBehaviour fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf);
     }
+
+    /** The registry id of this component's kind ({@code "GAUGE"}, {@code "FLUID_GAUGE"}, …). */
+    String typeId();
+
+    /** Writes everything the client needs to render this component, binary (no NBT keys). Body is ordered
+     *  config-then-runtime so it can later be split for a runtime-only delta packet. Read by {@code Type.fromClient}. */
+    void writeClient(net.minecraft.network.RegistryFriendlyByteBuf buf);
 
     // ── Identity & placement ────────────────────────────────────────────────
 

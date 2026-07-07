@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.block;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
@@ -68,14 +69,16 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
 
         int componentCount = buf.readVarInt();
         for (int i = 0; i < componentCount; i++) {
-            CompoundTagHelper helper = new CompoundTagHelper(buf);
-            VirtualComponentBehaviour b = ComponentRegistry.fromNBT(null, helper.tag(), playerInventory.player.level().registryAccess());
+            VirtualComponentBehaviour b = ComponentRegistry.readComponent(buf);
             if (b != null) addComponent(b);
         }
         int connectionCount = buf.readVarInt();
-        List<net.minecraft.nbt.CompoundTag> connectionTags = new ArrayList<>(connectionCount);
-        for (int i = 0; i < connectionCount; i++) connectionTags.add(new CompoundTagHelper(buf).tag());
-        loadConnections(connectionTags);   // build the client graph from the synced central edge list
+        List<Connection> connections = new ArrayList<>(connectionCount);
+        for (int i = 0; i < connectionCount; i++) {
+            Connection c = Connection.fromClient(buf);
+            if (c != null) connections.add(c);
+        }
+        loadConnections(connections);   // build the client graph from the synced central edge list
 
         int networkCount = buf.readVarInt();
         for (int i = 0; i < networkCount; i++) {
@@ -195,14 +198,15 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     }
 
     /** Replaces the client connection graph from a synced central edge list (the components' positions are already in). */
-    public void loadConnections(List<net.minecraft.nbt.CompoundTag> edges) {
-        connectionGraph.readTagList(edges);
+    public void loadConnections(List<Connection> edges) {
+        connectionGraph.clear();
+        for (Connection conn : edges) connectionGraph.add(conn);
         bindConnectionHooks();
     }
 
     private void bindConnectionHooks() {
         // Edges arrive with their value; each sink re-folds from them (no callbacks to rebind in the new model).
-        for (io.github.nbcss.createfactorycontroller.content.component.connection.Connection conn : connectionGraph.connections()) {
+        for (Connection conn : connectionGraph.connections()) {
             VirtualComponentBehaviour sink = componentAt(conn.to);
             if (sink != null) sink.onInputChanged(conn.type);
         }
@@ -229,14 +233,12 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         buf.writeBlockPos(be.getBlockPos());
 
         buf.writeVarInt(be.components.size());
-        for (VirtualComponentBehaviour b : be.components.values()) {
-            net.minecraft.nbt.CompoundTag tag = b.toNBT(be.getLevel().registryAccess(), VirtualComponentBehaviour.NbtProfile.CLIENT);
-            writeCompoundTag(buf, tag);
-        }
+        for (VirtualComponentBehaviour b : be.components.values())
+            ComponentRegistry.writeComponent(buf, b);
 
-        List<net.minecraft.nbt.CompoundTag> connectionTags = be.connectionGraph().toTagList();
-        buf.writeVarInt(connectionTags.size());
-        for (net.minecraft.nbt.CompoundTag tag : connectionTags) writeCompoundTag(buf, tag);
+        List<Connection> connections = be.connectionGraph().connections();
+        buf.writeVarInt(connections.size());
+        for (Connection conn : connections) conn.writeClient(buf);
 
         buf.writeVarInt(be.networks.size());
         for (UUID id : be.networks) {
@@ -268,19 +270,4 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         return Component.translatable("createfactorycontroller.network.default", s.substring(0, 6).toUpperCase());
     }
 
-    private static void writeCompoundTag(RegistryFriendlyByteBuf buf, net.minecraft.nbt.CompoundTag tag) {
-        try {
-            net.minecraft.network.FriendlyByteBuf plain = new net.minecraft.network.FriendlyByteBuf(buf);
-            plain.writeNbt(tag);
-        } catch (Exception e) {
-            buf.writeNbt(tag);
-        }
-    }
-
-    // Inner helper to read CompoundTag from buf in client constructor
-    private record CompoundTagHelper(net.minecraft.nbt.CompoundTag tag) {
-        CompoundTagHelper(RegistryFriendlyByteBuf buf) {
-            this((net.minecraft.nbt.CompoundTag) buf.readNbt());
-        }
-    }
 }

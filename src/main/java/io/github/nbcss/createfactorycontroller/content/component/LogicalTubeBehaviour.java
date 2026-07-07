@@ -69,7 +69,27 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
                                                  HolderLookup.Provider registries) {
             return LogicalTubeBehaviour.fromNBT(controller, tag, registries);
         }
+
+        @Override
+        public VirtualComponentBehaviour fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+            VirtualComponentPosition pos = SyncCodecs.readPos(buf);
+            Item item = BuiltInRegistries.ITEM.get(buf.readResourceLocation());
+            LogicalTubeBehaviour t = new LogicalTubeBehaviour(null, pos, item);
+            t.mode = SyncCodecs.readEnum(buf, Mode.values());
+            t.value = buf.readBoolean();
+            return t;
+        }
     };
+
+    @Override public String typeId() { return TYPE.id(); }
+
+    @Override
+    public void writeClient(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        SyncCodecs.writePos(buf, position);
+        buf.writeResourceLocation(getItemId());
+        SyncCodecs.writeEnum(buf, mode);
+        buf.writeBoolean(value);   // runtime
+    }
 
     public static final ResourceLocation TEXTURE =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/logical_tube");

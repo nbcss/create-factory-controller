@@ -15,7 +15,6 @@
 - [TODO] Network Rename/Set Icon
 - [TODO] Blueprint Save/Load
 - [TODO] Production Order Status Notification
-- [TODO] Remote Interface Item
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
 
@@ -27,6 +26,7 @@
 - [TODO] Improve panel sync packet (transfer delta only)
 - [TODO] Connection tab in recipe / redstone link setting screen
 - [TODO] Item monitoring mode in Display Link Mode
+- [TODO] Remote Interface Item
 - [TODO] Component Search
 - [TODO] Proxy/Projection Mode
 - [TODO] Infinite Request

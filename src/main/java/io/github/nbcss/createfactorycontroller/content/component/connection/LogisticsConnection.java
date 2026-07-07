@@ -29,6 +29,15 @@ public class LogisticsConnection extends Connection {
             return LogisticsConnection.fromNBT(tag);
         }
 
+        @Override
+        public Connection fromClient(net.minecraft.network.RegistryFriendlyByteBuf buf,
+                                     VirtualComponentPosition from, VirtualComponentPosition to, int arrowBendMode) {
+            LogisticsConnection c = new LogisticsConnection(from, to, buf.readVarInt());
+            c.arrowBendMode = arrowBendMode;
+            c.success = buf.readBoolean();
+            return c;
+        }
+
         /** Ingredient wires are not reversible: direction encodes producer→consumer (and carries an ingredient
          *  {@code amount}), so a flip would silently swap the recipe's roles — redraw instead. */
         @Override
@@ -86,6 +95,12 @@ public class LogisticsConnection extends Connection {
         tag.putInt("Amount", Math.max(1, amount));
         tag.putBoolean("Success", success);
         return tag;
+    }
+
+    @Override
+    protected void writeClientExtra(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        buf.writeVarInt(Math.max(1, amount));
+        buf.writeBoolean(success);
     }
 
     private LogisticsConnection(CompoundTag tag) {
