@@ -388,7 +388,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * batch is dispatchable as long as a single craft fits (enforced by {@link #craftingFitsPackage}).
      */
     private int maxCraftBatch() {
-        return Math.max(1, MAX_CRAFT_OUTPUT / Math.max(1, outputCount));
+        return Math.max(1, MAX_CRAFT_OUTPUT);
     }
 
     /** Max stack size of the produced item (64 when no filter yet). */

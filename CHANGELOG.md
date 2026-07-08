@@ -3,6 +3,9 @@
 Features:
 - Network can set custom name and item icon now.
 
+Changes:
+- Maximum batch crafting multiplier is 64 now, regardless recipe output count.
+
 Optimization:
 - Dashboard sync use much less bandwidth data now.
 
