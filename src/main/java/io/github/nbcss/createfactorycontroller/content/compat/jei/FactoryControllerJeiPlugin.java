@@ -4,6 +4,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedstoneLinkScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.NetworkSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -53,6 +54,25 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(ConfigureRedstoneLinkScreen.class, new RedstoneLinkGhostHandler());
         // Drag an item/fluid from JEI straight onto an empty board gauge to set its filter (no set-item overlay).
         registration.addGhostIngredientHandler(FactoryControllerScreen.class, new FactoryControllerGhostHandler());
+        registration.addGhostIngredientHandler(NetworkSettingsScreen.class, new NetworkSettingsGhostHandler());
+    }
+
+    /** Offers the network-settings icon slot as a JEI drop target (items only — the icon is a plain item). */
+    private static class NetworkSettingsGhostHandler implements IGhostIngredientHandler<NetworkSettingsScreen> {
+        @Override
+        public <I> @NotNull List<Target<I>> getTargetsTyped(NetworkSettingsScreen screen,
+                                                            @NotNull ITypedIngredient<I> ingredient, boolean doStart) {
+            List<Target<I>> targets = new ArrayList<>();
+            Optional<ItemStack> stack = ingredient.getItemStack();
+            if (stack.isPresent() && !stack.get().isEmpty()) {
+                ItemStack icon = stack.get();
+                targets.add(dropTarget(screen.ghostSlotArea(), () -> screen.setGhostFromJei(icon)));
+            }
+            return targets;
+        }
+
+        @Override
+        public void onComplete() {}
     }
 
     /**

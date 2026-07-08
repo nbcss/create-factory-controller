@@ -101,6 +101,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final double KEY_PAN_SPEED = 160.0;
     /** Wall-clock time (ms) of the previous keyboard-pan frame; 0 until the first frame. */
     private long lastPanFrameMs = 0;
+    /** Movement (pan) keys whose press actually reached this screen, tracked via key events so a focused
+     *  text field — including JEI/EMI's search box, which consumes the key event upstream — suppresses the
+     *  pan that raw GLFW polling alone would still trigger. */
+    private final java.util.Set<Integer> heldPanKeys = new java.util.HashSet<>();
     private double viewX = 0;
     private double viewY = 0;
     private int zoomLevel = 0;
@@ -322,6 +326,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             networkSelector.setPosition(selectorX, selectorY);
 
         lastPanFrameMs = 0;   // fresh frame-delta base on (re)entry, so the first pan frame doesn't jump
+        heldPanKeys.clear();  // drop any pan keys held across a resize / sub-screen return
     }
 
     /** Help-button tooltip: a blue "Allowed components:" header, one gray-bulleted line per placeable component kind
@@ -1211,6 +1216,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 commitName();
         }
 
+        // Empty-handed click on the network selector with a real (known) network selected → configure it.
+        if (menu.getCarried().isEmpty() && networkSelector.isMouseOver(mouseX, mouseY)) {
+            UUID net = networkSelector.getSelectedNetwork();
+            if (net != null && menu.knownNetworks.contains(net)) {
+                clearSelection();
+                Minecraft.getInstance().setScreen(new NetworkSettingsScreen(this, net));
+                return true;
+            }
+        }
+
         if (isInCanvasArea(mouseX, mouseY)) {
             int x0 = leftPos + CANVAS_SIDE_PADDING;
             int y0 = topPos + CANVAS_TOP_PADDING;
@@ -1424,10 +1439,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (nameBox != null && nameBox.isFocused()) return;
         Minecraft mc = Minecraft.getInstance();
         double dx = 0, dy = 0;
-        if (isKeyHeld(mc.options.keyLeft))  dx -= 1;
-        if (isKeyHeld(mc.options.keyRight)) dx += 1;
-        if (isKeyHeld(mc.options.keyUp))    dy -= 1;   // Forward → reveal content above (view moves up)
-        if (isKeyHeld(mc.options.keyDown))  dy += 1;
+        if (panActive(mc.options.keyLeft))  dx -= 1;
+        if (panActive(mc.options.keyRight)) dx += 1;
+        if (panActive(mc.options.keyUp))    dy -= 1;   // Forward → reveal content above (view moves up)
+        if (panActive(mc.options.keyDown))  dy += 1;
         if (dx == 0 && dy == 0) return;
 
         // Seconds since the last frame, clamped so a hitch / paused frame can't fling the view.
@@ -1445,6 +1460,32 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (key.getType() != InputConstants.Type.KEYSYM || key.getValue() == InputConstants.UNKNOWN.getValue())
             return false;
         return InputConstants.isKeyDown(Minecraft.getInstance().getWindow().getWindow(), key.getValue());
+    }
+
+    /** True when {@code mapping} should drive a pan this frame: its key press reached this screen (so no text
+     *  field — ours or JEI/EMI's search — swallowed it) AND it is still physically held. A key found no longer
+     *  held is pruned, so a release event we never received (e.g. consumed by a focused overlay) can't stick. */
+    private boolean panActive(KeyMapping mapping) {
+        InputConstants.Key key = mapping.getKey();
+        if (key.getType() != InputConstants.Type.KEYSYM || key.getValue() == InputConstants.UNKNOWN.getValue())
+            return false;
+        int code = key.getValue();
+        if (!heldPanKeys.contains(code)) return false;
+        if (!isKeyHeld(mapping)) { heldPanKeys.remove(code); return false; }
+        return true;
+    }
+
+    /** Whether {@code keyCode} is bound to one of the four movement (pan) keybindings. */
+    private static boolean isPanKey(int keyCode) {
+        var o = Minecraft.getInstance().options;
+        return isBoundTo(o.keyUp, keyCode) || isBoundTo(o.keyDown, keyCode)
+            || isBoundTo(o.keyLeft, keyCode) || isBoundTo(o.keyRight, keyCode);
+    }
+
+    private static boolean isBoundTo(KeyMapping mapping, int keyCode) {
+        InputConstants.Key key = mapping.getKey();
+        return key.getType() == InputConstants.Type.KEYSYM && key.getValue() == keyCode
+            && keyCode != InputConstants.UNKNOWN.getValue();
     }
 
     /**
@@ -1584,6 +1625,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (nameBox.keyPressed(keyCode, scanCode, modifiers) || nameBox.canConsumeInput())
                 return true;
         }
+
+        // Record a movement key only once its press has reached this screen — i.e. no focused text field
+        // (ours or a JEI/EMI search box) consumed it upstream. tickKeyboardPan pans only recorded keys.
+        if (isPanKey(keyCode)) heldPanKeys.add(keyCode);
+
         VirtualComponentBehaviour hover = componentAt(hoveredPosition);
 
         if (CreateFactoryControllerClient.START_CONNECTION.matches(keyCode, scanCode) && hover != null
@@ -1663,6 +1709,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        heldPanKeys.remove(keyCode);
+        return super.keyReleased(keyCode, scanCode, modifiers);
     }
 
     @Nullable

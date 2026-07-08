@@ -17,9 +17,11 @@
 - [TODO] Production Order Status Notification
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
+- [BUG] Focus & type in JEI/EMI search bar in controller screen may move view (WASD)
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
+- [TODO] Selector Gauge
 - [TODO] Gauge Ingredient Sequence Mode
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration

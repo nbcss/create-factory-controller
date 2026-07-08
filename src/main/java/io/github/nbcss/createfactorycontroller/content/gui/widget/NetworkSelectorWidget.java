@@ -6,6 +6,7 @@ import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -48,10 +49,8 @@ public class NetworkSelectorWidget extends AbstractWidget {
 
     private static final int NEW_PLUS_COLOR = 0xFF55FF55;   // green "+"
     /** Neutral slot fill for the "no network" entry (its icon carries no per-network colour). */
-    private static final int NO_NETWORK_COLOR = 0xFF6e6e6e;
-    /** Contrast fills chosen against the icon's luminance so a tinted icon always stays legible. */
-    private static final int DARK_FILL = 0xFF3a3a3a;
-    private static final int LIGHT_FILL = 0xFFe8dfd3;
+    private static final int NO_NETWORK_COLOR = 0xFF6E6E6E;
+    private static final int ICON_NETWORK_BACKGROUND = 0xAAAAAAAA;
 
     private static ResourceLocation sprite(String name) {
         return ResourceLocation.fromNamespaceAndPath("createfactorycontroller",
@@ -113,26 +112,6 @@ public class NetworkSelectorWidget extends AbstractWidget {
     @Nullable
     private static UUID freqOf(ItemStack stack) {
         return LogisticallyLinkedBlockItem.isTuned(stack) ? LogisticallyLinkedBlockItem.networkFromStack(stack) : null;
-    }
-
-    /** A stable RGB tint for a network: the first 6 hex digits of its UUID (a valid 0xRRGGBB value). */
-    static int networkColor(UUID network) {
-        String s = network.toString();
-        try {
-            return Integer.parseInt(s.substring(0, 6), 16);
-        } catch (NumberFormatException e) {
-            return 0xFFFFFF;
-        }
-    }
-
-    /**
-     * A high-contrast opaque (ARGB) slot fill for an icon tinted {@code rgb}: dark behind a bright icon,
-     * light behind a dark one, using perceptual (Rec. 601) luminance so any hue stays legible.
-     */
-    private static int contrastFill(int rgb) {
-        int r = (rgb >> 16) & 0xFF, g = (rgb >> 8) & 0xFF, b = rgb & 0xFF;
-        double luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
-        return luminance > 0.5 ? DARK_FILL : LIGHT_FILL;
     }
 
     /**
@@ -234,6 +213,10 @@ public class NetworkSelectorWidget extends AbstractWidget {
                     .withStyle(ChatFormatting.RED));
 
         if (heldComponent().isEmpty()) {
+            // Empty-handed over a real (known) network → the whole slot is clickable to configure it.
+            if (entries.get(state).type == Type.KNOWN)
+                lines.add(Component.translatable("createfactorycontroller.gui.action_configure")
+                        .withStyle(ChatFormatting.GRAY));
             lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_highlight_tip")
                     .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
         } else {
@@ -296,12 +279,19 @@ public class NetworkSelectorWidget extends AbstractWidget {
 
         Entry e = entries.get(selectedIndex(entries));
         Font font = Minecraft.getInstance().font;
-        int rgb = e.network != null ? networkColor(e.network) : NO_NETWORK_COLOR;
-        int fill = contrastFill(rgb);
+        NetworkSettings settings = e.network != null ? menu.networkSettings(e.network) : null;
+        int rgb = settings != null ? settings.color() : NO_NETWORK_COLOR;
+        int backgroundColor = settings != null ? settings.backgroundColor() : NetworkSettings.LIGHT_FILL;
+
+        // A known network may carry a shared custom icon item; it is drawn plain (no tint) over a neutral fill.
+        ItemStack customIcon = e.type == Type.KNOWN && settings != null ? settings.icon() : ItemStack.EMPTY;
+        boolean hasCustomIcon = !customIcon.isEmpty();
 
         RenderSystem.enableBlend();
 
-        gfx.fill(getX() + 4, getY() + 4, getX() + 22, getY() + 22, fill);
+        // A custom item icon still gets a filled slot backdrop — just a neutral one, not the network tint.
+        gfx.fill(getX() + 4, getY() + 4, getX() + 22, getY() + 22,
+                hasCustomIcon ? ICON_NETWORK_BACKGROUND : backgroundColor);
 
         RenderSystem.enableBlend();
         gfx.blitSprite(SELECTION_FRAME, getX(), getY(), frameW, frameH);
@@ -312,9 +302,13 @@ public class NetworkSelectorWidget extends AbstractWidget {
         int ix = getX() + 5;
         int iy = getY() + 5;
 
-        gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-        gfx.blitSprite(icon, ix, iy, iconW, iconH);
-        gfx.setColor(1f, 1f, 1f, 1f);
+        if (hasCustomIcon) {
+            gfx.renderItem(customIcon, ix, iy);
+        } else {
+            gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+            gfx.blitSprite(icon, ix, iy, iconW, iconH);
+            gfx.setColor(1f, 1f, 1f, 1f);
+        }
 
         // 4. Component-count label (known networks) or the green "+" (new network).
         if (e.type == Type.KNOWN)

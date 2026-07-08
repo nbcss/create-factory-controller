@@ -1,5 +1,11 @@
 ## 1.1.0
 
+Features:
+- Network can set custom name and item icon now.
+
+Optimization:
+- Dashboard sync use much less bandwidth data now.
+
 Bugfixes:
 - Fixed gauge connection flow animation won't play without made at least one request attempt.
 - Fixed gauge request timer do not get reset when redstone powered state changes.

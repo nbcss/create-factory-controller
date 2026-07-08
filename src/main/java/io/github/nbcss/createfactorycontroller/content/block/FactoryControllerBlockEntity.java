@@ -38,6 +38,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettingsStore;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -102,7 +104,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
     }
     public final Set<UUID> networks = new LinkedHashSet<>();
-    public final Map<UUID, String> networkNicknames = new HashMap<>();
 
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
@@ -368,8 +369,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     }
 
     private void pruneEmptyNetworks() {
+        // Forget networks this controller no longer uses.
         networks.removeIf(net -> !isNetworkInUse(net));
-        networkNicknames.keySet().removeIf(net -> !networks.contains(net));
     }
 
     private boolean isNetworkInUse(UUID network) {
@@ -724,12 +725,24 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         List<VirtualComponentBehaviour> comps = new ArrayList<>(components.values());
         List<Connection> conns = connectionGraph.connections();
-        List<UUID> netList = new ArrayList<>(networks);
-        List<String> nameList = new ArrayList<>(netList.size());
-        for (UUID id : netList) nameList.add(networkNicknames.getOrDefault(id, ""));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), comps, conns, netList, nameList, customName, redstonePowered);
+        NetworkSettingsStore settingsStore = NetworkSettingsStore.get(level);
+        List<NetworkSettings> netList = new ArrayList<>(networks.size());
+        for (UUID id : networks)
+            netList.add(settingsStore != null ? settingsStore.get(id) : NetworkSettings.defaultFor(id));
+        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), comps, conns, netList, customName, redstonePowered);
         for (ServerPlayer player : viewers)
             PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    /** Re-syncs every open controller that uses {@code network} — called after its shared settings change,
+     *  since one edit is visible to every controller on that network. */
+    public static void resyncNetworkViewers(net.minecraft.server.MinecraftServer server, UUID network) {
+        if (server == null) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers())
+            if (player.containerMenu instanceof FactoryControllerMenu menu
+                    && player.level().getBlockEntity(menu.controllerPos) instanceof FactoryControllerBlockEntity be
+                    && be.networks.contains(network))
+                be.sendData();
     }
 
     // ── MenuProvider ───────────────────────────────────────────────────────
@@ -768,8 +781,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         for (UUID id : networks) {
             CompoundTag entry = new CompoundTag();
             entry.putUUID("Id", id);
-            String nick = networkNicknames.get(id);
-            if (nick != null && !nick.isBlank()) entry.putString("Name", nick);
             networkList.add(entry);
         }
         tag.put("Networks", networkList);
@@ -792,13 +803,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         readConnections(tag);
 
         networks.clear();
-        networkNicknames.clear();
         ListTag networkList = tag.getList("Networks", Tag.TAG_COMPOUND);
         for (int i = 0; i < networkList.size(); i++) {
-            CompoundTag entry = networkList.getCompound(i);
-            UUID id = entry.getUUID("Id");
+            UUID id = networkList.getCompound(i).getUUID("Id");
             networks.add(id);
-            if (entry.contains("Name")) networkNicknames.put(id, entry.getString("Name"));
         }
 
         markOrderableDirty();   // republish to the registry on the next server tick (level is set by then)
@@ -862,8 +870,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         for (UUID id : networks) {
             CompoundTag entry = new CompoundTag();
             entry.putUUID("Id", id);
-            String nick = networkNicknames.get(id);
-            if (nick != null && !nick.isBlank()) entry.putString("Name", nick);
             networkList.add(entry);
         }
         tag.put("Networks", networkList);
@@ -890,13 +896,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         readConnections(tag);
 
         networks.clear();
-        networkNicknames.clear();
         ListTag networkList = tag.getList("Networks", Tag.TAG_COMPOUND);
         for (int i = 0; i < networkList.size(); i++) {
-            CompoundTag entry = networkList.getCompound(i);
-            UUID id = entry.getUUID("Id");
+            UUID id = networkList.getCompound(i).getUUID("Id");
             networks.add(id);
-            if (entry.contains("Name")) networkNicknames.put(id, entry.getString("Name"));
         }
         reinitSignalGraph();
         setChanged();

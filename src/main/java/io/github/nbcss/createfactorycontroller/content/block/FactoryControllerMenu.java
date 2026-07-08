@@ -7,6 +7,8 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettingsStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -29,8 +31,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
      *  graph instead). Populated from the synced per-component wires (see the client constructor). */
     private final ConnectionGraph connectionGraph = new ConnectionGraph();
     public final List<UUID> knownNetworks = new ArrayList<>();
-    /** Client mirror of the controller's per-network nicknames (synced); see {@link #networkName}. */
-    public final Map<UUID, String> networkNicknames = new HashMap<>();
+    /** Client mirror of every known network's shared settings (synced); one entry per {@link #knownNetworks}
+     *  entry, though its customized fields may be empty. Read via {@link #networkSettings(UUID)}, which never
+     *  returns null. */
+    public final Map<UUID, NetworkSettings> networkSettings = new HashMap<>();
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";
     public boolean controllerPowered = false;
@@ -82,10 +86,9 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
 
         int networkCount = buf.readVarInt();
         for (int i = 0; i < networkCount; i++) {
-            UUID id = new UUID(buf.readLong(), buf.readLong());
-            knownNetworks.add(id);
-            String nick = buf.readUtf();
-            if (!nick.isBlank()) networkNicknames.put(id, nick);
+            NetworkSettings settings = NetworkSettings.STREAM_CODEC.decode(buf);
+            knownNetworks.add(settings.network());
+            networkSettings.put(settings.network(), settings);
         }
 
         this.controllerName = buf.readUtf();
@@ -240,11 +243,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         buf.writeVarInt(connections.size());
         for (Connection conn : connections) conn.writeClient(buf);
 
+        NetworkSettingsStore settingsStore = NetworkSettingsStore.get(be.getLevel());
         buf.writeVarInt(be.networks.size());
         for (UUID id : be.networks) {
-            buf.writeLong(id.getMostSignificantBits());
-            buf.writeLong(id.getLeastSignificantBits());
-            buf.writeUtf(be.networkNicknames.getOrDefault(id, ""));
+            NetworkSettings settings = settingsStore != null ? settingsStore.get(id) : NetworkSettings.defaultFor(id);
+            NetworkSettings.STREAM_CODEC.encode(buf, settings);
         }
 
         buf.writeUtf(be.customName);
@@ -262,12 +265,20 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
             : Component.literal(controllerName);
     }
 
-    /** Display name for a network: its nickname, or a default "Network #XXXX" from the last 4 UUID chars. */
+    /** The shared settings for a network — never null; a network with no synced entry yields
+     *  {@link NetworkSettings#defaultFor}. */
+    public NetworkSettings networkSettings(UUID network) {
+        return networkSettings.getOrDefault(network, NetworkSettings.defaultFor(network));
+    }
+
+    /** Display name for a network: its custom name, or a default "Network #XXXX". */
     public Component networkName(UUID network) {
-        String nick = networkNicknames.get(network);
-        if (nick != null && !nick.isBlank()) return Component.literal(nick);
-        String s = network.toString();
-        return Component.translatable("createfactorycontroller.network.default", s.substring(0, 6).toUpperCase());
+        return networkSettings(network).displayName();
+    }
+
+    /** Custom icon item for a network, or {@link ItemStack#EMPTY} when unset (⇒ draw the default network icon). */
+    public ItemStack networkIcon(UUID network) {
+        return networkSettings(network).icon();
     }
 
 }

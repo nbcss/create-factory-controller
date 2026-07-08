@@ -6,9 +6,11 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -17,7 +19,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Server → client: full gauge + network snapshot so the open screen stays live.
@@ -26,8 +27,7 @@ import java.util.UUID;
 public record SyncPanelStatePacket(BlockPos pos,
                                    List<VirtualComponentBehaviour> components,
                                    List<Connection> connections,
-                                   List<UUID> networks,
-                                   List<String> networkNames,
+                                   List<NetworkSettings> networks,
                                    String controllerName,
                                    boolean controllerPowered)
         implements CustomPacketPayload {
@@ -73,41 +73,8 @@ public record SyncPanelStatePacket(BlockPos pos,
             }
         };
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<UUID>> UUID_LIST_CODEC =
-        new StreamCodec<>() {
-            @Override
-            public @NotNull List<UUID> decode(RegistryFriendlyByteBuf buf) {
-                int size = buf.readVarInt();
-                List<UUID> list = new ArrayList<>(size);
-                for (int i = 0; i < size; i++)
-                    list.add(new UUID(buf.readLong(), buf.readLong()));
-                return list;
-            }
-            @Override
-            public void encode(RegistryFriendlyByteBuf buf, List<UUID> ids) {
-                buf.writeVarInt(ids.size());
-                for (UUID id : ids) {
-                    buf.writeLong(id.getMostSignificantBits());
-                    buf.writeLong(id.getLeastSignificantBits());
-                }
-            }
-        };
-
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<String>> STRING_LIST_CODEC =
-        new StreamCodec<>() {
-            @Override
-            public @NotNull List<String> decode(RegistryFriendlyByteBuf buf) {
-                int size = buf.readVarInt();
-                List<String> list = new ArrayList<>(size);
-                for (int i = 0; i < size; i++) list.add(buf.readUtf());
-                return list;
-            }
-            @Override
-            public void encode(RegistryFriendlyByteBuf buf, List<String> names) {
-                buf.writeVarInt(names.size());
-                for (String s : names) buf.writeUtf(s);
-            }
-        };
+    private static final StreamCodec<RegistryFriendlyByteBuf, List<NetworkSettings>> NETWORK_LIST_CODEC =
+        NetworkSettings.STREAM_CODEC.apply(ByteBufCodecs.list());
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncPanelStatePacket> STREAM_CODEC =
         new StreamCodec<>() {
@@ -116,19 +83,17 @@ public record SyncPanelStatePacket(BlockPos pos,
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
                 List<VirtualComponentBehaviour> components = COMPONENT_LIST_CODEC.decode(buf);
                 List<Connection> connections = CONNECTION_LIST_CODEC.decode(buf);
-                List<UUID> networks = UUID_LIST_CODEC.decode(buf);
-                List<String> names = STRING_LIST_CODEC.decode(buf);
+                List<NetworkSettings> networks = NETWORK_LIST_CODEC.decode(buf);
                 String controllerName = buf.readUtf();
                 boolean controllerPowered = buf.readBoolean();
-                return new SyncPanelStatePacket(pos, components, connections, networks, names, controllerName, controllerPowered);
+                return new SyncPanelStatePacket(pos, components, connections, networks, controllerName, controllerPowered);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
                 BlockPos.STREAM_CODEC.encode(buf, packet.pos());
                 COMPONENT_LIST_CODEC.encode(buf, packet.components());
                 CONNECTION_LIST_CODEC.encode(buf, packet.connections());
-                UUID_LIST_CODEC.encode(buf, packet.networks());
-                STRING_LIST_CODEC.encode(buf, packet.networkNames());
+                NETWORK_LIST_CODEC.encode(buf, packet.networks());
                 buf.writeUtf(packet.controllerName());
                 buf.writeBoolean(packet.controllerPowered());
             }
@@ -151,12 +116,11 @@ public record SyncPanelStatePacket(BlockPos pos,
             for (VirtualComponentBehaviour b : packet.components()) menu.addComponent(b);
             menu.loadConnections(packet.connections());   // rebuild the client graph from the synced central edge list
             menu.knownNetworks.clear();
-            menu.knownNetworks.addAll(packet.networks());
-            menu.networkNicknames.clear();
-            List<UUID> nets = packet.networks();
-            List<String> names = packet.networkNames();
-            for (int i = 0; i < nets.size() && i < names.size(); i++)
-                if (!names.get(i).isBlank()) menu.networkNicknames.put(nets.get(i), names.get(i));
+            menu.networkSettings.clear();
+            for (NetworkSettings s : packet.networks()) {
+                menu.knownNetworks.add(s.network());
+                menu.networkSettings.put(s.network(), s);
+            }
             menu.controllerName = packet.controllerName();
             menu.controllerPowered = packet.controllerPowered();
 

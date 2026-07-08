@@ -58,6 +58,7 @@
   "createfactorycontroller.gui.network_selector_no_network_tip": "Place first tuned gauge to activate",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
+  "createfactorycontroller.gui.network_settings": "Network Settings",
   "createfactorycontroller.gui.mode_prefix": "Mode: %1$s",
   "createfactorycontroller.gui.info.monitoring": "Monitoring: %1$s",
   "createfactorycontroller.gui.info.frequency": "Freq #%1$s: %2$s",
