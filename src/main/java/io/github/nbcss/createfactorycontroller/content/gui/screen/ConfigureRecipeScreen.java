@@ -382,11 +382,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         inputTotals.set(connectionIndex, Mth.clamp(next, 1, maxTotal));
     }
 
-    /**
-     * Largest craft batch: the produced item must fit one stack, so {@code batch × yield ≤ 64}. Input slots
-     * never cap the batch — re-packaging splits a multi-craft order into one single-craft package each, so any
-     * batch is dispatchable as long as a single craft fits (enforced by {@link #craftingFitsPackage}).
-     */
     private int maxCraftBatch() {
         return Math.max(1, MAX_CRAFT_OUTPUT);
     }

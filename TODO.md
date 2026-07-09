@@ -17,7 +17,6 @@
 - [TODO] Production Order Status Notification
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
-- [BUG] Focus & type in JEI/EMI search bar in controller screen may move view (WASD)
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
