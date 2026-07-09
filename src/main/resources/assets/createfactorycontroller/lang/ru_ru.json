@@ -53,6 +53,7 @@
   "createfactorycontroller.gui.network_selector_no_network_tip": "Установите первый настроенный контроллер для активации",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Прокрутите для подсветки фабричных контроллеров",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Прокрутите, чтобы настроить",
+  "createfactorycontroller.gui.network_settings": "Network Settings",
   "createfactorycontroller.gui.mode_prefix": "Режим: %1$s",
   "createfactorycontroller.gui.info.monitoring": "Мониторинг: %1$s",
   "createfactorycontroller.gui.info.frequency": "Частота #%1$s: %2$s",
