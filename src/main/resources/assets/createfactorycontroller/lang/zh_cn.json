@@ -53,6 +53,7 @@
   "createfactorycontroller.gui.network_selector_no_network_tip": "放置首个已绑定网络的仪表以启用",
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "滚动以高亮组件",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "滚动以设定网络",
+  "createfactorycontroller.gui.network_settings": "Network Settings",
   "createfactorycontroller.gui.mode_prefix": "模式: %1$s",
   "createfactorycontroller.gui.info.monitoring": "正在监测： %1$s",
   "createfactorycontroller.gui.info.frequency": "频道 #%1$s: %2$s",
