@@ -4,10 +4,12 @@ import com.mojang.serialization.Codec;
 import com.simibubi.create.AllCreativeModeTabs;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
+import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlock;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem;
@@ -46,7 +48,6 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
-import org.jetbrains.annotations.Nullable;
 
 @Mod(CreateFactoryController.MODID)
 public class CreateFactoryController {
@@ -73,6 +74,11 @@ public class CreateFactoryController {
     /** Unobtainable, just for Stock Keeper GUI */
     public static final DeferredItem<ProductionPatternItem> PRODUCTION_PATTERN =
         ITEMS.register("production_pattern", () -> new ProductionPatternItem(new Item.Properties()));
+
+    /** Unobtainable sentinel a Custom-Arrangement order ends with — its namespaced identity is what flags the
+     *  package for positional unpacking (see {@code ArrangementUnpackingHandler}). Never pulled or shipped. */
+    public static final DeferredItem<Item> ARRANGEMENT_MARKER_ITEM =
+        ITEMS.register("arrangement_marker", () -> new Item(new Item.Properties()));
 
     // ── Data Components ──────────────────────────────────────────────────────
     public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENTS =
@@ -157,18 +163,23 @@ public class CreateFactoryController {
         ProductionOrderManager.registerEvents();
         OrderableGaugeRegistry.registerEvents();
 
+        ArrangementUnpackingHandler.register();
+
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
             modEventBus.addListener(this::registerShaders);
         }
+
+        Connection.Type.registerConnections();
     }
 
     /** Bind the controller's Display Link source to its block (the binding map is not a registry — done in setup,
      *  enqueued so it's on the main thread after all blocks/sources are registered). */
     private void commonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> DisplaySource.BY_BLOCK.add(FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get()));
+        event.enqueueWork(() ->
+            DisplaySource.BY_BLOCK.add(FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get()));
     }
 
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {

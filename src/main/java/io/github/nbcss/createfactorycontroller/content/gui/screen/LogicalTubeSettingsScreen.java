@@ -320,7 +320,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             if (hovered.canReverse(menu))
                 tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.disconnect")
+            tip.add(Component.translatable("createfactorycontroller.gui.action_disconnect")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
             return;

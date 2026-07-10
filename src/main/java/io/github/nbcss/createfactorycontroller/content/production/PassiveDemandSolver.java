@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.production;
 
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
@@ -111,6 +112,6 @@ public final class PassiveDemandSolver {
     }
 
     private static int craftBatch(VirtualGaugeBehaviour g) {
-        return g.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, g.craftBatch);
+        return g.mode == GaugeWorkMode.CRAFTING ? Math.max(1, g.craftBatch) : 1;
     }
 }

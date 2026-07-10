@@ -18,6 +18,8 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
+import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
@@ -45,6 +47,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -186,6 +189,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  on the link and don't count toward this. */
     public static final int MAX_INGREDIENTS = 9;
 
+    /** Per-ingredient millibucket cap (90 B) — one grid cell of a fluid ingredient. */
+    public static final int FLUID_INGREDIENT_CAP_MB = 90_000;
+
     // Identity
     public final UUID networkId;
     /** Stable server-side identity for promises and orderable production patterns. Not synced/exported. */
@@ -208,6 +214,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public int promisedCount = 0;
     /** Mechanical-crafting arrangement (9 slots) when crafting mode is active; empty otherwise. */
     public List<ItemStack> activeCraftingArrangement = new ArrayList<>();
+    /** Which ingredient work mode this gauge is in (regular / crafting / custom arrangement). */
+    public GaugeWorkMode mode = GaugeWorkMode.REGULAR;
+    /** CUSTOM mode: the explicit 3×3 slot layout (index = grid/box slot; {@link RecipeSlot#EMPTY} for a gap).
+     *  Empty in every other mode. */
+    public List<RecipeSlot> recipeSlots = new ArrayList<>();
 
     // Computed status (server-side, synced to client)
     public boolean satisfied = false;
@@ -312,16 +323,29 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return ValidationResult.SUCCESS;
     }
 
-    /** As a LOGISTICS sink (the consumer) the gauge caps its ingredient grid slots. (REDSTONE sink: no rule.) */
+    /** As a LOGISTICS sink (the consumer) the gauge caps its ingredient grid slots. (REDSTONE sink: no rule.)
+     *  In CUSTOM mode occupancy is the explicit cell count — the regular {@code ceil(amount / stackSize)}
+     *  projection undercounts a grid holding partial stacks or copied cells, which would admit a wire that has
+     *  no free cell to land in. */
     @Override
     public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) {
         if (filter.isEmpty())
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
                     .style(ChatFormatting.RED).component());
-        if (LogisticsConnection.TYPE.equals(type) && usedInputSlots(targetedBy(), this::filterAt) >= MAX_INGREDIENTS)
+        int used = mode == GaugeWorkMode.CUSTOM
+            ? occupiedRecipeSlots() : usedInputSlots(targetedBy(), this::filterAt);
+        if (LogisticsConnection.TYPE.equals(type) && used >= MAX_INGREDIENTS)
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.cannot_add_more_inputs")
                     .style(ChatFormatting.RED).component());
         return ValidationResult.SUCCESS;
+    }
+
+    /** Occupied cells of the CUSTOM arrangement grid. */
+    private int occupiedRecipeSlots() {
+        int used = 0;
+        for (RecipeSlot slot : recipeSlots)
+            if (!slot.isEmpty()) used++;
+        return used;
     }
 
     /**
@@ -362,6 +386,45 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             used += (amount + ss - 1) / ss;   // ceil
         }
         return used;
+    }
+
+    /**
+     * CUSTOM mode: keeps {@link #recipeSlots} consistent with the live ingredient wires — a removed wire's
+     * cells are cleared, and a newly-wired ingredient lands in the first empty cell (the same rule the recipe
+     * screen applies on open, so server dispatch and the eventual screen edit agree). No-op in other modes.
+     * Called after a wire is added to / removed from this gauge.
+     */
+    public void reconcileRecipeSlots() {
+        if (mode != GaugeWorkMode.CUSTOM) return;
+        while (recipeSlots.size() < MAX_INGREDIENTS) recipeSlots.add(RecipeSlot.EMPTY);
+        for (int i = 0; i < recipeSlots.size(); i++) {
+            RecipeSlot slot = recipeSlots.get(i);
+            if (!slot.isEmpty() && !(targetedBy().get(slot.source()) instanceof LogisticsConnection))
+                recipeSlots.set(i, RecipeSlot.EMPTY);   // its wire was removed
+        }
+        for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
+            if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
+            VirtualComponentPosition src = e.getKey();
+            if (recipeSlots.stream().anyMatch(sl -> !sl.isEmpty() && src.equals(sl.source()))) continue;
+            int empty = -1;
+            for (int i = 0; i < recipeSlots.size(); i++) if (recipeSlots.get(i).isEmpty()) { empty = i; break; }
+            if (empty < 0) break;   // grid full — validateAsSink prevents this for new wires
+            ItemStack ingredient = filterAt(src);
+            int cap = FluidCompat.isFluidFilter(ingredient) ? FLUID_INGREDIENT_CAP_MB
+                : ingredient.isEmpty() ? 64 : Math.max(1, ingredient.getMaxStackSize());
+            recipeSlots.set(empty, new RecipeSlot(src, Math.min(Math.max(1, lc.amount()), cap)));
+        }
+    }
+
+    /** Re-keys {@link #recipeSlots} sources through {@code remap} — relocation renames the wires' endpoint
+     *  positions, and a CUSTOM arrangement referencing a moved source must follow or its cells go stale. */
+    public void remapRecipeSlots(java.util.function.Function<VirtualComponentPosition, VirtualComponentPosition> remap) {
+        for (int i = 0; i < recipeSlots.size(); i++) {
+            RecipeSlot slot = recipeSlots.get(i);
+            if (slot.isEmpty()) continue;
+            VirtualComponentPosition moved = remap.apply(slot.source());
+            if (!moved.equals(slot.source())) recipeSlots.set(i, new RecipeSlot(moved, slot.count()));
+        }
     }
 
     // ── Status ───────────────────────────────────────────────────────────────
@@ -521,7 +584,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
             if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
-            int parentBatch = parent.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, parent.craftBatch);
+            int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;
             demand += conn.amount() * parentBatch;
         }
         // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
@@ -737,16 +800,30 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // A single request can carry several crafts in one package (crafter mode only); the per-craft
         // ingredient demand and the produced output are both multiplied by this batch count. Batching is
         // forced off when an ignore-data ingredient is involved (its pattern cells resolve per request).
-        boolean crafting = !activeCraftingArrangement.isEmpty();
+        boolean crafting = mode == GaugeWorkMode.CRAFTING;
+        boolean custom = mode == GaugeWorkMode.CUSTOM;
         int batch = effectiveBatch();
 
         Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
+        // CUSTOM: the exact per-slot layout (ordered, unmerged, gaps preserved) per network, with ignore-data
+        // cells resolved to concrete variants. Built first so the merged availability demand below is derived
+        // from precisely what ships.
+        Map<UUID, List<BigItemStack>> orderByNetwork = null;
         // The crafting pattern actually dispatched. For an ignore-data ingredient the stored pattern holds the
         // pure-form item, but the package must carry (and the crafter pattern must match) concrete in-stock
         // variants — so resolve those cells against live stock on every request.
         List<ItemStack> craftPattern = crafting ? new ArrayList<>(activeCraftingArrangement.size()) : null;
 
-        if (crafting) {
+        if (custom) {
+            orderByNetwork = buildOrderedSlots();
+            if (orderByNetwork == null) {   // an ignore-data cell no single stock variant can cover
+                setConnectionsSuccess(false);
+                return;
+            }
+            for (Map.Entry<UUID, List<BigItemStack>> e : orderByNetwork.entrySet())
+                for (BigItemStack b : e.getValue())
+                    if (!b.stack.isEmpty() && b.count > 0) addDemand(demandByNetwork, e.getKey(), b.stack, b.count);
+        } else if (crafting) {
             Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools = new HashMap<>();
             for (ItemStack cell : activeCraftingArrangement) {
                 if (cell.isEmpty()) { craftPattern.add(ItemStack.EMPTY); continue; }
@@ -817,29 +894,32 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
         List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
+            UUID net = netEntry.getKey();
+            // In CUSTOM mode use the ordered per-slot list (with gap placeholders); otherwise the merged demand.
+            List<BigItemStack> netItems = custom ? orderByNetwork.getOrDefault(net, netEntry.getValue()) : netEntry.getValue();
             // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order (its items +
             // fluids), so Repackaged's Package Shelf groups the resulting fragments under a single orderId.
-            List<BigItemStack> externalFluids = netEntry.getValue().stream()
-                .filter(b -> !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
+            List<BigItemStack> externalFluids = netItems.stream()
+                .filter(b -> !b.stack.isEmpty() && !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
             if (!externalFluids.isEmpty()) {
-                List<BigItemStack> items = netEntry.getValue().stream()
-                    .filter(b -> FluidCompat.usesCreateItemLogistics(b.stack)).toList();
+                List<BigItemStack> items = netItems.stream()
+                    .filter(b -> b.stack.isEmpty() || FluidCompat.usesCreateItemLogistics(b.stack)).toList();
                 PackageOrderWithCrafts itemOrder = new PackageOrderWithCrafts(new PackageOrder(items), crafts);
-                if (!FluidCompat.broadcastRepackagedRecipe(netEntry.getKey(), itemOrder, externalFluids, recipeAddress)) {
+                if (!FluidCompat.broadcastRepackagedRecipe(net, itemOrder, externalFluids, recipeAddress)) {
                     setConnectionsSuccess(false);
                     return;
                 }
                 continue;
             }
             // A virtual fluid tank ingredient (CFL/CreateFluid) must be dispatched via broadcastPackageRequest — see below.
-            if (netEntry.getValue().stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
-                fluidNetworks.add(netEntry);
+            if (netItems.stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
+                fluidNetworks.add(new java.util.AbstractMap.SimpleEntry<>(net, netItems));
                 continue;
             }
             PackageOrderWithCrafts order =
-                new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);
+                new PackageOrderWithCrafts(new PackageOrder(netItems), crafts);
             Multimap<PackagerBlockEntity, PackagingRequest> found =
-                LogisticsManager.findPackagersForRequest(netEntry.getKey(), order, null, recipeAddress);
+                LogisticsManager.findPackagersForRequest(net, order, null, recipeAddress);
             if (found.isEmpty()) return;     // no packager could serve this network
             for (PackagerBlockEntity packager : found.keySet())
                 if (packager.isTooBusyFor(RequestType.RESTOCK)) return;
@@ -890,7 +970,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  ignore-data ingredient disables batching. Same value {@link #tickRequests} uses, so a request's real per-craft
      *  ingredient demand is {@code connection amount × effectiveBatch()}. */
     public int effectiveBatch() {
-        return activeCraftingArrangement.isEmpty() || craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
+        return mode != GaugeWorkMode.CRAFTING || craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
     }
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
@@ -918,6 +998,58 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (BigItemStack b : pool)
             if (b.count >= amount) { b.count -= amount; return b.stack; }
         return ItemStack.EMPTY;
+    }
+
+    /** CUSTOM mode: builds, per source network, the ordered per-slot ingredient list — this network's slots at
+     *  their grid position, every other cell (empty or another network) a gap placeholder, trailing gaps
+     *  trimmed, and the {@linkplain ArrangementUnpackingHandler#marker() arrangement marker} appended last (it
+     *  flags the order for positional unpacking; being zero-count and last, it never pulls stock or shifts
+     *  slot indices). An ignore-data cell is resolved to ONE concrete in-stock variant covering its whole count
+     *  (a package slot is a single stack — mixing variants would split the cell and break the positional
+     *  pattern); a source's cells share one pool, so their combined take stays within each variant's stock.
+     *  Returns {@code null} when a cell can't be covered by any single variant. */
+    @Nullable
+    private Map<UUID, List<BigItemStack>> buildOrderedSlots() {
+        Map<UUID, List<BigItemStack>> byNet = new LinkedHashMap<>();
+        Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools = new HashMap<>();
+        for (RecipeSlot slot : recipeSlots) {
+            VirtualGaugeBehaviour src = sourceGauge(slot);
+            if (src != null && !src.filter.isEmpty()) byNet.computeIfAbsent(src.networkId, k -> new ArrayList<>());
+        }
+        for (UUID net : byNet.keySet()) {
+            List<BigItemStack> ordered = new ArrayList<>();
+            int lastFilled = 0;
+            for (RecipeSlot slot : recipeSlots) {
+                VirtualGaugeBehaviour src = sourceGauge(slot);
+                if (src != null && net.equals(src.networkId) && !src.filter.isEmpty()) {
+                    // 1 grid cell ↔ 1 package slot: item counts stay within one stack (fluids carry mB freely).
+                    boolean fluid = FluidCompat.isFluidFilter(src.filter);
+                    int cnt = Math.clamp(slot.count(), 1, fluid ? Integer.MAX_VALUE : Math.max(1, src.filter.getMaxStackSize()));
+                    ItemStack shipped = src.filter;
+                    if (src.ignoreData && !fluid) {
+                        shipped = takeVariant(variantPools.computeIfAbsent(src, this::variantPool), cnt);
+                        if (shipped.isEmpty()) return null;   // no single variant has enough for this cell
+                    }
+                    ordered.add(new BigItemStack(shipped.copyWithCount(1), cnt));
+                    lastFilled = ordered.size();
+                } else {
+                    ordered.add(new BigItemStack(ItemStack.EMPTY, 0));   // gap (empty cell or another network)
+                }
+            }
+            List<BigItemStack> order = new ArrayList<>(ordered.subList(0, lastFilled));
+            order.add(ArrangementUnpackingHandler.marker());
+            byNet.put(net, order);
+        }
+        return byNet;
+    }
+
+    /** The source gauge a {@link RecipeSlot} draws from, or {@code null} when the slot is empty or its wire no
+     *  longer exists — a stale slot (wire removed since the layout was saved) must not ship, or the order would
+     *  carry items the merged availability check never covered. */
+    private VirtualGaugeBehaviour sourceGauge(RecipeSlot slot) {
+        if (slot.isEmpty() || controller == null) return null;
+        if (!(targetedBy().get(slot.source()) instanceof LogisticsConnection)) return null;
+        return controller.components.get(slot.source()) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
     /** Adds {@code count} of {@code stack} to a network's demand list, merging into an existing exact-component
@@ -966,8 +1098,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         buf.writeVarInt(promiseClearingInterval + 1);   // -1..31 → 0..32 (non-negative for varint)
         buf.writeVarInt(promiseLimit);
         buf.writeBoolean(promiseLimitByAddress);
+        SyncCodecs.writeEnum(buf, mode);
         buf.writeVarInt(activeCraftingArrangement.size());
         for (ItemStack s : activeCraftingArrangement) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, s);
+        buf.writeVarInt(recipeSlots.size());
+        for (RecipeSlot slot : recipeSlots) slot.write(buf);
         // ── runtime ──
         buf.writeVarInt(count);
         buf.writeBoolean(satisfied);
@@ -993,9 +1128,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         promiseClearingInterval = buf.readVarInt() - 1;
         promiseLimit = buf.readVarInt();
         promiseLimitByAddress = buf.readBoolean();
+        mode = SyncCodecs.readEnum(buf, GaugeWorkMode.values());
         int n = buf.readVarInt();
         activeCraftingArrangement = new ArrayList<>(n);
         for (int i = 0; i < n; i++) activeCraftingArrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+        int slotCount = buf.readVarInt();
+        recipeSlots = new ArrayList<>(slotCount);
+        for (int i = 0; i < slotCount; i++) recipeSlots.add(RecipeSlot.read(buf));
         count = buf.readVarInt();
         satisfied = buf.readBoolean();
         promisedSatisfied = buf.readBoolean();
@@ -1027,7 +1166,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
         tag.putInt("PromiseLimit", promiseLimit);
         tag.putBoolean("PromiseLimitByAddress", promiseLimitByAddress);
+        tag.putString("Mode", mode.name());
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
+        ListTag slotList = new ListTag();
+        for (RecipeSlot slot : recipeSlots) slotList.add(slot.toNBT());
+        tag.put("RecipeSlots", slotList);
 
         if (profile.includesRuntime()) {
             tag.putBoolean("Satisfied", satisfied);
@@ -1093,6 +1236,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         promisedCount = tag.getInt("Promised");
         lastRequestTick = tag.getLong("LastRequestTick");
         activeCraftingArrangement = readStacks(tag.getList("CraftingArrangement", Tag.TAG_COMPOUND), registries);
+        // Old saves have no Mode tag: derive it from the arrangement (crafting iff non-empty).
+        mode = tag.contains("Mode") ? GaugeWorkMode.fromName(tag.getString("Mode"))
+            : activeCraftingArrangement.isEmpty() ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
+        recipeSlots = new ArrayList<>();
+        ListTag slotList = tag.getList("RecipeSlots", Tag.TAG_COMPOUND);
+        for (int i = 0; i < slotList.size(); i++) recipeSlots.add(RecipeSlot.fromNBT(slotList.getCompound(i)));
 
         satisfied = tag.getBoolean("Satisfied");
         promisedSatisfied = tag.getBoolean("PromisedSatisfied");

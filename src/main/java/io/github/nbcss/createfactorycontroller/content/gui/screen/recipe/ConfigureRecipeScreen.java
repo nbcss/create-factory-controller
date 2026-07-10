@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui.screen;
+package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
@@ -21,14 +21,19 @@ import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugePromiseInfoClient;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
@@ -77,7 +82,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int PANEL_W = 200, PANEL_H = 184;
 
     /** The input arrangement is a 3×3 grid, so at most 9 slots (incl. repeats) can be shown. */
-    private static final int MAX_INPUT_SLOTS = 9;
+    static final int MAX_INPUT_SLOTS = VirtualGaugeBehaviour.MAX_INGREDIENTS;
     /** A request's produced output must fit one stack; batch is capped so {@code batch × yield ≤ 64}. */
     private static final int MAX_CRAFT_OUTPUT = 64;
     private static final int THRESH_TOP = 128;
@@ -94,10 +99,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
 
-    private int panelX, panelY;
+    int panelX, panelY;
+
+    /** Whether {@code (mx, my)} lies within this screen's panel — used by {@link CustomArrangementEditor} to
+     *  treat a drag released past the panel's edge as "drop the item" (same as shift-click removal). */
+    boolean inPanelBounds(double mx, double my) {
+        return mx >= panelX && mx < panelX + PANEL_W && my >= panelY && my < panelY + PANEL_H;
+    }
 
     // Editable / derived state.
-    private int outputCount = 1;
+    int outputCount = 1;
     /** Crafts per request in crafting mode (≥1). The output slot shows outputCount × craftBatch. */
     private int craftBatch = 1;
     /** Square crafter-grid size (N→N×N) a recipe is laid out for; defaults to its minimum (max of recipe
@@ -111,19 +122,34 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private RequestMode requestMode = RequestMode.NORMAL;
     /** True when the gauge's filter is a fluid filter: the threshold/output amounts are then
      *  millibuckets, shown/edited in mB/B with fluid scroll steps. Set once per open in {@link #updateConfigs}. */
-    private boolean fluidMode = false;
+    boolean fluidMode = false;
     // One entry per input CONNECTION (not per grid slot): the source gauge and its TOTAL item count.
     // The 3×3 grid layout — full stacks first, one partial last slot, contiguous per connection, packed
     // in connection order — is derived on demand from these via layoutInputSlots().
-    private final List<VirtualComponentPosition> inputConnections = new ArrayList<>();
-    private final List<Integer> inputTotals = new ArrayList<>();
-    private final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search (per connection)
+    final List<VirtualComponentPosition> inputConnections = new ArrayList<>();
+    final List<Integer> inputTotals = new ArrayList<>();
+    final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search (per connection)
 
     @Nullable private CraftingRecipe availableCraftingRecipe;
-    private boolean craftingActive;
-    private List<BigItemStack> craftingIngredients = new ArrayList<>();
+    /** The active work mode (regular / crafting / custom); mirrors the gauge's, edited locally until sent. */
+    GaugeWorkMode workMode = GaugeWorkMode.REGULAR;
+    /** CUSTOM mode: the local 9-slot layout being edited (index = grid slot); {@link RecipeSlot#EMPTY} for a gap. */
+    List<RecipeSlot> customSlots = new ArrayList<>();
+
+    // Per-mode behaviour of the ingredient grid + output; the screen delegates to the active one.
+    private final RegularEditor regularEditor = new RegularEditor(this);
+    private final CraftingEditor craftingEditor = new CraftingEditor(this);
+    private final CustomArrangementEditor customEditor = new CustomArrangementEditor(this);
+    private GaugeWorkModeEditor editor() {
+        return switch (workMode) {
+            case CRAFTING -> craftingEditor;
+            case CUSTOM -> customEditor;
+            default -> regularEditor;
+        };
+    }
+    List<BigItemStack> craftingIngredients = new ArrayList<>();
     /** Set in renderBg when Ctrl is held over a crafting ingredient, so renderForeground draws the N×M layout. */
-    private boolean patternHovered;
+    boolean patternHovered;
 
     private AddressEditBox addressBox;
     private ScrollInput promiseExpiration;
@@ -138,6 +164,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private IconButton newInputButton;
     private IconButton relocateButton;
     @Nullable private IconButton craftingButton;
+    private IconButton customButton;
     @Nullable private IconButton disconnectLinkButton;
     /** Cycles the gauge's {@link RequestMode}; its icon reflects the current mode. */
     @Nullable private IconButton requestModeButton;
@@ -221,20 +248,41 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
-        // Mechanical-crafting toggle — only when the inputs+output match a crafting recipe.
+        // Mechanical-crafting toggle — only when the inputs+output match a crafting recipe. When shown it sits
+        // to the LEFT of the always-present Custom Arrangement button.
         craftingButton = null;
         if (availableCraftingRecipe != null) {
-            craftingButton = new IconButton(panelX + 31, panelY + 27, AllIcons.I_3x3);
-            craftingButton.green = craftingActive;   // glows green while crafting mode is on (like Create)
+            craftingButton = new IconButton(panelX + 11, panelY + 27, AllIcons.I_3x3);
+            craftingButton.green = workMode == GaugeWorkMode.CRAFTING;   // glows green while crafting mode is on
             craftingButton.withCallback(() -> {
                 if (availableCraftingRecipe == null) return;   // recipe vanished (e.g. input removed)
-                craftingActive = !craftingActive;
-                if (craftingActive) applyCraftingResolution();   // build the square arrangement + clamps
+                workMode = workMode == GaugeWorkMode.CRAFTING ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
+                if (workMode == GaugeWorkMode.CRAFTING) applyCraftingResolution();   // build the square arrangement + clamps
                 rebuildWidgets();   // clears + re-runs init() (direct init() would duplicate widgets)
             });
             // No self-tooltip: drawn last in renderForeground (craftingButtonTooltip) so neighbours can't cover it.
             addWidget(craftingButton);
         }
+
+        // Custom Arrangement toggle — always shown, in the crafting button's usual spot. Icon is drawn
+        // procedurally (a checkerboard 3×3) so it's independent of Create's icon atlas.
+        customButton = new IconButton(panelX + 31, panelY + 27, (gfx, x, y) -> gfx.blitSprite(
+                ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/custom_arrangement"),
+                x, y, 16, 16));
+        customButton.green = workMode == GaugeWorkMode.CUSTOM;
+        customButton.withCallback(() -> {
+            if (workMode == GaugeWorkMode.CUSTOM) {
+                workMode = GaugeWorkMode.REGULAR;
+            } else {
+                enterCustomMode();   // seed the 9-slot layout from the current derived grid
+                workMode = GaugeWorkMode.CUSTOM;
+            }
+            rebuildWidgets();
+        });
+        customButton.setToolTip(Component.translatable("createfactorycontroller.gui.custom_arrangement"));
+        customButton.getToolTip().add(Component.translatable("createfactorycontroller.gui.custom_arrangement.tip")
+            .withStyle(ChatFormatting.GRAY));
+        addWidget(customButton);
 
         // Request-mode cycle button — right of the unit box. Its icon reflects the current mode (not coloured).
         requestModeButton = new IconButton(panelX + REQUEST_MODE_BTN_X, panelY + THRESH_TOP - 1, iconFor(requestMode));
@@ -295,23 +343,23 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.componentAt(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
-    private ItemStack ingredientOf(VirtualComponentPosition pos) {
+    ItemStack ingredientOf(VirtualComponentPosition pos) {
         return menu.componentAt(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
     /** Whether input connection {@code c}'s ingredient is a fluid — its amount is then in
      *  millibuckets, occupies a single slot (no stack split), and scrolls with fluid steps. */
-    private boolean isFluidConn(int c) {
+    boolean isFluidConn(int c) {
         return FluidCompat.isFluidFilter(ingredientOf(inputConnections.get(c)));
     }
 
-    /** Per-ingredient millibucket cap (90 B) */
-    private static final int FLUID_INGREDIENT_CAP_MB = 90_000;
+    /** Per-ingredient millibucket cap (90 B) — one grid cell of a fluid ingredient. */
+    static final int FLUID_INGREDIENT_CAP_MB = VirtualGaugeBehaviour.FLUID_INGREDIENT_CAP_MB;
 
     /** A grid slot's source: which input connection it belongs to, and how many items sit in it. */
-    private record InputSlot(int connectionIndex, int amount) {}
+    record InputSlot(int connectionIndex, int amount) {}
 
-    private static int stackSizeOf(ItemStack stack) {
+    static int stackSizeOf(ItemStack stack) {
         return stack.isEmpty() ? 1 : Math.max(1, stack.getMaxStackSize());
     }
 
@@ -320,8 +368,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * partial last slot (so no slot exceeds the item's stack size), its slots contiguous, connections packed
      * in order — capped at {@link #MAX_INPUT_SLOTS}. Recomputed wherever the grid is drawn or hit-tested.
      */
-    //FIXME check
-    private List<InputSlot> layoutInputSlots() {
+    List<InputSlot> layoutInputSlots() {
         List<InputSlot> slots = new ArrayList<>();
         for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
             int total = Math.max(1, inputTotals.get(c));
@@ -354,12 +401,24 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return used;
     }
 
+    /** Disconnects the ingredient connection at {@code connectionIndex} (drops its slots, tells the server,
+     *  re-evaluates the crafting recipe). Called by {@link RegularEditor} on a slot click. */
+    void disconnectInput(int connectionIndex) {
+        VirtualComponentPosition from = inputConnections.get(connectionIndex);
+        inputConnections.remove(connectionIndex);
+        inputTotals.remove(connectionIndex);
+        inputConfig.remove(connectionIndex);
+        PacketDistributor.sendToServer(new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
+        onConnectionsChanged();
+        playClickSound();
+    }
+
     /**
      * Scrolls a connection's total (shared by all its slots): plain ±1 item, shift ±10 (snapping to the
      * next stack-size boundary when it would otherwise cross one from a non-boundary start), ctrl ±1 full
      * stack. Clamped to ≥1 and to the item count that still fits the free grid slots.
      */
-    private void adjustInputTotal(int connectionIndex, int dir, boolean shift, boolean ctrl) {
+    void adjustInputTotal(int connectionIndex, int dir, boolean shift, boolean ctrl) {
         if (isFluidConn(connectionIndex)) {              // fluid ingredient: millibuckets, fluid steps, one slot
             int curMb = Math.max(1, inputTotals.get(connectionIndex));
             inputTotals.set(connectionIndex, adjustFluidAmount(curMb, dir, shift, ctrl, 1, FLUID_INGREDIENT_CAP_MB));
@@ -387,18 +446,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** Max stack size of the produced item (64 when no filter yet). */
-    private int outputStackSize() {
+    int outputStackSize() {
         VirtualGaugeBehaviour g = gauge();
         return g == null || g.filter.isEmpty() ? 64 : Math.max(1, g.filter.getMaxStackSize());
     }
 
     /** Largest free (non-crafting) item output count: at least 64, or 9 full stacks of the produced item — so a
      *  stack-of-64 item allows up to 576, a stack-of-1 item stays at 64. */
-    private int maxItemOutput() {
+    int maxItemOutput() {
         return Math.max(64, 9 * outputStackSize());
     }
 
-    private static MutableComponent stackBreakdown(int count, int ss) {
+    static MutableComponent stackBreakdown(int count, int ss) {
         int stacks = count / ss, overflow = count % ss;
         return Component.literal(" | " + stacks + "▤" + (overflow > 0 ? " +" + overflow : ""))
                 .withStyle(ChatFormatting.DARK_GRAY);
@@ -406,13 +465,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Ctrl-scroll snap: move {@code cur} to the next full-stack multiple of {@code ss} in direction {@code dir} —
      *  up rounds to the next higher multiple, down to the next lower. */
-    private static int snapToStack(int cur, int dir, int ss) {
+    static int snapToStack(int cur, int dir, int ss) {
         return dir > 0 ? (cur / ss + 1) * ss : (cur - 1) / ss * ss;
     }
 
     /** Shift-scroll step: {@code cur ± 10}, but snapped to the stack boundary it would cross when {@code cur} isn't
      *  already on one (so shift-scrolling lands cleanly on stack multiples). */
-    private static int shiftStep(int cur, int dir, int ss) {
+    static int shiftStep(int cur, int dir, int ss) {
         int next = cur + dir * 10;
         if (cur % ss != 0) {
             int boundary = dir > 0 ? (cur / ss + 1) * ss : (cur / ss) * ss;
@@ -422,12 +481,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** Crafts per request actually used: forced to 1 when an ignore-data ingredient disables batching. */
-    private int effectiveBatch() {
+    int effectiveBatch() {
         return craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
     }
 
     /** Crafting mode: change crafts-per-request, capped so the produced output stays within one stack. */
-    private void adjustCraftBatch(int delta) {
+    void adjustCraftBatch(int delta) {
         int next = Mth.clamp(craftBatch + delta, 1, maxCraftBatch());
         if (next != craftBatch) {
             craftBatch = next;
@@ -439,7 +498,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * Ctrl-scroll over the recipe's ingredients: resize the square crafter grid, between the recipe's minimum
      * bounding square and the configured maximum ({@link ServerConfig#maxCraftGridSize()}).
      */
-    private void adjustCraftDimension(int dir) {
+    void adjustCraftDimension(int dir) {
         int minDim = minCraftDim();
         int next = Mth.clamp(effectiveCraftDimension() + dir, minDim, maxCraftDim(minDim));
         if (next != craftDimension) {
@@ -456,7 +515,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** One drawn cell of the aggregated crafting view: an ingredient and how many sit in this grid slot. */
-    private record CraftSlot(ItemStack stack, int amount) {}
+    record CraftSlot(ItemStack stack, int amount) {}
 
     /**
      * Collapses the recipe arrangement into its distinct ingredient types (first-appearance order) and the
@@ -481,7 +540,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * slot, so a count above the item's stack size simply shows as a large number in the one slot. Display
      * only — the dispatched package still carries the real N×M arrangement.
      */
-    private List<CraftSlot> craftingDisplaySlots() {
+    List<CraftSlot> craftingDisplaySlots() {
         List<ItemStack> types = new ArrayList<>();
         List<Integer> cells = new ArrayList<>();
         craftingTypeAggregate(types, cells);
@@ -505,7 +564,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** True when the recipe is larger than 3×3 (shaped width or height &gt; 3) — the aggregated/Ctrl path. */
-    private boolean craftingIsLarge() {
+    boolean craftingIsLarge() {
         return availableCraftingRecipe instanceof ShapedRecipe s && (s.getWidth() > 3 || s.getHeight() > 3);
     }
 
@@ -518,7 +577,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** The square grid size a recipe lays out into: the stored value, floored at its minimum bounding square
      *  and capped at the configured maximum. Valid even before crafting is toggled on (defaults to min). */
-    private int effectiveCraftDimension() {
+    int effectiveCraftDimension() {
         int minDim = minCraftDim();
         if (craftingUsesIgnoreData()) return minDim;   // grid resizing is disabled with an ignore-data ingredient
         return Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
@@ -526,7 +585,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Inserts a gold "Ignore Data" line directly below the header line of a slot tooltip when the relevant
      *  gauge ignores item data (reuses Create's filter lang key — no new key needed). */
-    private static List<Component> withIgnoreDataLine(List<Component> base, boolean ignoreData) {
+    static List<Component> withIgnoreDataLine(List<Component> base, boolean ignoreData) {
         if (!ignoreData) return base;
         List<Component> out = new ArrayList<>(base);
         out.add(1, CreateLang.translate("gui.filter.ignore_data").style(ChatFormatting.GOLD).component());
@@ -573,9 +632,45 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             inputConfig.add(new BigItemStack(ingredientOf(conn.from), total));
         }
 
-        craftingActive = !g.activeCraftingArrangement.isEmpty();
+        workMode = g.mode;
+        customSlots = new ArrayList<>(java.util.Collections.nCopies(MAX_INPUT_SLOTS, RecipeSlot.EMPTY));
+        if (g.mode == GaugeWorkMode.CUSTOM) {
+            for (int i = 0; i < g.recipeSlots.size() && i < MAX_INPUT_SLOTS; i++)
+                customSlots.set(i, g.recipeSlots.get(i));
+            reconcileCustomSlots();   // pick up wires added/removed since the layout was last saved
+        }
         searchForCraftingRecipe();
         applyCraftingResolution();
+    }
+
+    /** Seeds {@link #customSlots} from the current REGULAR-derived grid when entering CUSTOM mode. */
+    private void enterCustomMode() {
+        customEditor.resetDrag();   // a drag begun in a previous CUSTOM stint must not survive re-entry
+        customSlots = new ArrayList<>(java.util.Collections.nCopies(MAX_INPUT_SLOTS, RecipeSlot.EMPTY));
+        List<InputSlot> slots = layoutInputSlots();
+        for (int i = 0; i < slots.size() && i < MAX_INPUT_SLOTS; i++)
+            customSlots.set(i, new RecipeSlot(inputConnections.get(slots.get(i).connectionIndex()), slots.get(i).amount()));
+    }
+
+    /** Reconciles {@link #customSlots} with the live ingredient connections: drops slots whose wire is gone,
+     *  and drops each newly-added wire into the first free slot (respecting the 9-slot grid cap). */
+    void reconcileCustomSlots() {
+        while (customSlots.size() < MAX_INPUT_SLOTS) customSlots.add(RecipeSlot.EMPTY);
+        for (int i = 0; i < customSlots.size(); i++) {
+            RecipeSlot slot = customSlots.get(i);
+            if (!slot.isEmpty() && !inputConnections.contains(slot.source()))
+                customSlots.set(i, RecipeSlot.EMPTY);   // its wire was removed
+        }
+        for (int c = 0; c < inputConnections.size(); c++) {
+            VirtualComponentPosition src = inputConnections.get(c);
+            if (customSlots.stream().anyMatch(sl -> !sl.isEmpty() && src.equals(sl.source()))) continue;
+            int empty = -1;
+            for (int i = 0; i < customSlots.size(); i++) if (customSlots.get(i).isEmpty()) { empty = i; break; }
+            if (empty < 0) break;   // grid full — the extra wire stays unplaced
+            // One cell holds at most a stack of the item; a fluid ingredient's cell carries mB up to the cap.
+            int cap = isFluidConn(c) ? FLUID_INGREDIENT_CAP_MB : Math.max(1, stackSizeOf(ingredientOf(src)));
+            customSlots.set(empty, new RecipeSlot(src, Math.clamp(inputTotals.get(c), 1, cap)));
+        }
     }
 
     /**
@@ -587,17 +682,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      */
     private void applyCraftingResolution() {
         if (availableCraftingRecipe == null) {
-            craftingActive = false;
+            if (workMode == GaugeWorkMode.CRAFTING) workMode = GaugeWorkMode.REGULAR;   // don't clobber CUSTOM
             craftingIngredients = new ArrayList<>();
             craftDimension = 0;
             return;
         }
-        if (!craftingActive) return;
+        if (workMode != GaugeWorkMode.CRAFTING) return;
         lockOutputToRecipe();
         craftDimension = effectiveCraftDimension();   // 0 (unset) → minDim; forced to minDim with ignore-data
         craftingIngredients = buildSquareArrangement(craftDimension);
         if (!craftingFitsPackage()) {
-            craftingActive = false;
+            workMode = GaugeWorkMode.REGULAR;
             availableCraftingRecipe = null;   // hides the crafting toggle; falls back to plain ingredient request
             craftingIngredients = new ArrayList<>();
             craftDimension = 0;
@@ -683,7 +778,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** Whether any wired ingredient ignores item data — disables crafting batch & crafter-grid resizing. */
-    private boolean craftingUsesIgnoreData() {
+    boolean craftingUsesIgnoreData() {
         for (VirtualComponentPosition pos : inputConnections)
             if (menu.componentAt(pos) instanceof VirtualGaugeBehaviour s && s.ignoreData) return true;
         return false;
@@ -747,6 +842,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
         if (patternHovered) renderCraftingPattern(gfx, mouseX, mouseY);   // Ctrl-held layout, drawn on top
+        editor().renderOverlay(gfx, mouseX, mouseY);   // drag preview (custom mode), above all grid items/font
         renderTooltip(gfx, mouseX, mouseY);
     }
 
@@ -754,7 +850,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (availableCraftingRecipe instanceof ShapedRecipe shaped)
             return Math.max(1, shaped.getWidth());
         if (availableCraftingRecipe == null) return 1;
-        return Math.min(3, Math.max(1, availableCraftingRecipe.getIngredients().size()));
+        return Math.clamp(availableCraftingRecipe.getIngredients().size(), 1, 3);
     }
 
     private int craftingPatternHeight() {
@@ -818,133 +914,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         VirtualGaugeBehaviour g = gauge();
         List<Component> tooltip = null;
 
-        // INPUTS — a ≤3×3 recipe fits the grid, so each arrangement cell maps to one input slot (legacy view).
-        // A >3×3 recipe can't, so we aggregate to one slot per distinct ingredient type (count = cells × batch,
-        // no slot overflow) and offer the real N×M layout in a Ctrl-held tooltip (drawn in render()).
-        patternHovered = false;
-        if (craftingActive && craftingIsLarge()) {
-            List<CraftSlot> slots = craftingDisplaySlots();
-            boolean hovering = false;
-            // Walk all 9 grid cells (not just the filled ones) so the tooltip covers every slot, empty too.
-            for (int i = 0; i < MAX_INPUT_SLOTS; i++) {
-                int ix = panelX + 68 + (i % 3) * 20;
-                int iy = panelY + 28 + (i / 3) * 20;
-                if (i < slots.size()) {
-                    CraftSlot slot = slots.get(i);
-                    gfx.renderItem(slot.stack(), ix, iy);
-                    drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount()));
-                }
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
-            }
-            if (hovering) {
-                if (hasControlDown())
-                    patternHovered = true;   // draw the N×M layout grid in render()
-                else {
-                    int dim = effectiveCraftDimension();
-                    tooltip = List.of(
-                        CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                        Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
-                }
-            }
-        } else if (craftingActive) {
-            // ≤3×3: render the recipe's own cells straight into the grid, like Create's factory panel. The
-            // arrangement is a dim×dim square, so we read its top-left 3×3 — the recipe keeps its pattern
-            // position here even when the dimension is scrolled up to a larger crafter grid.
-            int dim = effectiveCraftDimension();
-            boolean hovering = false;
-            for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
-                int ix = panelX + 68 + col * 20;
-                int iy = panelY + 28 + row * 20;
-                int idx = row * dim + col;
-                ItemStack stack = (col < dim && row < dim && idx < craftingIngredients.size())
-                    ? craftingIngredients.get(idx).stack : ItemStack.EMPTY;
-                gfx.renderItem(stack, ix, iy);
-                // With a batch > 1 each grid slot consumes (slot amount × batch) of its item — show it.
-                int dispBatch = effectiveBatch();
-                if (!stack.isEmpty() && dispBatch > 1)
-                    drawItemCount(gfx, stack, ix, iy,
-                        String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) hovering = true;
-            }
-            if (hovering) {
-                boolean ignoreData = craftingUsesIgnoreData();   // grid resizing & Ctrl popup disabled then
-                if (hasControlDown() && !ignoreData)
-                    patternHovered = true;
-                else if (dim > 3)
-                    tooltip = List.of(
-                            CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                            Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
-                else {
-                    List<Component> t = new ArrayList<>();
-                    t.add(CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component());
-                    t.add(CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component());
-                    t.add(CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component());
-                    if (!ignoreData)   // no grid resizing → omit the "hold Ctrl to change grid size" hint
-                        t.add(Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
-                                .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
-                    tooltip = t;
-                }
-            }
-        } else {
-            List<InputSlot> slots = layoutInputSlots();
-            for (int i = 0; i < slots.size(); i++) {
-                InputSlot slot = slots.get(i);
-                int ix = panelX + 68 + (i % 3) * 20;
-                int iy = panelY + 28 + (i / 3) * 20;
-                boolean fluidIng = isFluidConn(slot.connectionIndex());
-                ItemStack stack = ingredientOf(inputConnections.get(slot.connectionIndex()));
-                FluidGuiRender.filterIcon(gfx, stack, ix, iy);
-                if (!stack.isEmpty()) {
-                    drawItemCount(gfx, stack, ix, iy, fluidIng ?
-                            formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
-                }
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
-                    // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
-                    int total = Math.max(1, inputTotals.get(slot.connectionIndex()));
-                    String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
-                    boolean srcIgnore = menu.componentAt(inputConnections.get(slot.connectionIndex()))
-                            instanceof VirtualGaugeBehaviour s && s.ignoreData;
-                    // Header: "Sending <Item> x<total>" + (item only) the dark-gray stack breakdown, like the output slot.
-                    MutableComponent inHeader = CreateLang.translate("gui.factory_panel.sending_item",
-                            FluidCompat.filterName(stack).getString() + " x" + totalLabel)
-                            .color(ScrollInput.HEADER_RGB).component();
-                    if (!fluidIng && total > stackSizeOf(stack)) inHeader.append(stackBreakdown(total, stackSizeOf(stack)));
-                    tooltip = stack.isEmpty()
-                        ? List.of(
-                            CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
-                            Component.translatable("createfactorycontroller.gui.action_disconnect")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
-                        : withIgnoreDataLine(List.of(
-                            inHeader,
-                            CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                            CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()),
-                            srcIgnore);
-                }
-            }
-            if (inputConnections.isEmpty() && in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58))
-                tooltip = List.of(
-                    CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
-        }
+        // INPUTS — the 3×3 ingredient grid, rendered/hit-tested by the active work-mode editor.
+        tooltip = editor().renderInputArea(gfx, mouseX, mouseY);
 
         // OUTPUT — the gauge's filter and produced count. In crafting mode this is the whole batch
         // (per-craft yield × craft count); a single package carries every craft.
         if (g != null && !g.filter.isEmpty()) {
             int ox = panelX + 160, oy = panelY + 48;
-            int producedCount = craftingActive ? outputCount * effectiveBatch() : outputCount;
+            int producedCount = editor().producedCount();
             // Output is always magnitude-scaled (mB/B) regardless of the unit box: short ≤1-dp label, full tooltip.
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount));
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
-                Component scrollLine = craftingActive && craftingUsesIgnoreData()
+                Component scrollLine = workMode == GaugeWorkMode.CRAFTING && craftingUsesIgnoreData()
                     ? Component.translatable("createfactorycontroller.gui.unable_to_change")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
                     : CreateLang.translate("gui.factory_panel.expected_output_tip_2")
@@ -1002,6 +985,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
 
         if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);
+        customButton.render(gfx, mouseX, mouseY, partialTick);
         newInputButton.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (requestModeButton != null) requestModeButton.render(gfx, mouseX, mouseY, partialTick);
@@ -1125,9 +1109,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // ── Fluid mode helpers ──────────────────────────────────────────────────────
 
     /** The fluid output slot is always capped at 10 B (10000 mB), independent of the threshold unit box. */
-    private static final int FLUID_OUTPUT_CAP_MB = 10_000;
+    static final int FLUID_OUTPUT_CAP_MB = 10_000;
 
-    private static int adjustFluidAmount(int cur, int dir, boolean shift, boolean ctrl, int min, int max) {
+    static int adjustFluidAmount(int cur, int dir, boolean shift, boolean ctrl, int min, int max) {
         int next = cur + dir * (ctrl ? 1 : shift ? 10 : 1000);
         if (!shift && !ctrl && cur % 1000 != 0) {           // 1-bucket step from an off-boundary value
             int boundary = dir > 0 ? (cur / 1000 + 1) * 1000 : (cur / 1000) * 1000;
@@ -1136,7 +1120,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return Mth.clamp(next, min, max);
     }
 
-    private static String formatFluidShort(int millibuckets) {
+    static String formatFluidShort(int millibuckets) {
         if (millibuckets < 1000) return millibuckets + "mB";
         return new java.math.BigDecimal(millibuckets).movePointLeft(3)
             .setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "B";
@@ -1251,7 +1235,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Draws an input/output slot's item count: the vanilla item-decoration number, or — when the client's
      *  "Compact recipe count font" option is on — Create's compact NUMBERS sprite (same glyphs as the stock icon),
      *  z-lifted like the stock so it sits over the item. */
-    private void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, String text) {
+    void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, String text) {
         if (ClientConfig.compactRecipeCountFont()) {
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
@@ -1287,13 +1271,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // ── Input ────────────────────────────────────────────────────────────────
 
     /** Create's GUI button blip (UI_BUTTON_CLICK, soft) — for value-box / slot clicks. */
-    private static void playClickSound() {
+    static void playClickSound() {
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
     }
 
     /** Create's value-scroll blip (SCROLL_VALUE, pitch 1.5) — matches its ScrollInput widget. */
-    private static void playScrollSound() {
+    static void playScrollSound() {
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
     }
@@ -1337,24 +1321,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        if (!craftingActive) {
-            List<InputSlot> slots = layoutInputSlots();
-            for (int i = 0; i < slots.size(); i++) {
-                int ix = panelX + 68 + (i % 3) * 20;
-                int iy = panelY + 28 + (i / 3) * 20;
-                if (!in(mouseX, mouseY, ix, iy, 16, 16)) continue;
-                int c = slots.get(i).connectionIndex();
-                VirtualComponentPosition from = inputConnections.get(c);
-                inputConnections.remove(c);
-                inputTotals.remove(c);
-                inputConfig.remove(c);
-                PacketDistributor.sendToServer(
-                    new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
-                onConnectionsChanged();   // re-evaluate crafting recipe + rebuild the crafting button
-                playClickSound();
-                return true;
-            }
-        }
+        if (editor().inputAreaClicked(mouseX, mouseY, button)) return true;
 
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
             setMode(mode.cycle(1));
@@ -1406,6 +1373,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (editor().gridReleased(mouseX, mouseY, button)) return true;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         // Let the address suggestion list consume scrolling first (matches FactoryPanelScreen).
         if (addressBox.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
@@ -1421,45 +1394,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        if (!craftingActive) {
-            List<InputSlot> slots = layoutInputSlots();
-            for (int i = 0; i < slots.size(); i++) {
-                int ix = panelX + 68 + (i % 3) * 20;
-                int iy = panelY + 28 + (i / 3) * 20;
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
-                    adjustInputTotal(slots.get(i).connectionIndex(), dir, hasShiftDown(), hasControlDown());
-                    playScrollSound();
-                    return true;
-                }
-            }
-        } else if (in(mouseX, mouseY, panelX + 68, panelY + 28, 58, 58)) {
-            // Ctrl over the recipe's ingredients resizes the square crafter grid; otherwise tune the batch.
-            // Both are disabled when an ignore-data ingredient is present (fixed 3×3, no batching).
-            if (!craftingUsesIgnoreData()) {
-                if (hasControlDown()) adjustCraftDimension(dir);
-                else adjustCraftBatch(dir * step);
-            }
-            return true;
-        }
-        // Output slot. Outside crafting mode this is the free output count; in crafting mode the
-        // per-craft yield is fixed, so scrolling instead changes how many crafts ride one request.
-        if (in(mouseX, mouseY, panelX + 160, panelY + 48, 16, 16)) {
-            if (craftingActive) {
-                if (!craftingUsesIgnoreData()) adjustCraftBatch(dir * step);   // batching disabled with ignore-data
-            } else if (fluidMode) {
-                outputCount = adjustFluidAmount(outputCount, dir, hasShiftDown(), hasControlDown(), 1, FLUID_OUTPUT_CAP_MB);
-                playScrollSound();
-            } else if (hasControlDown()) {
-                outputCount = Mth.clamp(snapToStack(outputCount, dir, outputStackSize()), 1, maxItemOutput());   // full-stack snap
-                playScrollSound();
-            } else {
-                // ±1 item, or (shift) ±10 snapping across a stack boundary — same as the input totals.
-                int next = hasShiftDown() ? shiftStep(outputCount, dir, outputStackSize()) : outputCount + dir;
-                outputCount = Mth.clamp(next, 1, maxItemOutput());
-                playScrollSound();
-            }
-            return true;
-        }
+        // Ingredient grid + output slot: both are mode-specific, handled by the active work-mode editor.
+        if (editor().inputAreaScrolled(mouseX, mouseY, dir, step)) return true;
+        if (editor().outputScrolled(mouseX, mouseY, dir, step)) return true;
         // Threshold count box
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
             if (countEditing) commitCountEdit();
@@ -1502,35 +1439,40 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // ── Commit ───────────────────────────────────────────────────────────────
 
     private void sendConfig(boolean clearPromises, boolean reset) {
-        List<ItemStack> arrangement = craftingActive
+        boolean crafting = workMode == GaugeWorkMode.CRAFTING;
+        boolean custom = workMode == GaugeWorkMode.CUSTOM;
+        List<ItemStack> arrangement = crafting
             ? craftingIngredients.stream().map(b -> b.stack).toList()
             : List.of();
 
+        // Per-connection total: crafting = cells using that ingredient, custom = sum of its slots, else the
+        // stored total. The server's per-connection amount is derived from this the same way in every mode.
         List<VirtualComponentPosition> positions = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
-        if (craftingActive) {
-            for (VirtualComponentPosition pos : inputConnections) {
+        for (int c = 0; c < inputConnections.size(); c++) {
+            VirtualComponentPosition pos = inputConnections.get(c);
+            int amount;
+            if (crafting) {
                 ItemStack ing = ingredientOf(pos);
-                int c = (int) craftingIngredients.stream()
-                    .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))
-                    .count();
-                positions.add(pos);
-                amounts.add(Math.max(1, c));
+                amount = (int) craftingIngredients.stream()
+                    .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing)).count();
+            } else if (custom) {
+                amount = customSlots.stream().filter(sl -> !sl.isEmpty() && pos.equals(sl.source()))
+                    .mapToInt(RecipeSlot::count).sum();
+            } else {
+                amount = inputTotals.get(c);
             }
-        } else {
-            // One total per connection — the model stores a single amount and the UI re-derives the slot split.
-            for (int c = 0; c < inputConnections.size(); c++) {
-                positions.add(inputConnections.get(c));
-                amounts.add(Math.max(1, inputTotals.get(c)));
-            }
+            positions.add(pos);
+            amounts.add(Math.max(1, amount));
         }
 
-        int batch = craftingActive ? effectiveBatch() : 1;
-        int dimension = craftingActive ? effectiveCraftDimension() : 0;
+        List<RecipeSlot> slotsOut = custom ? new ArrayList<>(customSlots) : List.of();
+        int batch = crafting ? effectiveBatch() : 1;
+        int dimension = crafting ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
             promiseExpiration.getState(), promiseLimitState, promiseLimitByAddress, thresholdCount, mode, requestMode,
-            positions, amounts, new ArrayList<>(arrangement), clearPromises, reset));
+            workMode, positions, amounts, new ArrayList<>(arrangement), slotsOut, clearPromises, reset));
     }
 
     /** True if this gauge has any non-logistics wire (a redstone link or a logic tube, in either direction) — the

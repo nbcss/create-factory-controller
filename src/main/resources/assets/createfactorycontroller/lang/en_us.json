@@ -29,7 +29,6 @@
   "createfactorycontroller.component.logical_tube.mode.nand.desc": "Output on unless ALL connected inputs are on.",
 
   "createfactorycontroller.gui.logical_tube_settings": "Logical Tube Settings",
-  "createfactorycontroller.gui.logical_tube.disconnect": "Shift-click to disconnect",
   "createfactorycontroller.gui.logical_tube.reverse": "Click to reverse direction",
   "createfactorycontroller.gui.logical_tube.input_connections": "Inputs: %1$s",
   "createfactorycontroller.gui.logical_tube.output_connections": "Outputs: %1$s",
@@ -59,12 +58,17 @@
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "Scroll to highlight components",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "Scroll to tune",
   "createfactorycontroller.gui.network_settings": "Network Settings",
+  "createfactorycontroller.gui.custom_arrangement": "Custom Arrangement",
+  "createfactorycontroller.gui.custom_arrangement.tip": "Unpackage by configured layout",
+  "createfactorycontroller.gui.custom_slot_move": "Left-Drag to move",
+  "createfactorycontroller.gui.custom_slot_copy": "Right-Drag to copy",
   "createfactorycontroller.gui.mode_prefix": "Mode: %1$s",
   "createfactorycontroller.gui.info.monitoring": "Monitoring: %1$s",
   "createfactorycontroller.gui.info.frequency": "Freq #%1$s: %2$s",
   "createfactorycontroller.gui.info.none": "—",
   "createfactorycontroller.gui.action_configure": "Click to configure",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
+  "createfactorycontroller.gui.action_disconnect": "Shift-Click to disconnect",
   "createfactorycontroller.gui.action_relocate": "Relocate component",
   "createfactorycontroller.gui.relocate_mode_prompt": "Click a spot to relocate this %1$s to...",
   "createfactorycontroller.gui.relocated": "%1$s moved to new position",
@@ -141,6 +145,7 @@
   "createfactorycontroller.config.passive_total_demand.tooltip": "Each passive gauge's target storage is sized to the total remaining downstream demand, so the whole chain stays active and produces continuously. Warning: this strategy could overload your logistics network if the system cannot handle the load!",
 
   "item.createfactorycontroller.production_pattern": "Add new production task",
+  "item.createfactorycontroller.arrangement_marker": "Custom Arrangement",
   "item.createfactorycontroller.fluid_filter": "Fluid Filter",
 
   "createfactorycontroller.network.default": "Network #%1$s",

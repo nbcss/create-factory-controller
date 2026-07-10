@@ -1,7 +1,6 @@
-package io.github.nbcss.createfactorycontroller.content;
+package io.github.nbcss.createfactorycontroller.content.helper;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import net.minecraft.nbt.CompoundTag;

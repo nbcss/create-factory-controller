@@ -149,16 +149,10 @@ public abstract class Connection {
         public boolean reversible() { return true; }
 
         private static final Map<String, Type> REGISTRY = new LinkedHashMap<>();
-        private static volatile boolean bootstrapped = false;
 
-        private static void lazyBootstrap() {
-            if (bootstrapped) return;
-            synchronized (REGISTRY) {
-                if (bootstrapped) return;
-                registerType(LogisticsConnection.TYPE);
-                registerType(RedstoneConnection.TYPE);
-                bootstrapped = true;
-            }
+        public static void registerConnections() {
+            registerType(LogisticsConnection.TYPE);
+            registerType(RedstoneConnection.TYPE);
         }
 
         public static void registerType(Connection.Type type) {
@@ -166,13 +160,11 @@ public abstract class Connection {
         }
 
         public static Collection<Type> values() {
-            lazyBootstrap();
             return REGISTRY.values();
         }
 
         @Nullable
         public static Type get(String name) {
-            lazyBootstrap();
             return REGISTRY.get(name);
         }
 

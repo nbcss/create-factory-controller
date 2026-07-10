@@ -1,0 +1,214 @@
+package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
+
+import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.List;
+
+/**
+ * CUSTOM work mode: the player hand-places ingredients into an explicit 9-slot grid ({@link
+ * ConfigureRecipeScreen#customSlots}). Left-drag moves/swaps a slot (empty gaps allowed), right-drag copies
+ * a slot into an empty one (replicate), scroll tunes a single slot's count (floored at 1), and shift-click
+ * clears a slot (disconnecting the ingredient if it was its last slot). Output stays the free produced count
+ * (the base-class default).
+ */
+class CustomArrangementEditor extends GaugeWorkModeEditor {
+
+    /** The slot a drag started from (always non-empty), and which button; -1 when not dragging. */
+    private int dragFrom = -1;
+    private int dragButton = -1;
+
+    CustomArrangementEditor(ConfigureRecipeScreen screen) { super(screen); }
+
+    /** Abandons an in-flight drag — called when the screen re-enters CUSTOM mode, so a drag begun before a
+     *  mid-drag mode toggle can't resurface as a phantom pickup. */
+    void resetDrag() {
+        dragFrom = -1;
+        dragButton = -1;
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    @Override
+    List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
+        s.patternHovered = false;
+        int hover = slotAt(mouseX, mouseY);
+        List<Component> tooltip = null;
+        for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++) {
+            RecipeSlot draw = slotDisplay(i, hover);
+            renderSlotCell(gfx, cellX(i), cellY(i), draw);
+            // Tooltip only for a real, non-empty slot, and never while dragging.
+            if (dragFrom < 0 && !draw.isEmpty() && in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) {
+                ItemStack stack = s.ingredientOf(draw.source());
+                String amount = FluidCompat.isFluidFilter(stack)
+                    ? ThresholdUnit.formatFluidAmount(draw.count()) : String.valueOf(draw.count());
+                tooltip = List.of(
+                    CreateLang.translate("gui.factory_panel.sending_item",
+                        FluidCompat.filterName(stack).getString() + " x" + amount)
+                        .color(ScrollInput.HEADER_RGB).component(),
+                    Component.translatable("createfactorycontroller.gui.custom_slot_move")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
+                    Component.translatable("createfactorycontroller.gui.custom_slot_copy")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
+                    CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
+                    Component.translatable("createfactorycontroller.gui.action_remove_component")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            }
+        }
+        return tooltip;
+    }
+
+    /** What a cell shows, accounting for the swap-drag preview (left button only): the source cell shows the
+     *  hovered target's item (a fake swap preview), and the hovered target cell itself renders empty — its
+     *  own item is "lifted" while the source item (shown following the cursor) is about to land there. */
+    private RecipeSlot slotDisplay(int i, int hover) {
+        if (dragFrom >= 0 && dragButton == 0) {
+            if (i == dragFrom)
+                return hover >= 0 && hover != dragFrom ? s.customSlots.get(hover) : RecipeSlot.EMPTY;
+            if (hover >= 0 && i == hover)
+                return RecipeSlot.EMPTY;
+        }
+        return i < s.customSlots.size() ? s.customSlots.get(i) : RecipeSlot.EMPTY;
+    }
+
+    private void renderSlotCell(GuiGraphics gfx, int ix, int iy, RecipeSlot slot) {
+        if (slot.isEmpty()) return;
+        ItemStack stack = s.ingredientOf(slot.source());
+        if (stack.isEmpty()) return;
+        FluidGuiRender.filterIcon(gfx, stack, ix, iy);
+        s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, slot.count()));
+    }
+
+    @Override
+    void renderOverlay(GuiGraphics gfx, int mouseX, int mouseY) {
+        if (dragFrom < 0 || dragFrom >= s.customSlots.size()) return;
+        int hover = slotAt(mouseX, mouseY);
+
+        gfx.pose().pushPose();
+        gfx.pose().translate(0, 0, 199);
+        // Hovering the source slot itself never draws a box, in either mode.
+        if (hover >= 0 && hover != dragFrom) {
+            int hx = cellX(hover), hy = cellY(hover);
+            boolean targetEmpty = s.customSlots.get(hover).isEmpty();
+            // Copy (right-drag): white = valid empty target, red = occupied (can't copy there).
+            // Swap (left-drag): white.
+            int color = dragButton == 1
+                ? (targetEmpty ? 0x80FFFFFF : 0x80FF4040)
+                : 0x80FFFFFF;
+            gfx.fill(hx, hy, hx + 16, hy + 16, color);
+        }
+        int fx = cellX(dragFrom), fy = cellY(dragFrom);
+        gfx.fill(fx, fy, fx + 16, fy + 16, 0x4485f2a2);   // source slot highlight
+        gfx.pose().popPose();
+
+        // The picked-up (source) item follows the cursor, above everything (including every count).
+        RecipeSlot src = s.customSlots.get(dragFrom);
+        ItemStack stack = src.isEmpty() ? ItemStack.EMPTY : s.ingredientOf(src.source());
+        if (!stack.isEmpty()) {
+            gfx.pose().pushPose();
+            gfx.pose().translate(0, 0, 250);
+            int dx = mouseX - 8, dy = mouseY - 8;
+            gfx.renderItem(stack, dx, dy);
+            s.drawItemCount(gfx, stack, dx, dy, countLabel(stack, src.count()));
+            gfx.pose().popPose();
+        }
+    }
+
+    private static String countLabel(ItemStack stack, int count) {
+        return FluidCompat.isFluidFilter(stack) ? ConfigureRecipeScreen.formatFluidShort(count) : String.valueOf(count);
+    }
+
+    // ── Input ─────────────────────────────────────────────────────────────────
+
+    @Override
+    boolean inputAreaClicked(double mouseX, double mouseY, int button) {
+        int slot = slotAt(mouseX, mouseY);
+        if (slot < 0) return false;
+        if (button == 0 && Screen.hasShiftDown()) {   // shift-click clears the slot
+            clearSlot(slot);
+            return true;
+        }
+        if (s.customSlots.get(slot).isEmpty()) return true;   // nothing to drag from an empty slot
+        dragFrom = slot;   // begin a drag (left = move/swap, right = copy-to-empty), applied on release
+        dragButton = button;
+        return true;
+    }
+
+    @Override
+    boolean gridReleased(double mouseX, double mouseY, int button) {
+        if (dragFrom < 0 || button != dragButton) { dragFrom = -1; return false; }
+        int from = dragFrom;
+        dragFrom = -1;
+        // A move dropped outside the whole panel is a removal, same as shift-click (drag it off entirely).
+        if (button == 0 && !s.inPanelBounds(mouseX, mouseY)) {
+            clearSlot(from);
+            return true;
+        }
+        int to = slotAt(mouseX, mouseY);
+        if (to < 0 || to == from) return true;
+        if (button == 0) {   // move / swap
+            RecipeSlot a = s.customSlots.get(from);
+            s.customSlots.set(from, s.customSlots.get(to));
+            s.customSlots.set(to, a);
+            ConfigureRecipeScreen.playClickSound();
+        } else if (button == 1) {   // copy into an empty slot (replicate the ingredient)
+            RecipeSlot src = s.customSlots.get(from);
+            if (!src.isEmpty() && s.customSlots.get(to).isEmpty()) {
+                s.customSlots.set(to, new RecipeSlot(src.source(), src.count()));
+                ConfigureRecipeScreen.playClickSound();
+            }
+        }
+        return true;
+    }
+
+    @Override
+    boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step) {
+        // While dragging, the wheel tunes the PICKED-UP cell (its count shows live on the cursor item),
+        // wherever the cursor happens to hover — the hovered cell may be rendering a swap preview of another
+        // cell's content, so scrolling it would edit state the player can't see.
+        int slot = dragFrom >= 0 ? dragFrom : slotAt(mouseX, mouseY);
+        if (slot < 0) return false;
+        RecipeSlot rs = s.customSlots.get(slot);
+        if (rs.isEmpty()) return true;   // consume the scroll, but a gap has nothing to tune
+        ItemStack ingredient = s.ingredientOf(rs.source());
+        // Floored at 1 in both branches — clearing is shift-click only.
+        int next;
+        if (FluidCompat.isFluidFilter(ingredient)) {   // fluid cell: millibuckets with fluid steps + cap
+            next = ConfigureRecipeScreen.adjustFluidAmount(rs.count(), dir,
+                Screen.hasShiftDown(), Screen.hasControlDown(), 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB);
+        } else {
+            next = Mth.clamp(rs.count() + dir * step, 1, Math.max(1, ConfigureRecipeScreen.stackSizeOf(ingredient)));
+        }
+        if (next != rs.count()) {
+            s.customSlots.set(slot, new RecipeSlot(rs.source(), next));
+            ConfigureRecipeScreen.playScrollSound();
+        }
+        return true;
+    }
+
+    /** Clears slot {@code i}; if it was that ingredient's last slot, disconnects the wire too. */
+    private void clearSlot(int i) {
+        RecipeSlot slot = s.customSlots.get(i);
+        if (slot.isEmpty()) return;
+        VirtualComponentPosition source = slot.source();
+        s.customSlots.set(i, RecipeSlot.EMPTY);
+        boolean stillUsed = s.customSlots.stream().anyMatch(sl -> !sl.isEmpty() && source.equals(sl.source()));
+        if (!stillUsed) {
+            int c = s.inputConnections.indexOf(source);
+            if (c >= 0) { s.disconnectInput(c); return; }   // disconnectInput plays the click sound
+        }
+        ConfigureRecipeScreen.playClickSound();
+    }
+}

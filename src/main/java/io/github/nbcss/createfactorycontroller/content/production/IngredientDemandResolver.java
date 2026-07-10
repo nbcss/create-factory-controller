@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.production;
 
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
@@ -142,7 +143,7 @@ public final class IngredientDemandResolver {
             boolean producible = root || (source != null && source.requestMode.isPassive() && !source.targetedBy().isEmpty());
             if (!producible) return;   // leaf — stays producer=null
 
-            int batch = source.activeCraftingArrangement.isEmpty() ? 1 : Math.max(1, source.craftBatch);
+            int batch = source.mode == GaugeWorkMode.CRAFTING ? Math.max(1, source.craftBatch) : 1;
             producer.set(id, source);
             outputPerCraft.set(id, Math.max(1, source.recipeOutput) * batch);
 

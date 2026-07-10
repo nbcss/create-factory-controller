@@ -2,8 +2,10 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -22,10 +24,10 @@ import java.util.Map;
 public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panelPos, String address,
                                     int recipeOutput, int craftBatch, int craftDimension, int promiseInterval,
                                     int promiseLimit, boolean promiseLimitByAddress, int count, ThresholdUnit mode,
-                                    RequestMode requestMode,
+                                    RequestMode requestMode, GaugeWorkMode workMode,
                                     List<VirtualComponentPosition> inputPositions, List<Integer> inputAmounts,
-                                    List<ItemStack> craftingArrangement, boolean clearPromises,
-                                    boolean reset) implements CustomPacketPayload {
+                                    List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
+                                    boolean clearPromises, boolean reset) implements CustomPacketPayload {
 
     public static final Type<ConfigureRecipePacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "configure_recipe"));
@@ -46,6 +48,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 buf.writeInt(pkt.count);
                 buf.writeVarInt(pkt.mode.ordinal());
                 buf.writeVarInt(pkt.requestMode.ordinal());
+                buf.writeVarInt(pkt.workMode.ordinal());
                 buf.writeBoolean(pkt.clearPromises);
                 buf.writeBoolean(pkt.reset);
                 int n = Math.min(pkt.inputPositions.size(), pkt.inputAmounts.size());
@@ -58,6 +61,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 buf.writeVarInt(pkt.craftingArrangement.size());
                 for (ItemStack stack : pkt.craftingArrangement)
                     ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+                buf.writeVarInt(pkt.recipeSlots.size());
+                for (RecipeSlot slot : pkt.recipeSlots) slot.write(buf);
             },
             buf -> {
                 BlockPos pos = buf.readBlockPos();
@@ -73,6 +78,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 ThresholdUnit mode = ThresholdUnit.values()[
                     Math.floorMod(buf.readVarInt(), ThresholdUnit.values().length)];
                 RequestMode requestMode = RequestMode.byOrdinal(buf.readVarInt());
+                GaugeWorkMode workMode = GaugeWorkMode.values()[
+                    Math.floorMod(buf.readVarInt(), GaugeWorkMode.values().length)];
                 boolean clearPromises = buf.readBoolean();
                 boolean reset = buf.readBoolean();
                 int n = buf.readVarInt();
@@ -86,9 +93,12 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 List<ItemStack> arrangement = new ArrayList<>(m);
                 for (int i = 0; i < m; i++)
                     arrangement.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+                int k = buf.readVarInt();
+                List<RecipeSlot> slots = new ArrayList<>(k);
+                for (int i = 0; i < k; i++) slots.add(RecipeSlot.read(buf));
                 return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, craftDimension,
-                    promiseInterval, promiseLimit, promiseLimitByAddress, count, mode, requestMode, positions, amounts,
-                    arrangement, clearPromises, reset);
+                    promiseInterval, promiseLimit, promiseLimitByAddress, count, mode, requestMode, workMode, positions,
+                    amounts, arrangement, slots, clearPromises, reset);
             });
 
     @Override
@@ -105,8 +115,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
                 packet.craftDimension(), packet.promiseInterval(), packet.promiseLimit(), packet.promiseLimitByAddress(),
-                packet.count(), packet.mode(), packet.requestMode(), inputs, packet.craftingArrangement(),
-                packet.clearPromises(), packet.reset());
+                packet.count(), packet.mode(), packet.requestMode(), packet.workMode(), inputs,
+                packet.craftingArrangement(), packet.recipeSlots(), packet.clearPromises(), packet.reset());
         });
     }
 }

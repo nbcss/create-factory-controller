@@ -13,6 +13,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixer;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
@@ -396,6 +397,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         connectionGraph.rename(from, to);   // re-key every wire touching `from` (both indexes + payload endpoints)
         behaviour.setPosition(to);
         components.put(to, behaviour);
+        // CUSTOM arrangements reference sources by position — follow the rename or their cells go stale.
+        for (VirtualComponentBehaviour c : components.values())
+            if (c instanceof VirtualGaugeBehaviour g) g.remapRecipeSlots(p -> p.equals(from) ? to : p);
 
         playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
         markOrderableDirty();   // controllerPos is unchanged, but republish keeps the cached locator fresh
@@ -432,6 +436,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         // Rewire every connection reference (owner/source keys + payload endpoints) in one atomic pass.
         connectionGraph.remap(remap);
+        // CUSTOM arrangements reference sources by position — follow the remap or their cells go stale.
+        for (VirtualComponentBehaviour c : components.values())
+            if (c instanceof VirtualGaugeBehaviour g) g.remapRecipeSlots(remap);
 
         // Move the components themselves: re-key the map and update each stored position.
         List<VirtualComponentBehaviour> movers = new ArrayList<>();
@@ -482,9 +489,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
                                 int craftDimension, int promiseInterval, int promiseLimit, boolean promiseLimitByAddress,
                                 int count, ThresholdUnit mode,
-                                RequestMode requestMode,
+                                RequestMode requestMode, GaugeWorkMode workMode,
                                 Map<VirtualComponentPosition, Integer> inputAmounts,
-                                List<ItemStack> craftingArrangement, boolean clearPromises, boolean reset) {
+                                List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
+                                boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
 
         if (reset) {
@@ -500,6 +508,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.promiseLimit = 0;
             gauge.promiseLimitByAddress = false;
             gauge.activeCraftingArrangement = new ArrayList<>();
+            gauge.recipeSlots = new ArrayList<>();
+            gauge.mode = GaugeWorkMode.REGULAR;
             gauge.disconnectAll();
             refreshGaugeIdentity(gauge, true);
             updateGaugeOrderable(gauge);   // no longer orderable → abort tasks
@@ -514,16 +524,20 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // Item output is capped at MAX(64, 9 stacks of the produced item); fluids keep their own (client) cap.
         int outputCap = FluidCompat.isFluidFilter(gauge.filter) ? Integer.MAX_VALUE
             : Math.max(64, 9 * Math.max(1, gauge.filter.isEmpty() ? 64 : gauge.filter.getMaxStackSize()));
-        gauge.recipeOutput = Math.min(Math.max(1, recipeOutput), outputCap);
+        gauge.recipeOutput = Math.clamp(recipeOutput, 1, outputCap);
         gauge.craftBatch = Math.max(1, craftBatch);
         gauge.craftDimension = Math.max(0, craftDimension);
-        gauge.promiseClearingInterval = Math.max(-1, Math.min(31, promiseInterval));
-        gauge.promiseLimit = Math.max(0, Math.min(999, promiseLimit));
+        gauge.promiseClearingInterval = Math.clamp(promiseInterval, -1, 31);
+        gauge.promiseLimit = Math.clamp(promiseLimit, 0, 999);
         gauge.promiseLimitByAddress = promiseLimitByAddress;
         gauge.unit = mode;
         gauge.requestMode = requestMode;
         if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
+        gauge.mode = workMode;
+        gauge.recipeSlots = workMode == GaugeWorkMode.CUSTOM
+            ? new ArrayList<>(recipeSlots.subList(0, Math.min(recipeSlots.size(), VirtualGaugeBehaviour.MAX_INGREDIENTS)))
+            : new ArrayList<>();
         // Apply per-input amounts only if they keep the ingredient grid within its slot cap. A larger amount can take
         // several grid slots (ceil(amount / stackSize)), so an unchecked edit could overflow the cap the connection
         // create-time check enforces one wire at a time. Reject the whole amount set on overflow (other config stands).
@@ -564,6 +578,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Connection conn = type.create(source, sink);
         conn.arrowBendMode = arrowBendMode < 0 ? -1 : arrowBendMode % 4;   // client-chosen preview bend (or -1 = auto)
         connectionGraph.add(conn);
+        if (sink instanceof VirtualGaugeBehaviour g) g.reconcileRecipeSlots();   // CUSTOM: new wire → first empty cell
         source.publish(type);          // write the new edge's value + flag the sink (new edge enters at fold identity)
         settleConnections();           // fold the sink once
         playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
@@ -586,6 +601,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Connection conn = connectionGraph.get(from, to);
         if (conn == null) return;
         connectionGraph.remove(to, from);
+        if (components.get(to) instanceof VirtualGaugeBehaviour g) g.reconcileRecipeSlots();   // CUSTOM: clear its cells
         markSinkDirty(to, conn.type);   // re-fold without the removed edge (the source is unaffected)
         settleConnections();
         setChanged();

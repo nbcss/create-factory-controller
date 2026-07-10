@@ -6,8 +6,9 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * Client-side holder for the latest {@link io.github.nbcss.createfactorycontroller.content.packet.GaugePromiseInfoPacket}
- * reply, so the open {@link ConfigureRecipeScreen} can show a gauge's live in-flight promise count without that count
- * being synced every tick. Keyed by gauge cell so a reply for a different gauge is ignored.
+ * reply, so the open {@link io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen}
+ * can show a gauge's live in-flight promise count without that count being synced every tick. Keyed by gauge cell so a
+ * reply for a different gauge is ignored.
  */
 @OnlyIn(Dist.CLIENT)
 public final class GaugePromiseInfoClient {
