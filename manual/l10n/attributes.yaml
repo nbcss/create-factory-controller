@@ -1,0 +1,16 @@
+# Translatable attributes common to all documents
+%YAML 1.2
+---
+site-name: "Create: Factory Controller"
+site-nav-manual: Manual
+site-nav-manual-home: Home
+
+toc-title: Table of Contents
+section-refsig: Section
+figure-caption: Figure
+table-caption: Table
+tip-caption: Tip
+note-caption: Note
+important-caption: Important
+caution-caption: Caution
+warning-caption: Warning

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= h document.title %></title>
+    <link rel="stylesheet" href="<%= h attach_cache_id '../style.css' %>">
+  </head>
+  <body>
+    <header>
+      <div class="site-name"><%= h t 'site-name' %></div>
+      <nav>
+        <ol>
+          <li class="nav-item">
+            <button><%= h t 'site-nav-manual' %></button>
+            <ol class="nav-menu">
+              <li><a href="."><%= h t 'site-nav-manual-home' %></a></li>
+            <% manual_toc.blocks.each do |toc_item| %>
+              <li>
+                <%= toc_item.text %>
+                <%= toc_item.content %>
+              </li>
+            <% end %>
+            </ol>
+          </li>
+        </ol>
+      </nav>
+    </header>
+    <main>
+      <article>
+        <h1><%= h document.title %></h1>
+        <%= document.content %>
+      </article>
+    </main>
+  </body>
+</html>

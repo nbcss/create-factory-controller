@@ -1,0 +1,70 @@
+require 'rake/clean'
+require 'erb'
+require 'yaml'
+require 'asciidoctor'
+require 'asciidoctor-html5s'
+require_relative 'lib/replacements'
+require_relative 'lib/util'
+
+SRC_DIR = File.expand_path('src', __dir__)
+BUILD_DIR = File.expand_path('build', __dir__)
+L10N_DIR = File.expand_path('l10n', __dir__)
+
+CLOBBER << BUILD_DIR
+
+
+desc 'Copy static assets'
+task :assets do
+  verbose(false) { mkdir_p BUILD_DIR }
+  cp File.join(SRC_DIR, 'style.css'), BUILD_DIR
+  cp_lr File.join(SRC_DIR, 'images'), BUILD_DIR, remove_destination: true
+end
+
+desc 'Build HTML'
+task build: :assets do
+  layout = ERB.new File.read File.join(SRC_DIR, '_layout.erb')
+  attributes = YAML.load_file File.join(L10N_DIR, 'attributes.yaml')
+  adoc_options = {
+    safe: :safe,
+    backend: 'html5s',
+    parse: true,
+    standalone: false,
+    attributes: {
+      'imagesdir' => '../images',
+    }.merge(attributes.map{|k, v| ["#{k}@", v]}.to_h),
+  }
+
+  index_adoc = Asciidoctor.load_file File.join(SRC_DIR, 'index.adoc'), adoc_options
+  manual_toc = index_adoc.find_by(id: 'manual-toc')[0]
+
+  verbose(false) { mkdir_p File.join(BUILD_DIR, 'en') }
+
+  Dir.glob('[^_]*.adoc', base: SRC_DIR).each do |source|
+    document = Asciidoctor.load_file File.join(SRC_DIR, source), adoc_options
+    output_path = File.join BUILD_DIR, 'en', source.sub(/\.adoc$/, '.html')
+
+    puts "Generate #{output_path}" if verbose
+
+    html = layout.result LayoutContext.new(
+      document: document,
+      manual_toc: manual_toc,
+      output_path: output_path,
+    ).binding
+    html = Util.cache_id_images(html, output_path)
+
+    File.write output_path, html
+  end
+end
+
+task default: :build
+
+
+# Context object to provide variables and methods to the ERB template
+LayoutContext = Struct.new :document, :manual_toc, :output_path do
+
+  def binding() Kernel.binding end
+  def h(value) ERB::Util.html_escape(value) end
+  def t(key) document.attributes[key] || key end
+  def attach_cache_id(path) Util.add_cache_id(path, output_path) end
+
+end
