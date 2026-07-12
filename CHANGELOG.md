@@ -8,6 +8,7 @@ Features:
 
 Changes:
 - Maximum batch crafting multiplier is 64 now, regardless recipe output count.
+- Gauge ingredient slot need to use Shift-Click to remove now
 
 Optimization:
 - Dashboard sync use much less bandwidth data now.
