@@ -60,8 +60,8 @@ class RegularEditor extends GaugeWorkModeEditor {
                         inHeader,
                         CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                             .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                        CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()),
+                        Component.translatable("createfactorycontroller.gui.action_disconnect")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
                         srcIgnore);
             }
         }
@@ -78,7 +78,9 @@ class RegularEditor extends GaugeWorkModeEditor {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
         for (int i = 0; i < slots.size(); i++) {
             if (!in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) continue;
-            s.disconnectInput(slots.get(i).connectionIndex());
+            // Shift-click disconnects (matches CUSTOM mode's clear gesture); a plain click is absorbed here
+            // so it doesn't fall through to whatever's behind the panel.
+            if (button == 0 && Screen.hasShiftDown()) s.disconnectInput(slots.get(i).connectionIndex());
             return true;
         }
         return false;

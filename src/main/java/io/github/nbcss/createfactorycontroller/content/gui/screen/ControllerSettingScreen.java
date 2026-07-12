@@ -12,6 +12,7 @@ import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -45,9 +46,15 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
 
     private final FactoryControllerScreen controller;
 
-    /** Available background names (no path prefix / .png suffix), sorted; gathered once on open. */
+    /** Available background names (no path prefix / .png suffix); just the current selection until the async
+     *  scan (see {@link #scanOptionsAsync}) lands the full sorted set. */
     private final List<String> options = new ArrayList<>();
-    private int selected = 0;
+    private int selected;
+    /** The applied background's name, tracked independently of {@link #options} so a scan landing after the
+     *  player has already scrolled/reset can still re-resolve the right index. */
+    private String currentName;
+    /** Set on {@link #removed()} so a scan that lands after the screen is gone doesn't touch state. */
+    private boolean disposed = false;
 
     private int panelX, panelY;
     private IconButton closeButton;
@@ -57,20 +64,34 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
               Component.translatable("createfactorycontroller.gui.controller_settings"));
         this.controller = controller;
-        scanOptions();
+        currentName = ClientConfig.getControllerBackground();
+        options.add(currentName);   // only known option until the scan resolves
+        selected = 0;
+        scanOptionsAsync();
     }
 
-    /** Lists the .png files under {@link #BACKGROUND_DIR} in our namespace, stripping path + extension. */
-    private void scanOptions() {
+    /** Lists the .png files under {@link #BACKGROUND_DIR} in our namespace off the render thread (resource-pack
+     *  listing does real I/O), then swaps the full sorted set in on the client thread once ready. */
+    private void scanOptionsAsync() {
+        Util.backgroundExecutor().execute(() -> {
+            List<String> found = Minecraft.getInstance().getResourceManager()
+                    .listResources(BACKGROUND_DIR, loc ->
+                            loc.getNamespace().equals(CreateFactoryController.MODID) &&
+                                    loc.getPath().endsWith(".png"))
+                    .keySet().stream()
+                    .map(ResourceLocation::getPath)
+                    .map(p -> p.substring(BACKGROUND_DIR.length() + 1, p.length() - ".png".length()))
+                    .sorted()
+                    .toList();
+            Minecraft.getInstance().execute(() -> applyScannedOptions(found));
+        });
+    }
+
+    private void applyScannedOptions(List<String> found) {
+        if (disposed || found.isEmpty()) return;
         options.clear();
-        Minecraft.getInstance().getResourceManager().listResources(BACKGROUND_DIR, loc ->
-                loc.getNamespace().equals(CreateFactoryController.MODID) && loc.getPath().endsWith(".png"))
-            .keySet().stream()
-            .map(ResourceLocation::getPath)
-            .map(p -> p.substring(BACKGROUND_DIR.length() + 1, p.length() - ".png".length()))
-            .sorted()
-            .forEach(options::add);
-        selected = Math.max(0, options.indexOf(ClientConfig.getControllerBackground()));
+        options.addAll(found);
+        selected = Math.max(0, options.indexOf(currentName));
     }
 
     @Override
@@ -118,8 +139,10 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
 
     /** Applies the current index to the live config (immediate effect on the board behind us). */
     private void applySelection() {
-        if (selected >= 0 && selected < options.size())
-            ClientConfig.setControllerBackground(options.get(selected));
+        if (selected >= 0 && selected < options.size()) {
+            currentName = options.get(selected);
+            ClientConfig.setControllerBackground(currentName);
+        }
     }
 
     /** Scroll the selector: up → previous, down → next, clamped (no wrap), with Create's scroll chime. */
@@ -135,6 +158,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
 
     private void resetToDefault() {
         String def = ClientConfig.defaultControllerBackground();
+        currentName = def;
         int idx = options.indexOf(def);
         if (idx >= 0) selected = idx;
         ClientConfig.setControllerBackground(def);
@@ -228,5 +252,11 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void onClose() {
         returnToController();   // return to the controller without closing the shared container
+    }
+
+    @Override
+    public void removed() {
+        disposed = true;   // drop a scan that lands after this screen is gone
+        super.removed();
     }
 }

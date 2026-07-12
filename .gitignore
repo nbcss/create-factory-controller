@@ -1,5 +1,6 @@
 ### Gradle ###
 .gradle
+*DESIGN.md
 lib/
 build/
 !gradle/wrapper/gradle-wrapper.jar

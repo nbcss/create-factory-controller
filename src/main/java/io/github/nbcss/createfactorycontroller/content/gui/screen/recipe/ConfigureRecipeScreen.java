@@ -279,9 +279,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
             rebuildWidgets();
         });
-        customButton.setToolTip(Component.translatable("createfactorycontroller.gui.custom_arrangement"));
-        customButton.getToolTip().add(Component.translatable("createfactorycontroller.gui.custom_arrangement.tip")
-            .withStyle(ChatFormatting.GRAY));
+        // No self-tooltip: drawn last in renderForeground (customButtonTooltip) so neighbours can't cover it.
         addWidget(customButton);
 
         // Request-mode cycle button — right of the unit box. Its icon reflects the current mode (not coloured).
@@ -480,9 +478,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return next;
     }
 
-    /** Crafts per request actually used: forced to 1 when an ignore-data ingredient disables batching. */
+    /** Crafts per request actually used. Ignore-data ingredients still batch — each slot ships a single variant
+     *  covering its whole batch (server-resolved). */
     int effectiveBatch() {
-        return craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
+        return Math.max(1, craftBatch);
     }
 
     /** Crafting mode: change crafts-per-request, capped so the produced output stays within one stack. */
@@ -579,7 +578,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      *  and capped at the configured maximum. Valid even before crafting is toggled on (defaults to min). */
     int effectiveCraftDimension() {
         int minDim = minCraftDim();
-        if (craftingUsesIgnoreData()) return minDim;   // grid resizing is disabled with an ignore-data ingredient
         return Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
     }
 
@@ -601,6 +599,29 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int dim = effectiveCraftDimension();
             tip.add(Component.translatable("createfactorycontroller.gui.crafting_dimension", dim, dim)
                 .withStyle(ChatFormatting.GRAY));
+        }
+        if (craftingUsesIgnoreData()) {
+            tip.add(Component.empty());
+            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
+                .withStyle(ChatFormatting.GOLD));
+            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
+                .withStyle(ChatFormatting.GOLD));
+        }
+        return tip;
+    }
+
+    /** The custom-arrangement toggle's tooltip. Rendered last (in {@link #renderForeground}) so a later-drawn
+     *  neighbouring widget can't paint over it. */
+    private List<Component> customButtonTooltip() {
+        List<Component> tip = new ArrayList<>();
+        tip.add(Component.translatable("createfactorycontroller.gui.custom_arrangement"));
+        tip.add(Component.translatable("createfactorycontroller.gui.custom_arrangement.tip").withStyle(ChatFormatting.GRAY));
+        if (craftingUsesIgnoreData()) {
+            tip.add(Component.empty());
+            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
+                .withStyle(ChatFormatting.GOLD));
+            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
+                .withStyle(ChatFormatting.GOLD));
         }
         return tip;
     }
@@ -772,15 +793,29 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             RecipeType<MechanicalCraftingRecipe> mechanical = AllRecipeTypes.MECHANICAL_CRAFTING.getType();
             availableCraftingRecipe = matchCraftingRecipe(level, output, itemsToUse, mechanical);
         }
-        // Ignore-data ingredients are resolved to concrete variants per request, which works in a fixed 3×3
-        // grid but not a resizable larger one — so hide the toggle for a >3×3 recipe that uses one.
-        if (craftingIsLarge() && craftingUsesIgnoreData()) availableCraftingRecipe = null;
+        // A >3×3 recipe with an ignore-data ingredient is allowed: its grid is fixed at the recipe's own size
+        // (resize disabled), and the server pins each ignore-data ingredient to a single in-stock variant per
+        // request so the shipped package can't balloon past the package-fit budget.
     }
 
-    /** Whether any wired ingredient ignores item data — disables crafting batch & crafter-grid resizing. */
+    /** Whether any wired ingredient ignores item data — crafting then ships a single in-stock variant per such
+     *  ingredient per request (see the server-side pinning). */
     boolean craftingUsesIgnoreData() {
         for (VirtualComponentPosition pos : inputConnections)
             if (menu.componentAt(pos) instanceof VirtualGaugeBehaviour s && s.ignoreData) return true;
+        return false;
+    }
+
+    /** Whether a crafting-grid cell's ingredient is supplied by an ignore-data gauge (its shipped variant is
+     *  resolved per request) — drives the per-slot "Ignore Data" tooltip line. Matches the server's cell→source
+     *  resolution ({@code isSameItemSameComponents} against the gauge filter). */
+    boolean craftingCellIgnoresData(ItemStack cell) {
+        if (cell.isEmpty()) return false;
+        for (VirtualComponentPosition pos : inputConnections)
+            if (menu.componentAt(pos) instanceof VirtualGaugeBehaviour s
+                    && s.ignoreData && !s.filter.isEmpty()
+                    && ItemStack.isSameItemSameComponents(s.filter, cell))
+                return true;
         return false;
     }
 
@@ -912,13 +947,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
 
         VirtualGaugeBehaviour g = gauge();
-        List<Component> tooltip = null;
+        List<Component> tooltip;
 
-        // INPUTS — the 3×3 ingredient grid, rendered/hit-tested by the active work-mode editor.
         tooltip = editor().renderInputArea(gfx, mouseX, mouseY);
 
-        // OUTPUT — the gauge's filter and produced count. In crafting mode this is the whole batch
-        // (per-craft yield × craft count); a single package carries every craft.
         if (g != null && !g.filter.isEmpty()) {
             int ox = panelX + 160, oy = panelY + 48;
             int producedCount = editor().producedCount();
@@ -927,11 +959,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount));
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
-                Component scrollLine = workMode == GaugeWorkMode.CRAFTING && craftingUsesIgnoreData()
-                    ? Component.translatable("createfactorycontroller.gui.unable_to_change")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
-                    : CreateLang.translate("gui.factory_panel.expected_output_tip_2")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
+                Component scrollLine = CreateLang.translate("gui.factory_panel.expected_output_tip_2")
+                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
                 MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
                         FluidCompat.filterName(g.filter).getString() + " x" + producedTip)
                         .color(ScrollInput.HEADER_RGB).component();
@@ -1069,8 +1098,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
         }
 
-        // Request-mode button tooltip: header, the three modes (arrow on the selected one), the selected mode's
-        // two-line description, then "click to cycle".
+        // Request-mode button tooltip
         if (requestModeButton != null && requestModeButton.isMouseOver(mouseX, mouseY)) {
             List<Component> lines = new ArrayList<>();
             lines.add(Component.translatable("createfactorycontroller.gui.request_mode")
@@ -1097,10 +1125,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                         Minecraft.getInstance().options.advancedItemTooltips)
                     : getTooltipFromItem(Minecraft.getInstance(), g.filter);
 
-        // Crafting toggle — rendered here (last) rather than self-rendered by the widget, so the buttons
-        // drawn after it (new-input / relocate) can't paint over its now multi-line tooltip.
         if (craftingButton != null && craftingButton.isMouseOver(mouseX, mouseY))
             tooltip = craftingButtonTooltip();
+        if (customButton != null && customButton.isMouseOver(mouseX, mouseY))
+            tooltip = customButtonTooltip();
 
         if (tooltip != null)
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
@@ -1183,8 +1211,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             FluidGuiRender.filterIcon(gfx, behaviour.filter, fx, fy);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
-            // Fluid stock uses the bucket-aware format + glyphs (CreateFluidLogistic's mB/B/KB on the same
-            // Create NUMBERS sprite); items use the k/m abbreviation. Both share our sprite renderer.
             SpriteNumbersRender.drawCount(gfx, FluidCompat.isFluidFilter(behaviour.filter)
                 ? formatFluidStock(behaviour.stockLevel) : stockCountText(behaviour.stockLevel), fx, fy);
             gfx.pose().popPose();
@@ -1194,8 +1220,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (requestMode.isPassive() && behaviour != null && behaviour.requestMode.isPassive()) {
             displayCount = Math.max(0, behaviour.count);
         }
-        // Count box is a plain integer (fluid threshold is whole units of the unit box; items are whole items).
-        // While typing (non-passive only) show the live buffer + a blinking caret; "/" only represents 0 when idle.
+
         String countStr;
         if (countEditing && !requestMode.isPassive()) {
             countStr = (countEdit.isEmpty() ? "" : countEdit) + ((System.currentTimeMillis() / 400) % 2 == 0 ? "_" : "");

@@ -825,13 +825,19 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                     if (!b.stack.isEmpty() && b.count > 0) addDemand(demandByNetwork, e.getKey(), b.stack, b.count);
         } else if (crafting) {
             Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools = new HashMap<>();
+            // A >3×3 arrangement holds more than 9 cells, so per-cell variant spill for an ignore-data ingredient
+            // could ship more distinct package slots than the box budget. Pin one variant per such source up front
+            // (covering all its cells); a ≤3×3 grid caps at 9 cells and keeps the flexible per-cell spill.
+            Map<VirtualGaugeBehaviour, ItemStack> pinned = craftDimension > 3
+                ? pinCraftingVariants(variantPools, batch) : null;
+            if (craftDimension > 3 && pinned == null) { setConnectionsSuccess(false); return; }
             for (ItemStack cell : activeCraftingArrangement) {
                 if (cell.isEmpty()) { craftPattern.add(ItemStack.EMPTY); continue; }
                 VirtualGaugeBehaviour source = findIngredientSource(cell);
                 if (source != null && source.ignoreData && !FluidCompat.isFluidFilter(source.filter)) {
-                    List<BigItemStack> pool = variantPools.computeIfAbsent(source, this::variantPool);
-                    ItemStack chosen = takeVariant(pool, batch);
-                    if (chosen.isEmpty()) { setConnectionsSuccess(false); return; }  // no single variant has enough
+                    ItemStack chosen = pinned != null ? pinned.get(source)
+                        : takeVariant(variantPools.computeIfAbsent(source, this::variantPool), batch);
+                    if (chosen == null || chosen.isEmpty()) { setConnectionsSuccess(false); return; }  // no single variant has enough
                     craftPattern.add(chosen.copyWithCount(1));
                     addDemand(demandByNetwork, source.networkId, chosen, batch);
                 } else {
@@ -958,19 +964,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         }
     }
 
-    /** Whether any wired-in ingredient is an (item) ignore-data gauge — disables crafting batch & grid resize. */
-    private boolean craftingUsesIgnoreData() {
-        for (VirtualComponentPosition p : targetedBy().keySet())
-            if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
-                    && s.ignoreData && !FluidCompat.isFluidFilter(s.filter)) return true;
-        return false;
-    }
-
-    /** Crafts dispatched per request — {@code craftBatch} in crafter mode, forced to 1 in non-crafting mode or when an
-     *  ignore-data ingredient disables batching. Same value {@link #tickRequests} uses, so a request's real per-craft
-     *  ingredient demand is {@code connection amount × effectiveBatch()}. */
+    /** Crafts dispatched per request — {@code craftBatch} in crafter mode, forced to 1 elsewhere. Same value
+     *  {@link #tickRequests} uses, so a request's real per-craft ingredient demand is {@code connection amount ×
+     *  effectiveBatch()}. An ignore-data ingredient still batches: each slot ships a single variant covering its
+     *  whole batch (see {@link #takeVariant}/{@link #pinCraftingVariants}). */
     public int effectiveBatch() {
-        return mode != GaugeWorkMode.CRAFTING || craftingUsesIgnoreData() ? 1 : Math.max(1, craftBatch);
+        return mode != GaugeWorkMode.CRAFTING ? 1 : Math.max(1, craftBatch);
     }
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
@@ -998,6 +997,30 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (BigItemStack b : pool)
             if (b.count >= amount) { b.count -= amount; return b.stack; }
         return ItemStack.EMPTY;
+    }
+
+    /** Pins each ignore-data crafting ingredient to ONE in-stock variant covering all of its cells (× {@code
+     *  batch}), reserving that amount from the shared pool. Keeps a large arrangement's shipped package to one
+     *  stack per ingredient instead of one per spilled variant. Returns {@code null} when some source has no
+     *  single variant with enough stock. */
+    @Nullable
+    private Map<VirtualGaugeBehaviour, ItemStack> pinCraftingVariants(
+            Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools, int batch) {
+        Map<VirtualGaugeBehaviour, Integer> cellsPerSource = new LinkedHashMap<>();
+        for (ItemStack cell : activeCraftingArrangement) {
+            if (cell.isEmpty()) continue;
+            VirtualGaugeBehaviour source = findIngredientSource(cell);
+            if (source != null && source.ignoreData && !FluidCompat.isFluidFilter(source.filter))
+                cellsPerSource.merge(source, 1, Integer::sum);
+        }
+        Map<VirtualGaugeBehaviour, ItemStack> pinned = new HashMap<>();
+        for (Map.Entry<VirtualGaugeBehaviour, Integer> e : cellsPerSource.entrySet()) {
+            List<BigItemStack> pool = variantPools.computeIfAbsent(e.getKey(), this::variantPool);
+            ItemStack chosen = takeVariant(pool, e.getValue() * batch);
+            if (chosen.isEmpty()) return null;
+            pinned.put(e.getKey(), chosen);
+        }
+        return pinned;
     }
 
     /** CUSTOM mode: builds, per source network, the ordered per-slot ingredient list — this network's slots at

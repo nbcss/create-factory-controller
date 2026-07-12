@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.simibubi.create.content.equipment.clipboard.ClipboardEntry;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
+import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
 import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
 import com.simibubi.create.foundation.gui.widget.IconButton;
@@ -15,7 +16,9 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.gui.screen.IngredientCheckClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
+import io.github.nbcss.createfactorycontroller.content.packet.RegisterOrderNotificationPacket;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -42,6 +45,18 @@ public abstract class StockKeeperRequestScreenMixin {
     @Shadow public List<BigItemStack> itemsToOrder;
     @Shadow @Nullable List<List<ClipboardEntry>> clipboardItem;
     @Shadow StockTickerBlockEntity blockEntity;
+    @Shadow public AddressEditBox addressBox;
+
+    /** Before the order is sent, register the player for status toasts on this (network, address) — but only when the
+     *  order actually contains a Production Blueprint (otherwise no ProductionOrder is created). The subscribe packet
+     *  is sent first, so the server has the pending subscription ready when it creates the order. */
+    @Inject(method = "sendIt", at = @At("HEAD"))
+    private void cfc$subscribeForOrderNotification(CallbackInfo ci) {
+        if (blockEntity == null || blockEntity.behaviour == null || blockEntity.behaviour.freqId == null) return;
+        if (itemsToOrder.stream().noneMatch(b -> ProductionPatternItem.isPattern(b.stack))) return;
+        PacketDistributor.sendToServer(
+            new RegisterOrderNotificationPacket(blockEntity.behaviour.freqId, addressBox.getValue()));
+    }
 
     @WrapOperation(method = "renderItemEntry", at = @At(value = "INVOKE",
         target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;drawItemCount(Lnet/minecraft/client/gui/GuiGraphics;II)V"))

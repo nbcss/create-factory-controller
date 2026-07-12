@@ -6,7 +6,9 @@ import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -48,12 +50,13 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++) {
             RecipeSlot draw = slotDisplay(i, hover);
             renderSlotCell(gfx, cellX(i), cellY(i), draw);
-            // Tooltip only for a real, non-empty slot, and never while dragging.
             if (dragFrom < 0 && !draw.isEmpty() && in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) {
                 ItemStack stack = s.ingredientOf(draw.source());
                 String amount = FluidCompat.isFluidFilter(stack)
                     ? ThresholdUnit.formatFluidAmount(draw.count()) : String.valueOf(draw.count());
-                tooltip = List.of(
+                boolean srcIgnore = s.getMenu().componentAt(draw.source())
+                        instanceof VirtualGaugeBehaviour src && src.ignoreData;
+                tooltip = ConfigureRecipeScreen.withIgnoreDataLine(List.of(
                     CreateLang.translate("gui.factory_panel.sending_item",
                         FluidCompat.filterName(stack).getString() + " x" + amount)
                         .color(ScrollInput.HEADER_RGB).component(),
@@ -64,9 +67,16 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
                     CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
                     Component.translatable("createfactorycontroller.gui.action_remove_component")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)), srcIgnore);
             }
         }
+
+        if (s.customSlots.stream().allMatch(RecipeSlot::isEmpty)
+                && in(mouseX, mouseY, s.panelX + 68, s.panelY + 28, 58, 58))
+            tooltip = List.of(
+                CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
+                CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
+                CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
         return tooltip;
     }
 
@@ -110,7 +120,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             gfx.fill(hx, hy, hx + 16, hy + 16, color);
         }
         int fx = cellX(dragFrom), fy = cellY(dragFrom);
-        gfx.fill(fx, fy, fx + 16, fy + 16, 0x4485f2a2);   // source slot highlight
+        gfx.fill(fx, fy, fx + 16, fy + 16, 0x4485F2A2);   // source slot highlight
         gfx.pose().popPose();
 
         // The picked-up (source) item follows the cursor, above everything (including every count).
@@ -175,25 +185,38 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
 
     @Override
     boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step) {
-        // While dragging, the wheel tunes the PICKED-UP cell (its count shows live on the cursor item),
-        // wherever the cursor happens to hover — the hovered cell may be rendering a swap preview of another
-        // cell's content, so scrolling it would edit state the player can't see.
         int slot = dragFrom >= 0 ? dragFrom : slotAt(mouseX, mouseY);
         if (slot < 0) return false;
         RecipeSlot rs = s.customSlots.get(slot);
         if (rs.isEmpty()) return true;   // consume the scroll, but a gap has nothing to tune
         ItemStack ingredient = s.ingredientOf(rs.source());
+        boolean ctrl = Screen.hasControlDown();
+        boolean fluid = FluidCompat.isFluidFilter(ingredient);
         // Floored at 1 in both branches — clearing is shift-click only.
         int next;
-        if (FluidCompat.isFluidFilter(ingredient)) {   // fluid cell: millibuckets with fluid steps + cap
+        if (fluid) {   // fluid cell: millibuckets with fluid steps + cap
             next = ConfigureRecipeScreen.adjustFluidAmount(rs.count(), dir,
-                Screen.hasShiftDown(), Screen.hasControlDown(), 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB);
+                Screen.hasShiftDown(), ctrl, 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB);
+        } else if (ctrl) {   // ctrl-scroll a solid slot: fine ±1 step, levels every other solid slot to match
+            next = Mth.clamp(rs.count() + dir, 1, Math.max(1, ConfigureRecipeScreen.stackSizeOf(ingredient)));
         } else {
             next = Mth.clamp(rs.count() + dir * step, 1, Math.max(1, ConfigureRecipeScreen.stackSizeOf(ingredient)));
         }
         if (next != rs.count()) {
             s.customSlots.set(slot, new RecipeSlot(rs.source(), next));
             ConfigureRecipeScreen.playScrollSound();
+            if (ctrl && !fluid) {
+                for (int i = 0; i < s.customSlots.size(); i++) {
+                    if (i == slot) continue;
+                    RecipeSlot other = s.customSlots.get(i);
+                    if (other.isEmpty()) continue;
+                    ItemStack otherItem = s.ingredientOf(other.source());
+                    if (FluidCompat.isFluidFilter(otherItem)) continue;
+                    int capped = Mth.clamp(next, 1, Math.max(1, ConfigureRecipeScreen.stackSizeOf(otherItem)));
+                    if (capped != other.count())
+                        s.customSlots.set(i, new RecipeSlot(other.source(), capped));
+                }
+            }
         }
         return true;
     }

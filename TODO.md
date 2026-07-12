@@ -8,12 +8,13 @@
 - [SKIP] Guide Overlay GUI; move to web link first
 
 # 1.1.0
+- [DONE] Gauge Custom Layout Mode
 - [TODO] Integer Connection & Arithmetic Component
-- [TODO] Properly handle stock link not loaded warning
+- [DOING] Properly handle stock link not loaded warning
+- [DOING] Network Rename/Set Icon
+- [DOING] Blueprint Save/Load
 - [TODO] Dynamic Batch Size
 - [TODO] Paper as component
-- [TODO] Network Rename/Set Icon
-- [TODO] Blueprint Save/Load
 - [TODO] Production Order Status Notification
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
@@ -21,7 +22,6 @@
 # Roadmap
 - [TODO] Custom Keybinding Preset
 - [TODO] Selector Gauge
-- [TODO] Gauge Ingredient Sequence Mode
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration
 - [TODO] Improve panel sync packet (transfer delta only)
