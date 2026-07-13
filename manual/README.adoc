@@ -5,7 +5,7 @@ User manual of the mod.
 Directory structure:
 
 * `src/`
-** `*.adoc`: Documents, translated and built to `build/$lang/*.html`. Source written in English.
+** `\*.adoc`: Documents, translated and built to `build/$lang/*.html`. Source written in English.
 ** `style.css`, `images/`: Static assets, copied to `build/`.
 ** `_layout.erb`: HTML template for all documents.
 
