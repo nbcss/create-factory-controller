@@ -213,13 +213,13 @@ When using a fluid as an ingredient or output, scrolling on the ingredient or ou
 [#promise]
 == Promise Limits
 
-Each time a factory gauge requests a set of ingredients to be sent to its destination address, a promises is created (also referred to as a *pending request*). Promises record the number of output items expected to be produced, but has yet to arrive in storage, referred to as the number of *promised items*. When accounting for the number of the monitored items in storage, the number of promised items is added to the actual storage amount before being compared to the target amount. Doing so stops the factory gauge from excessively sending ingredients before the outputs of previous requests arrive.
+Each time a factory gauge requests a set of ingredients to be sent to its destination address, a promises is created (also referred to as a pending request). Each promise records the number of output items expected to be produced, but have yet to arrive in storage. When accounting for the number of the monitored items in storage, the number of items recorded in promises is added to the actual storage amount before being compared to the target amount. Doing so stops the factory gauge from excessively sending ingredients before the outputs of previous requests arrive.
 
 .UI elements related to promises
 image::gauge-promise-ui.png[,267,53]
 
 &#x2776; Promised items::
-  Displays the total number of promised items created by all gauges in the same network producing the same item. Click to void all promises.
+  Displays the total number of items recorded in promises created by all gauges in the same network producing the same item. Click to void all promises of the same item type.
 
 &#x2777; Expire time::
   Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default. +
