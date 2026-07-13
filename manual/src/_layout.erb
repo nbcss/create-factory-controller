@@ -8,23 +8,27 @@
   </head>
   <body>
     <header>
-      <div class="site-name"><%= h t 'site-name' %></div>
-      <nav>
-        <ol>
-          <li class="nav-item">
-            <button><%= h t 'site-nav-manual' %></button>
-            <ol class="nav-menu">
-              <li><a href="."><%= h t 'site-nav-manual-home' %></a></li>
-            <% manual_toc.blocks.each do |toc_item| %>
-              <li>
-                <%= toc_item.text %>
-                <%= toc_item.content %>
-              </li>
-            <% end %>
-            </ol>
-          </li>
-        </ol>
-      </nav>
+      <div class="header-inner">
+        <div class="site-name"><%= h t 'site-name' %></div>
+        <nav>
+          <ol>
+            <li class="nav-item">
+              <button><%= h t 'site-nav-manual' %></button>
+              <div class="nav-menu-container">
+                <ol class="nav-menu">
+                  <li><a href="."><%= h t 'site-nav-manual-home' %></a></li>
+                <% manual_toc.blocks.each do |toc_item| %>
+                  <li>
+                    <%= toc_item.text %>
+                    <%= toc_item.content %>
+                  </li>
+                <% end %>
+                </ol>
+              </div>
+            </li>
+          </ol>
+        </nav>
+      </div>
     </header>
     <main>
       <article>
