@@ -1,6 +1,5 @@
 ### Gradle ###
 .gradle
-*DESIGN.md
 lib/
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -18,6 +17,9 @@ out/
 
 ### Claude ###
 .claude
+
+### Design docs (local planning notes) ###
+.design/
 
 ### Eclipse ###
 .apt_generated

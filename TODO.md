@@ -15,9 +15,10 @@
 - [DOING] Blueprint Save/Load
 - [TODO] Dynamic Batch Size
 - [TODO] Paper as component
-- [TODO] Production Order Status Notification
+- [DOING] Production Order Status Notification
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
+- JEI to set layout?
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
