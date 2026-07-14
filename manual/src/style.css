@@ -42,6 +42,10 @@ header {
   anchor-name: --anchor-header-inner;
 }
 
+main :target {
+  scroll-margin-top: 6rem;
+}
+
 @media (max-width: 600px) {
   main {
     padding: 1.5rem 1rem 3rem;
@@ -102,8 +106,8 @@ header nav > ol {
 .nav-menu-container {
   display: none;
   position: absolute;
-  left: anchor(left --anchor-button);
-  right: anchor(right --anchor-header-inner);
+  left: anchor(--anchor-button left);
+  right: anchor(--anchor-header-inner right);
   max-height: calc(100vh - 100%);
   pointer-events: none;
   justify-content: right;
