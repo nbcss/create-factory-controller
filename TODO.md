@@ -18,11 +18,11 @@
 - [DOING] Production Order Status Notification
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
-- JEI to set layout?
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
 - [TODO] Selector Gauge
+- [TBC] JEI to set custom arrangement layout / create gauge
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration
 - [TODO] Improve panel sync packet (transfer delta only)

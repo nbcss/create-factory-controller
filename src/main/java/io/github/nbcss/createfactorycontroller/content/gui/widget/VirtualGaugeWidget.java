@@ -182,8 +182,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         lines.add(selected
                 ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
                 : (behaviour.filter.isEmpty()
-                        ? CreateLang.translate("logistics.filter.click_to_set").component()
-                        : Component.translatable("createfactorycontroller.gui.action_configure").withStyle(ChatFormatting.GRAY))
+                        ? Component.translatable("createfactorycontroller.gui.set_item.filter_tip")
+                        : Component.translatable("createfactorycontroller.gui.action_configure"))
                         .withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
                 .withStyle(ChatFormatting.DARK_GRAY));
