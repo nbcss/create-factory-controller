@@ -1,6 +1,6 @@
 = Dashboard
 
-The dashboard UI shows up when you interact with a factory controller block. This displays a virtual 2D board to place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components]) on.
+The dashboard UI appears when you interact with a factory controller block. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components]).
 
 .Dashboard UI
 image::dashboard-ui.png[,430,438]
@@ -16,7 +16,7 @@ s| Zoom in/out
 | Mouse scroll wheel
 
 s| Place component
-| Hold a xref:components.adoc[placeable item] + Click empty space
+| Hold a xref:components.adoc[placeable item] + Click on empty space
 
 s| Open component
 | Left/right click
@@ -35,7 +35,7 @@ Most of the controls can be changed in _Options--Controls--Key Binds_.
 &#x2777; Help button::
   Opens this help page.
 &#x2778; Network selector::
-  All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components, or tune the currently held gauge. <<Network Selector,More Info>>
+  All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components. While holding a gauge, scroll to tune the gauge to a network. <<Network Selector,More Info>>
 &#x2779; Capacity indicator::
   Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up. +
   The capacity may be modified by the "Controller Capacity" server setting.
@@ -44,31 +44,31 @@ Most of the controls can be changed in _Options--Controls--Key Binds_.
 &#x277B; Settings button::
   Opens the settings screen.
 &#x277C; Player inventory::
-  Shows the player inventory. Only the 9 hotbar slots are shown by default, click the "+" button to expand the other 27 slots.
+  Shows the player inventory. Only the 9 hotbar slots are shown by default. Click the "+" button to expand the other 27 slots.
 
 [#navigation]
 == Navigation
 
-Drag with the left mouse button to pan the view into the virtual board. The W, A, S, D keys can also be used to move the view in cardinal directions.
+Drag with the left mouse button to pan the view around the virtual board. The W, A, S, D keys can also be used to move the view in cardinal directions.
 
 Scroll with the mouse wheel to zoom in/out.
 
 [#components]
 == Working with Components
 
-.Holding a tuned factory gauge to an empty location
+.Holding a tuned factory gauge over an empty location
 image::dashboard-place-component.png[,76,77]
 
-To place a component, grab a corresponding item from the inventory, and click on an empty spot on the board. The xref:components.adoc[Components] page lists all items that may be placed. Notably, factory gauges need to <<network-selector,tuned to a network>> before placing. Placed items will be stored inside the factory controller, even when the factory controller block is mined.
+To place a component, grab a corresponding item from the inventory and click on an empty spot on the board. The xref:components.adoc[Components] page lists all items that may be placed. Notably, factory gauges need to be <<network-selector,tuned to a network>> before being placed. Placed items will be stored inside the factory controller, even when the factory controller block is mined.
 
 .A just-placed factory gauge
 image::gauge-empty.png[,70,67]
 
-Holding shift and clicking on a component removes it from the controller, the item is returned to your inventory.
+Holding shift and clicking on a component removes it from the controller and returns the item to your inventory.
 
-Both left- and right-clicking a components opens its configuration screen. To move a component, open its screen and click the image:btn-relocate.png[,18,18] "relocate" button, then click on a new location for the component.
+Either left- or right-clicking a component opens its configuration screen. To move a component, open its screen and click the image:btn-relocate.png[,18,18] "relocate" button, then click on a new location for the component.
 
-Multiple components may be selected. Hold Ctrl and drag with left mouse button to select all components within a rectangular area. Selected components are indicated with a green outline. To add and remove individual components from the selection, hold Ctrl and left-click them.
+Multiple components may be selected. Hold Ctrl and drag with the left mouse button to select all components within a rectangular area. Selected components are indicated with a green outline. To add and remove individual components from the selection, hold Ctrl and left-click them.
 
 .Rectangle-selecting multiple components
 image::dashboard-rect-select.png[,340,188]
@@ -78,16 +78,16 @@ When components are selected, drag on any of them to move all selected component
 [#connections]
 == Creating and Modifying Connections
 
-Components may be connected to one another, refer to a specific component's documentation for its functionalities facilitated by connections.
+Components may be connected to one another. Refer to a specific component's documentation for the functionality provided by connections.
 
-To connect component A to B, click on B to open its UI, and click on the image:btn-add-connection.png[,18,18] "add connection" button, then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen.
+To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] "add connection" button, and then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen.
 
-A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering on them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering a spot with overlapping connections to select one of them.
+A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them.
 
 .Selecting overlapping connections
 image::dashboard-select-overlapping-connections.png[,357,400]
 
-Connections automatically choose paths between its 2 ends. To customize this path, 4 path modes can be selected from, do so by hovering on a connection and pressing R. Bend modes of all connections on one component can be changed by pressing R on the component.
+Connections automatically choose paths between their 2 ends. To customize this path, select from 4 path modes by hovering over a connection and pressing R. The bend modes of all connections on one component can be changed by pressing R on the component.
 
 .Path modes
 image::dashboard-connection-path-modes.png[,408,398]
@@ -95,24 +95,24 @@ image::dashboard-connection-path-modes.png[,408,398]
 [#network-selector]
 == Network Selector
 
-.Network selector with no netwoork
+.Network selector with no network
 image::network-selector-empty.png[,60,60]
 
-Factory gauges need to be tuned to a network before being placed in the controller. The first gauge need to be tuned the usual way (e.g. interacting with a stock link with a gauge in hand). Once a tuned gauge is placed in the controller, its network appears in the network selector.
+Factory gauges need to be tuned to a network before being placed in the controller. The first gauge needs to be tuned the usual way (e.g. by interacting with a stock link with a gauge in hand). Once a tuned gauge is placed in the controller, its network appears in the network selector.
 
 .Network selector with a network selected
 image::network-selector-selected.png[,385,174]
 
-With an empty cursor, scrolling with mouse wheel selects one of the tuned networks, highlighting all components tuned to that network with a blue outline. The number of components tuned to the network also appears on the network selector icon.
+With an empty cursor, scrolling with the mouse wheel selects one of the tuned networks, highlighting all components tuned to that network with a blue outline. The number of components tuned to the network also appears on the network selector icon.
 
 While holding a factory gauge item, scrolling on the network selector changes the network this item is tuned to, allowing you to quickly tune a new gauge to an existing network. Holding shift and scrolling accomplishes the same.
 
 [#additional-interactions]
 == Additional Interactions
 
-Some components, like the xref:redstone-link.adoc[redstone link], have modes of operation that can be switched between by pressing the F key on them in the dashboard, in addition to their configuration UI.
+Some components, like the xref:redstone-link.adoc[redstone link], have modes of operation that can be switched either by pressing the F key while hovering over them in the dashboard, or through their configuration UI.
 
-Each factory gauge displays a label, providing relavant information (e.g. items in stock) at a glance. When they become distracting or are obstructing other components, they can be hidden by pressing Alt. Then only the label of the hovered component is displayed. Press Alt again to show them again.
+Each factory gauge displays a label, providing relevant information (e.g. items in stock) at a glance. When the labels become distracting or obstruct other components, they can be hidden by pressing Alt. Then only the label of the hovered component is displayed. Press Alt again to show all labels.
 
 .Summary
 [cols="2*"]

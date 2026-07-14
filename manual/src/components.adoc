@@ -1,6 +1,6 @@
 = Components
 
-Some items can be placed inside of a factory controller. Once placed, they are referred to as "virtual components". These include:
+Some items can be placed inside a factory controller. Once placed, they are referred to as "virtual components". These include:
 
 [%autowidth%header,cols="3*"]
 |===
