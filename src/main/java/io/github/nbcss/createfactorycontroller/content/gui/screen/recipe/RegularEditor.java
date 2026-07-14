@@ -29,7 +29,8 @@ class RegularEditor extends GaugeWorkModeEditor {
     List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
         s.patternHovered = false;
         List<Component> tooltip = null;
-        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
+        // Scaled layout while the multiplier bar is hovered (previewScale = 1 otherwise → unchanged).
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.previewScale(mouseX, mouseY));
         for (int i = 0; i < slots.size(); i++) {
             ConfigureRecipeScreen.InputSlot slot = slots.get(i);
             int ix = cellX(i), iy = cellY(i);
@@ -97,5 +98,14 @@ class RegularEditor extends GaugeWorkModeEditor {
             }
         }
         return false;
+    }
+
+    @Override
+    boolean[] occupiedCells() {
+        boolean[] cells = new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS];
+        // Only called while the bar is hovered, so preview at the full multiplier (scaled spill included).
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.maxRequestMultiplier);
+        for (int i = 0; i < slots.size() && i < cells.length; i++) cells[i] = true;
+        return cells;
     }
 }

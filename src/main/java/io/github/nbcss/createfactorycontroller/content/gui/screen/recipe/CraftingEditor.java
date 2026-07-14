@@ -25,6 +25,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
         s.patternHovered = false;
         List<Component> tooltip = null;
         ItemStack hovered = ItemStack.EMPTY;   // the specific ingredient under the cursor (for the per-slot line)
+        int scale = s.previewScale(mouseX, mouseY);   // multiplier preview while its bar is hovered, else 1
 
         if (s.craftingIsLarge()) {
             // >3×3: aggregate to one slot per distinct ingredient type (count = cells × batch, no overflow)
@@ -36,7 +37,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 if (i < slots.size()) {
                     ConfigureRecipeScreen.CraftSlot slot = slots.get(i);
                     gfx.renderItem(slot.stack(), ix, iy);
-                    s.drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount()));
+                    s.drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount() * scale));
                 }
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                     hovering = true;
@@ -66,7 +67,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 ItemStack stack = (col < dim && row < dim && idx < s.craftingIngredients.size())
                     ? s.craftingIngredients.get(idx).stack : ItemStack.EMPTY;
                 gfx.renderItem(stack, ix, iy);
-                int dispBatch = s.effectiveBatch();
+                int dispBatch = s.effectiveBatch() * scale;
                 if (!stack.isEmpty() && dispBatch > 1)
                     s.drawItemCount(gfx, stack, ix, iy, String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
                 if (in(mouseX, mouseY, ix, iy, 16, 16)) {
@@ -121,5 +122,23 @@ class CraftingEditor extends GaugeWorkModeEditor {
         // Per-craft yield is fixed, so scrolling the output changes how many crafts ride one request.
         s.adjustCraftBatch(dir * step);
         return true;
+    }
+
+    @Override
+    boolean[] occupiedCells() {
+        boolean[] cells = new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS];
+        if (s.craftingIsLarge()) {   // one aggregated slot per distinct ingredient, packed from cell 0
+            int count = s.craftingDisplaySlots().size();
+            for (int i = 0; i < count && i < cells.length; i++) cells[i] = true;
+        } else {                     // recipe cells laid into the top-left dim×dim of the grid
+            int dim = s.effectiveCraftDimension();
+            for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
+                int idx = row * dim + col;
+                if (col < dim && row < dim && idx < s.craftingIngredients.size()
+                        && !s.craftingIngredients.get(idx).stack.isEmpty())
+                    cells[row * 3 + col] = true;
+            }
+        }
+        return cells;
     }
 }

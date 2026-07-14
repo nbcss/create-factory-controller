@@ -81,4 +81,15 @@ abstract class GaugeWorkModeEditor {
 
     /** Drawn on top of everything (after the grid + labels) for drag previews. Default: nothing. */
     void renderOverlay(GuiGraphics gfx, int mouseX, int mouseY) {}
+
+    /** Grid cells (row-major, 0–8) currently showing an ingredient — for the request-multiplier hover highlight.
+     *  Default: none. */
+    boolean[] occupiedCells() { return new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS]; }
+
+    /** Fills each {@link #occupiedCells() occupied} ingredient cell with {@code color}; the caller sets the z-layer. */
+    void fillOccupiedCells(GuiGraphics gfx, int color) {
+        boolean[] cells = occupiedCells();
+        for (int i = 0; i < cells.length; i++)
+            if (cells[i]) gfx.fill(cellX(i), cellY(i), cellX(i) + 16, cellY(i) + 16, color);
+    }
 }

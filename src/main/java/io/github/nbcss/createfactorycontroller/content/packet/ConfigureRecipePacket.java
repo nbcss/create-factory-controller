@@ -22,9 +22,9 @@ import java.util.Map;
 
 
 public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panelPos, String address,
-                                    int recipeOutput, int craftBatch, int craftDimension, int promiseInterval,
-                                    int promiseLimit, boolean promiseLimitByAddress, int count, ThresholdUnit mode,
-                                    RequestMode requestMode, GaugeWorkMode workMode,
+                                    int recipeOutput, int craftBatch, int maxRequestMultiplier, int craftDimension,
+                                    int promiseInterval, int promiseLimit, boolean promiseLimitByAddress, int count,
+                                    ThresholdUnit mode, RequestMode requestMode, GaugeWorkMode workMode,
                                     List<VirtualComponentPosition> inputPositions, List<Integer> inputAmounts,
                                     List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
                                     boolean clearPromises, boolean reset) implements CustomPacketPayload {
@@ -41,6 +41,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 buf.writeUtf(pkt.address);
                 buf.writeInt(pkt.recipeOutput);
                 buf.writeInt(pkt.craftBatch);
+                buf.writeInt(pkt.maxRequestMultiplier);
                 buf.writeInt(pkt.craftDimension);
                 buf.writeInt(pkt.promiseInterval);
                 buf.writeInt(pkt.promiseLimit);
@@ -70,6 +71,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 String address = buf.readUtf();
                 int recipeOutput = buf.readInt();
                 int craftBatch = buf.readInt();
+                int maxRequestMultiplier = buf.readInt();
                 int craftDimension = buf.readInt();
                 int promiseInterval = buf.readInt();
                 int promiseLimit = buf.readInt();
@@ -96,9 +98,9 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 int k = buf.readVarInt();
                 List<RecipeSlot> slots = new ArrayList<>(k);
                 for (int i = 0; i < k; i++) slots.add(RecipeSlot.read(buf));
-                return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, craftDimension,
-                    promiseInterval, promiseLimit, promiseLimitByAddress, count, mode, requestMode, workMode, positions,
-                    amounts, arrangement, slots, clearPromises, reset);
+                return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, maxRequestMultiplier,
+                    craftDimension, promiseInterval, promiseLimit, promiseLimitByAddress, count, mode, requestMode,
+                    workMode, positions, amounts, arrangement, slots, clearPromises, reset);
             });
 
     @Override
@@ -114,9 +116,9 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
             for (int i = 0; i < n; i++)
                 inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
-                packet.craftDimension(), packet.promiseInterval(), packet.promiseLimit(), packet.promiseLimitByAddress(),
-                packet.count(), packet.mode(), packet.requestMode(), packet.workMode(), inputs,
-                packet.craftingArrangement(), packet.recipeSlots(), packet.clearPromises(), packet.reset());
+                packet.maxRequestMultiplier(), packet.craftDimension(), packet.promiseInterval(), packet.promiseLimit(),
+                packet.promiseLimitByAddress(), packet.count(), packet.mode(), packet.requestMode(), packet.workMode(),
+                inputs, packet.craftingArrangement(), packet.recipeSlots(), packet.clearPromises(), packet.reset());
         });
     }
 }

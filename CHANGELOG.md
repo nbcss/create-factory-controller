@@ -5,6 +5,7 @@ Features:
 - Added toast notification for order status change.
 - Ignore data ingredient is now allowed for batch crafting & large crafting, but each slot cannot have different data item.
 - Added "Custom Arrangement" mode in gauge; you can customize which item needs to be in which slot, and packager can only unpackage items to correct slot in target inventory.
+- Added "Request Multiplier" feature in gauge: by set the maximum request multiplier value, gauge would attempt to combine ingredients from multiple requests into one request if stock allows.
 
 Changes:
 - Maximum batch crafting multiplier is 64 now, regardless recipe output count.

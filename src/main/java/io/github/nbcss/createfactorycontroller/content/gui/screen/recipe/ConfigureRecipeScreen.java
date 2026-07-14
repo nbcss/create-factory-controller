@@ -95,6 +95,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int PROMISE_TIMEOUT_X = 44, PROMISE_TIMEOUT_W = 32;
     private static final int PROMISE_LIMIT_X = 92, PROMISE_LIMIT_W = 42;
     private static final int LINK_RESET_X = 12, LINK_RESET_Y = 48;
+    private static final int OUTPUT_X = 160, OUTPUT_Y = 48;
+    private static final int MULTIPLIER_X = 64, MULTIPLIER_Y = 87, MULTIPLIER_W = 64, MULTIPLIER_H = 8;
+    private static final int REQUEST_MULTIPLIER_COLOR = 0x43FFDD70;
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
@@ -111,6 +114,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     int outputCount = 1;
     /** Crafts per request in crafting mode (≥1). The output slot shows outputCount × craftBatch. */
     private int craftBatch = 1;
+    /** User-set request-multiplier ceiling (≥1, default 1). */
+    int maxRequestMultiplier = 1;
     /** Square crafter-grid size (N→N×N) a recipe is laid out for; defaults to its minimum (max of recipe
      *  width/height), Ctrl-scrollable up to {@link ServerConfig#maxCraftGridSize()}. 0 until a recipe loads. */
     private int craftDimension = 0;
@@ -366,10 +371,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * partial last slot (so no slot exceeds the item's stack size), its slots contiguous, connections packed
      * in order — capped at {@link #MAX_INPUT_SLOTS}. Recomputed wherever the grid is drawn or hit-tested.
      */
-    List<InputSlot> layoutInputSlots() {
+    List<InputSlot> layoutInputSlots() { return layoutInputSlots(1); }
+
+    /** As {@link #layoutInputSlots()} but every connection total is first multiplied by {@code scale} (the
+     *  request-multiplier preview): the scaled totals re-pack into full stacks + a partial, so a scaled demand
+     *  naturally spills across more grid slots. */
+    List<InputSlot> layoutInputSlots(int scale) {
+        int s = Math.max(1, scale);
         List<InputSlot> slots = new ArrayList<>();
         for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
-            int total = Math.max(1, inputTotals.get(c));
+            int total = Math.max(1, inputTotals.get(c)) * s;
             if (isFluidConn(c)) {                       // a fluid ingredient is one slot of mB (never stack-split)
                 slots.add(new InputSlot(c, total));
                 continue;
@@ -453,6 +464,52 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      *  stack-of-64 item allows up to 576, a stack-of-1 item stays at 64. */
     int maxItemOutput() {
         return Math.max(64, 9 * outputStackSize());
+    }
+
+    /** The request-multiplier ceiling this gauge's current edit state structurally allows (ignores stock).
+     *  Mirrors {@link VirtualGaugeBehaviour#structuralMultiplierCap()} using the screen's edit state. */
+    int structuralMultiplierCap() {
+        if (workMode == GaugeWorkMode.CRAFTING)
+            return VirtualGaugeBehaviour.craftingMultiplierCap(effectiveBatch(), 64);
+
+        int outputCap = fluidMode ? FLUID_OUTPUT_CAP_MB : maxItemOutput();
+        int output = Math.max(1, outputCount);
+        List<VirtualGaugeBehaviour.ScaleSlot> slots = new ArrayList<>();
+        if (workMode == GaugeWorkMode.CUSTOM) {
+            for (RecipeSlot rs : customSlots) {
+                if (rs.isEmpty()) continue;
+                ItemStack ing = ingredientOf(rs.source());
+                if (ing.isEmpty()) continue;
+                boolean fluid = FluidCompat.isFluidFilter(ing);
+                int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : stackSizeOf(ing);
+                slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, rs.count()), capacity, fluid));
+            }
+            return VirtualGaugeBehaviour.customMultiplierCap(slots, output, outputCap, 64);
+        }
+        // REGULAR: one entry per ingredient connection (its whole total).
+        for (int c = 0; c < inputConnections.size(); c++) {
+            boolean fluid = isFluidConn(c);
+            int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : stackSizeOf(ingredientOf(inputConnections.get(c)));
+            slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, inputTotals.get(c)), capacity, fluid));
+        }
+        return VirtualGaugeBehaviour.regularMultiplierCap(slots, output, outputCap, 64);
+    }
+
+    /** Re-clamps {@link #maxRequestMultiplier} to the current structural cap — call after any edit that could
+     *  shrink it (amounts, output, batch, mode, connections). */
+    void clampMultiplier() {
+        maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, structuralMultiplierCap());
+    }
+
+    /** Whether {@code (mx, my)} is over the request-multiplier bar. */
+    boolean overMultiplier(double mx, double my) {
+        return in(mx, my, panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y, MULTIPLIER_W, MULTIPLIER_H);
+    }
+
+    /** Scale to render the ingredient/output amounts at for the given cursor: the multiplier while its bar is
+     *  hovered, else 1. A per-frame derived value (every render method gets the same cursor), so no cached field. */
+    int previewScale(double mx, double my) {
+        return overMultiplier(mx, my) ? maxRequestMultiplier : 1;
     }
 
     static MutableComponent stackBreakdown(int count, int ss) {
@@ -634,6 +691,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (g == null) return;
         outputCount = Math.max(1, g.recipeOutput);
         craftBatch = Math.max(1, g.craftBatch);
+        maxRequestMultiplier = Math.max(1, g.maxRequestMultiplier);
         craftDimension = Math.max(0, g.craftDimension);
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
@@ -662,6 +720,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         searchForCraftingRecipe();
         applyCraftingResolution();
+        maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, structuralMultiplierCap());
     }
 
     /** Seeds {@link #customSlots} from the current REGULAR-derived grid when entering CUSTOM mode. */
@@ -949,17 +1008,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         VirtualGaugeBehaviour g = gauge();
         List<Component> tooltip;
 
+        int multCap = structuralMultiplierCap();
+        maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, multCap);
+        boolean overMultiplier = overMultiplier(mouseX, mouseY);
+
         tooltip = editor().renderInputArea(gfx, mouseX, mouseY);
 
         if (g != null && !g.filter.isEmpty()) {
-            int ox = panelX + 160, oy = panelY + 48;
+            int ox = panelX + OUTPUT_X, oy = panelY + OUTPUT_Y;
             int producedCount = editor().producedCount();
+            int shownOutput = producedCount * previewScale(mouseX, mouseY);
             // Output is always magnitude-scaled (mB/B) regardless of the unit box: short ≤1-dp label, full tooltip.
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
-            drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount));
-            //TODO render scaler text
-            //SpriteNumbersRender.drawCountRightAligned(gfx, "16", ox - 5, oy + 10);
+            drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(shownOutput) : String.valueOf(shownOutput));
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
                 Component scrollLine = CreateLang.translate("gui.factory_panel.expected_output_tip_2")
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
@@ -974,6 +1036,33 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
                     scrollLine),
                     g.ignoreData);
+            } else if (overMultiplier) {
+                gfx.fill(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y,
+                        panelX + MULTIPLIER_X + MULTIPLIER_W, panelY + MULTIPLIER_Y + MULTIPLIER_H,
+                        0x55AAAAAA);
+                tooltip = List.of(
+                    Component.translatable("createfactorycontroller.gui.request_multiplier",
+                                    maxRequestMultiplier, multCap)
+                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
+                    Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
+                        .withStyle(ChatFormatting.GRAY),
+                    Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
+                        .withStyle(ChatFormatting.GRAY),
+                    CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+            }
+            SpriteNumbersRender.drawCountRightAligned(gfx, String.valueOf(maxRequestMultiplier),
+                    panelX + MULTIPLIER_X + MULTIPLIER_W + 2, panelY + MULTIPLIER_Y + MULTIPLIER_H - 6,
+                    0xFFFFDD70);
+
+            // Hovering the bar highlights every slot the multiplier scales — ingredient cells + output — above the
+            // items but below their count font (z 199, matching the drag-preview layer).
+            if (overMultiplier) {
+                gfx.pose().pushPose();
+                gfx.pose().translate(0, 0, 199);
+                editor().fillOccupiedCells(gfx, REQUEST_MULTIPLIER_COLOR);
+                gfx.fill(ox, oy, ox + 16, oy + 16, REQUEST_MULTIPLIER_COLOR);
+                gfx.pose().popPose();
             }
         }
 
@@ -1046,7 +1135,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             t.add(Component.empty());
             t.add(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
                     .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(0xb88218)));
-            // The two scope options: the active one is white with an "->" arrow, the other dim gray with ">".
             t.add(Component.literal(!addr ? "-> " : "> ")
                     .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_gauge"))
                     .withStyle(!addr ? ChatFormatting.WHITE : ChatFormatting.GRAY));
@@ -1348,6 +1436,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
+        // Request-multiplier bar: left-click jumps to the max valid value, right-click resets to 1.
+        if ((button == 0 || button == 1) && overMultiplier(mouseX, mouseY)) {
+            maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
+            playClickSound();
+            return true;
+        }
+
         if (editor().inputAreaClicked(mouseX, mouseY, button)) return true;
 
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
@@ -1416,6 +1511,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             if (dir != 0) {
                 int limitStep = hasShiftDown() ? 10 : 1;
                 promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 99);
+                playScrollSound();
+            }
+            return true;
+        }
+
+        // Request-multiplier modifier
+        if (overMultiplier(mouseX, mouseY)) {
+            if (dir != 0) {
+                int mstep = hasShiftDown() ? 10 : 1;
+                maxRequestMultiplier = Mth.clamp(maxRequestMultiplier + dir * mstep, 1, structuralMultiplierCap());
                 playScrollSound();
             }
             return true;
@@ -1497,7 +1602,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int batch = crafting ? effectiveBatch() : 1;
         int dimension = crafting ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
-            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, dimension,
+            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, maxRequestMultiplier, dimension,
             promiseExpiration.getState(), promiseLimitState, promiseLimitByAddress, thresholdCount, mode, requestMode,
             workMode, positions, amounts, new ArrayList<>(arrangement), slotsOut, clearPromises, reset));
     }

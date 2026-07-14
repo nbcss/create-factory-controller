@@ -45,6 +45,15 @@ public final class SpriteNumbersRender {
         blitGlyphs(gfx, text, rightX - width(text), y);
     }
 
+    /** {@link #drawCountRightAligned} tinted with {@code argb} (the white glyph sprites are multiplied by it). */
+    public static void drawCountRightAligned(GuiGraphics gfx, String text, int rightX, int y, int argb) {
+        if (text.isBlank()) return;
+        gfx.setColor(((argb >> 16) & 0xFF) / 255f, ((argb >> 8) & 0xFF) / 255f, (argb & 0xFF) / 255f,
+                ((argb >>> 24) & 0xFF) / 255f);
+        blitGlyphs(gfx, text, rightX - width(text), y);
+        gfx.setColor(1f, 1f, 1f, 1f);
+    }
+
     /** Pixel width of {@code text} as rendered (glyphs overlap 1px; a space is 4px). */
     public static int width(String text) {
         int w = 0;

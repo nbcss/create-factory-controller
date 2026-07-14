@@ -46,10 +46,11 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
         s.patternHovered = false;
         int hover = slotAt(mouseX, mouseY);
+        int scale = s.previewScale(mouseX, mouseY);
         List<Component> tooltip = null;
         for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++) {
             RecipeSlot draw = slotDisplay(i, hover);
-            renderSlotCell(gfx, cellX(i), cellY(i), draw);
+            renderSlotCell(gfx, cellX(i), cellY(i), draw, scale);
             if (dragFrom < 0 && !draw.isEmpty() && in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) {
                 ItemStack stack = s.ingredientOf(draw.source());
                 String amount = FluidCompat.isFluidFilter(stack)
@@ -93,12 +94,13 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         return i < s.customSlots.size() ? s.customSlots.get(i) : RecipeSlot.EMPTY;
     }
 
-    private void renderSlotCell(GuiGraphics gfx, int ix, int iy, RecipeSlot slot) {
+    private void renderSlotCell(GuiGraphics gfx, int ix, int iy, RecipeSlot slot, int scale) {
         if (slot.isEmpty()) return;
         ItemStack stack = s.ingredientOf(slot.source());
         if (stack.isEmpty()) return;
         FluidGuiRender.filterIcon(gfx, stack, ix, iy);
-        s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, slot.count()));
+        // scale = 1 unless the multiplier bar is hovered, then each cell previews its scaled count.
+        s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, slot.count() * scale));
     }
 
     @Override
@@ -219,6 +221,14 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             }
         }
         return true;
+    }
+
+    @Override
+    boolean[] occupiedCells() {
+        boolean[] cells = new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS];
+        for (int i = 0; i < cells.length && i < s.customSlots.size(); i++)
+            cells[i] = !s.customSlots.get(i).isEmpty();
+        return cells;
     }
 
     /** Clears slot {@code i}; if it was that ingredient's last slot, disconnects the wire too. */

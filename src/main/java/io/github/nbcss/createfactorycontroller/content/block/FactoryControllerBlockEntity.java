@@ -487,8 +487,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * amounts are updated.
      */
     public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
-                                int craftDimension, int promiseInterval, int promiseLimit, boolean promiseLimitByAddress,
-                                int count, ThresholdUnit mode,
+                                int maxRequestMultiplier, int craftDimension, int promiseInterval, int promiseLimit,
+                                boolean promiseLimitByAddress, int count, ThresholdUnit mode,
                                 RequestMode requestMode, GaugeWorkMode workMode,
                                 Map<VirtualComponentPosition, Integer> inputAmounts,
                                 List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
@@ -503,6 +503,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
             gauge.craftBatch = 1;
+            gauge.maxRequestMultiplier = 1;
             gauge.craftDimension = 0;
             gauge.promiseClearingInterval = -1;
             gauge.promiseLimit = 0;
@@ -545,6 +546,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
                 if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
                     conn.amount = Math.max(1, e.getValue());
+        // Clamp last — the structural cap must see the just-applied mode, amounts, output, and batch.
+        gauge.maxRequestMultiplier = gauge.clampMultiplierToStructure(maxRequestMultiplier);
         if (clearPromises) gauge.requestClearPromises();
         updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible
         gauge.publishRedstoneOutput();

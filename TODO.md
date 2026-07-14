@@ -13,7 +13,7 @@
 - [DOING] Properly handle stock link not loaded warning
 - [DOING] Network Rename/Set Icon
 - [DOING] Blueprint Save/Load
-- [TODO] Dynamic Batch Size
+- [DOING] Dynamic Batch Size (Request Multiplier)
 - [TODO] Paper as component
 - [DOING] Production Order Status Notification
 - [TODO] Alt mode button

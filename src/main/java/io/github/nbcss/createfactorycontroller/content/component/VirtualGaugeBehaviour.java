@@ -191,6 +191,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     /** Per-ingredient millibucket cap (90 B) — one grid cell of a fluid ingredient. */
     public static final int FLUID_INGREDIENT_CAP_MB = 90_000;
+    /** Produced-output millibucket cap (10 B) for a fluid gauge — mirrors the recipe screen's output cap. */
+    public static final int FLUID_OUTPUT_CAP_MB = 10_000;
+    /** Crafting mode: max crafts one request may carry (batch × multiplier ≤ this). */
+    public static final int MAX_CRAFT_OUTPUT = 64;
 
     // Identity
     public final UUID networkId;
@@ -264,6 +268,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public int recipeOutput = 1;
     /** Crafts carried per request package in mechanical-crafting mode (≥1); 1 = a single craft. */
     public int craftBatch = 1;
+    /** User-set ceiling on how many times one request may be scaled up in a single dispatch. */
+    public int maxRequestMultiplier = 1;
     public int craftDimension = 0;
     public int promiseClearingInterval = -1;
     /** Max in-flight requests before this gauge pauses dispatching; 0 = unlimited. */
@@ -585,7 +591,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
             if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
             int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;
-            demand += conn.amount() * parentBatch;
+            // Stage enough for the consumer's next maximally-scaled request: one batch capped by its multiplier
+            // ceiling, but never more than its remaining deficit needs. So a multiplier-8 consumer with a large
+            // deficit gets 8 request-sets staged (it can then fire an 8× request); a nearly-satisfied one gets only
+            // its small deficit; and a multiplier-1 consumer collapses to the original single request-set. Bounding
+            // by the ceiling (not the full deficit) keeps the intermediate buffer to one max batch. O(1) per edge.
+            int parentRequests = Math.max(1, Math.min(parent.deficitRequestScaler(), parent.maxRequestMultiplier));
+            demand += conn.amount() * parentBatch * parentRequests;
         }
         // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
         // order acts like another downstream consumer, so the passive gauge produces to satisfy it too.
@@ -803,6 +815,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         boolean crafting = mode == GaugeWorkMode.CRAFTING;
         boolean custom = mode == GaugeWorkMode.CUSTOM;
         int batch = effectiveBatch();
+        // The whole request may be scaled up in one dispatch: the demand/order are built at 1× (base), then the
+        // actual scaler multiplies every ingredient count and the produced output. The scaler is the SMALLEST that
+        // still covers the outstanding deficit — min(structure, live-stock headroom, deficit) — so one larger request
+        // just fills what's missing instead of over-producing to the ceiling. See REQUEST_MULTIPLIER_DESIGN.md.
+        int structuralScaler = clampMultiplierToStructure(maxRequestMultiplier);
+        // Requests still needed to clear the output deficit — each 1× request yields recipeOutput × batch. We only
+        // reach here when this is ≥ 1 (the !promisedSatisfied gate), so the max(1) is just defensive.
+        int deficitScaler = Math.max(1, deficitRequestScaler());
 
         Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
         // CUSTOM: the exact per-slot layout (ordered, unmerged, gaps preserved) per network, with ignore-data
@@ -874,28 +894,40 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         }
         if (demandByNetwork.isEmpty()) return;
 
+        int scaler = Math.min(structuralScaler, deficitScaler);
         for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
             InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
             for (BigItemStack need : netEntry.getValue()) {
+                if (need.stack.isEmpty() || need.count <= 0) continue;   // gap/marker placeholder
                 int available = FluidCompat.isFluidFilter(need.stack)
                         ? FluidCompat.fluidStock(netEntry.getKey(), need.stack)
                         : summary.getCountOf(need.stack);
-                if (available < need.count) {        // insufficient → flash red
+                if (available < need.count) {        // can't supply even 1× → flash red
                     setConnectionsSuccess(false);
                     return;
                 }
+                scaler = Math.min(scaler, available / need.count);
             }
+        }
+        scaler = Math.max(1, scaler);
+
+        if (scaler > 1) {
+            for (List<BigItemStack> items : demandByNetwork.values())
+                for (BigItemStack b : items) b.count *= scaler;
+            if (orderByNetwork != null)
+                for (List<BigItemStack> items : orderByNetwork.values())
+                    for (BigItemStack b : items) b.count *= scaler;
         }
 
         List<PackageOrderWithCrafts.CraftingEntry> crafts = !crafting
             ? PackageOrderWithCrafts.empty().orderedCrafts()
-            // CraftingEntry.count is the number of times to run this 3×3 pattern — i.e. the batch. The pattern
-            // is the per-request-resolved one (concrete variants for any ignore-data cells).
+            // CraftingEntry.count is the number of times to run this pattern — batch × the request scaler. The
+            // pattern is the per-request-resolved one (concrete variants for any ignore-data cells).
             : List.of(new PackageOrderWithCrafts.CraftingEntry(
                 new PackageOrder(craftPattern.stream()
                     .map(s -> new BigItemStack(s.copyWithCount(1)))
                     .toList()),
-                batch));
+                batch * scaler));
 
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
         List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
@@ -903,8 +935,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             UUID net = netEntry.getKey();
             // In CUSTOM mode use the ordered per-slot list (with gap placeholders); otherwise the merged demand.
             List<BigItemStack> netItems = custom ? orderByNetwork.getOrDefault(net, netEntry.getValue()) : netEntry.getValue();
-            // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order (its items +
-            // fluids), so Repackaged's Package Shelf groups the resulting fragments under a single orderId.
+            // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order
             List<BigItemStack> externalFluids = netItems.stream()
                 .filter(b -> !b.stack.isEmpty() && !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
             if (!externalFluids.isEmpty()) {
@@ -945,7 +976,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
             LogisticsManager.performPackageRequests(req);
         setConnectionsSuccess(true);   // ingredients were dispatched → flash white
-        addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch);
+        addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch * scaler);
         controller.setChanged();
     }
 
@@ -970,6 +1001,113 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  whole batch (see {@link #takeVariant}/{@link #pinCraftingVariants}). */
     public int effectiveBatch() {
         return mode != GaugeWorkMode.CRAFTING ? 1 : Math.max(1, craftBatch);
+    }
+
+    /** Number of 1× requests (each yielding {@code recipeOutput × batch}) still needed to clear this gauge's
+     *  output deficit {@code demand − (stock + promised)}; ≥ 0. Drives both the request-time scaler ceiling and,
+     *  read on a consumer, how much of its ingredient an upstream passive producer must stage so the consumer can
+     *  batch. Pure O(1) field arithmetic — no stock/summary reads. */
+    public int deficitRequestScaler() {
+        int outputPerRequest = Math.max(1, recipeOutput) * effectiveBatch();
+        int deficit = Math.max(0, count * unit.toCountMultiplier(filter) - effectiveHeld());
+        return (int) ceilDiv(deficit, outputPerRequest);
+    }
+
+    // ── Request multiplier ────────────────────────────────────────────────────
+
+    /** One scaled request slot: {@code amount} at 1×, its {@code capacity} (item stack size or fluid mB cap), and
+     *  whether it's a fluid (one package slot regardless of amount, but bounded by its mB cap). */
+    public record ScaleSlot(int amount, int capacity, boolean fluid) {}
+
+    /** Output-bound scaler: largest M with {@code recipeOutput · M ≤ outputCap}. */
+    private static int outputMultiplierCap(int recipeOutput, int outputCap) {
+        return Math.max(1, outputCap / Math.max(1, recipeOutput));
+    }
+
+    private static long ceilDiv(long a, long b) { return (a + b - 1) / b; }
+
+    /** Whether the scaled REGULAR demand still packs into {@link #MAX_INGREDIENTS} package slots at scaler {@code m}
+     *  (and no fluid exceeds its mB cap). Monotonic in {@code m}. */
+    private static boolean packsRegular(List<ScaleSlot> slots, int m) {
+        int used = 0;
+        for (ScaleSlot s : slots) {
+            if (s.fluid()) {
+                if ((long) s.amount() * m > s.capacity()) return false;
+                used += 1;
+            } else {
+                used += (int) ceilDiv((long) s.amount() * m, Math.max(1, s.capacity()));
+            }
+            if (used > MAX_INGREDIENTS) return false;
+        }
+        return true;
+    }
+
+    /** REGULAR structural cap: largest M packing the scaled demand into the 9-slot package and keeping the scaled
+     *  output within {@code outputCap}. Binary search over the monotonic packing feasibility. */
+    public static int regularMultiplierCap(List<ScaleSlot> slots, int recipeOutput, int outputCap, int hardCap) {
+        int hi = Math.clamp(outputMultiplierCap(recipeOutput, outputCap), 1, hardCap);
+        int lo = 1, best = 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1;
+            if (packsRegular(slots, mid)) { best = mid; lo = mid + 1; } else hi = mid - 1;
+        }
+        return best;
+    }
+
+    /** CUSTOM structural cap: each cell must stay within one stack/fluid cap, and the scaled output within its cap. */
+    public static int customMultiplierCap(List<ScaleSlot> slots, int recipeOutput, int outputCap, int hardCap) {
+        int cap = Math.min(hardCap, outputMultiplierCap(recipeOutput, outputCap));
+        for (ScaleSlot s : slots)
+            cap = Math.clamp(s.capacity() / Math.max(1, s.amount()), 1, cap);
+        return Math.max(1, cap);
+    }
+
+    /** CRAFTING structural cap: crafts per request {@code = craftBatch · M ≤ MAX_CRAFT_OUTPUT}. */
+    public static int craftingMultiplierCap(int craftBatch, int hardCap) {
+        return Math.clamp(MAX_CRAFT_OUTPUT / Math.max(1, craftBatch), 1, hardCap);
+    }
+
+    /** Item output cap (max produced count) for a produced item of the given stack size — {@code max(64, 9 stacks)}. */
+    public static int itemOutputCap(int stackSize) { return Math.max(64, 9 * Math.max(1, stackSize)); }
+
+    /** This gauge's stock-independent multiplier ceiling for its current mode/config. */
+    public int structuralMultiplierCap() {
+        if (mode == GaugeWorkMode.CRAFTING) return craftingMultiplierCap(effectiveBatch(), 64);
+
+        boolean fluidOut = FluidCompat.isFluidFilter(filter);
+        int outputCap = fluidOut ? FLUID_OUTPUT_CAP_MB
+            : itemOutputCap(filter.isEmpty() ? 64 : filter.getMaxStackSize());
+        int output = Math.max(1, recipeOutput);
+
+        List<ScaleSlot> slots = new ArrayList<>();
+        if (mode == GaugeWorkMode.CUSTOM) {
+            for (RecipeSlot rs : recipeSlots) {
+                if (rs.isEmpty()) continue;
+                VirtualGaugeBehaviour src = sourceGauge(rs);
+                if (src == null || src.filter.isEmpty()) continue;
+                boolean fluid = FluidCompat.isFluidFilter(src.filter);
+                int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
+                slots.add(new ScaleSlot(Math.max(1, rs.count()), capacity, fluid));
+            }
+            return customMultiplierCap(slots, output, outputCap, 64);
+        }
+        // REGULAR: one entry per ingredient connection (its whole total). Server-only path (controller != null);
+        // the client screen computes its own cap from edit state.
+        if (controller != null)
+            for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
+                if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
+                if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour src) || src.filter.isEmpty())
+                    continue;
+                boolean fluid = FluidCompat.isFluidFilter(src.filter);
+                int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
+                slots.add(new ScaleSlot(Math.max(1, lc.amount()), capacity, fluid));
+            }
+        return regularMultiplierCap(slots, output, outputCap, 64);
+    }
+
+    /** The scaler actually used for one request: the user ceiling clamped by structure and (caller-supplied) stock. */
+    public int clampMultiplierToStructure(int value) {
+        return Math.clamp(value, 1, structuralMultiplierCap());
     }
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
@@ -1117,6 +1255,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         buf.writeUtf(recipeAddress);
         buf.writeVarInt(recipeOutput);
         buf.writeVarInt(craftBatch);
+        buf.writeVarInt(maxRequestMultiplier);
         buf.writeVarInt(craftDimension);
         buf.writeVarInt(promiseClearingInterval + 1);   // -1..31 → 0..32 (non-negative for varint)
         buf.writeVarInt(promiseLimit);
@@ -1147,6 +1286,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         recipeAddress = buf.readUtf();
         recipeOutput = buf.readVarInt();
         craftBatch = buf.readVarInt();
+        maxRequestMultiplier = Math.max(1, buf.readVarInt());
         craftDimension = buf.readVarInt();
         promiseClearingInterval = buf.readVarInt() - 1;
         promiseLimit = buf.readVarInt();
@@ -1185,6 +1325,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         tag.putString("RecipeAddress", recipeAddress);
         tag.putInt("RecipeOutput", recipeOutput);
         tag.putInt("CraftBatch", craftBatch);
+        tag.putInt("MaxRequestMultiplier", maxRequestMultiplier);
         tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
         tag.putInt("PromiseLimit", promiseLimit);
@@ -1274,6 +1415,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         recipeAddress = tag.getString("RecipeAddress");
         recipeOutput = tag.getInt("RecipeOutput");
         craftBatch = Math.max(1, tag.getInt("CraftBatch"));
+        maxRequestMultiplier = Math.max(1, tag.getInt("MaxRequestMultiplier"));   // absent → 1 (back-compat)
         craftDimension = Math.max(0, tag.getInt("CraftDimension"));
         promiseClearingInterval = tag.getInt("PromiseClearingInterval");
         promiseLimit = tag.contains("PromiseLimit") ? Math.max(0, tag.getInt("PromiseLimit")) : 0;
