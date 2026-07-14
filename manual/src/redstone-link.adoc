@@ -18,6 +18,7 @@ s| Powered
 | image:redstone-link-receive-powered.png[,64,64]
 |===
 
+[#principle]
 == Operating Principle
 
 A redstone link has 2 modes of operation:
@@ -33,6 +34,7 @@ Redstone links are distinguished with channels, which consists of 2 item types. 
 - (Air, Oak Plank)
 - (Air, Air)
 
+[#configuration]
 == Configuration
 
 After placing a redstone link on the virtual board, clicking the component opens its configuration screen.

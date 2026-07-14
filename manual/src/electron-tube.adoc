@@ -8,6 +8,7 @@ image::logical-tube-modes.png[,256,64]
 .A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputs to a xref:redstone-link.adoc[redstone link]
 image::logical-tube-or-example.png[,294,209]
 
+[#logical-operators]
 == Logical Operators
 
 Each logical tube may be connected with 0 or more redstone inputs, and outputs a redstone signal according the rules of a logical operator, determined by its mode.
@@ -23,6 +24,7 @@ NOR::
 NAND::
   Inverse of AND.
 
+[#configuration]
 == Configuration
 
 Clicking on the placed logical tube opens its settings screen.

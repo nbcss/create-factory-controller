@@ -106,6 +106,7 @@ The mechanical crafters must be connected by a wrench, and arranged in a square 
 
 It is recommended to use a repackager before unpacking onto mechanical crafters, see the in-game ponder on repackagers.
 
+[#batch-crafting]
 === Batch Crafting
 
 A factory gauge may be configured to send ingredients enough to craft multiple output items at once. When mechanical crafting is turned on, scroll on the output slot (<<figure-crafting-batch>> &#x2776;) to adjust how many items to craft each batch. The number of ingredients (&#x2777;) are matched automatically and cannot be adjusted individually.
@@ -136,6 +137,7 @@ image::gauge-follow-demand-barrel-example.png[,329,198]
 
 For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. The planks and slabs can be produced with gauges in "follow demand" mode. The gauge for slabs receives a demand of 2. The gauge for planks receives a demand of 9: 6 from barrels, 3 from slabs. First, 3 logs are crafted into 12 planks, then 3 of which are crafted into 6 slabs. After crafting 1 barrel, 3 planks and 4 slabs are left over.
 
+[#production-orders]
 === Ordering from Stock Keeper
 
 Another mode of the factory gauge, "follow demand and order", additionally allows the item produceable by a gauge to be manually ordered from a stock keeper tuned to the same network. In stock keeper UI, each gauge in this mode appears as a production task, signified by a blueprint background.

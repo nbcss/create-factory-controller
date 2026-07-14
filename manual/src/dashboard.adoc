@@ -46,6 +46,7 @@ Most of the controls can be changed in _Options--Controls--Key Binds_.
 &#x277C; Player inventory::
   Shows the player inventory. Only the 9 hotbar slots are shown by default, click the "+" button to expand the other 27 slots.
 
+[#navigation]
 == Navigation
 
 Drag with the left mouse button to pan the view into the virtual board. The W, A, S, D keys can also be used to move the view in cardinal directions.
@@ -106,6 +107,7 @@ With an empty cursor, scrolling with mouse wheel selects one of the tuned networ
 
 While holding a factory gauge item, scrolling on the network selector changes the network this item is tuned to, allowing you to quickly tune a new gauge to an existing network. Holding shift and scrolling accomplishes the same.
 
+[#additional-interactions]
 == Additional Interactions
 
 Some components, like the xref:redstone-link.adoc[redstone link], have modes of operation that can be switched between by pressing the F key on them in the dashboard, in addition to their configuration UI.

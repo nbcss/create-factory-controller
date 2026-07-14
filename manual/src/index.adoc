@@ -2,6 +2,7 @@
 
 Create: Factory Controller introduces a new block "Factory Controller". It allows you to place factory gauges in a virtual board, stored in a single block, instead of having wall of gauges in the game world. The factory gauges are managed via a GUI. Many enhancements are made to factory gauges, and some other components may also be placed in factory controllers.
 
+[#table-of-contents]
 == {toc-title}
 
 [#manual-toc]
