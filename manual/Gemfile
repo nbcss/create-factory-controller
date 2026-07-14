@@ -5,3 +5,5 @@ gem 'asciidoctor-html5s', '~> 0.5.1'
 
 gem 'rake', '~> 13.4.2'
 gem 'nokogiri', '~> 1.19.4'
+
+gem 'font-awesome-sass', '~> 6.7.2'

@@ -3,6 +3,8 @@ require 'erb'
 require 'yaml'
 require 'asciidoctor'
 require 'asciidoctor-html5s'
+require 'nokogiri'
+require 'font-awesome-sass'
 require_relative 'lib/replacements'
 require_relative 'lib/util'
 
@@ -18,6 +20,8 @@ task :assets do
   verbose(false) { mkdir_p BUILD_DIR }
   cp File.join(SRC_DIR, 'style.css'), BUILD_DIR
   cp_lr File.join(SRC_DIR, 'images'), BUILD_DIR, remove_destination: true
+  verbose(false) { mkdir_p File.join BUILD_DIR, 'fonts' }
+  cp File.join(FontAwesome::Sass.fonts_path, 'font-awesome', 'fa-solid-900.woff2'), File.join(BUILD_DIR, 'fonts')
 end
 
 desc 'Build HTML'
@@ -35,7 +39,8 @@ task build: :assets do
   }
 
   index_adoc = Asciidoctor.load_file File.join(SRC_DIR, 'index.adoc'), adoc_options
-  manual_toc = index_adoc.find_by(id: 'manual-toc')[0]
+  manual_toc = index_adoc.find_by(id: 'manual-toc')[0].convert
+  manual_toc = Util.html_strip manual_toc, layers: 2
 
   verbose(false) { mkdir_p File.join(BUILD_DIR, 'en') }
 
@@ -45,9 +50,13 @@ task build: :assets do
 
     puts "Generate #{output_path}" if verbose
 
+    page_toc = document.converter.convert document, 'outline', toclevels: 2
+    page_toc = Util.html_strip page_toc, strip_class: true
+
     html = layout.result LayoutContext.new(
       document: document,
       manual_toc: manual_toc,
+      page_toc: page_toc,
       output_path: output_path,
     ).binding
     html = Util.cache_id_images(html, output_path)
@@ -60,7 +69,7 @@ task default: :build
 
 
 # Context object to provide variables and methods to the ERB template
-LayoutContext = Struct.new :document, :manual_toc, :output_path do
+LayoutContext = Struct.new :document, :manual_toc, :page_toc, :output_path do
 
   def binding() Kernel.binding end
   def h(value) ERB::Util.html_escape(value) end

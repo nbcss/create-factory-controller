@@ -5,10 +5,15 @@ GEM
     asciidoctor-html5s (0.5.1)
       asciidoctor (>= 1.5.7, < 3.0)
       thread_safe (~> 0.3.4)
+    ffi (1.17.4-x86_64-linux-gnu)
+    font-awesome-sass (6.7.2)
+      sassc (~> 2.0)
     nokogiri (1.19.4-x86_64-linux-gnu)
       racc (~> 1.4)
     racc (1.8.1)
     rake (13.4.2)
+    sassc (2.4.0)
+      ffi (~> 1.9)
     thread_safe (0.3.6)
 
 PLATFORMS
@@ -17,15 +22,19 @@ PLATFORMS
 DEPENDENCIES
   asciidoctor (~> 2.0.26)
   asciidoctor-html5s (~> 0.5.1)
+  font-awesome-sass (~> 6.7.2)
   nokogiri (~> 1.19.4)
   rake (~> 13.4.2)
 
 CHECKSUMS
   asciidoctor (2.0.26) sha256=16e3accf1fc206bbd6335848649d7fd65f31d2daa60d85af13d47a8ee4b071c1
   asciidoctor-html5s (0.5.1) sha256=416b7a71d81bd59c556f6ef4a3edbaa50e49d6785619519a5d68eaec3173cbfd
+  ffi (1.17.4-x86_64-linux-gnu) sha256=9d3db14c2eae074b382fa9c083fe95aec6e0a1451da249eab096c34002bc752d
+  font-awesome-sass (6.7.2) sha256=31cf171c593cda4118bf5efbf9e4eb6abc8b15fd4d6acd5f000026356ee0005d
   nokogiri (1.19.4-x86_64-linux-gnu) sha256=379fae440b28915e3f19d752ce2dcf8465ed2b2fbefd2a7ca0dd497bc981a06a
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
+  sassc (2.4.0) sha256=4c60a2b0a3b36685c83b80d5789401c2f678c1652e3288315a1551d811d9f83e
   thread_safe (0.3.6) sha256=9ed7072821b51c57e8d6b7011a8e282e25aeea3a4065eab326e43f66f063b05a
 
 BUNDLED WITH

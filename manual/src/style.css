@@ -71,6 +71,11 @@ header nav li {
   padding: 0;
 }
 
+header nav > ol {
+  display: flex;
+  gap: 1rem;
+}
+
 .nav-item {
   anchor-scope: --anchor-button;
 }
@@ -78,6 +83,7 @@ header nav li {
 .nav-item > button {
   appearance: none;
   background: transparent;
+  height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 4px;
   color: #fff;
@@ -147,8 +153,18 @@ header nav li {
   display: none;
 }
 
+.nav-page-toc .toc-menu-title {
+  font-weight: 700;
+}
+
 @media (min-width: 80rem) {
-  .nav-project-toc > button {
+  .nav-project-toc,
+  .nav-page-toc {
+    margin-left: -1rem;
+  }
+
+  .nav-project-toc > button,
+  .nav-page-toc > button{
     display: none;
   }
 
@@ -160,7 +176,16 @@ header nav li {
     bottom: auto;
   }
 
-  .nav-project-toc .nav-menu {
+  .nav-page-toc .nav-menu-container {
+    display: flex;
+    left: calc(50% + 24rem);
+    right: auto;
+    top: 100%;
+    bottom: auto;
+  }
+
+  .nav-project-toc .nav-menu,
+  .nav-page-toc .nav-menu {
     padding: 2rem 0;
     border: initial;
     border-radius: initial;
@@ -185,6 +210,16 @@ header nav li {
 
   .nav-project-toc .toc-menu-home {
     display: none;
+  }
+
+  .nav-page-toc .toc-menu-title {
+    font-size: 1.25em;
+  }
+
+  .nav-page-toc .toc-menu-title::before {
+    content: "\f03a";
+    font-family: "Font Awesome 6 Solid";
+    margin-right: 0.5em;
   }
 }
 
@@ -322,4 +357,16 @@ dt {
 
 dd {
   margin-left: 1rem;
+}
+
+/* Font Awesome */
+
+@font-face {
+  font-family: "Font Awesome 6 Solid";
+  src: url("fonts/fa-solid-900.woff2");
+}
+
+.fa-solid {
+  font-family: "Font Awesome 6 Solid";
+  font-style: normal;
 }
