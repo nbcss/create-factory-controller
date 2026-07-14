@@ -958,6 +958,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(producedCount) : String.valueOf(producedCount));
+            //TODO render scaler text
+            //SpriteNumbersRender.drawCountRightAligned(gfx, "16", ox - 5, oy + 10);
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
                 Component scrollLine = CreateLang.translate("gui.factory_panel.expected_output_tip_2")
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
@@ -985,7 +987,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ? formatFluidShort(promised) : String.valueOf(promised);
         ItemStack box = PackageStyles.getDefaultBox();
         gfx.renderItem(box, pbx, pby);
-        gfx.renderItemDecorations(font, box, pbx, pby, promisedLabel);
+        drawItemCount(gfx, box, pbx, pby, promisedLabel);
         if (in(mouseX, mouseY, pbx, pby, 16, 16))
             tooltip = promised == 0
                 ? List.of(
