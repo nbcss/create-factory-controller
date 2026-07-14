@@ -12,17 +12,20 @@
         <div class="site-name"><%= h t 'site-name' %></div>
         <nav>
           <ol>
-            <li class="nav-item">
+            <li class="nav-item nav-project-toc">
               <button><%= h t 'site-nav-manual' %></button>
               <div class="nav-menu-container">
                 <ol class="nav-menu">
-                  <li><a href="."><%= h t 'site-nav-manual-home' %></a></li>
-                <% manual_toc.blocks.each do |toc_item| %>
+                  <li><a href=".">
+                    <span class="toc-menu-title"><%= h t 'site-nav-manual' %></span>
+                    <span class="toc-menu-home"><%= h t 'site-nav-manual-home' %></span>
+                  </a></li>
+                  <% manual_toc.blocks.each do |toc_item| %>
                   <li>
                     <%= toc_item.text %>
                     <%= toc_item.content %>
                   </li>
-                <% end %>
+                  <% end %>
                 </ol>
               </div>
             </li>
