@@ -119,6 +119,8 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
                     CreateLang.translate("gui.factory_panel.sending_item",
                         FluidCompat.filterName(stack).getString() + " x" + amount)
                         .color(ScrollInput.HEADER_RGB).component(),
+                    Component.translatable("createfactorycontroller.gui.custom_slot_tip", String.valueOf(i + 1))
+                        .withStyle(ChatFormatting.GRAY),
                     Component.translatable("createfactorycontroller.gui.custom_slot_move")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
                     Component.translatable("createfactorycontroller.gui.custom_slot_copy")
