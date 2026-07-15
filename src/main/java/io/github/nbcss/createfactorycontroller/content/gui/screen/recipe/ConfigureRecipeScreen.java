@@ -113,7 +113,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // Editable / derived state.
     int outputCount = 1;
     /** Crafts per request in crafting mode (≥1). The output slot shows outputCount × craftBatch. */
-    private int craftBatch = 1;
+    int craftBatch = 1;
     /** User-set request-multiplier ceiling (≥1, default 1). */
     int maxRequestMultiplier = 1;
     /** Square crafter-grid size (N→N×N) a recipe is laid out for; defaults to its minimum (max of recipe
@@ -489,12 +489,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, inputTotals.get(c)), capacity, fluid));
         }
         return VirtualGaugeBehaviour.regularMultiplierCap(slots, output, outputCap, 64);
-    }
-
-    /** Re-clamps {@link #maxRequestMultiplier} to the current structural cap — call after any edit that could
-     *  shrink it (amounts, output, batch, mode, connections). */
-    void clampMultiplier() {
-        maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, structuralMultiplierCap());
     }
 
     /** Whether {@code (mx, my)} is over the request-multiplier bar. */
@@ -1038,9 +1032,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
             }
-            SpriteNumbersRender.drawCountRightAligned(gfx, String.valueOf(maxRequestMultiplier),
+            SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.MULTIPLY + maxRequestMultiplier,
                     panelX + MULTIPLIER_X + MULTIPLIER_W + 2, panelY + MULTIPLIER_Y + MULTIPLIER_H - 6,
-                    0xFFFFDD70);
+                    overMultiplier || maxRequestMultiplier > 1 ? 0xFFFFDD70 : 0xFFE0E0E0);
 
             // Hovering the bar highlights every slot the multiplier scales — ingredient cells + output — above the
             // items but below their count font (z 199, matching the drag-preview layer).
@@ -1313,7 +1307,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Abbreviated item stock text (k/m), mirroring StockKeeperRequestScreen#drawItemCount. */
     private static String stockCountText(int count) {
-        if (count >= BigItemStack.INF) return "+";
+        if (count >= BigItemStack.INF) return SpriteNumbersRender.INFINITE;
         return count >= 1000000 ? (count / 1000000) + "m"
             : count >= 10000 ? (count / 1000) + "k"
             : count >= 1000 ? ((count * 10) / 1000) / 10f + "k"
@@ -1321,7 +1315,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     private static String formatFluidStock(int mb) {
-        if (mb >= 1_000_000_000) return "+";
+        if (mb >= 1_000_000_000) return SpriteNumbersRender.INFINITE;
         if (mb >= 1_000_000) return compactFluid(mb, 1_000_000, "KB");
         if (mb >= 100) return compactFluid(mb, 1000, "B");
         return mb + "mB";

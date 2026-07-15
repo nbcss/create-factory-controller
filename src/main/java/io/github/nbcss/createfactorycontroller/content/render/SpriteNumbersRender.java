@@ -1,27 +1,36 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Draws a count/amount over a slot using Create's stock-keeper number sprite sheet
- * ({@code create:textures/gui/stock_keeper.png}, NUMBERS region) — the same compact glyph font the Stock Keeper
- * uses for item counts. Shared by {@link ConfigureRecipeScreen} and {@link ProductionOrdersScreen}.
+ * Draws a count/amount over a slot using the mod's dedicated compact-number sprite sheet。
  */
 public final class SpriteNumbersRender {
 
     private static final ResourceLocation NUMBERS_TEX =
-        ResourceLocation.fromNamespaceAndPath("create", "textures/gui/stock_keeper.png");
-    private static final int NUM_SX = 48, NUM_SY = 176, NUM_W = 5, NUM_H = 8;
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/compact_font.png");
+    private static final int TEX = 64, GLYPH_H = 7;
+    private static final int Y_NUDGE = 1;
+
+    /** "Too big to display" indicator, drawn as ∞ (replaces the old {@code +} sentinel). */
+    public static final String INFINITE = "∞";   // ∞
+    // Extra symbols on row 3 after b — usable in any string passed to the draw methods.
+    public static final String STACK = "▤";       // ▤
+    public static final String ARROW = "^";
+    public static final String MULTIPLY = "x";
+    public static final String PLUS = "+";
+    public static final String MINUS = "-";
 
     private SpriteNumbersRender() {}
 
-    /** Create's {@code StockKeeperRequestScreen#drawItemCount} abbreviation: k / m / "+" for huge counts. */
+    /** Stock-Keeper-style abbreviation: k / m for large counts, {@link #INFINITE} once astronomically large. */
     public static String abbreviate(int count) {
-        if (count >= 1000000000) return "+";
+        if (count >= 1000000000) return INFINITE;
         return count >= 1000000 ? count / 1000000 + "m"
             : count >= 10000 ? count / 1000 + "k"
             : count >= 1000 ? (float) (count * 10 / 1000) / 10.0F + "k"
@@ -29,8 +38,8 @@ public final class SpriteNumbersRender {
     }
 
     /**
-     * Blits {@code text} (digits, {@code .}, {@code k}, {@code m}, {@code b}, {@code +}) over the slot whose item is
-     * drawn at {@code (itemX, itemY)}, matching the Stock Keeper's bottom-right, horizontally-centred count placement.
+     * Blits {@code text} over the slot whose item is drawn at {@code (itemX, itemY)}, matching the Stock
+     * Keeper's bottom-right, horizontally-centred count placement.
      */
     public static void drawCount(GuiGraphics gfx, String text, int itemX, int itemY) {
         if (text.isBlank()) return;
@@ -54,50 +63,49 @@ public final class SpriteNumbersRender {
         gfx.setColor(1f, 1f, 1f, 1f);
     }
 
-    /** Pixel width of {@code text} as rendered (glyphs overlap 1px; a space is 4px). */
+    /** Pixel width of {@code text} as rendered (glyphs overlap 1px; a space is 4px; unmapped chars are skipped). */
     public static int width(String text) {
         int w = 0;
         boolean first = true;
         for (char raw : text.toCharArray()) {
-            char c = Character.toLowerCase(raw);
-            if (c == ' ') { w += 4; continue; }
-            int sw = spriteWidthOf(c);
-            w += first ? sw : sw - 1;
+            if (raw == ' ') { w += 4; continue; }
+            int[] g = glyph(raw);
+            if (g == null) continue;
+            w += first ? g[2] : g[2] - 1;
             first = false;
         }
         return w;
     }
 
-    /** Blits each glyph left-to-right starting at {@code startX}; consecutive glyphs overlap by 1px, a space is 4px. */
+    /** Blits each glyph left-to-right from {@code startX}; consecutive glyphs overlap by 1px, a space is 4px. */
     private static void blitGlyphs(GuiGraphics gfx, String text, int startX, int y) {
         int x = startX;
         for (char raw : text.toCharArray()) {
-            char c = Character.toLowerCase(raw);
-            if (c == ' ') { x += 4; continue; }
-            int sw = spriteWidthOf(c);
+            if (raw == ' ') { x += 4; continue; }
+            int[] g = glyph(raw);
+            if (g == null) continue;
             RenderSystem.enableBlend();
-            gfx.blit(NUMBERS_TEX, x, y, 0, NUM_SX + xOffsetOf(c), NUM_SY, sw, NUM_H, 256, 256);
-            x += sw - 1;
+            gfx.blit(NUMBERS_TEX, x, y + Y_NUDGE, 0, g[0], g[1], g[2], GLYPH_H, TEX, TEX);
+            x += g[2] - 1;
         }
     }
 
-    private static int spriteWidthOf(char c) {
+    /** {@code {sx, sy, sw}} of {@code raw} in the sheet (case-insensitive), or {@code null} when unmapped. */
+    private static int[] glyph(char raw) {
+        char c = Character.toLowerCase(raw);
+        if (c >= '0' && c <= '9') return new int[]{ (c - '0') * 6, 0, 5 };
         return switch (c) {
-            case '.' -> 3;
-            case 'm' -> 7;
-            case '+' -> 9;
-            default -> NUM_W;   // digits, k, b
-        };
-    }
-
-    private static int xOffsetOf(char c) {
-        return switch (c) {
-            case '.' -> 60;
-            case 'k' -> 64;
-            case 'm' -> 70;
-            case 'b' -> 78;
-            case '+' -> 84;
-            default -> (c - '0') * 6;   // digits
+            case '.' -> new int[]{ 60, 0, 3 };
+            case '∞' -> new int[]{ 0, 9, 9 };   // infinite
+            case 'k' -> new int[]{ 0, 16, 5 };
+            case 'm' -> new int[]{ 6, 16, 7 };
+            case 'b' -> new int[]{ 14, 16, 5 };
+            case '▤' -> new int[]{ 20, 16, 6 };       // stack
+            case '^' -> new int[]{ 27, 16, 5 };       // arrow
+            case 'x' -> new int[]{ 33, 16, 5 };       // multiply
+            case '+' -> new int[]{ 39, 16, 5 };       // plus
+            case '-' -> new int[]{ 45, 16, 5 };       // minus
+            default -> null;
         };
     }
 }

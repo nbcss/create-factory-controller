@@ -23,6 +23,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
 
     @Override
     void onChange(GaugeWorkMode previous) {
+        s.craftBatch = 1;
         s.applyCraftingResolution();
     }
 
