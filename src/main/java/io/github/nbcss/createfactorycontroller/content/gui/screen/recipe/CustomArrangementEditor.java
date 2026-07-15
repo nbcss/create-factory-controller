@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
@@ -38,6 +39,63 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     void resetDrag() {
         dragFrom = -1;
         dragButton = -1;
+    }
+
+    // ── Mode entry ──────────────────────────────────────────────────────────────
+
+    @Override
+    void onChange(GaugeWorkMode previous) {
+        resetDrag();   // a drag begun in a previous CUSTOM stint must not survive re-entry
+        s.customSlots = new java.util.ArrayList<>(
+                java.util.Collections.nCopies(ConfigureRecipeScreen.MAX_INPUT_SLOTS, RecipeSlot.EMPTY));
+        if (previous == GaugeWorkMode.CRAFTING) seedFromCrafting();
+        else seedFromRegular();
+    }
+
+    /** Seeds the 9-slot layout from the current REGULAR-derived grid (full stacks first, then a partial). */
+    private void seedFromRegular() {
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
+        for (int i = 0; i < slots.size() && i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++)
+            s.customSlots.set(i, new RecipeSlot(s.inputConnections.get(slots.get(i).connectionIndex()), slots.get(i).amount()));
+    }
+
+    /** Mirrors the crafting grid currently shown, preserving each cell's position and its batch-multiplied amount
+     *  (best-effort: cell counts are capped to one stack). Called while the crafting arrangement/batch are still live. */
+    private void seedFromCrafting() {
+        bakeCraftingOutput();
+        int batch = s.effectiveBatch();
+        if (s.craftingIsLarge()) {   // aggregated view
+            List<ConfigureRecipeScreen.CraftSlot> slots = s.craftingDisplaySlots();
+            for (int i = 0; i < slots.size() && i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++)
+                placeCraftingCell(i, slots.get(i).stack(), slots.get(i).amount());
+        } else {
+            int dim = s.effectiveCraftDimension();
+            for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
+                int idx = row * dim + col;
+                if (col < dim && row < dim && idx < s.craftingIngredients.size()) {
+                    ItemStack stack = s.craftingIngredients.get(idx).stack;
+                    if (!stack.isEmpty())
+                        placeCraftingCell(row * 3 + col, stack, Math.max(1, stack.getCount()) * batch);
+                }
+            }
+        }
+    }
+
+    /** Places one crafting cell into custom slot {@code cell}: resolves the item to its source wire and clamps the
+     *  amount to the cell's capacity (one stack, or the fluid mB cap). Skips items with no matching wire. */
+    private void placeCraftingCell(int cell, ItemStack item, int amount) {
+        VirtualComponentPosition src = sourceForItem(item);
+        if (src == null) return;
+        int cap = FluidCompat.isFluidFilter(s.ingredientOf(src)) ? ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB
+                : ConfigureRecipeScreen.stackSizeOf(s.ingredientOf(src));
+        s.customSlots.set(cell, new RecipeSlot(src, Math.clamp(amount, 1, cap)));
+    }
+
+    /** The input connection whose ingredient matches {@code item} (exact components), or null. */
+    private VirtualComponentPosition sourceForItem(ItemStack item) {
+        for (VirtualComponentPosition pos : s.inputConnections)
+            if (ItemStack.isSameItemSameComponents(s.ingredientOf(pos), item)) return pos;
+        return null;
     }
 
     // ── Render ────────────────────────────────────────────────────────────────

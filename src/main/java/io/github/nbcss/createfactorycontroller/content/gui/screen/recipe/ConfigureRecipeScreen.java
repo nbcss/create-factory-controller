@@ -253,19 +253,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
-        // Mechanical-crafting toggle — only when the inputs+output match a crafting recipe. When shown it sits
-        // to the LEFT of the always-present Custom Arrangement button.
+        // Mechanical-crafting toggle
         craftingButton = null;
         if (availableCraftingRecipe != null) {
             craftingButton = new IconButton(panelX + 11, panelY + 27, AllIcons.I_3x3);
-            craftingButton.green = workMode == GaugeWorkMode.CRAFTING;   // glows green while crafting mode is on
+            craftingButton.green = workMode == GaugeWorkMode.CRAFTING;
             craftingButton.withCallback(() -> {
-                if (availableCraftingRecipe == null) return;   // recipe vanished (e.g. input removed)
-                workMode = workMode == GaugeWorkMode.CRAFTING ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
-                if (workMode == GaugeWorkMode.CRAFTING) applyCraftingResolution();   // build the square arrangement + clamps
-                rebuildWidgets();   // clears + re-runs init() (direct init() would duplicate widgets)
+                if (availableCraftingRecipe == null) return;
+                GaugeWorkMode prev = workMode;
+                workMode = prev == GaugeWorkMode.CRAFTING ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
+                editor().onChange(prev);
+                rebuildWidgets();
             });
-            // No self-tooltip: drawn last in renderForeground (craftingButtonTooltip) so neighbours can't cover it.
             addWidget(craftingButton);
         }
 
@@ -276,12 +275,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 x, y, 16, 16));
         customButton.green = workMode == GaugeWorkMode.CUSTOM;
         customButton.withCallback(() -> {
-            if (workMode == GaugeWorkMode.CUSTOM) {
-                workMode = GaugeWorkMode.REGULAR;
-            } else {
-                enterCustomMode();   // seed the 9-slot layout from the current derived grid
-                workMode = GaugeWorkMode.CUSTOM;
-            }
+            GaugeWorkMode prev = workMode;
+            workMode = prev == GaugeWorkMode.CUSTOM ? GaugeWorkMode.REGULAR : GaugeWorkMode.CUSTOM;
+            editor().onChange(prev);   // CUSTOM seeds its 9-slot layout from the outgoing mode
             rebuildWidgets();
         });
         // No self-tooltip: drawn last in renderForeground (customButtonTooltip) so neighbours can't cover it.
@@ -398,7 +394,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     /** Slots used by every connection except {@code exceptIndex} (for the remaining-slot budget on scroll). */
-    private int slotsUsedExcept(int exceptIndex) {
+    int slotsUsedExcept(int exceptIndex) {
         int used = 0;
         for (int c = 0; c < inputConnections.size(); c++) {
             if (c == exceptIndex) continue;
@@ -723,15 +719,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, structuralMultiplierCap());
     }
 
-    /** Seeds {@link #customSlots} from the current REGULAR-derived grid when entering CUSTOM mode. */
-    private void enterCustomMode() {
-        customEditor.resetDrag();   // a drag begun in a previous CUSTOM stint must not survive re-entry
-        customSlots = new ArrayList<>(java.util.Collections.nCopies(MAX_INPUT_SLOTS, RecipeSlot.EMPTY));
-        List<InputSlot> slots = layoutInputSlots();
-        for (int i = 0; i < slots.size() && i < MAX_INPUT_SLOTS; i++)
-            customSlots.set(i, new RecipeSlot(inputConnections.get(slots.get(i).connectionIndex()), slots.get(i).amount()));
-    }
-
     /** Reconciles {@link #customSlots} with the live ingredient connections: drops slots whose wire is gone,
      *  and drops each newly-added wire into the first free slot (respecting the 9-slot grid cap). */
     void reconcileCustomSlots() {
@@ -760,7 +747,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * the gauge or Ctrl-scrollable) is what we dispatch, so the flat pattern maps cell-for-cell onto an N×N
      * mechanical-crafter array — fixing the misalignment Create's 3-wide package layout caused.
      */
-    private void applyCraftingResolution() {
+    void applyCraftingResolution() {
         if (availableCraftingRecipe == null) {
             if (workMode == GaugeWorkMode.CRAFTING) workMode = GaugeWorkMode.REGULAR;   // don't clobber CUSTOM
             craftingIngredients = new ArrayList<>();

@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -19,6 +20,11 @@ import java.util.List;
 class CraftingEditor extends GaugeWorkModeEditor {
 
     CraftingEditor(ConfigureRecipeScreen screen) { super(screen); }
+
+    @Override
+    void onChange(GaugeWorkMode previous) {
+        s.applyCraftingResolution();
+    }
 
     @Override
     List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {

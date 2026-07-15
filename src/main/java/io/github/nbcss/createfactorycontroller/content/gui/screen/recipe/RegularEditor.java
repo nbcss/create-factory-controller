@@ -2,8 +2,10 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
@@ -12,6 +14,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -107,5 +110,43 @@ class RegularEditor extends GaugeWorkModeEditor {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.maxRequestMultiplier);
         for (int i = 0; i < slots.size() && i < cells.length; i++) cells[i] = true;
         return cells;
+    }
+
+    @Override
+    void onChange(GaugeWorkMode previous) {
+        if (previous == GaugeWorkMode.CRAFTING) {
+            bakeCraftingOutput();
+            int batch = s.effectiveBatch();
+            for (int c = 0; c < s.inputConnections.size(); c++) {
+                ItemStack ing = s.ingredientOf(s.inputConnections.get(c));
+                int cells = s.craftingIngredients.stream()
+                    .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))
+                    .mapToInt(b -> Math.max(1, b.stack.getCount())).sum();
+                s.inputTotals.set(c, Math.max(1, cells) * batch);
+            }
+            clampTotalsToGrid();
+        } else if (previous == GaugeWorkMode.CUSTOM) {
+            for (int c = 0; c < s.inputConnections.size(); c++) {
+                VirtualComponentPosition pos = s.inputConnections.get(c);
+                int total = s.customSlots.stream()
+                    .filter(sl -> !sl.isEmpty() && pos.equals(sl.source()))
+                    .mapToInt(RecipeSlot::count).sum();
+                s.inputTotals.set(c, Math.max(1, total));
+            }
+            clampTotalsToGrid();
+        }
+    }
+
+    /** Reduces each connection total to what still fits the 9-slot grid (best-effort, order-dependent). */
+    private void clampTotalsToGrid() {
+        for (int c = 0; c < s.inputConnections.size(); c++) {
+            if (s.isFluidConn(c)) {
+                s.inputTotals.set(c, Mth.clamp(s.inputTotals.get(c), 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB));
+            } else {
+                int ss = ConfigureRecipeScreen.stackSizeOf(s.ingredientOf(s.inputConnections.get(c)));
+                int maxTotal = Math.max(1, ConfigureRecipeScreen.MAX_INPUT_SLOTS - s.slotsUsedExcept(c)) * ss;
+                s.inputTotals.set(c, Mth.clamp(s.inputTotals.get(c), 1, maxTotal));
+            }
+        }
     }
 }

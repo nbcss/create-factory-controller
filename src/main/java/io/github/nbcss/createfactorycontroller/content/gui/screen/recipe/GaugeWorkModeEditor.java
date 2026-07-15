@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -74,6 +75,15 @@ abstract class GaugeWorkModeEditor {
         }
         ConfigureRecipeScreen.playScrollSound();
         return true;
+    }
+
+    /** Seeds this editor's representation when the screen switches INTO its mode from {@code previous} */
+    void onChange(GaugeWorkMode previous) {}
+
+    /** Bakes the produced output to its batch-multiplied value ({@code outputCount × batch}) */
+    protected void bakeCraftingOutput() {
+        s.outputCount = Mth.clamp(s.outputCount * s.effectiveBatch(), 1,
+                s.fluidMode ? ConfigureRecipeScreen.FLUID_OUTPUT_CAP_MB : s.maxItemOutput());
     }
 
     /** Handles a mouse release (for drag gestures); {@code true} if consumed. Default: no drag. */
