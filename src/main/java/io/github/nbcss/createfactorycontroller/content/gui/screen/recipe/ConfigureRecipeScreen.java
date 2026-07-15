@@ -32,7 +32,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugePromiseInfoClient;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
@@ -98,6 +98,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int OUTPUT_X = 160, OUTPUT_Y = 48;
     private static final int MULTIPLIER_X = 64, MULTIPLIER_Y = 87, MULTIPLIER_W = 64, MULTIPLIER_H = 8;
     private static final int REQUEST_MULTIPLIER_COLOR = 0x43FFDD70;
+    // Request-timer charge-up animation over the panel's output arrow (15 frames of 15×17 stacked vertically).
+    private static final ResourceLocation ARROW_ANIM_TEX =
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/gauge_arrow_animation.png");
+    private static final int ARROW_ANIM_FRAMES = 15, ARROW_ANIM_W = 15, ARROW_ANIM_H = 17;
+    private static final int ARROW_ANIM_X = 140, ARROW_ANIM_Y = 47;   // panel-relative, tuned to the drawn arrow
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
@@ -302,7 +307,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             addWidget(disconnectLinkButton);
         }
 
-        GaugePromiseInfoClient.clear();   // drop any stale count; the next tick polls fresh
+        GaugeInfoClient.clear();   // drop any stale count; the next tick polls fresh
         promiseInfoPollCooldown = 0;
     }
 
@@ -1047,6 +1052,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
         }
 
+        // Request-timer charge-up animation over the output arrow — only while the gauge's timer is ticking (the
+        // live state comes from the same poll as the promise counts, phase-anchored to the synced lastRequestTick).
+        if (g != null && GaugeInfoClient.timerTicking(gaugePos)) {
+            float progress = GaugeInfoClient.timerProgress(gaugePos, g.lastRequestTick);
+            // floor(progress·FRAMES) so every frame — including frame 0 — gets an equal window (round would give
+            // the end frames only half a window and flash frame 0 for <1 tick).
+            int frame = Mth.clamp((int) (progress * ARROW_ANIM_FRAMES), 0, ARROW_ANIM_FRAMES - 1);
+            RenderSystem.enableBlend();
+            gfx.blit(ARROW_ANIM_TEX, panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, 0, frame * ARROW_ANIM_H,
+                    ARROW_ANIM_W, ARROW_ANIM_H, ARROW_ANIM_W, ARROW_ANIM_FRAMES * ARROW_ANIM_H);
+        }
+
         renderThreshold(gfx, g);
 
         // Open-promise package box (left of the promise-interval scroll).
@@ -1101,7 +1118,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int limit = promiseLimitState;
         // Live count polled from the server (on-demand), by the current scope; -1 until the first reply → show 0.
         int scoped = promiseLimitByAddress
-            ? GaugePromiseInfoClient.address(gaugePos) : GaugePromiseInfoClient.owned(gaugePos);
+            ? GaugeInfoClient.address(gaugePos) : GaugeInfoClient.owned(gaugePos);
         int activePromises = Math.max(0, scoped);
         drawPromiseLimitLabel(gfx, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W,
             activePromises, limit, promiseLimitByAddress);

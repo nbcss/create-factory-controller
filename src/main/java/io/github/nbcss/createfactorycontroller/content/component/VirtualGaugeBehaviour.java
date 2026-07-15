@@ -262,6 +262,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  never re-walks its outgoing wires. {@code null} until first computed (forces an initial publish). */
     private RedstoneConnection.State lastRedstoneOutput = null;
     protected int timer = 0;
+    /** Per-gauge request-timer reset value (ticks). 0 = unspecified → use Create's {@code factoryGaugeTimer} config.
+     *  Only a value &gt; 0 overrides. Not client-synced (no set/view UI yet); the animation gets it via the poll. */
+    public int customRequestTimer = 0;
     public long lastRequestTick = 0;
     private boolean forceClearPromises = false;
     public String recipeAddress = "";
@@ -637,7 +640,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // below exactly like a settlement or an expiry — no per-cause disambiguation is needed any more.
         if (forceClearPromises){
             forceClearPromise(networkId, filter);
-            timer = getConfigRequestIntervalInTicks() / 2;
+            timer = requestIntervalTicks() / 2;
             forceClearPromises = false;
         }
 
@@ -796,12 +799,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // only fires after the gauge has been continuously understocked for the whole interval.
         if (satisfied || promisedSatisfied || waitingForNetwork || isRedstonePaused()) return;
         if (isMissingAddress()) return;
+        // Limit-block FREEZES the timer (checked before the countdown), so it neither ticks nor fires while capped.
+        if (promiseLimit > 0 && countLimitedPromises() >= promiseLimit) return;
         if (timer > 0) {                                // throttle between attempts
-            timer = Math.min(timer, getConfigRequestIntervalInTicks());
+            timer = Math.min(timer, requestIntervalTicks());
             timer--;
             return;
         }
-        if (promiseLimit > 0 && countLimitedPromises() >= promiseLimit) return;
         resetTimer();                                   // we're attempting now; throttle the next one
         // Stamp the attempt so the client can flash the connections once per request (not continuously).
         lastRequestTick = controller.getLevel() == null ? 0 : controller.getLevel().getGameTime();
@@ -1224,13 +1228,32 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     }
 
     private void resetTimer() {
-        timer = getConfigRequestIntervalInTicks();
+        timer = requestIntervalTicks();
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
     protected int getConfigRequestIntervalInTicks() {
         return AllConfigs.server().logistics.factoryGaugeTimer.get();
+    }
+
+    /** The effective request-timer reset value: {@link #customRequestTimer} when set (&gt; 0), else the config. */
+    public int requestIntervalTicks() {
+        return customRequestTimer > 0 ? customRequestTimer : getConfigRequestIntervalInTicks();
+    }
+
+    /** Current request-timer countdown value (ticks remaining until the next attempt). */
+    public int currentTimer() {
+        return timer;
+    }
+
+    /** Whether the request timer is actively counting down this tick — i.e. the gauge passes every pre-timer gate
+     *  in {@link #tickRequests} (including the promise limit, which freezes the timer). Drives the recipe screen's
+     *  output-arrow animation; false ⇒ no overlay. */
+    public boolean isRequestTimerTicking() {
+        return controller != null && hasIngredientInputs() && !satisfied && !promisedSatisfied
+            && !waitingForNetwork && !isRedstonePaused() && !isMissingAddress()
+            && !(promiseLimit > 0 && countLimitedPromises() >= promiseLimit);
     }
 
     protected int getPromiseExpiryTimeInTicks() {
@@ -1330,6 +1353,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
         tag.putInt("PromiseLimit", promiseLimit);
         tag.putBoolean("PromiseLimitByAddress", promiseLimitByAddress);
+        if (customRequestTimer > 0) tag.putInt("CustomRequestTimer", customRequestTimer);   // omit when unspecified
         tag.putString("Mode", mode.name());
         tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
         ListTag slotList = new ListTag();
@@ -1420,8 +1444,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         promiseClearingInterval = tag.getInt("PromiseClearingInterval");
         promiseLimit = tag.contains("PromiseLimit") ? Math.max(0, tag.getInt("PromiseLimit")) : 0;
         promiseLimitByAddress = tag.getBoolean("PromiseLimitByAddress");
+        customRequestTimer = Math.max(0, tag.getInt("CustomRequestTimer"));   // absent → 0 (unspecified)
 
-        if (controller != null) timer = getConfigRequestIntervalInTicks();
+        if (controller != null) timer = requestIntervalTicks();
     }
 
     private boolean isControllerPowered() {

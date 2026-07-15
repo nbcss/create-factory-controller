@@ -35,7 +35,7 @@ public final class NetworkHandler {
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
         registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);
         registrar.playToClient(IngredientCheckResultPacket.TYPE, IngredientCheckResultPacket.STREAM_CODEC, IngredientCheckResultPacket::handle);
-        registrar.playToClient(GaugePromiseInfoPacket.TYPE, GaugePromiseInfoPacket.STREAM_CODEC, GaugePromiseInfoPacket::handle);
+        registrar.playToClient(GaugeInfoPacket.TYPE, GaugeInfoPacket.STREAM_CODEC, GaugeInfoPacket::handle);
         registrar.playToClient(OrderNotificationPacket.TYPE, OrderNotificationPacket.STREAM_CODEC, OrderNotificationPacket::handle);
     }
 }

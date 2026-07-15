@@ -17,7 +17,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 /**
  * C2S: the recipe screen (open on one gauge) polls the gauge's live in-flight promise counts — its own and its
  * address's — for the promise-limit box. On-demand only, so nothing is computed when no one is viewing. The server
- * reads the gauge's per-tick count cache (item or fluid backend) and replies with a {@link GaugePromiseInfoPacket}.
+ * reads the gauge's per-tick count cache (item or fluid backend) and replies with a {@link GaugeInfoPacket}.
  */
 public record RequestGaugePromiseInfoPacket(BlockPos pos, VirtualComponentPosition gaugePos)
     implements CustomPacketPayload {
@@ -44,7 +44,8 @@ public record RequestGaugePromiseInfoPacket(BlockPos pos, VirtualComponentPositi
             // Route through the gauge so a fluid gauge reports its fluid-backend counts, not the item cache.
             int owned = g.ownedPromiseCount(now);
             int address = g.addressPromiseCount(now);
-            PacketDistributor.sendToPlayer(player, new GaugePromiseInfoPacket(packet.gaugePos(), owned, address));
+            PacketDistributor.sendToPlayer(player, new GaugeInfoPacket(packet.gaugePos(), owned, address,
+                g.currentTimer(), g.requestIntervalTicks(), g.isRequestTimerTicking()));
         });
     }
 }
