@@ -53,6 +53,8 @@
   "createfactorycontroller.gui.network_selector_scroll_highlight_tip": "滚动以高亮组件",
   "createfactorycontroller.gui.network_selector_scroll_tune_tip": "滚动以设定网络",
   "createfactorycontroller.gui.network_settings": "网络设置",
+  "createfactorycontroller.toast.order_complete": "生产订单已发货",
+  "createfactorycontroller.toast.gauge_invalid": "生产仪表失效",
   "createfactorycontroller.gui.custom_arrangement": "自定义布局",
   "createfactorycontroller.gui.custom_arrangement.tip": "以设定的布局进行解包",
   "createfactorycontroller.gui.custom_slot_move": "左键拖动以移动",

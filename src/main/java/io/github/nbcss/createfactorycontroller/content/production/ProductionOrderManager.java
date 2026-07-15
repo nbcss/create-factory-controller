@@ -12,6 +12,7 @@ import com.simibubi.create.content.logistics.packager.PackagingRequest;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket.RequestedItem;
 import net.minecraft.server.level.ServerPlayer;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrder.Task;
@@ -159,7 +160,7 @@ public class ProductionOrderManager extends SavedData {
                         if (!o.subscribers().isEmpty() && !affected.contains(o)) affected.add(o);   // once per order
                     }
         if (changed) setDirty();
-        for (ProductionOrder o : affected) notifyGaugeInvalid(server, o, patternId);
+        for (ProductionOrder o : affected) notifyGaugeInvalid(server, o);
     }
 
     /** Static convenience for controllers (server side only). */
@@ -247,18 +248,15 @@ public class ProductionOrderManager extends SavedData {
     /** Toasts the order's subscribers (those online) that production finished. */
     private static void notifyOrderComplete(MinecraftServer server, ProductionOrder order) {
         OrderNotificationPacket packet =
-            new OrderNotificationPacket(OrderNotificationPacket.KIND_ORDER_COMPLETE, primaryProduced(order), order.address());
+            new OrderNotificationPacket(OrderNotificationPacket.KIND_ORDER_COMPLETE, requestedItems(order), order.address());
         for (ServerPlayer player : onlineSubscribers(server, order))
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, packet);
     }
 
     /** Toasts the order's subscribers (those online) that a gauge their order needs went invalid. */
-    private static void notifyGaugeInvalid(MinecraftServer server, ProductionOrder order, UUID patternId) {
-        ItemStack icon = order.tasks().stream()
-            .filter(t -> patternId.equals(t.patternId) && !t.item.isEmpty())
-            .map(t -> t.item).findFirst().orElse(primaryProduced(order));
+    private static void notifyGaugeInvalid(MinecraftServer server, ProductionOrder order) {
         OrderNotificationPacket packet =
-            new OrderNotificationPacket(OrderNotificationPacket.KIND_GAUGE_INVALID, icon.copy(), order.address());
+            new OrderNotificationPacket(OrderNotificationPacket.KIND_GAUGE_INVALID, requestedItems(order), order.address());
         for (ServerPlayer player : onlineSubscribers(server, order))
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, packet);
     }
@@ -274,11 +272,12 @@ public class ProductionOrderManager extends SavedData {
         return out;
     }
 
-    /** The first produced (gauge-backed) item of an order — the icon shown on its toast. */
-    private static ItemStack primaryProduced(ProductionOrder order) {
-        for (Task t : order.tasks())
-            if (t.patternId != null && !t.item.isEmpty()) return t.item.copy();
-        return order.tasks().isEmpty() ? ItemStack.EMPTY : order.tasks().get(0).item.copy();
+    /** Every item in an order, paired with the amount originally requested. */
+    private static List<RequestedItem> requestedItems(ProductionOrder order) {
+        List<RequestedItem> items = new ArrayList<>();
+        for (Task task : order.tasks())
+            if (!task.item.isEmpty()) items.add(new RequestedItem(task.item.copy(), task.amount));
+        return items;
     }
 
     // ── Demand ──────────────────────────────────────────────────────

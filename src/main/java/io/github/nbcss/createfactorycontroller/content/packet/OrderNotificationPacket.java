@@ -10,12 +10,23 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import java.util.List;
+
 /**
  * Server → the ordering player: pops an advancement-style {@link OrderStatusToast}. Data-only — the text is
- * built client-side from lang keys ({@code kind} selects the header, {@code icon}/{@code address} fill the
- * subtitle), matching the mod's en_us-only convention. {@code kind}: 0 = order complete, 1 = gauge invalid.
+ * built client-side from lang keys ({@code kind} selects the header); {@code requestedItems} and {@code address}
+ * fill the body. {@code kind}: 0 = order complete, 1 = gauge invalid.
  */
-public record OrderNotificationPacket(int kind, ItemStack icon, String address) implements CustomPacketPayload {
+public record OrderNotificationPacket(int kind, List<RequestedItem> requestedItems, String address)
+        implements CustomPacketPayload {
+
+    /** One requested item and its original order amount. */
+    public record RequestedItem(ItemStack item, int amount) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, RequestedItem> STREAM_CODEC = StreamCodec.composite(
+            ItemStack.OPTIONAL_STREAM_CODEC, RequestedItem::item,
+            ByteBufCodecs.VAR_INT, RequestedItem::amount,
+            RequestedItem::new);
+    }
 
     public static final int KIND_ORDER_COMPLETE = 0;
     public static final int KIND_GAUGE_INVALID = 1;
@@ -26,7 +37,7 @@ public record OrderNotificationPacket(int kind, ItemStack icon, String address) 
     public static final StreamCodec<RegistryFriendlyByteBuf, OrderNotificationPacket> STREAM_CODEC =
         StreamCodec.composite(
             ByteBufCodecs.VAR_INT, OrderNotificationPacket::kind,
-            ItemStack.OPTIONAL_STREAM_CODEC, OrderNotificationPacket::icon,
+            RequestedItem.STREAM_CODEC.apply(ByteBufCodecs.list()), OrderNotificationPacket::requestedItems,
             ByteBufCodecs.STRING_UTF8, OrderNotificationPacket::address,
             OrderNotificationPacket::new);
 
@@ -35,6 +46,6 @@ public record OrderNotificationPacket(int kind, ItemStack icon, String address) 
 
     // Runs client-side only (playToClient).
     public static void handle(OrderNotificationPacket packet, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> OrderStatusToast.show(packet.kind(), packet.icon(), packet.address()));
+        ctx.enqueueWork(() -> OrderStatusToast.show(packet.kind(), packet.requestedItems(), packet.address()));
     }
 }
