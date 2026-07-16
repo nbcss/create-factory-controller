@@ -9,13 +9,15 @@
 
 # 1.1.0
 - [DONE] Gauge Custom Layout Mode
-- [TODO] Integer Connection & Arithmetic Component
+- [DONE] Network Rename/Set Icon
+- [DONE] Dynamic Batch Size (Request Multiplier)
 - [DOING] Properly handle stock link not loaded warning
-- [DOING] Network Rename/Set Icon
+- [DOING] Improve panel sync packet (transfer delta only)
 - [DOING] Blueprint Save/Load
-- [DOING] Dynamic Batch Size (Request Multiplier)
-- [TODO] Paper as component
 - [DOING] Production Order Status Notification
+- [DOING] Per gauge request interval
+- [TODO] Paper as component
+- [TODO] Integer Connection & Arithmetic Component
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
 
@@ -25,7 +27,6 @@
 - [TBC] JEI to set custom arrangement layout / create gauge
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration
-- [TODO] Improve panel sync packet (transfer delta only)
 - [TODO] Connection tab in recipe / redstone link setting screen
 - [TODO] Item monitoring mode in Display Link Mode
 - [TODO] Remote Interface Item
@@ -35,8 +36,7 @@
 - [TBC] Custom arrow bend mode
 - [TBC] No promise request
 - [TODO] Controller disabled indicator
-- [TODO] Per gauge request interval
-- [TODO] Quick Request Mode
+- [TBC] Quick Request Mode
 - [TODO] Show Active Promise Timer
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
