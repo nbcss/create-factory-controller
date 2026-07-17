@@ -29,6 +29,11 @@ jobs:
           bundler-cache: true
           working-directory: ./manual
 
+      - name: Install po4a
+        uses: ConorMacBride/install-package@v1
+        with:
+          apt: po4a
+
       - name: Build manual
         working-directory: manual
         run: bundle exec rake build
