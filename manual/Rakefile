@@ -28,32 +28,23 @@ task :build
 LANGS.each do |lang|
   task :build => :"build_#{lang}"
   desc "Build HTML of language #{lang}"
-  task :"build_#{lang}" => %I(assets po4a:translate_#{lang}) do
+  task :"build_#{lang}" => %i(assets po4a:translate) do
     build_lang(lang)
   end
 end
 
 namespace 'po4a' do
   desc "Update translation files"
-  task :update
-  desc "Generated translated documents"
-  task :translate
-
-  task :"update_#{LANGS.default}"
-  task :"translate_#{LANGS.default}"
-
-  LANGS[1..-1].each do |lang|
-    task :update => :"update_#{lang}"
-    task :"update_#{lang}" do
-      cd 'l10n' do
-        sh *%W(po4a --no-translations --target-lang #{lang} po4a.cfg)
-      end
+  task :update do
+    cd 'l10n' do
+      sh *%W(po4a --no-translations po4a.cfg)
     end
-    task :translate => :"translate_#{lang}"
-    task :"translate_#{lang}" do
-      cd 'l10n' do
-        sh *%W(po4a --no-update --target-lang #{lang} po4a.cfg)
-      end
+  end
+
+  desc "Generated translated documents"
+  task :translate do
+    cd 'l10n' do
+      sh *%W(po4a --no-update po4a.cfg)
     end
   end
 end
