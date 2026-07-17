@@ -107,8 +107,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int ARROW_ANIM_X = 140, ARROW_ANIM_Y = 47;   // panel-relative, tuned to the drawn arrow
     // Request-interval readout on the arrow (clock + whole seconds), right-aligned so the digits stay put.
     private static final int INTERVAL_RIGHT_X = 154, INTERVAL_Y = 58;
-    private static final int INTERVAL_DEFAULT_COLOR = 0xFFAAAAAA;   // gray — Create's configured interval
-    private static final int INTERVAL_CUSTOM_COLOR = 0xFF9ECFFC;    // blue — per-gauge override
+    private static final int INTERVAL_CUSTOM_COLOR = 0xFF9ECFFC;
+    private static final int INTERVAL_DISABLE_COLOR = 0xFF999999;
+    private static final int MULTIPLIER_COLOR = 0xFFFFDD70;
+    private static final int MULTIPLIER_DISABLE_COLOR = 0xFFE0E0E0;
     private static final int TICKS_PER_SEC = 20;
 
     private final FactoryControllerScreen controller;
@@ -1076,7 +1078,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
             SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.MULTIPLY + maxRequestMultiplier,
                     panelX + MULTIPLIER_X + MULTIPLIER_W + 2, panelY + MULTIPLIER_Y + MULTIPLIER_H - 6,
-                    overMultiplier || maxRequestMultiplier > 1 ? 0xFFFFDD70 : 0xFFE0E0E0);
+                    overMultiplier || maxRequestMultiplier > 1 ? MULTIPLIER_COLOR : MULTIPLIER_DISABLE_COLOR);
 
             // Hovering the bar highlights every slot the multiplier scales — ingredient cells + output — above the
             // items but below their count font (z 199, matching the drag-preview layer).
@@ -1103,7 +1105,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.CLOCK + "·" + shownIntervalSeconds(),
                 panelX + INTERVAL_RIGHT_X, panelY + INTERVAL_Y,
-                customRequestTimer > 0 ? INTERVAL_CUSTOM_COLOR : INTERVAL_DEFAULT_COLOR);
+                customRequestTimer > 0 ? INTERVAL_CUSTOM_COLOR : INTERVAL_DISABLE_COLOR);
         if (overIntervalArrow(mouseX, mouseY)) {
             List<Component> lines = new ArrayList<>(List.of(
                 Component.translatable("createfactorycontroller.gui.request_interval", intervalTooltipSeconds())
@@ -1130,7 +1132,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ? formatFluidShort(promised) : String.valueOf(promised);
         ItemStack box = PackageStyles.getDefaultBox();
         gfx.renderItem(box, pbx, pby);
-        drawItemCount(gfx, box, pbx, pby, promisedLabel);
+        drawItemCount(gfx, box, pbx, pby, (ClientConfig.compactRecipeCountFont() && promised > 0 ? "+": "")
+                + promisedLabel);
         if (in(mouseX, mouseY, pbx, pby, 16, 16))
             tooltip = promised == 0
                 ? List.of(
@@ -1208,10 +1211,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             disconnectLinkButton.render(gfx, mouseX, mouseY, partialTick);
             if (disconnectLinkButton.isMouseOver(mouseX, mouseY)) {
                 tooltip = List.of(
-                        CreateLang.translate("gui.factory_panel.has_link_connections")
-                                .color(ScrollInput.HEADER_RGB).component(),
-                        CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()
+                        Component.translatable("createfactorycontroller.gui.disconnect_links")
+                                .withStyle(ChatFormatting.WHITE)
                 );
             }
         }
