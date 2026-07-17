@@ -14,6 +14,7 @@ public final class NetworkHandler {
         registrar.playToServer(BatchMoveComponentPacket.TYPE, BatchMoveComponentPacket.STREAM_CODEC, BatchMoveComponentPacket::handle);
         registrar.playToServer(GaugeSetItemPacket.TYPE, GaugeSetItemPacket.STREAM_CODEC, GaugeSetItemPacket::handle);
         registrar.playToServer(ConfigureRecipePacket.TYPE, ConfigureRecipePacket.STREAM_CODEC, ConfigureRecipePacket::handle);
+        registrar.playToServer(SetGaugeRequestIntervalPacket.TYPE, SetGaugeRequestIntervalPacket.STREAM_CODEC, SetGaugeRequestIntervalPacket::handle);
         registrar.playToServer(AddConnectionPacket.TYPE, AddConnectionPacket.STREAM_CODEC, AddConnectionPacket::handle);
         registrar.playToServer(RemoveConnectionPacket.TYPE, RemoveConnectionPacket.STREAM_CODEC, RemoveConnectionPacket::handle);
         registrar.playToServer(DisconnectIngredientPacket.TYPE, DisconnectIngredientPacket.STREAM_CODEC, DisconnectIngredientPacket::handle);

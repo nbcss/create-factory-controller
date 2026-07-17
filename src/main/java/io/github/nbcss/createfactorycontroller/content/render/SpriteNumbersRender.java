@@ -25,6 +25,8 @@ public final class SpriteNumbersRender {
     public static final String MULTIPLY = "x";
     public static final String PLUS = "+";
     public static final String MINUS = "-";
+    /** Clock face (row 4) — prefixes a request-interval readout, e.g. {@code CLOCK + "2"}. */
+    public static final String CLOCK = "⏱";      // ⏱
 
     private SpriteNumbersRender() {}
 
@@ -82,6 +84,7 @@ public final class SpriteNumbersRender {
         int x = startX;
         for (char raw : text.toCharArray()) {
             if (raw == ' ') { x += 4; continue; }
+            if (raw == '·') { x += 1; continue; }
             int[] g = glyph(raw);
             if (g == null) continue;
             RenderSystem.enableBlend();
@@ -105,6 +108,7 @@ public final class SpriteNumbersRender {
             case 'x' -> new int[]{ 33, 16, 5 };       // multiply
             case '+' -> new int[]{ 39, 16, 5 };       // plus
             case '-' -> new int[]{ 45, 16, 5 };       // minus
+            case '⏱' -> new int[]{ 0, 24, 7 };        // clock (row 4)
             default -> null;
         };
     }

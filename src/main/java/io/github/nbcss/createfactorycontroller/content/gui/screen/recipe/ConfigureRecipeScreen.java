@@ -17,6 +17,7 @@ import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
+import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
@@ -38,6 +39,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePac
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RequestGaugePromiseInfoPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.SetGaugeRequestIntervalPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -103,6 +105,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/gauge_arrow_animation.png");
     private static final int ARROW_ANIM_FRAMES = 15, ARROW_ANIM_W = 15, ARROW_ANIM_H = 17;
     private static final int ARROW_ANIM_X = 140, ARROW_ANIM_Y = 47;   // panel-relative, tuned to the drawn arrow
+    // Request-interval readout on the arrow (clock + whole seconds), right-aligned so the digits stay put.
+    private static final int INTERVAL_RIGHT_X = 154, INTERVAL_Y = 58;
+    private static final int INTERVAL_DEFAULT_COLOR = 0xFFAAAAAA;   // gray — Create's configured interval
+    private static final int INTERVAL_CUSTOM_COLOR = 0xFF9ECFFC;    // blue — per-gauge override
+    private static final int TICKS_PER_SEC = 20;
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
@@ -121,6 +128,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     int craftBatch = 1;
     /** User-set request-multiplier ceiling (≥1, default 1). */
     int maxRequestMultiplier = 1;
+    /** Per-gauge request interval in TICKS; 0 = unspecified → Create's config. Scrolled on the output arrow. */
+    int customRequestTimer = 0;
     /** Square crafter-grid size (N→N×N) a recipe is laid out for; defaults to its minimum (max of recipe
      *  width/height), Ctrl-scrollable up to {@link ServerConfig#maxCraftGridSize()}. 0 until a recipe loads. */
     private int craftDimension = 0;
@@ -501,6 +510,33 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return in(mx, my, panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y, MULTIPLIER_W, MULTIPLIER_H);
     }
 
+    /** Whether {@code (mx, my)} is over the output arrow (the request-interval readout / scroll target). */
+    boolean overIntervalArrow(double mx, double my) {
+        return in(mx, my, panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, ARROW_ANIM_W, ARROW_ANIM_H);
+    }
+
+    private static int defaultIntervalSeconds() {
+        return Math.max(1,
+                Math.round(AllConfigs.server().logistics.factoryGaugeTimer.get() / (float) TICKS_PER_SEC));
+    }
+
+    /** The interval currently shown on the arrow, in whole seconds. */
+    private int shownIntervalSeconds() {
+        return customRequestTimer > 0 ? customRequestTimer / TICKS_PER_SEC : defaultIntervalSeconds();
+    }
+
+    private void setRequestInterval(int ticks) {
+        customRequestTimer = ticks;
+        PacketDistributor.sendToServer(new SetGaugeRequestIntervalPacket(menu.controllerPos, gaugePos, ticks));
+    }
+
+    private String intervalTooltipSeconds() {
+        int ticks = customRequestTimer > 0
+                ? customRequestTimer : AllConfigs.server().logistics.factoryGaugeTimer.get();
+        if (ticks % TICKS_PER_SEC == 0) return String.valueOf(ticks / TICKS_PER_SEC);
+        return String.format(java.util.Locale.ROOT, "%.1f", ticks / (float) TICKS_PER_SEC);
+    }
+
     /** Scale to render the ingredient/output amounts at for the given cursor: the multiplier while its bar is
      *  hovered, else 1. A per-frame derived value (every render method gets the same cursor), so no cached field. */
     int previewScale(double mx, double my) {
@@ -687,6 +723,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         outputCount = Math.max(1, g.recipeOutput);
         craftBatch = Math.max(1, g.craftBatch);
         maxRequestMultiplier = Math.max(1, g.maxRequestMultiplier);
+        customRequestTimer = Math.max(0, g.customRequestTimer);
         craftDimension = Math.max(0, g.craftDimension);
         thresholdCount = Math.max(0, g.count);
         mode = g.unit;
@@ -1064,6 +1101,25 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     ARROW_ANIM_W, ARROW_ANIM_H, ARROW_ANIM_W, ARROW_ANIM_FRAMES * ARROW_ANIM_H);
         }
 
+        SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.CLOCK + "·" + shownIntervalSeconds(),
+                panelX + INTERVAL_RIGHT_X, panelY + INTERVAL_Y,
+                customRequestTimer > 0 ? INTERVAL_CUSTOM_COLOR : INTERVAL_DEFAULT_COLOR);
+        if (overIntervalArrow(mouseX, mouseY)) {
+            List<Component> lines = new ArrayList<>(List.of(
+                Component.translatable("createfactorycontroller.gui.request_interval", intervalTooltipSeconds())
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
+                Component.translatable("createfactorycontroller.gui.request_interval.tip_1")
+                    .withStyle(ChatFormatting.GRAY),
+                Component.translatable("createfactorycontroller.gui.request_interval.tip_2")
+                    .withStyle(ChatFormatting.GRAY),
+                CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()));
+            if (customRequestTimer > 0)   // only clearable when an override is actually set
+                lines.add(Component.translatable("createfactorycontroller.gui.request_interval.reset")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            tooltip = lines;
+        }
+
         renderThreshold(gfx, g);
 
         // Open-promise package box (left of the promise-interval scroll).
@@ -1434,6 +1490,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
+        if (overIntervalArrow(mouseX, mouseY)) {
+            if (customRequestTimer > 0) {
+                setRequestInterval(0);
+                playClickSound();
+            }
+            return true;
+        }
+
         // Request-multiplier bar: left-click jumps to the max valid value, right-click resets to 1.
         if ((button == 0 || button == 1) && overMultiplier(mouseX, mouseY)) {
             maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
@@ -1509,6 +1573,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             if (dir != 0) {
                 int limitStep = hasShiftDown() ? 10 : 1;
                 promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 99);
+                playScrollSound();
+            }
+            return true;
+        }
+
+        if (overIntervalArrow(mouseX, mouseY)) {
+            if (dir != 0) {
+                setRequestInterval(Mth.clamp(shownIntervalSeconds() + dir, 1, 60) * TICKS_PER_SEC);
                 playScrollSound();
             }
             return true;
@@ -1600,7 +1672,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int batch = crafting ? effectiveBatch() : 1;
         int dimension = crafting ? effectiveCraftDimension() : 0;
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
-            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, maxRequestMultiplier, dimension,
+            menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, batch, maxRequestMultiplier,
+            customRequestTimer, dimension,
             promiseExpiration.getState(), promiseLimitState, promiseLimitByAddress, thresholdCount, mode, requestMode,
             workMode, positions, amounts, new ArrayList<>(arrangement), slotsOut, clearPromises, reset));
     }

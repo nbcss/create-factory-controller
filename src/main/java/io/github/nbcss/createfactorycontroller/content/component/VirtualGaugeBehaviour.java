@@ -1247,6 +1247,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return timer;
     }
 
+    /** Restarts the countdown at the current {@link #requestIntervalTicks()} — called when the player edits the
+     *  interval, so the new value takes effect now instead of after the in-flight countdown. */
+    public void restartRequestTimer() {
+        resetTimer();
+    }
+
     /** Whether the request timer is actively counting down this tick — i.e. the gauge passes every pre-timer gate
      *  in {@link #tickRequests} (including the promise limit, which freezes the timer). Drives the recipe screen's
      *  output-arrow animation; false ⇒ no overlay. */
@@ -1279,6 +1285,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         buf.writeVarInt(recipeOutput);
         buf.writeVarInt(craftBatch);
         buf.writeVarInt(maxRequestMultiplier);
+        buf.writeVarInt(customRequestTimer);
         buf.writeVarInt(craftDimension);
         buf.writeVarInt(promiseClearingInterval + 1);   // -1..31 → 0..32 (non-negative for varint)
         buf.writeVarInt(promiseLimit);
@@ -1310,6 +1317,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         recipeOutput = buf.readVarInt();
         craftBatch = buf.readVarInt();
         maxRequestMultiplier = Math.max(1, buf.readVarInt());
+        customRequestTimer = Math.max(0, buf.readVarInt());
         craftDimension = buf.readVarInt();
         promiseClearingInterval = buf.readVarInt() - 1;
         promiseLimit = buf.readVarInt();
