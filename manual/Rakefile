@@ -4,30 +4,78 @@ require 'yaml'
 require 'asciidoctor'
 require 'asciidoctor-html5s'
 require 'nokogiri'
+require 'twitter_cldr'
 require 'font-awesome-sass'
 require_relative 'lib/replacements'
 require_relative 'lib/util'
 
-SRC_DIR = File.expand_path('src', __dir__)
-BUILD_DIR = File.expand_path('build', __dir__)
-L10N_DIR = File.expand_path('l10n', __dir__)
+CLOBBER << 'build'
 
-CLOBBER << BUILD_DIR
+# Get languages from po4a config
+LANGS = File.readlines("l10n/po4a.cfg")
+  .find{|x| x =~ /^\[po4a_langs\]/ }
+  .split(?])[1].scan(/\w+/)
+
+LANGS.prepend 'en'
+def LANGS.default() first end
 
 
-desc 'Copy static assets'
-task :assets do
-  verbose(false) { mkdir_p BUILD_DIR }
-  cp File.join(SRC_DIR, 'style.css'), BUILD_DIR
-  cp_lr File.join(SRC_DIR, 'images'), BUILD_DIR, remove_destination: true
-  verbose(false) { mkdir_p File.join BUILD_DIR, 'fonts' }
-  cp File.join(FontAwesome::Sass.fonts_path, 'font-awesome', 'fa-solid-900.woff2'), File.join(BUILD_DIR, 'fonts')
+# Define tasks to build each and all languages
+task default: :build
+desc "Build HTML for all languages"
+task :build
+
+LANGS.each do |lang|
+  task :build => :"build_#{lang}"
+  desc "Build HTML of language #{lang}"
+  task :"build_#{lang}" => %I(assets po4a:translate_#{lang}) do
+    build_lang(lang)
+  end
 end
 
-desc 'Build HTML'
-task build: :assets do
-  layout = ERB.new File.read File.join(SRC_DIR, '_layout.erb')
-  attributes = YAML.load_file File.join(L10N_DIR, 'attributes.yaml')
+namespace 'po4a' do
+  desc "Update translation files"
+  task :update
+  desc "Generated translated documents"
+  task :translate
+
+  task :"update_#{LANGS.default}"
+  task :"translate_#{LANGS.default}"
+
+  LANGS[1..-1].each do |lang|
+    task :update => :"update_#{lang}"
+    task :"update_#{lang}" do
+      cd 'l10n' do
+        sh *%W(po4a --no-translations --target-lang #{lang} po4a.cfg)
+      end
+    end
+    task :translate => :"translate_#{lang}"
+    task :"translate_#{lang}" do
+      cd 'l10n' do
+        sh *%W(po4a --no-update --target-lang #{lang} po4a.cfg)
+      end
+    end
+  end
+end
+
+
+# Memoized variables
+layout = nil
+lang_attributes = nil
+lang_manual_toc = nil
+
+# Build HTML of a language
+def build_lang(lang)
+  layout ||= ERB.new File.read 'src/_layout.erb'
+
+  # Translatable attributes
+  lang_attributes ||= Hash.new do |hash, lang|
+    local = Util.flatten_hash YAML.load_file "l10n/attributes.#{lang}.yaml" rescue nil if lang != LANGS.default
+    fallback = Util.flatten_hash YAML.load_file "l10n/attributes.yaml"
+    lang_attributes[lang] = fallback.merge local || {}
+  end
+  attributes = lang_attributes[lang]
+
   adoc_options = {
     safe: :safe,
     backend: 'html5s',
@@ -38,25 +86,47 @@ task build: :assets do
     }.merge(attributes.map{|k, v| ["#{k}@", v]}.to_h),
   }
 
-  index_adoc = Asciidoctor.load_file File.join(SRC_DIR, 'index.adoc'), adoc_options
-  manual_toc = index_adoc.find_by(id: 'manual-toc')[0].convert
-  manual_toc = Util.html_strip manual_toc, layers: 2
+  # Read index.adoc for a TOC of the entire manual
+  lang_manual_toc ||= Hash.new do |hash, lang|
+    source_path = lang == LANGS.default ? 'src/index.adoc' : "translated/#{lang}/index.adoc"
+    doc = Asciidoctor.load_file source_path, adoc_options
+    toc = doc.find_by(id: 'manual-toc')[0].convert
+    lang_manual_toc[lang] = Util.html_strip toc, layers: 2
+  end
+  manual_toc = lang_manual_toc[lang]
 
-  verbose(false) { mkdir_p File.join(BUILD_DIR, 'en') }
+  verbose(false) { mkdir_p "build/#{lang}" }
 
-  Dir.glob('[^_]*.adoc', base: SRC_DIR).each do |source|
-    document = Asciidoctor.load_file File.join(SRC_DIR, source), adoc_options
-    output_path = File.join BUILD_DIR, 'en', source.sub(/\.adoc$/, '.html')
+  Dir.glob('[^_]*.adoc', base: 'src').each do |source|
+    source_path = lang == LANGS.default ? "src/#{source}" : "translated/#{lang}/#{source}"
+    output_filename = source.sub(/\.adoc$/, '.html')
+    output_path = "build/#{lang}/#{output_filename}"
 
-    puts "Generate #{output_path}" if verbose
+    document = nil
+    page_toc = nil
+    no_translation = false
 
-    page_toc = document.converter.convert document, 'outline', toclevels: 2
-    page_toc = Util.html_strip page_toc, strip_class: true
+    if File.exist? source_path
+      puts "Generate page #{output_path}" if verbose
+      document = Asciidoctor.load_file source_path, adoc_options
+
+      page_toc = document.converter.convert document, 'outline', toclevels: 2
+      page_toc = Util.html_strip page_toc, strip_class: true
+
+    else
+      puts "Generate missing translation page #{output_path}" if verbose
+      no_translation = true
+    end
 
     html = layout.result LayoutContext.new(
       document: document,
+      attributes: attributes,
+      language: lang,
+      languages: LANGS,
       manual_toc: manual_toc,
       page_toc: page_toc,
+      no_translation: no_translation,
+      output_filename: output_filename,
       output_path: output_path,
     ).binding
     html = Util.cache_id_images(html, output_path)
@@ -65,15 +135,39 @@ task build: :assets do
   end
 end
 
-task default: :build
-
-
 # Context object to provide variables and methods to the ERB template
-LayoutContext = Struct.new :document, :manual_toc, :page_toc, :output_path do
-
+LayoutContext = Struct.new *%i(
+  document attributes
+  language languages
+  manual_toc page_toc
+  no_translation
+  output_filename output_path
+) do
   def binding() Kernel.binding end
   def h(value) ERB::Util.html_escape(value) end
-  def t(key) document.attributes[key] || key end
+  def t(key) attributes[key] || key end
+  def lang_name(lang) TwitterCldr::Shared::Languages.from_code_for_locale lang, lang end
   def attach_cache_id(path) Util.add_cache_id(path, output_path) end
+end
 
+
+# Define assets to be copied to `build`
+assets = {
+  'build/style.css' => 'src/style.css',
+  'build/images' => 'src/images',
+  'build/fonts/fa-solit-900.woff2' => "#{FontAwesome::Sass.fonts_path}/font-awesome/fa-solid-900.woff2",
+}
+
+desc 'Copy static assets'
+task :assets => assets.keys
+
+assets.each do |t, s|
+  file t => s do |task|
+    verbose(false) { mkdir_p File.dirname(task.name) }
+    if File.directory? task.prereqs[0]
+      cp_lr task.prereqs[0], File.dirname(task.name), remove_destination: true
+    else
+      cp task.prereqs[0], File.dirname(task.name)
+    end
+  end
 end

@@ -5,7 +5,7 @@ User manual of the mod.
 Directory structure:
 
 * `src/`
-** `\*.adoc`: Documents, translated and built to `build/$lang/*.html`. Source written in English.
+** `\*.adoc`: Source documents, translated and built to `build/$lang/*.html`. Written in English.
 ** `style.css`, `images/`: Static assets, copied to `build/`.
 ** `_layout.erb`: HTML template for all documents.
 
@@ -29,6 +29,9 @@ Install `ruby-bundler` and `po4a`.
 ----
 bundle config set path vendor/bundle
 bundle install
-(cd l10n; po4a po4a.cfg)
 bundle exec rake build
 ----
+
+== Writing Source Documents
+
+Update translation files after making changes: `bundle exec rake po4a:update`

@@ -4,6 +4,13 @@
 site-name: "Create: Factory Controller"
 site-nav-manual: Manual
 site-nav-manual-home: Home
+site-nav-langs: Change Language
+
+no-translation:
+  title: Translation Unavailable
+  content: "A translated version of this page is not yet available. You may:"
+  read-source-lang: Read the English version of this page
+  help-translate: Help translate this page
 
 toc-title: Table of Contents
 section-refsig: Section

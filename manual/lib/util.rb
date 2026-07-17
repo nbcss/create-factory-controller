@@ -3,6 +3,17 @@ require 'digest'
 
 module Util
 
+  # Flatten hash, concatenate keys with dots
+  def self.flatten_hash(hash)
+    hash.each_with_object({}) do |(key, value), flattened|
+      if value.is_a?(Hash)
+        flatten_hash(value).each { |child_key, child_value| flattened["#{key}.#{child_key}"] = child_value }
+      else
+        flattened[key.to_s] = value
+      end
+    end
+  end
+
   # Appends a SHA-1 cache-busting query string to local file +path+.
   def self.add_cache_id(path, base_path)
     return path if path.include?('://')
