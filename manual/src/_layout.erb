@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <% if document %>
-    <title><%= h document.title %></title>
+    <% if content %>
+    <title><%= h title %></title>
     <% elsif no_translation %>
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
@@ -36,7 +36,7 @@
               <div class="nav-menu-container">
                 <ol class="nav-menu">
                   <li><a href="#top">
-                    <span class="toc-menu-title"><%= h document.title %></span>
+                    <span class="toc-menu-title"><%= h title %></span>
                   </a></li>
                   <%= page_toc %>
                 </ol>
@@ -60,10 +60,10 @@
       </div>
     </header>
     <main>
-      <% if document %>
+      <% if content %>
       <article>
-        <h1><%= h document.title %></h1>
-        <%= document.content %>
+        <h1><%= h title %></h1>
+        <%= content %>
       </article>
       <% elsif no_translation %>
       <div>
