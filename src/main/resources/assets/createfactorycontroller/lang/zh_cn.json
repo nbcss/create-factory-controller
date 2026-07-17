@@ -95,7 +95,7 @@
   "createfactorycontroller.gui.open_requests.scope_address": "发送至相同地址的请求",
   "createfactorycontroller.gui.open_requests.click_scope": "点击以修改统计模式",
   "createfactorycontroller.gui.open_requests.scroll_limit": "滚动以设置上限",
-  "createfactorycontroller.gui.disconnect_links": "点击以断开非物流连接",
+  "createfactorycontroller.gui.disconnect_links": "断开非物流连接",
   "createfactorycontroller.gui.request_mode": "工作模式",
   "createfactorycontroller.gui.request_mode.normal": "维持库存",
   "createfactorycontroller.gui.request_mode.normal.desc1": "当网络中库存低于",
