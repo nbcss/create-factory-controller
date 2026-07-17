@@ -4,13 +4,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.gui.element.ScreenElement;
@@ -70,7 +70,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     private boolean committed = false;
 
     private int panelX, panelY, invBgX, invBgY;
-    private IconButton relocateButton, addConnectionButton, modeButton, confirmButton;
+    private TooltipIconButton relocateButton, addConnectionButton, modeButton, confirmButton;
 
     public ConfigureRedstoneLinkScreen(FactoryControllerScreen controller, VirtualComponentPosition linkPos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -103,31 +103,47 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;
         menu.repositionSlots(originX, hotbarY, true);   // full inventory, ghost slot off-screen (we use fake slots)
 
-        relocateButton = new IconButton(panelX + 8, panelY + 79, AllIcons.I_MOVE_GAUGE);
+        relocateButton = new TooltipIconButton(panelX + 8, panelY + 79, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             controller.beginRelocateMode(linkPos);
             Minecraft.getInstance().setScreen(controller);   // commit happens in removed()
         });
-        // No self-tooltip (it would draw during renderBg and be covered by the slots/items); drawn last in render().
+        relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
         // Add-connection: same icon/flow as the recipe screen's "connect input"
-        addConnectionButton = new IconButton(panelX + 30, panelY + 79, AllIcons.I_ADD);
+        addConnectionButton = new TooltipIconButton(panelX + 30, panelY + 79, AllIcons.I_ADD);
         addConnectionButton.withCallback(() -> {
             controller.beginConnectionMode(linkPos);
             Minecraft.getInstance().setScreen(controller);   // commit happens in removed()
         });
+        addConnectionButton.setToolTip(CreateLang.translate("gui.factory_panel.connect_input").component());
         addWidget(addConnectionButton);
 
         ScreenElement modeIcon = (gfx, x, y) -> gfx.blitSprite(receive ? WIRELESS_RECEIVE : WIRELESS_TRANSMIT, x, y, 16, 16);
-        modeButton = new IconButton(panelX + 138, panelY + 79, modeIcon);
+        modeButton = new TooltipIconButton(panelX + 138, panelY + 79, modeIcon);
         modeButton.withCallback(() -> receive = !receive);   // staged; icon lambda reads it live
+        modeButton.withDeferredTooltip(this::modeButtonTooltip);
         addWidget(modeButton);
 
-        confirmButton = new IconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
+        confirmButton = new TooltipIconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
         confirmButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));
-        // No self-tooltip (drawn last in render() so the slots/items can't cover it).
+        confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirmButton);
+    }
+
+    private List<Component> modeButtonTooltip() {
+        return List.of(
+                Component.translatable("createfactorycontroller.gui.redstone_link.mode")
+                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
+                Component.literal(receive ? "-> " : "> ")
+                        .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.receive"))
+                        .withStyle(receive ? ChatFormatting.WHITE : ChatFormatting.GRAY),
+                Component.literal(!receive ? "-> " : "> ")
+                        .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.send"))
+                        .withStyle(!receive ? ChatFormatting.WHITE : ChatFormatting.GRAY),
+                Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
     }
 
     @Override
@@ -166,27 +182,9 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
             gfx.renderComponentTooltip(font, freqEmptyTooltip(1), mouseX, mouseY);
         else if (overBlue(mouseX, mouseY))
             gfx.renderComponentTooltip(font, freqEmptyTooltip(2), mouseX, mouseY);
-        else if (modeButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, List.of(Component.translatable("createfactorycontroller.gui.redstone_link.mode")
-                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB()))
-                    .getVisualOrderText(),
-                    Component.literal(receive ? "-> " : "> ")
-                            .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.receive"))
-                            .withStyle(receive ? ChatFormatting.WHITE : ChatFormatting.GRAY).getVisualOrderText(),
-                    Component.literal(!receive ? "-> " : "> ")
-                            .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.send"))
-                            .withStyle(!receive ? ChatFormatting.WHITE : ChatFormatting.GRAY).getVisualOrderText(),
-                    Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)
-                            .getVisualOrderText()), mouseX, mouseY);
-        // Icon-button tooltips drawn here (last) so the slots/items from super.render can't cover them.
-        else if (relocateButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.action_relocate"), mouseX, mouseY);
-        else if (addConnectionButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.connect_input").component(), mouseX, mouseY);
-        else if (confirmButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
+                modeButton, relocateButton, addConnectionButton, confirmButton);
     }
 
     @Override

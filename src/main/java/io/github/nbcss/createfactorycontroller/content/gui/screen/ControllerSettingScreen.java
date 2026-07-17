@@ -1,11 +1,11 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ScrollListWindow;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
@@ -57,8 +57,8 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     private boolean disposed = false;
 
     private int panelX, panelY;
-    private IconButton closeButton;
-    private IconButton resetButton;
+    private TooltipIconButton closeButton;
+    private TooltipIconButton resetButton;
 
     public ControllerSettingScreen(FactoryControllerScreen controller) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -107,12 +107,12 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         panelY = topPos + (imageHeight - PANEL_H) / 2;
 
         // Reset (left) then close/confirm (right), bottom-right of the panel.
-        resetButton = new IconButton(panelX + 158, panelY + 64, AllIcons.I_CONFIG_RESET);
+        resetButton = new TooltipIconButton(panelX + 158, panelY + 64, AllIcons.I_CONFIG_RESET);
         resetButton.withCallback(this::resetToDefault);
         resetButton.setToolTip(CreateLang.translate("gui.factory_panel.reset").component());
         addWidget(resetButton);
 
-        closeButton = new IconButton(panelX + 180, panelY + 64, AllIcons.I_CONFIRM);
+        closeButton = new TooltipIconButton(panelX + 180, panelY + 64, AllIcons.I_CONFIRM);
         closeButton.withCallback(this::returnToController);
         closeButton.setToolTip(CommonComponents.GUI_DONE);
         addWidget(closeButton);
@@ -202,7 +202,8 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         super.render(gfx, mouseX, mouseY, partialTick);
         if (overSelector(mouseX, mouseY) && !options.isEmpty())
             gfx.renderComponentTooltip(font, selectorTooltip(), mouseX, mouseY);
-        renderTooltip(gfx, mouseX, mouseY);   // button tooltips
+        renderTooltip(gfx, mouseX, mouseY);
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, resetButton, closeButton);
     }
 
     @Override

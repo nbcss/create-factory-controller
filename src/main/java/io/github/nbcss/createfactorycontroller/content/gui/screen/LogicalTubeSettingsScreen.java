@@ -4,7 +4,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
@@ -13,9 +12,9 @@ import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBeha
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
-import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureLogicalTubePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
@@ -64,9 +63,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     private final VirtualComponentPosition tubePos;
 
     private int panelX, panelY;
-    private IconButton relocateButton, addConnectionButton, confirmButton;
+    private TooltipIconButton relocateButton, addConnectionButton, confirmButton;
     /** One toggle button per {@link LogicalTubeBehaviour.Mode}, ordered as the enum; the live mode glows green. */
-    private final java.util.EnumMap<LogicalTubeBehaviour.Mode, IconButton> modeButtons =
+    private final java.util.EnumMap<LogicalTubeBehaviour.Mode, TooltipIconButton> modeButtons =
             new java.util.EnumMap<>(LogicalTubeBehaviour.Mode.class);
 
     public LogicalTubeSettingsScreen(FactoryControllerScreen controller, VirtualComponentPosition tubePos) {
@@ -89,12 +88,14 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
         menu.repositionSlots(-2000, -2000, false);   // no inventory on this screen — keep the shared slots off-screen
 
-        relocateButton = new IconButton(panelX + 8, panelY + 79, AllIcons.I_MOVE_GAUGE);
+        relocateButton = new TooltipIconButton(panelX + 8, panelY + 79, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> { controller.beginRelocateMode(tubePos); Minecraft.getInstance().setScreen(controller); });
+        relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
-        addConnectionButton = new IconButton(panelX + 30, panelY + 79, AllIcons.I_ADD);
+        addConnectionButton = new TooltipIconButton(panelX + 30, panelY + 79, AllIcons.I_ADD);
         addConnectionButton.withCallback(() -> { controller.beginConnectionMode(tubePos); Minecraft.getInstance().setScreen(controller); });
+        addConnectionButton.setToolTip(CreateLang.translate("gui.factory_panel.connect_input").component());
         addWidget(addConnectionButton);
 
         // Mode button group (AND/OR/NOR/NAND), to the LEFT of the confirm button. Each blits its mode sprite; the
@@ -104,17 +105,19 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         for (int i = 0; i < modes.length; i++) {
             LogicalTubeBehaviour.Mode m = modes[i];
             ScreenElement element = modeButtonIcon(m);
-            IconButton button = new IconButton(groupX + i * 18, panelY + 79, element);
+            TooltipIconButton button = new TooltipIconButton(groupX + i * 18, panelY + 79, element);
             button.withCallback(() -> {
                 PacketDistributor.sendToServer(new ConfigureLogicalTubePacket(menu.controllerPos, tubePos, m.name()));
                 playClickSound();
             });
+            button.withDeferredTooltip(() -> modeButtonTooltip(m));
             modeButtons.put(m, button);
             addWidget(button);
         }
 
-        confirmButton = new IconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
+        confirmButton = new TooltipIconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
         confirmButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));
+        confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirmButton);
     }
 
@@ -340,17 +343,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
             return;
         }
-        for (var e : modeButtons.entrySet())
-            if (e.getValue().isMouseOver(mouseX, mouseY)) {
-                gfx.renderComponentTooltip(font, modeButtonTooltip(e.getKey()), mouseX, mouseY);
-                return;
-            }
-        if (relocateButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.action_relocate"), mouseX, mouseY);
-        else if (addConnectionButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.connect_input").component(), mouseX, mouseY);
-        else if (confirmButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
+        if (TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, modeButtons.values())) return;
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
+                relocateButton, addConnectionButton, confirmButton);
     }
 
     // ── Interaction ───────────────────────────────────────────────────────────────

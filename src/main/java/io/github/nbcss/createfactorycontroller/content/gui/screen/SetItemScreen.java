@@ -4,13 +4,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
@@ -60,12 +60,12 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     /** Staged filter copied into the gauge when the screen closes. */
     private ItemStack filter = ItemStack.EMPTY;
 
-    private IconButton confirm;
-    private IconButton relocateButton;
+    private TooltipIconButton confirm;
+    private TooltipIconButton relocateButton;
     /** Two-button mode toggle (an exact copy of Create's brass-filter respect/ignore-data buttons): respect
      *  vs ignore the filter item's NBT/data. Hidden entirely for a fluid filter. */
-    private IconButton respectDataButton;
-    private IconButton ignoreDataButton;
+    private TooltipIconButton respectDataButton;
+    private TooltipIconButton ignoreDataButton;
     /** Whether the gauge should monitor/consume the filter item ignoring its NBT/components. */
     private boolean ignoreData;
     // Tooltip text reused verbatim from Create's FilterScreen (same lang keys).
@@ -116,31 +116,34 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         int buttonY = panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25;
 
         // Real confirm button (like Create's set-item screen) instead of a hit-tested icon.
-        confirm = new IconButton(panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40,
+        confirm = new TooltipIconButton(panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40,
                 buttonY, AllIcons.I_CONFIRM);
         confirm.withCallback(this::returnToController);
+        confirm.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirm);
 
         // Relocate button, left of the filter slot — commits the chosen item (so a placed selection
         // isn't lost), then hands off to the controller's relocate mode where the next empty cell
         // clicked becomes this gauge's new position. Mirrors ConfigureRecipeScreen's relocate button.
-        relocateButton = new IconButton(panelX + 3, buttonY, AllIcons.I_MOVE_GAUGE);
+        relocateButton = new TooltipIconButton(panelX + 3, buttonY, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             PacketDistributor.sendToServer(new GaugeSetItemPacket(
                     menu.controllerPos, gaugePos, filter.copy(), ignoreData));
             controller.beginRelocateMode(gaugePos);
             Minecraft.getInstance().setScreen(controller);
         });
-        // No self-tooltip (it would draw during renderBg and be covered by the slots/items); drawn last in render().
+        relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
         // Respect-/ignore-data toggle (reuses Create's brass-filter icons), in the bottom button row.
         int ignoreDataX = panelX + 97;
-        respectDataButton = new IconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
+        respectDataButton = new TooltipIconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
         respectDataButton.withCallback(() -> { ignoreData = false; updateIgnoreDataButtons(); });
+        respectDataButton.withDeferredTooltip(() -> dataButtonTooltip(respectDataName, respectDataDesc));
         addWidget(respectDataButton);
-        ignoreDataButton = new IconButton(ignoreDataX + 18, buttonY, AllIcons.I_IGNORE_NBT);
+        ignoreDataButton = new TooltipIconButton(ignoreDataX + 18, buttonY, AllIcons.I_IGNORE_NBT);
         ignoreDataButton.withCallback(() -> { ignoreData = true; updateIgnoreDataButtons(); });
+        ignoreDataButton.withDeferredTooltip(() -> dataButtonTooltip(ignoreDataName, ignoreDataDesc));
         addWidget(ignoreDataButton);
         updateIgnoreDataButtons();
 
@@ -209,16 +212,8 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         } else if (overFilter(mouseX, mouseY)) {
             gfx.renderComponentTooltip(font, filterEmptyTooltip(), mouseX, mouseY);
         } else renderTooltip(gfx, mouseX, mouseY);
-        // Draw the icon-button tooltips LAST so the menu slots/items (drawn after renderBg) can't cover them.
-        // Use isMouseOver (not isHoveredOrFocused) so a focused-but-not-hovered button doesn't trail the cursor.
-        if (confirm.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, CreateLang.translate("gui.factory_panel.save_and_close").component(), mouseX, mouseY);
-        else if (relocateButton.isMouseOver(mouseX, mouseY))
-            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.action_relocate"), mouseX, mouseY);
-        else if (respectDataButton.visible && respectDataButton.isMouseOver(mouseX, mouseY))
-            gfx.renderComponentTooltip(font, dataButtonTooltip(respectDataName, respectDataDesc), mouseX, mouseY);
-        else if (ignoreDataButton.visible && ignoreDataButton.isMouseOver(mouseX, mouseY))
-            gfx.renderComponentTooltip(font, dataButtonTooltip(ignoreDataName, ignoreDataDesc), mouseX, mouseY);
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
+                confirm, relocateButton, respectDataButton, ignoreDataButton);
     }
 
     @Override

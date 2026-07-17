@@ -1,14 +1,13 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.simibubi.create.Create;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.packet.SetNetworkSettingsPacket;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -75,8 +74,8 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Staged icon copied into the network settings on commit (empty ⇒ default icon). */
     private ItemStack icon = ItemStack.EMPTY;
     private EditBox nameBox;
-    private IconButton clearButton;
-    private IconButton confirmButton;
+    private TooltipIconButton clearButton;
+    private TooltipIconButton confirmButton;
 
     private int panelX, panelY;
     private int invBgX, invBgY;
@@ -117,12 +116,12 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         menu.repositionSlots(originX, hotbarY, true);
 
         // Two buttons at the top-left: clear (reset to default) then confirm.
-        clearButton = new IconButton(panelX + PANEL_W - 47, panelY + PANEL_H - 24, AllIcons.I_TRASH);
+        clearButton = new TooltipIconButton(panelX + PANEL_W - 47, panelY + PANEL_H - 24, AllIcons.I_TRASH);
         clearButton.withCallback(this::clearToDefault);
         clearButton.setToolTip(CreateLang.translate("gui.factory_panel.reset").component());
         addWidget(clearButton);
 
-        confirmButton = new IconButton(panelX + PANEL_W - 25, panelY + PANEL_H - 24, AllIcons.I_CONFIRM);
+        confirmButton = new TooltipIconButton(panelX + PANEL_W - 25, panelY + PANEL_H - 24, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::returnToController);
         confirmButton.setToolTip(CommonComponents.GUI_DONE);
         addWidget(confirmButton);
@@ -224,7 +223,8 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.network_settings.name_tip")
                     .withStyle(ChatFormatting.GRAY), mouseX, mouseY);
         }
-        renderTooltip(gfx, mouseX, mouseY);   // button tooltips
+        renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, clearButton, confirmButton);
     }
 
     @Override

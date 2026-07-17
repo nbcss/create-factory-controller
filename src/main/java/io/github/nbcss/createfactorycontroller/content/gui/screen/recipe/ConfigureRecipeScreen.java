@@ -11,7 +11,6 @@ import com.simibubi.create.content.logistics.box.PackageStyles;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -35,6 +34,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
@@ -180,15 +180,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private boolean promiseLimitByAddress = false;
     /** Ticks until the next on-demand poll of the gauge's live promise counts (server round-trip). */
     private int promiseInfoPollCooldown = 0;
-    private IconButton confirmButton;
-    private IconButton deleteButton;
-    private IconButton newInputButton;
-    private IconButton relocateButton;
-    @Nullable private IconButton craftingButton;
-    private IconButton customButton;
-    @Nullable private IconButton disconnectLinkButton;
+    private TooltipIconButton confirmButton;
+    private TooltipIconButton deleteButton;
+    private TooltipIconButton newInputButton;
+    private TooltipIconButton relocateButton;
+    @Nullable private TooltipIconButton craftingButton;
+    private TooltipIconButton customButton;
+    @Nullable private TooltipIconButton disconnectLinkButton;
     /** Cycles the gauge's {@link RequestMode}; its icon reflects the current mode. */
-    @Nullable private IconButton requestModeButton;
+    @Nullable private TooltipIconButton requestModeButton;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualComponentPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -241,17 +241,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         promiseLimitState = limitState;
 
-        confirmButton = new IconButton(panelX + PANEL_W - 33, panelY + PANEL_H - 25, AllIcons.I_CONFIRM);
+        confirmButton = new TooltipIconButton(panelX + PANEL_W - 33, panelY + PANEL_H - 25, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::confirmAndReturn);
         confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirmButton);
 
-        deleteButton = new IconButton(panelX + PANEL_W - 55, panelY + PANEL_H - 25, AllIcons.I_TRASH);
+        deleteButton = new TooltipIconButton(panelX + PANEL_W - 55, panelY + PANEL_H - 25, AllIcons.I_TRASH);
         deleteButton.withCallback(this::deleteAndReturn);
         deleteButton.setToolTip(CreateLang.translate("gui.factory_panel.reset").component());
         addWidget(deleteButton);
 
-        newInputButton = new IconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
+        newInputButton = new TooltipIconButton(panelX + 31, panelY + 47, AllIcons.I_ADD);
         newInputButton.withCallback(() -> {
             sendConfig(false, false);   // commit edits before leaving the screen
             controller.beginConnectionMode(gaugePos);
@@ -260,7 +260,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         newInputButton.setToolTip(CreateLang.translate("gui.factory_panel.connect_input").component());
         addWidget(newInputButton);
 
-        relocateButton = new IconButton(panelX + 31, panelY + 67, AllIcons.I_MOVE_GAUGE);
+        relocateButton = new TooltipIconButton(panelX + 31, panelY + 67, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             sendConfig(false, false);   // commit edits (incl. repeated slots) before leaving the screen
             controller.beginRelocateMode(gaugePos);
@@ -272,7 +272,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Mechanical-crafting toggle
         craftingButton = null;
         if (availableCraftingRecipe != null) {
-            craftingButton = new IconButton(panelX + 11, panelY + 27, AllIcons.I_3x3);
+            craftingButton = new TooltipIconButton(panelX + 11, panelY + 27, AllIcons.I_3x3);
             craftingButton.green = workMode == GaugeWorkMode.CRAFTING;
             craftingButton.withCallback(() -> {
                 if (availableCraftingRecipe == null) return;
@@ -281,12 +281,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 editor().onChange(prev);
                 rebuildWidgets();
             });
+            craftingButton.withDeferredTooltip(this::craftingButtonTooltip);
             addWidget(craftingButton);
         }
 
         // Custom Arrangement toggle — always shown, in the crafting button's usual spot. Icon is drawn
         // procedurally (a checkerboard 3×3) so it's independent of Create's icon atlas.
-        customButton = new IconButton(panelX + 31, panelY + 27, (gfx, x, y) -> gfx.blitSprite(
+        customButton = new TooltipIconButton(panelX + 31, panelY + 27, (gfx, x, y) -> gfx.blitSprite(
                 ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/custom_arrangement"),
                 x, y, 16, 16));
         customButton.green = workMode == GaugeWorkMode.CUSTOM;
@@ -296,25 +297,29 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             editor().onChange(prev);   // CUSTOM seeds its 9-slot layout from the outgoing mode
             rebuildWidgets();
         });
-        // No self-tooltip: drawn last in renderForeground (customButtonTooltip) so neighbours can't cover it.
+        customButton.withDeferredTooltip(this::customButtonTooltip);
         addWidget(customButton);
 
         // Request-mode cycle button — right of the unit box. Its icon reflects the current mode (not coloured).
-        requestModeButton = new IconButton(panelX + REQUEST_MODE_BTN_X, panelY + THRESH_TOP - 1, iconFor(requestMode));
+        requestModeButton = new TooltipIconButton(panelX + REQUEST_MODE_BTN_X, panelY + THRESH_TOP - 1, iconFor(requestMode));
         requestModeButton.withCallback(this::cycleRequestMode);
+        requestModeButton.withDeferredTooltip(this::requestModeButtonTooltip);
         addWidget(requestModeButton);
 
         disconnectLinkButton = null;
         if (hasLinkConnections()) {
-            disconnectLinkButton = new IconButton(panelX + LINK_RESET_X - 1, panelY + LINK_RESET_Y - 1,
+            disconnectLinkButton = new TooltipIconButton(panelX + LINK_RESET_X - 1, panelY + LINK_RESET_Y - 1,
                     (gfx, x, y) -> gfx.blitSprite(
                             ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/connected"),
                             x, y, 16, 16)
-            ).withCallback(() -> {
+            );
+            disconnectLinkButton.withCallback(() -> {
                 PacketDistributor.sendToServer(new DisconnectLinksPacket(menu.controllerPos, gaugePos));
                 removeWidget(disconnectLinkButton);
                 disconnectLinkButton = null;
             });
+            disconnectLinkButton.setToolTip(Component.translatable("createfactorycontroller.gui.disconnect_links")
+                    .withStyle(ChatFormatting.WHITE));
             addWidget(disconnectLinkButton);
         }
 
@@ -716,6 +721,23 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return tip;
     }
 
+    private List<Component> requestModeButtonTooltip() {
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.translatable("createfactorycontroller.gui.request_mode")
+                .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
+        for (RequestMode m : RequestMode.values()) {
+            boolean selected = m == requestMode;
+            lines.add(Component.literal(selected ? "-> " : "> ")
+                    .append(Component.translatable(m.translationKey))
+                    .withStyle(selected ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+        }
+        lines.add(Component.translatable(requestMode.translationKey + ".desc1").withColor(0x777777));
+        lines.add(Component.translatable(requestMode.translationKey + ".desc2").withColor(0x777777));
+        lines.add(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
+                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        return lines;
+    }
+
     private void updateConfigs() {
         inputConnections.clear();
         inputTotals.clear();
@@ -963,6 +985,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (patternHovered) renderCraftingPattern(gfx, mouseX, mouseY);   // Ctrl-held layout, drawn on top
         editor().renderOverlay(gfx, mouseX, mouseY);   // drag preview (custom mode), above all grid items/font
         renderTooltip(gfx, mouseX, mouseY);
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
+                confirmButton, deleteButton, craftingButton, customButton, newInputButton, relocateButton,
+                requestModeButton, disconnectLinkButton);
     }
 
     private int craftingPatternWidth() {
@@ -1209,12 +1234,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // disconnects them all (mirrors Create's FactoryPanelScreen).
         if (disconnectLinkButton != null) {
             disconnectLinkButton.render(gfx, mouseX, mouseY, partialTick);
-            if (disconnectLinkButton.isMouseOver(mouseX, mouseY)) {
-                tooltip = List.of(
-                        Component.translatable("createfactorycontroller.gui.disconnect_links")
-                                .withStyle(ChatFormatting.WHITE)
-                );
-            }
         }
 
         // Count box tooltip
@@ -1243,24 +1262,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
         }
 
-        // Request-mode button tooltip
-        if (requestModeButton != null && requestModeButton.isMouseOver(mouseX, mouseY)) {
-            List<Component> lines = new ArrayList<>();
-            lines.add(Component.translatable("createfactorycontroller.gui.request_mode")
-                .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
-            for (RequestMode m : RequestMode.values()) {
-                boolean sel = m == requestMode;
-                lines.add(Component.literal(sel ? "-> " : "> ")
-                    .append(Component.translatable(m.translationKey))
-                    .withStyle(sel ? ChatFormatting.WHITE : ChatFormatting.GRAY));
-            }
-            lines.add(Component.translatable(requestMode.translationKey + ".desc1").withColor(0x777777));
-            lines.add(Component.translatable(requestMode.translationKey + ".desc2").withColor(0x777777));
-            lines.add(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
-                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            tooltip = lines;
-        }
-
         // Filter/stock box tooltip — the filtered item's normal item tooltip.
         if (g != null && in(mouseX, mouseY, panelX + FILTER_X, panelY + THRESH_TOP, 16, 16))
             tooltip = g.filter.isEmpty()
@@ -1269,11 +1270,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(g.filter),
                         Minecraft.getInstance().options.advancedItemTooltips)
                     : getTooltipFromItem(Minecraft.getInstance(), g.filter);
-
-        if (craftingButton != null && craftingButton.isMouseOver(mouseX, mouseY))
-            tooltip = craftingButtonTooltip();
-        if (customButton != null && customButton.isMouseOver(mouseX, mouseY))
-            tooltip = customButtonTooltip();
 
         if (tooltip != null)
             gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);

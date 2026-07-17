@@ -14,10 +14,10 @@ import com.simibubi.create.content.processing.burner.BlazeBurnerBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerRenderer;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
-import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveProductionOrderPacket;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.RequestProductionOrdersPacket;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderView;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrdersClient;
@@ -84,7 +84,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     private boolean scrollHandleActive;
 
     /** Green gutter button that returns to the Stock Keeper; only present (and only built) when Deployer is absent. */
-    private IconButton backButton;
+    private TooltipIconButton backButton;
 
     // The keeper sitting beside the Stock Ticker (rendered at the panel's left), mirroring Create's screen.
     private WeakReference<LivingEntity> stockKeeper = new WeakReference<>(null);
@@ -130,7 +130,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         // Without Deployer there's no tab strip — add a green gutter button that returns to the Stock Keeper.
         backButton = null;
         if (!DeployerCompat.isLoaded()) {
-            backButton = new IconButton(gutterButtonX(leftPos), gutterButtonY(topPos), PRODUCTION_ORDER_ICON);
+            backButton = new TooltipIconButton(gutterButtonX(leftPos), gutterButtonY(topPos), PRODUCTION_ORDER_ICON);
             backButton.green = true;   // green = currently on the Production Orders page
             backButton.withCallback(() -> { if (minecraft != null) minecraft.setScreen(host); });
             backButton.setToolTip(Component.translatable("createfactorycontroller.gui.production_orders"));
@@ -415,7 +415,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         if (DeployerCompat.isLoaded())
             ProductionOrdersStrip.render(host, gfx, mouseX, mouseY, partialTicks);
         else if (backButton != null)
-            backButton.render(gfx, mouseX, mouseY, partialTicks);   // draws the button + its own hover tooltip
+            backButton.render(gfx, mouseX, mouseY, partialTicks);
 
         if (mouseY >= viewTop() && mouseY < viewBottom())
             for (SlotTip tip : slotTips)
@@ -423,6 +423,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
                     gfx.renderComponentTooltip(font, slotTooltip(tip.req()), mouseX, mouseY);
                     return;
                 }
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, backButton);
     }
 
     /** Per-task tooltip: gold item name, request progress, and coloured status. */
