@@ -1,0 +1,176 @@
+# Polish translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-18 00:38+1000\n"
+"PO-Revision-Date: 2026-07-18 00:38+1000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+
+#. type: Title ==
+#: ../src/electron-tube.adoc:28 ../src/redstone-link.adoc:38
+#, no-wrap
+msgid "Configuration"
+msgstr ""
+
+#. type: Title =
+#: ../src/redstone-link.adoc:1
+#, no-wrap
+msgid "Redstone Link"
+msgstr ""
+
+#. type: Plain text
+#: ../src/redstone-link.adoc:4
+msgid ""
+"Redstone links enable remote transmission and reception of redstone signals, "
+"as described in their in-game ponder. When placed in factory controllers, "
+"they may be connected with other components with redstone capabilities, "
+"allowing them to interoperate with contraptions outside the factory "
+"controller."
+msgstr ""
+
+#. type: Block title
+#: ../src/redstone-link.adoc:5
+#, no-wrap
+msgid "Redstone links placed in factory controllers"
+msgstr ""
+
+#. type: Labeled list
+#: ../src/redstone-link.adoc:10 ../src/redstone-link.adoc:27
+#, no-wrap
+msgid "Send"
+msgstr ""
+
+#. type: Labeled list
+#: ../src/redstone-link.adoc:12 ../src/redstone-link.adoc:28
+#, no-wrap
+msgid "Receive"
+msgstr ""
+
+#. type: Table
+#: ../src/redstone-link.adoc:13
+#, no-wrap
+msgid "Unpowered"
+msgstr ""
+
+#. type: Table
+#: ../src/redstone-link.adoc:14
+#, no-wrap
+msgid "image:redstone-link-send-unpowered.png[,64,64]"
+msgstr ""
+
+#. type: Table
+#: ../src/redstone-link.adoc:16
+#, no-wrap
+msgid "image:redstone-link-receive-unpowered.png[,64,64]"
+msgstr ""
+
+#. type: Table
+#: ../src/redstone-link.adoc:17
+#, no-wrap
+msgid "Powered"
+msgstr ""
+
+#. type: Table
+#: ../src/redstone-link.adoc:18
+#, no-wrap
+msgid "image:redstone-link-send-powered.png[,64,64]"
+msgstr ""
+
+#. type: Table
+#: ../src/redstone-link.adoc:19
+#, no-wrap
+msgid "image:redstone-link-receive-powered.png[,64,64]"
+msgstr ""
+
+#. type: Title ==
+#: ../src/redstone-link.adoc:22
+#, no-wrap
+msgid "Operating Principle"
+msgstr ""
+
+#. type: #principle
+#: ../src/redstone-link.adoc:25
+msgid "A redstone link has 2 modes of operation:"
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:28
+msgid ""
+"Sends the powered state of its incoming redstone connections to other "
+"redstone links on the same channel."
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:29
+msgid ""
+"Receives from other redstone links on the same channel. If any of them is "
+"powered, it powers its outgoing redstone connections."
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:31
+msgid ""
+"Redstone links are distinguished by channels, which consists of 2 item "
+"types. Each channel carries a redstone signal independently of the others. "
+"Examples of distinct channels are:"
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:33
+msgid "(Oak Plank, Cobblestone)"
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:34
+msgid "(Oak Plank, Air)"
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:35
+msgid "(Air, Oak Plank)"
+msgstr ""
+
+#. type: horizontal
+#: ../src/redstone-link.adoc:36
+msgid "(Air, Air)"
+msgstr ""
+
+#. type: #configuration
+#: ../src/redstone-link.adoc:41
+msgid ""
+"After placing a redstone link on the virtual board, clicking the component "
+"opens its configuration screen."
+msgstr ""
+
+#. type: Block title
+#: ../src/redstone-link.adoc:42
+#, no-wrap
+msgid "Redstone link settings"
+msgstr ""
+
+#. type: #configuration
+#: ../src/redstone-link.adoc:54
+#, no-wrap
+msgid ""
+"&#x2776; &#x2777; Channel::\n"
+"  Place an item, or drag a ghost item from JEI, to set the channel of the redstone link.\n"
+"&#x2778; Relocate button::\n"
+"  Click to move the location of this redstone link on the virtual board.\n"
+"&#x2779; Add connection button::\n"
+"  Click to connect to other components via redstone. Directions of connections are decided automatically. Send-mode links may only have incoming connections, receive-mode links may only have outgoing connections.\n"
+"&#x277A; Mode switch::\n"
+"  Click to switch between send image:btn-send-mode.png[,18,18] and receive image:btn-receive-mode.png[,18,18] modes.\n"
+"&#x277B; Confirm button::\n"
+"  Click to confirm settings and close the screen.\n"
+msgstr ""

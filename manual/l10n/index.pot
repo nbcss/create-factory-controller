@@ -1,0 +1,68 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-18 01:46+1000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Title =
+#: ../src/index.adoc:1
+#, no-wrap
+msgid "Create: Factory Controller Manual"
+msgstr ""
+
+#. type: Plain text
+#: ../src/index.adoc:4
+msgid ""
+"Create: Factory Controller introduces a new block, the \"Factory "
+"Controller\". It allows you to place factory gauges on a virtual board "
+"stored in a single block, instead of having a wall of gauges in the game "
+"world. The factory gauges are managed via a GUI. The mod adds many "
+"enhancements to factory gauges, and some other components may also be placed "
+"in factory controllers."
+msgstr ""
+
+#. type: Title ==
+#: ../src/index.adoc:6
+#, no-wrap
+msgid "{toc-title}"
+msgstr ""
+
+#. type: #manual-toc
+#: ../src/index.adoc:10
+msgid "xref:dashboard.adoc[Dashboard]"
+msgstr ""
+
+#. type: #manual-toc
+#: ../src/index.adoc:11
+msgid "xref:components.adoc[Components]"
+msgstr ""
+
+#. type: Table
+#: ../src/index.adoc:12 ../src/components.adoc:11
+#, no-wrap
+msgid "xref:factory-gauge.adoc[Factory Gauge]"
+msgstr ""
+
+#. type: Table
+#: ../src/index.adoc:13 ../src/components.adoc:23
+#, no-wrap
+msgid "xref:electron-tube.adoc[Electron Tube]"
+msgstr ""
+
+#. type: Table
+#: ../src/index.adoc:13 ../src/components.adoc:19
+#, no-wrap
+msgid "xref:redstone-link.adoc[Redstone Link]"
+msgstr ""

@@ -1,0 +1,723 @@
+# Polish translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-18 00:38+1000\n"
+"PO-Revision-Date: 2026-07-18 00:38+1000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/factory-gauge.adoc:169
+#, no-wrap
+msgid "Icon"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/factory-gauge.adoc:169
+#, no-wrap
+msgid "Name"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:17 ../src/factory-gauge.adoc:201
+#, no-wrap
+msgid "Create: Repackaged"
+msgstr ""
+
+#. type: Title =
+#: ../src/factory-gauge.adoc:1
+#, no-wrap
+msgid "Factory Gauge"
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:5
+msgid ""
+"Factory gauges are used for automating logistic requests and production, for "
+"their conventional usage and foundational concepts of higher logistics, see "
+"the in-game ponder. When placed in a factory controller, they operate in "
+"recipe mode."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:6
+#, no-wrap
+msgid "A new factory gauge placed in a factory controller"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:10
+#, no-wrap
+msgid "Place and Monitor Item"
+msgstr ""
+
+#. type: #place-set-item
+#: ../src/factory-gauge.adoc:13
+msgid ""
+"Factory gauges need to be tuned to a logistics network before being placed "
+"in a factory controller. To do so, either interact with a stock link in the "
+"game world with the gauge in hand, or use the xref:dashboard.adoc#network-"
+"selector[network selector] in dashboard UI to tune to a network that is "
+"already tuned to by another gauge in the factory controller."
+msgstr ""
+
+#. type: #place-set-item
+#: ../src/factory-gauge.adoc:15
+msgid ""
+"Once placed, the new factory gauge needs to be configured with an item to "
+"monitor. You may do so by clicking on the unconfigured gauge with the item "
+"on the cursor, or by using the \"set item\" screen. Either way, you may also "
+"drag a ghost item from JEI or EMI to the filter slot."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:17
+#, no-wrap
+msgid "\"Set item\" screen"
+msgstr ""
+
+#. type: #figure-set-item
+#: ../src/factory-gauge.adoc:21
+msgid ""
+"If you use the \"set item\" screen, you can choose whether to respect or "
+"ignore the item's NBT data. NBT is respected by default."
+msgstr ""
+
+#. type: #figure-set-item
+#: ../src/factory-gauge.adoc:23
+msgid ""
+"Once an item is set, the gauge starts monitoring the number of these items "
+"in the tuned logistic network and displays the count on its label."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:24
+#, no-wrap
+msgid "A factory gauge monitoring iron ingots, for which there are 6"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:28
+#, no-wrap
+msgid "Recipe Settings Screen"
+msgstr ""
+
+#. type: #recipe-settings
+#: ../src/factory-gauge.adoc:31
+msgid ""
+"Clicking on a factory gauge with an item set opens its recipe settings "
+"screen."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:33
+#, no-wrap
+msgid "Recipe settings screen for a gauge monitoring iron ingots"
+msgstr ""
+
+#. type: #figure-recipe-settings
+#: ../src/factory-gauge.adoc:60
+#, no-wrap
+msgid ""
+"&#x2776; Output::\n"
+"  The type and number of items this gauge is set to produce. See <<basic-production>>.\n"
+"&#x2777; Ingredients::\n"
+"  The types and numbers of ingredients required to produce the output.\n"
+"&#x2778; Add connection button::\n"
+"  Click to add a connection to other factory gauges or <<redstone,other components>>.\n"
+"&#x2779; Relocate button::\n"
+"  Click to move the location of this gauge on the virtual board.\n"
+"&#x277A; Destination address::\n"
+"  The address to which the ingredients will be packaged and sent.\n"
+"&#x277B; Storage amount::\n"
+"  The number of monitored items stored in the logistic network.\n"
+"&#x277C; Target amount::\n"
+"  The number of items in storage this factory gauge is configured to reach.\n"
+"&#x277D; Item measure::\n"
+"  Unit of measurement of the target amount: Items/Stacks\n"
+"&#x277E; Mode of operation::\n"
+"  How the target amount is set or determined. See <<on-demand>>.\n"
+"&#x277F;&#x24EB;&#x24EC; Promises::\n"
+"  Requests made by factory gauges awaiting their outputs, and options for limiting them. See <<promise>>.\n"
+"&#x24ED; Reset button::\n"
+"  Click to clear all configurations of this gauge, including the set item.\n"
+"&#x24EE; Confirm button::\n"
+"  Click to confirm the configurations, and close this screen.\n"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:62
+#, no-wrap
+msgid "Basic Production"
+msgstr ""
+
+#. type: #basic-production
+#: ../src/factory-gauge.adoc:65
+msgid ""
+"Beyond monitoring storage, the most basic usage of a factory gauge is to "
+"represent a recipe to produce an item, for example, smelting 1 raw iron into "
+"1 iron ingot. The type of the output is simply the monitored item. To define "
+"the ingredient(s), connect this gauge with other factory gauges set to "
+"monitor those ingredients."
+msgstr ""
+
+#. type: #basic-production
+#: ../src/factory-gauge.adoc:67
+msgid ""
+"This connection can be made by clicking \"add connection\" (<<figure-recipe-"
+"settings>> &#x2778;), and then the gauge responsible for the ingredient. "
+"Such connections are shown as item icons in the ingredient list (<<figure-"
+"iron-smelting-recipe>> &#x2777;), and can be removed by clicking on them."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:68
+#, no-wrap
+msgid "A gauge monitoring raw iron is connected to a gauge set to produce iron ingots"
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:72
+#, no-wrap
+msgid "Recipe settings of a gauge smelting 1 raw iron to 1 iron ingot"
+msgstr ""
+
+#. type: #figure-iron-smelting-recipe
+#: ../src/factory-gauge.adoc:76
+msgid ""
+"In its default mode (&#x277E;), a factory gauge monitors the amount of its "
+"item in the logistic network storage it is tuned to (&#x277B;). When this "
+"amount is below the set target (&#x277C;&#x277D;), it requests a set of "
+"ingredients to be sent to the destination address (&#x277A;), expecting the "
+"output (&#x2776;) to later arrive in storage (&#x277B;)."
+msgstr ""
+
+#. type: #figure-iron-smelting-recipe
+#: ../src/factory-gauge.adoc:78
+msgid ""
+"Both the number of each ingredient and output can be adjusted by scrolling "
+"on them, allowing a configurable number of output items to be produced from "
+"configurable numbers of ingredients. Scrolling on an ingredient allows you "
+"to configure more than 1 stack of the same item. However, there cannot be "
+"more than 9 stacks of ingredients in total, the output is also limited to 9 "
+"stacks."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:79
+#, no-wrap
+msgid "Examples"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:83
+#, no-wrap
+msgid "Smelting raw iron to ingots in 32-item batches"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:85
+#, no-wrap
+msgid "image:gauge-batch-smelting-example.png[,252,153]"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:86
+#, no-wrap
+msgid "Mixing concrete powder in 256-item batches"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:87
+#, no-wrap
+msgid "image:gauge-batch-mixing-example.png[,252,153]"
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:90
+msgid ""
+"When a factory gauge A is used as an ingredient for another gauge B, most of "
+"A's configurations are irrelevant to B, except for the item A is set to "
+"monitor and the network A is tuned to. This means A can produce its item by "
+"any means or merely monitor it, B treats both cases identically."
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:92
+#, no-wrap
+msgid "Mechanical Crafting"
+msgstr ""
+
+#. type: #crafting
+#: ../src/factory-gauge.adoc:95
+msgid ""
+"When the ingredients and output match a mechanical crafting recipe, a \"use "
+"mechanical crafting\" button (<<figure-crafting-1>> &#x2776;) is revealed. "
+"With this option toggled on, when packages created by this gauge are "
+"unpacked onto mechanical crafters, the ingredients are automatically "
+"arranged into the crafting pattern (&#x2777;)."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:97
+#, no-wrap
+msgid "Crafting 1 iron sword"
+msgstr ""
+
+#. type: #figure-crafting-1
+#: ../src/factory-gauge.adoc:101
+msgid ""
+"The crafting recipe may be at most 10×10 in size. However, when it is larger "
+"than 3×3, &#x2777; no longer previews the pattern, and factory gauges that "
+"ignore NBT data may not be used as ingredients."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:102
+#, no-wrap
+msgid "Crafting crushing wheels"
+msgstr ""
+
+#. type: #figure-crafting-1
+#: ../src/factory-gauge.adoc:106
+msgid ""
+"The mechanical crafters must be connected using a wrench and arranged in a "
+"square grid between 3×3 and 10×10 in size. Smaller recipes may be sent to "
+"larger mechanical crafter arrangements. Hold Ctrl and scroll on the "
+"ingredients to adjust the crafting grid size to match the crafter "
+"arrangement they will be sent to."
+msgstr ""
+
+#. type: #figure-crafting-1
+#: ../src/factory-gauge.adoc:108
+msgid ""
+"It is recommended to use a repackager before unpacking onto mechanical "
+"crafters, see the in-game ponder on repackagers."
+msgstr ""
+
+#. type: Title ===
+#: ../src/factory-gauge.adoc:110
+#, no-wrap
+msgid "Batch Crafting"
+msgstr ""
+
+#. type: #batch-crafting
+#: ../src/factory-gauge.adoc:113
+msgid ""
+"A factory gauge may be configured to send ingredients enough to craft "
+"multiple output items at once. When mechanical crafting is turned on, scroll "
+"on the output slot (<<figure-crafting-batch>> &#x2776;) to adjust how many "
+"items to craft each batch. The number of ingredients (&#x2777;) are matched "
+"automatically and cannot be adjusted individually."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:115
+#, no-wrap
+msgid "Crafting iron swords in 64-item batches"
+msgstr ""
+
+#. type: #figure-crafting-batch
+#: ../src/factory-gauge.adoc:119
+msgid ""
+"The maximum number of output items when using mechanical crafting is 64."
+msgstr ""
+
+#. type: #figure-crafting-batch
+#: ../src/factory-gauge.adoc:121
+msgid ""
+"Using a repackager is mandatory when batch crafting is used. When a "
+"repackager receives a package containing ingredients for multiple crafts, it "
+"is repackaged into multiple smaller packages containing ingredients for 1 "
+"craft each, which may then be unpacked onto mechanical crafters."
+msgstr ""
+
+#. type: #figure-crafting-batch
+#: ../src/factory-gauge.adoc:123
+msgid ""
+"Batch crafting may not be used if any of the ingredients come from a factory "
+"gauge that ignores the NBT data of its monitored item."
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:125
+#, no-wrap
+msgid "On-Demand Production"
+msgstr ""
+
+#. type: #on-demand
+#: ../src/factory-gauge.adoc:128
+msgid ""
+"By default, a factory gauge operates in \"maintain stock\" mode, which "
+"activates (requests ingredients to be sent to the destination) when the "
+"monitored item in storage is below the configured target amount. By clicking "
+"<<figure-follow-demand>> &#x2777;, you may switch it to \"follow demand\" "
+"mode, which instead activates the gauge when there is downstream demand, "
+"that is, when another gauge uses this gauge as an ingredient, and that gauge "
+"would like to request this ingredient."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:130
+#, no-wrap
+msgid "A gauge producing oak planks in \"follow demand\" mode"
+msgstr ""
+
+#. type: #figure-follow-demand
+#: ../src/factory-gauge.adoc:134
+msgid ""
+"In this mode, the target amount (&#x2776;) cannot be modified manually. It "
+"is automatically set according to downstream demand. Specifically, it is the "
+"total quantity requested by all currently active factory gauges that use "
+"this gauge as an ingredient."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:135
+#, no-wrap
+msgid "An example setup to produce barrels from oak logs"
+msgstr ""
+
+#. type: #figure-follow-demand
+#: ../src/factory-gauge.adoc:139
+msgid ""
+"For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 "
+"slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. "
+"The planks and slabs can be produced with gauges in \"follow demand\" mode. "
+"The gauge for slabs receives a demand of 2. The gauge for planks receives a "
+"demand of 9: 6 from barrels, 3 from slabs. First, 3 logs are crafted into 12 "
+"planks, then 3 of which are crafted into 6 slabs. After crafting 1 barrel, 3 "
+"planks and 4 slabs are left over."
+msgstr ""
+
+#. type: Title ===
+#: ../src/factory-gauge.adoc:141
+#, no-wrap
+msgid "Ordering from Stock Keeper"
+msgstr ""
+
+#. type: #production-orders
+#: ../src/factory-gauge.adoc:144
+msgid ""
+"Another mode of the factory gauge, \"follow demand and order\", additionally "
+"allows the item produceable by a gauge to be manually ordered from a stock "
+"keeper tuned to the same network. In stock keeper UI, each gauge in this "
+"mode appears as a production task, signified by a blueprint background."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:145
+#, no-wrap
+msgid "A production task of oak planks"
+msgstr ""
+
+#. type: #production-orders
+#: ../src/factory-gauge.adoc:149
+msgid ""
+"Sending an order containing production tasks creates a production order, "
+"causing the corresponding gauges to add the number of items in the order to "
+"their demands. When the produced items arrive in the logistic network, they "
+"are sent out again to the address specified on the order."
+msgstr ""
+
+#. type: #production-orders
+#: ../src/factory-gauge.adoc:151
+msgid ""
+"Pending production orders can be viewed in the \"production orders\" tab in "
+"the stock keeper UI. They are automatically removed when all ordered items "
+"arrive in the logistic network, or stuck if they never arrive."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:152
+#, no-wrap
+msgid "Production orders UI"
+msgstr ""
+
+#. type: #production-orders
+#: ../src/factory-gauge.adoc:165
+#, no-wrap
+msgid ""
+"&#x2776; Production orders tab::\n"
+"  Click to switch to this tab.\n"
+"&#x2777; Destination address::\n"
+"  The address the items are sent to after they arrive in storage.\n"
+"&#x2778; Elapsed time::\n"
+"  Time elapsed since the order was created.\n"
+"&#x2779; Cancel button::\n"
+"  Click to cancel the order.\n"
+"&#x277A; Ordered items::\n"
+"  Type, amount, and status of the ordered items.\n"
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:166
+#, no-wrap
+msgid "Statuses of ordered items"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:171
+#, no-wrap
+msgid "Description"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:172
+#, no-wrap
+msgid "Waiting for ingredients"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:174
+#, no-wrap
+msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:174
+#, no-wrap
+msgid "⏶"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:175
+#, no-wrap
+msgid "Processing"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:177
+#, no-wrap
+msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:177
+#, no-wrap
+msgid "✓"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:178
+#, no-wrap
+msgid "Sent"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:180
+#, no-wrap
+msgid "The produced item has arrived in storage, and been dispatched to the destination address."
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:180
+#, no-wrap
+msgid "🗙"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:181
+#, no-wrap
+msgid "Invalid gauge"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:182
+#, no-wrap
+msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:185
+#, no-wrap
+msgid "Fluid Transport"
+msgstr ""
+
+#. type: #fluid
+#: ../src/factory-gauge.adoc:188
+msgid ""
+"When you have a compatible fluid transportation mod installed, factory "
+"gauges placed in factory controllers may utilize that mod's ability to "
+"transport fluids, and use fluids as ingredients or outputs."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:189
+#, no-wrap
+msgid "Compatibility of fluid transportation mods"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:192
+#, no-wrap
+msgid "Mod"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:194
+#, no-wrap
+msgid "Compatibility"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:195
+#, no-wrap
+msgid "Create: FluidLogistic"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:197 ../src/factory-gauge.adoc:203
+#, no-wrap
+msgid "Yes"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:198
+#, no-wrap
+msgid "Create: Fluid"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:200
+#, no-wrap
+msgid "Yes, but may drop support in the future"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:204
+#, no-wrap
+msgid "Create Factory Logistics"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:205
+#, no-wrap
+msgid "No, will crash the game"
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:208
+msgid ""
+"When using Create: Repackaged, place fluid gauges provided by this mod to "
+"monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
+"item\" screen>> by clicking the filter slot while holding a bucket of fluid "
+"or by dragging a fluid entry from JEI."
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:210
+msgid ""
+"When using the other mods, regular factory gauges gain the ability to "
+"monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
+"item\" screen>> by right-clicking the filter slot while holding a bucket of "
+"fluid or by dragging a fluid entry from JEI."
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:212
+msgid ""
+"Fluids do not contain NBT data, therefore when monitoring a fluid, the "
+"option to ignore NBT data disappears."
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:214
+msgid ""
+"When using a fluid as an ingredient or output, scrolling on the ingredient "
+"or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust "
+"by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is "
+"limited to 10 B per batch."
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:216
+#, no-wrap
+msgid "Promise Limits"
+msgstr ""
+
+#. type: #promise
+#: ../src/factory-gauge.adoc:219
+msgid ""
+"Each time a factory gauge requests a set of ingredients to be sent to its "
+"destination address, a promise is created (also referred to as a pending "
+"request). Each promise records the number of expected to be produced, but "
+"have yet to arrive in storage. When accounting for the number of monitored "
+"items in storage, the number of items recorded in promises is added to the "
+"actual storage amount before being compared to the target amount. Doing so "
+"stops the factory gauge from excessively sending ingredients before the "
+"outputs of previous requests arrive."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:220
+#, no-wrap
+msgid "UI elements related to promises"
+msgstr ""
+
+#. type: #promise
+#: ../src/factory-gauge.adoc:225
+#, no-wrap
+msgid ""
+"&#x2776; Promised items::\n"
+"  Displays the total number of items recorded in promises created by all gauges in the same network producing the same item. Click to void all promises of the same item type.\n"
+msgstr ""
+
+#. type: #promise
+#: ../src/factory-gauge.adoc:229
+#, no-wrap
+msgid ""
+"&#x2777; Expire time::\n"
+"  Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default. +\n"
+"  This option is useful when the ingredients do not reliably produce the expected output, such as with recipes with probabilities.\n"
+msgstr ""
+
+#. type: #promise
+#: ../src/factory-gauge.adoc:233
+#, no-wrap
+msgid ""
+"&#x2778; Pending requests::\n"
+"  Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests. +\n"
+"  Limiting pending requests is useful for preventing excessive packages from overloading transportation lines.\n"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:235
+#, no-wrap
+msgid "Redstone"
+msgstr ""
+
+#. type: #redstone
+#: ../src/factory-gauge.adoc:238
+msgid ""
+"A factory gauge can be connected to some other components, such as "
+"xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone "
+"links], via redstone connections. When connected as the source, it outputs a "
+"redstone signal when the amount of the monitored item in storage is equal to "
+"or greater than the target amount. When connected as the sink, the factory "
+"gauge is disabled when it is powered by redstone."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:239
+#, no-wrap
+msgid "A factory gauge disabled by an incoming redstone signal, and outputting a redstone signal"
+msgstr ""
+
+#. type: #redstone
+#: ../src/factory-gauge.adoc:242
+msgid ""
+"Additionally, when a factory controller block is redstone-powered, all "
+"factory gauges inside are disabled."
+msgstr ""

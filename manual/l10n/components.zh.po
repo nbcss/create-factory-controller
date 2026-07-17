@@ -1,0 +1,108 @@
+# Chinese translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-18 00:38+1000\n"
+"PO-Revision-Date: 2026-07-18 00:38+1000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Table
+#: ../src/index.adoc:12 ../src/components.adoc:11
+#, no-wrap
+msgid "xref:factory-gauge.adoc[Factory Gauge]"
+msgstr ""
+
+#. type: Table
+#: ../src/index.adoc:13 ../src/components.adoc:23
+#, no-wrap
+msgid "xref:electron-tube.adoc[Electron Tube]"
+msgstr ""
+
+#. type: Table
+#: ../src/index.adoc:13 ../src/components.adoc:19
+#, no-wrap
+msgid "xref:redstone-link.adoc[Redstone Link]"
+msgstr ""
+
+#. type: Title =
+#: ../src/components.adoc:1
+#, no-wrap
+msgid "Components"
+msgstr ""
+
+#. type: Plain text
+#: ../src/components.adoc:4
+msgid ""
+"Some items can be placed inside a factory controller. Once placed, they are "
+"referred to as \"virtual components\". These include:"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/factory-gauge.adoc:169
+#, no-wrap
+msgid "Icon"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/factory-gauge.adoc:169
+#, no-wrap
+msgid "Name"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:9
+#, no-wrap
+msgid "From Mod"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:10
+#, no-wrap
+msgid "image:icon-factory-gauge.png[width=32,height=32]"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:13 ../src/components.adoc:21
+#: ../src/components.adoc:24
+#, no-wrap
+msgid "Create"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:14
+#, no-wrap
+msgid "image:icon-fluid-gauge.png[width=32,height=32]"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:15
+#, no-wrap
+msgid "xref:factory-gauge.adoc#fluid[Fluid Gauge]"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:17 ../src/factory-gauge.adoc:201
+#, no-wrap
+msgid "Create: Repackaged"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:18
+#, no-wrap
+msgid "image:icon-redstone-link.png[width=32,height=32]"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:22
+#, no-wrap
+msgid "image:icon-electron-tube.png[width=32,height=32]"
+msgstr ""

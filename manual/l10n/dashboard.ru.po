@@ -1,0 +1,474 @@
+# Russian translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-18 00:38+1000\n"
+"PO-Revision-Date: 2026-07-18 00:38+1000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. type: Title =
+#: ../src/dashboard.adoc:1
+#, no-wrap
+msgid "Dashboard"
+msgstr ""
+
+#. type: Plain text
+#: ../src/dashboard.adoc:4
+msgid ""
+"The dashboard UI appears when you interact with a factory controller block. "
+"It displays a virtual 2D board on which you can place xref:factory-"
+"gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:5
+#, no-wrap
+msgid "Dashboard UI"
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:8
+#, no-wrap
+msgid "Basic interactions"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:12
+#, no-wrap
+msgid "Pan view"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:13
+#, no-wrap
+msgid "Drag with left mouse button"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:15
+#, no-wrap
+msgid "W, A, S, D"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:16
+#, no-wrap
+msgid "Zoom in/out"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:18
+#, no-wrap
+msgid "Mouse scroll wheel"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:19
+#, no-wrap
+msgid "Place component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:21
+#, no-wrap
+msgid "Hold a xref:components.adoc[placeable item] + Click on empty space"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:22
+#, no-wrap
+msgid "Open component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:24
+#, no-wrap
+msgid "Left/right click"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:25
+#, no-wrap
+msgid "Remove component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:26 ../src/dashboard.adoc:140
+#, no-wrap
+msgid "Shift + Click"
+msgstr ""
+
+#. type: TIP
+#: ../src/dashboard.adoc:30
+msgid "Most of the controls can be changed in _Options--Controls--Key Binds_."
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:31
+#, no-wrap
+msgid "UI Overview"
+msgstr ""
+
+#. type: TIP
+#: ../src/dashboard.adoc:48
+#, no-wrap
+msgid ""
+"&#x2776; Title bar::\n"
+"  Shows the name of this factory controller. Name can be edited by clicking on it.\n"
+"&#x2777; Help button::\n"
+"  Opens this help page.\n"
+"&#x2778; Network selector::\n"
+"  All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components. While holding a gauge, scroll to tune the gauge to a network. <<Network Selector,More Info>>\n"
+"&#x2779; Capacity indicator::\n"
+"  Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up. +\n"
+"  The capacity may be modified by the \"Controller Capacity\" server setting.\n"
+"&#x277A; Zoom indicator::\n"
+"  Shows the current zoom level.\n"
+"&#x277B; Settings button::\n"
+"  Opens the settings screen.\n"
+"&#x277C; Player inventory::\n"
+"  Shows the player inventory. Only the 9 hotbar slots are shown by default. Click the \"+\" button to expand the other 27 slots.\n"
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:50
+#, no-wrap
+msgid "Navigation"
+msgstr ""
+
+#. type: #navigation
+#: ../src/dashboard.adoc:53
+msgid ""
+"Drag with the left mouse button to pan the view around the virtual board. "
+"The W, A, S, D keys can also be used to move the view in cardinal directions."
+msgstr ""
+
+#. type: #navigation
+#: ../src/dashboard.adoc:55
+msgid "Scroll with the mouse wheel to zoom in/out."
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:57
+#, no-wrap
+msgid "Working with Components"
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:59
+#, no-wrap
+msgid "Holding a tuned factory gauge over an empty location"
+msgstr ""
+
+#. type: #components
+#: ../src/dashboard.adoc:63
+msgid ""
+"To place a component, grab a corresponding item from the inventory and click "
+"on an empty spot on the board. The xref:components.adoc[Components] page "
+"lists all items that may be placed. Notably, factory gauges need to be "
+"<<network-selector,tuned to a network>> before being placed. Placed items "
+"will be stored inside the factory controller, even when the factory "
+"controller block is mined."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:64
+#, no-wrap
+msgid "A just-placed factory gauge"
+msgstr ""
+
+#. type: #components
+#: ../src/dashboard.adoc:68
+msgid ""
+"Holding shift and clicking on a component removes it from the controller and "
+"returns the item to your inventory."
+msgstr ""
+
+#. type: #components
+#: ../src/dashboard.adoc:70
+msgid ""
+"Either left- or right-clicking a component opens its configuration screen. "
+"To move a component, open its screen and click the image:btn-"
+"relocate.png[,18,18] \"relocate\" button, then click on a new location for "
+"the component."
+msgstr ""
+
+#. type: #components
+#: ../src/dashboard.adoc:72
+msgid ""
+"Multiple components may be selected. Hold Ctrl and drag with the left mouse "
+"button to select all components within a rectangular area. Selected "
+"components are indicated with a green outline. To add and remove individual "
+"components from the selection, hold Ctrl and left-click them."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:73
+#, no-wrap
+msgid "Rectangle-selecting multiple components"
+msgstr ""
+
+#. type: #components
+#: ../src/dashboard.adoc:77
+msgid ""
+"When components are selected, drag on any of them to move all selected "
+"components. Likewise, shift-clicking on any of them removes all selected "
+"components from the board."
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:79
+#, no-wrap
+msgid "Creating and Modifying Connections"
+msgstr ""
+
+#. type: #connections
+#: ../src/dashboard.adoc:82
+msgid ""
+"Components may be connected to one another. Refer to a specific component's "
+"documentation for the functionality provided by connections."
+msgstr ""
+
+#. type: #connections
+#: ../src/dashboard.adoc:84
+msgid ""
+"To connect component A to B, click on B to open its UI, click on the "
+"image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
+"click A. Some components may only act as the source or sink of a connection, "
+"in which case a valid direction is automatically chosen."
+msgstr ""
+
+#. type: #connections
+#: ../src/dashboard.adoc:86
+msgid ""
+"A component's UI may allow you to remove its connections. They can also be "
+"removed using the dashboard by hovering over them and shift-clicking. When "
+"multiple connections overlap, hold shift and scroll while hovering over a "
+"spot with overlapping connections to select one of them."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:87
+#, no-wrap
+msgid "Selecting overlapping connections"
+msgstr ""
+
+#. type: #connections
+#: ../src/dashboard.adoc:91
+msgid ""
+"Connections automatically choose paths between their 2 ends. To customize "
+"this path, select from 4 path modes by hovering over a connection and "
+"pressing R. The bend modes of all connections on one component can be "
+"changed by pressing R on the component."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:92
+#, no-wrap
+msgid "Path modes"
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:96
+#, no-wrap
+msgid "Network Selector"
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:98
+#, no-wrap
+msgid "Network selector with no network"
+msgstr ""
+
+#. type: #network-selector
+#: ../src/dashboard.adoc:102
+msgid ""
+"Factory gauges need to be tuned to a network before being placed in the "
+"controller. The first gauge needs to be tuned the usual way (e.g. by "
+"interacting with a stock link with a gauge in hand). Once a tuned gauge is "
+"placed in the controller, its network appears in the network selector."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:103
+#, no-wrap
+msgid "Network selector with a network selected"
+msgstr ""
+
+#. type: #network-selector
+#: ../src/dashboard.adoc:107
+msgid ""
+"With an empty cursor, scrolling with the mouse wheel selects one of the "
+"tuned networks, highlighting all components tuned to that network with a "
+"blue outline. The number of components tuned to the network also appears on "
+"the network selector icon."
+msgstr ""
+
+#. type: #network-selector
+#: ../src/dashboard.adoc:109
+msgid ""
+"While holding a factory gauge item, scrolling on the network selector "
+"changes the network this item is tuned to, allowing you to quickly tune a "
+"new gauge to an existing network. Holding shift and scrolling accomplishes "
+"the same."
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:111
+#, no-wrap
+msgid "Additional Interactions"
+msgstr ""
+
+#. type: #additional-interactions
+#: ../src/dashboard.adoc:114
+msgid ""
+"Some components, like the xref:redstone-link.adoc[redstone link], have modes "
+"of operation that can be switched either by pressing the F key while "
+"hovering over them in the dashboard, or through their configuration UI."
+msgstr ""
+
+#. type: #additional-interactions
+#: ../src/dashboard.adoc:116
+msgid ""
+"Each factory gauge displays a label, providing relevant information (e.g. "
+"items in stock) at a glance. When the labels become distracting or obstruct "
+"other components, they can be hidden by pressing Alt. Then only the label of "
+"the hovered component is displayed. Press Alt again to show all labels."
+msgstr ""
+
+#. type: Block title
+#: ../src/dashboard.adoc:117
+#, no-wrap
+msgid "Summary"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:121
+#, no-wrap
+msgid "Rectangle select"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:123
+#, no-wrap
+msgid "Ctrl + Drag with left mouse button"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:124
+#, no-wrap
+msgid "Add to selection"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:126
+#, no-wrap
+msgid "Ctrl + Click component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:128
+#, no-wrap
+msgid "Remove from selection"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:129
+#, no-wrap
+msgid "Move selected components"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:131
+#, no-wrap
+msgid "Drag on a selected component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:132
+#, no-wrap
+msgid "Remove selected components"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:134
+#, no-wrap
+msgid "Shift + Click on a selected component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:135
+#, no-wrap
+msgid "Select overlapping connection"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:137
+#, no-wrap
+msgid "Shift + Scroll"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:138
+#, no-wrap
+msgid "Remove connection"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:141
+#, no-wrap
+msgid "Change connection shape"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:143
+#, no-wrap
+msgid "R on component or connection"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:144
+#, no-wrap
+msgid "Change component mode"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:146
+#, no-wrap
+msgid "F on component"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:147
+#, no-wrap
+msgid "Tune item to network"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:149
+#, no-wrap
+msgid "Hold item + Shift + Scroll"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:150
+#, no-wrap
+msgid "Toggle gauge labels"
+msgstr ""
+
+#. type: Table
+#: ../src/dashboard.adoc:151
+#, no-wrap
+msgid "Alt"
+msgstr ""

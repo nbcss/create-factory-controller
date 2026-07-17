@@ -1,0 +1,147 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-18 00:38+1000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Title =
+#: ../src/electron-tube.adoc:1
+#, no-wrap
+msgid "Electron Tube"
+msgstr ""
+
+#. type: Plain text
+#: ../src/electron-tube.adoc:4
+msgid ""
+"Electron tubes may be placed inside factory controllers, in which they "
+"function as boolean logic operators for redstone connections. When placed, "
+"they are referred to as \"logical tubes\"."
+msgstr ""
+
+#. type: Block title
+#: ../src/electron-tube.adoc:5
+#, no-wrap
+msgid "Logical tubes in each of the 4 modes, powered on and off"
+msgstr ""
+
+#. type: Block title
+#: ../src/electron-tube.adoc:8
+#, no-wrap
+msgid "A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputs to a xref:redstone-link.adoc[redstone link]"
+msgstr ""
+
+#. type: Title ==
+#: ../src/electron-tube.adoc:12
+#, no-wrap
+msgid "Logical Operators"
+msgstr ""
+
+#. type: #logical-operators
+#: ../src/electron-tube.adoc:15
+msgid ""
+"Each logical tube may be connected with 0 or more redstone inputs, and "
+"outputs a redstone signal according the rules of a logical operator, "
+"determined by its mode."
+msgstr ""
+
+#. type: #logical-operators
+#: ../src/electron-tube.adoc:17
+msgid "The available modes are:"
+msgstr ""
+
+#. type: Labeled list
+#: ../src/electron-tube.adoc:18
+#, no-wrap
+msgid "OR"
+msgstr ""
+
+#. type: #logical-operators
+#: ../src/electron-tube.adoc:20
+msgid ""
+"Output on when any connected input is on. Otherwise output off. When "
+"unconnected, output off."
+msgstr ""
+
+#. type: Labeled list
+#: ../src/electron-tube.adoc:20
+#, no-wrap
+msgid "AND"
+msgstr ""
+
+#. type: #logical-operators
+#: ../src/electron-tube.adoc:22
+msgid ""
+"Output on when all connected inputs are on. Otherwise output off. When "
+"unconnected, output on."
+msgstr ""
+
+#. type: Labeled list
+#: ../src/electron-tube.adoc:22
+#, no-wrap
+msgid "NOR"
+msgstr ""
+
+#. type: #logical-operators
+#: ../src/electron-tube.adoc:24
+msgid "Inverse of OR."
+msgstr ""
+
+#. type: Labeled list
+#: ../src/electron-tube.adoc:24
+#, no-wrap
+msgid "NAND"
+msgstr ""
+
+#. type: #logical-operators
+#: ../src/electron-tube.adoc:26
+msgid "Inverse of AND."
+msgstr ""
+
+#. type: Title ==
+#: ../src/electron-tube.adoc:28 ../src/redstone-link.adoc:38
+#, no-wrap
+msgid "Configuration"
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:31
+msgid "Clicking on the placed logical tube opens its settings screen."
+msgstr ""
+
+#. type: Block title
+#: ../src/electron-tube.adoc:32
+#, no-wrap
+msgid "Logical tube settings"
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:48
+#, no-wrap
+msgid ""
+"&#x2776; Inputs::\n"
+"  Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.\n"
+"&#x2777; Operator::\n"
+"  Displays the currently selected operator.\n"
+"&#x2778; Outputs::\n"
+"  Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect.\n"
+"&#x2779; Relocate button::\n"
+"  Click to move the location of this logical tube on the virtual board.\n"
+"&#x277A; Add connection button::\n"
+"  Click to connect to other components via redstone.\n"
+"&#x277B; Mode switch::\n"
+"  Click to switch between OR, AND, NOR, NAND modes.\n"
+"&#x277C; Confirm button::\n"
+"  Click to confirm settings and close this screen.\n"
+msgstr ""
