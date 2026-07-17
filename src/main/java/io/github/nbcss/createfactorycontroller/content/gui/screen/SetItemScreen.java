@@ -206,6 +206,8 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                         minecraft.options.advancedItemTooltips), mouseX, mouseY);
             else
                 gfx.renderTooltip(font, filter, mouseX, mouseY);
+        } else if (overFilter(mouseX, mouseY)) {
+            gfx.renderComponentTooltip(font, filterEmptyTooltip(), mouseX, mouseY);
         } else renderTooltip(gfx, mouseX, mouseY);
         // Draw the icon-button tooltips LAST so the menu slots/items (drawn after renderBg) can't cover them.
         // Use isMouseOver (not isHoveredOrFocused) so a focused-but-not-hovered button doesn't trail the cursor.
@@ -330,6 +332,26 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private boolean overFilter(double mx, double my) {
         return mx >= filterX() && mx < filterX() + FILTER_SLOT_SIZE
                 && my >= filterY() && my < filterY() + FILTER_SLOT_SIZE;
+    }
+
+    /** Empty-filter-slot hint: two lines (left = item, right = fluid) when the cursor holds a fluid
+     *  container and this gauge accepts a fluid filter; otherwise the generic single-line hint. */
+    private List<Component> filterEmptyTooltip() {
+        // Left/Right click only differ when this gauge accepts BOTH an item and a fluid filter — a
+        // fluid-only gauge (e.g. Repackaged's fluid gauge) always resolves the carried container to a
+        // fluid regardless of button, so it gets the plain single-line hint like an item-only gauge.
+        boolean fluidCandidate = behaviour.filterResolver().acceptsItemDrop()
+                && behaviour.filterResolver().acceptsFluidDrop()
+                && !FluidCompat.fluidInContainer(menu.getCarried()).isEmpty();
+        if (fluidCandidate) {
+            return List.of(
+                    Component.translatable("createfactorycontroller.gui.set_item.filter_tip_item")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY),
+                    Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+        return List.of(Component.translatable("createfactorycontroller.gui.set_item.filter_tip")
+                .withStyle(net.minecraft.ChatFormatting.GRAY));
     }
 
     public List<Rect2i> extraGuiAreas() {

@@ -12,6 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.packet.SetNetworkSettingsPacket;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -47,7 +48,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "common/bottom_bar");
     private static final ResourceLocation PANEL_BOTTOM_VDIV =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "common/bottom_bar_vdiv");
-    private static final int PANEL_W = 204, PANEL_H = 129, PANEL_BOTTOM_H = 30;
+    private static final int PANEL_W = 204, PANEL_H = 89, PANEL_BOTTOM_H = 30; //129
 
     private static final ResourceLocation ELEMENT_BORDER_SPRITE =
             ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "network_settings/element_border");
@@ -155,6 +156,17 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         controller.onPanelSync();
     }
 
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (nameBox.isFocused() && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)) {
+            nameBox.setFocused(false);
+            setFocused(null);
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
     // ── Actions ────────────────────────────────────────────────────────────────
 
     /** Resets the staged name + icon to empty (default) without closing the window. */
@@ -185,7 +197,13 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
             if (allowClear) icon = ItemStack.EMPTY;   // click with empty hand clears back to the default icon
             return;
         }
-        icon = source.copyWithCount(1);   // ghost — the held stack is not consumed
+        icon = plainIcon(source);   // ghost — the held stack is not consumed
+    }
+
+    /** Icon is a pure item-type token — strip any NBT/data components so it can't drag along, e.g., a
+     *  specific enchantment or custom name. */
+    private static ItemStack plainIcon(ItemStack source) {
+        return new ItemStack(source.getItem());
     }
 
     private void playClickSound() {
@@ -198,8 +216,14 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        if (overIcon(mouseX, mouseY) && !icon.isEmpty())
-            gfx.renderTooltip(font, icon, mouseX, mouseY);
+        if (overIcon(mouseX, mouseY)) {
+            if (!icon.isEmpty()) gfx.renderTooltip(font, icon, mouseX, mouseY);
+            else gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.network_settings.icon_tip")
+                    .withStyle(ChatFormatting.GRAY), mouseX, mouseY);
+        } else if (overNameBox(mouseX, mouseY) && !nameBox.isFocused()) {
+            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.network_settings.name_tip")
+                    .withStyle(ChatFormatting.GRAY), mouseX, mouseY);
+        }
         renderTooltip(gfx, mouseX, mouseY);   // button tooltips
     }
 
@@ -263,6 +287,17 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
             playClickSound();
             return true;
         }
+        if (overNameBox(mouseX, mouseY)) {
+            super.mouseClicked(mouseX, mouseY, button);
+            if (button == 1) {
+                nameBox.setValue("");
+                nameBox.setFocused(true);
+                setFocused(nameBox);
+                playClickSound();
+            }
+            return true;
+        }
+        nameBox.setFocused(false);
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -270,7 +305,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
         // Shift-click an inventory item → set it as the icon (a ghost copy; the item stays in the inventory).
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
-            icon = slot.getItem().copyWithCount(1);
+            icon = plainIcon(slot.getItem());
             playClickSound();
             return;
         }
@@ -294,7 +329,12 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
             && my >= panelY + ICON_Y && my < panelY + ICON_Y + ICON_SIZE;
     }
 
+    private boolean overNameBox(double mx, double my) {
+        return mx >= panelX + NAME_X && mx < panelX + NAME_X + NAME_W
+            && my >= panelY + NAME_Y && my < panelY + NAME_Y + NAME_H;
+    }
+
     // ── JEI/EMI ghost-slot hooks ──
     public Rect2i ghostSlotArea() { return new Rect2i(panelX + ICON_X, panelY + ICON_Y, ICON_SIZE, ICON_SIZE); }
-    public void setGhostFromJei(ItemStack stack) { if (!stack.isEmpty()) icon = stack.copyWithCount(1); }
+    public void setGhostFromJei(ItemStack stack) { if (!stack.isEmpty()) icon = plainIcon(stack); }
 }

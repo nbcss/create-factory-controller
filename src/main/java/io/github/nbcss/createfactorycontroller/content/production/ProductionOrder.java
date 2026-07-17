@@ -10,7 +10,9 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -23,6 +25,7 @@ public record ProductionOrder(int orderId,
                               UUID network,
                               String address,
                               long createdGameTime,
+                              Set<UUID> subscribers,   // players to toast on complete / gauge-invalid (may be empty)
                               List<Task> tasks) {
 
     /**
@@ -41,6 +44,9 @@ public record ProductionOrder(int orderId,
         tag.putUUID("Network", network);
         tag.putString("Address", address);
         tag.putLong("CreatedGameTime", createdGameTime);
+        ListTag subs = new ListTag();
+        for (UUID u : subscribers) subs.add(net.minecraft.nbt.NbtUtils.createUUID(u));
+        tag.put("Subscribers", subs);
         ListTag list = new ListTag();
         for (Task r : tasks) list.add(r.save(registries));
         tag.put("Tasks", list);
@@ -52,8 +58,11 @@ public record ProductionOrder(int orderId,
         ListTag list = tag.getList("Tasks", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++)
             tasks.add(Task.load(list.getCompound(i), registries));
+        Set<UUID> subscribers = new LinkedHashSet<>();   // empty on old saves / unsubscribed orders
+        ListTag subs = tag.getList("Subscribers", Tag.TAG_INT_ARRAY);
+        for (int i = 0; i < subs.size(); i++) subscribers.add(net.minecraft.nbt.NbtUtils.loadUUID(subs.get(i)));
         return new ProductionOrder(tag.getInt("OrderId"), tag.getUUID("Network"), tag.getString("Address"),
-            tag.getLong("CreatedGameTime"), tasks);
+            tag.getLong("CreatedGameTime"), subscribers, tasks);
     }
 
     public static class Task {

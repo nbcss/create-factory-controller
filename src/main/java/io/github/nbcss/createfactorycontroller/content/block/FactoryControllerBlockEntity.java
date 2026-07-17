@@ -486,9 +486,20 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * otherwise the address / output-per-craft / promise interval and per-connection ingredient
      * amounts are updated.
      */
+    /** Sets a gauge's request interval (ticks; 0 = clear the override) and restarts its countdown at the new value,
+     *  so the recipe screen's scroll/reset takes effect immediately rather than at the next confirm. */
+    public void setGaugeRequestInterval(VirtualComponentPosition pos, int customRequestTimer) {
+        if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
+        gauge.customRequestTimer = customRequestTimer <= 0 ? 0 : Math.clamp(customRequestTimer, 20, 1200);
+        gauge.restartRequestTimer();
+        setChanged();
+        sendData();
+    }
+
     public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
-                                int craftDimension, int promiseInterval, int promiseLimit, boolean promiseLimitByAddress,
-                                int count, ThresholdUnit mode,
+                                int maxRequestMultiplier, int customRequestTimer,
+                                int craftDimension, int promiseInterval, int promiseLimit,
+                                boolean promiseLimitByAddress, int count, ThresholdUnit mode,
                                 RequestMode requestMode, GaugeWorkMode workMode,
                                 Map<VirtualComponentPosition, Integer> inputAmounts,
                                 List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
@@ -503,6 +514,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.recipeAddress = "";
             gauge.recipeOutput = 1;
             gauge.craftBatch = 1;
+            gauge.maxRequestMultiplier = 1;
+            gauge.customRequestTimer = 0;
             gauge.craftDimension = 0;
             gauge.promiseClearingInterval = -1;
             gauge.promiseLimit = 0;
@@ -526,6 +539,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             : Math.max(64, 9 * Math.max(1, gauge.filter.isEmpty() ? 64 : gauge.filter.getMaxStackSize()));
         gauge.recipeOutput = Math.clamp(recipeOutput, 1, outputCap);
         gauge.craftBatch = Math.max(1, craftBatch);
+        gauge.customRequestTimer = customRequestTimer <= 0 ? 0 : Math.clamp(customRequestTimer, 20, 1200);
         gauge.craftDimension = Math.max(0, craftDimension);
         gauge.promiseClearingInterval = Math.clamp(promiseInterval, -1, 31);
         gauge.promiseLimit = Math.clamp(promiseLimit, 0, 999);
@@ -545,6 +559,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
                 if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
                     conn.amount = Math.max(1, e.getValue());
+        // Clamp last — the structural cap must see the just-applied mode, amounts, output, and batch.
+        gauge.maxRequestMultiplier = gauge.clampMultiplierToStructure(maxRequestMultiplier);
         if (clearPromises) gauge.requestClearPromises();
         updateGaugeOrderable(gauge);   // mode/address change can make it (in)eligible
         gauge.publishRedstoneOutput();

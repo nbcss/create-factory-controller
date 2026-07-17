@@ -1,0 +1,48 @@
+= Electron Tube
+
+Electron tubes may be placed inside factory controllers, in which they function as boolean logic operators for redstone connections. When placed, they are referred to as "logical tubes".
+
+.Logical tubes in each of the 4 modes, powered on and off
+image::logical-tube-modes.png[,256,64]
+
+.A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputs to a xref:redstone-link.adoc[redstone link]
+image::logical-tube-or-example.png[,294,209]
+
+[#logical-operators]
+== Logical Operators
+
+Each logical tube may be connected with 0 or more redstone inputs, and outputs a redstone signal according the rules of a logical operator, determined by its mode.
+
+The available modes are:
+
+OR::
+  Output on when any connected input is on. Otherwise output off. When unconnected, output off.
+AND::
+  Output on when all connected inputs are on. Otherwise output off. When unconnected, output on.
+NOR::
+  Inverse of OR.
+NAND::
+  Inverse of AND.
+
+[#configuration]
+== Configuration
+
+Clicking on the placed logical tube opens its settings screen.
+
+.Logical tube settings
+image::logical-tube-settings.png[,386,205]
+
+&#x2776; Inputs::
+  Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.
+&#x2777; Operator::
+  Displays the currently selected operator.
+&#x2778; Outputs::
+  Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect.
+&#x2779; Relocate button::
+  Click to move the location of this logical tube on the virtual board.
+&#x277A; Add connection button::
+  Click to connect to other components via redstone.
+&#x277B; Mode switch::
+  Click to switch between OR, AND, NOR, NAND modes.
+&#x277C; Confirm button::
+  Click to confirm settings and close this screen.

@@ -1,0 +1,13 @@
+= Create: Factory Controller Manual
+
+Create: Factory Controller introduces a new block, the "Factory Controller". It allows you to place factory gauges on a virtual board stored in a single block, instead of having a wall of gauges in the game world. The factory gauges are managed via a GUI. The mod adds many enhancements to factory gauges, and some other components may also be placed in factory controllers.
+
+[#table-of-contents]
+== {toc-title}
+
+[#manual-toc]
+. xref:dashboard.adoc[Dashboard]
+. xref:components.adoc[Components]
+.. xref:factory-gauge.adoc[Factory Gauge]
+.. xref:electron-tube.adoc[Electron Tube]
+.. xref:redstone-link.adoc[Redstone Link]

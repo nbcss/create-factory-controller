@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -76,9 +77,29 @@ abstract class GaugeWorkModeEditor {
         return true;
     }
 
+    /** Seeds this editor's representation when the screen switches INTO its mode from {@code previous} */
+    void onChange(GaugeWorkMode previous) {}
+
+    /** Bakes the produced output to its batch-multiplied value ({@code outputCount × batch}) */
+    protected void bakeCraftingOutput() {
+        s.outputCount = Mth.clamp(s.outputCount * s.effectiveBatch(), 1,
+                s.fluidMode ? ConfigureRecipeScreen.FLUID_OUTPUT_CAP_MB : s.maxItemOutput());
+    }
+
     /** Handles a mouse release (for drag gestures); {@code true} if consumed. Default: no drag. */
     boolean gridReleased(double mouseX, double mouseY, int button) { return false; }
 
     /** Drawn on top of everything (after the grid + labels) for drag previews. Default: nothing. */
     void renderOverlay(GuiGraphics gfx, int mouseX, int mouseY) {}
+
+    /** Grid cells (row-major, 0–8) currently showing an ingredient — for the request-multiplier hover highlight.
+     *  Default: none. */
+    boolean[] occupiedCells() { return new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS]; }
+
+    /** Fills each {@link #occupiedCells() occupied} ingredient cell with {@code color}; the caller sets the z-layer. */
+    void fillOccupiedCells(GuiGraphics gfx, int color) {
+        boolean[] cells = occupiedCells();
+        for (int i = 0; i < cells.length; i++)
+            if (cells[i]) gfx.fill(cellX(i), cellY(i), cellX(i) + 16, cellY(i) + 16, color);
+    }
 }

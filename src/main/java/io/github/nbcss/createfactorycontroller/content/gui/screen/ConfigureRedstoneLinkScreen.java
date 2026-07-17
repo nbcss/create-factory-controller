@@ -162,6 +162,10 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
             gfx.renderTooltip(font, red, mouseX, mouseY);
         else if (overBlue(mouseX, mouseY) && !blue.isEmpty())
             gfx.renderTooltip(font, blue, mouseX, mouseY);
+        else if (overRed(mouseX, mouseY))
+            gfx.renderComponentTooltip(font, freqEmptyTooltip(1), mouseX, mouseY);
+        else if (overBlue(mouseX, mouseY))
+            gfx.renderComponentTooltip(font, freqEmptyTooltip(2), mouseX, mouseY);
         else if (modeButton.isMouseOver(mouseX, mouseY))
             gfx.renderTooltip(font, List.of(Component.translatable("createfactorycontroller.gui.redstone_link.mode")
                     .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB()))
@@ -228,6 +232,14 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {}   // no default container labels
 
     // ── Frequency slots ────────────────────────────────────────────────────────
+
+    /** Empty-slot hint for the given 1-indexed frequency: colored "Freq #N" + gray "Click with item to set". */
+    private static List<Component> freqEmptyTooltip(int index) {
+        ChatFormatting color = index == 1 ? ChatFormatting.RED : ChatFormatting.BLUE;
+        return List.of(
+                Component.translatable("createfactorycontroller.gui.redstone_link.freq_index", index).withStyle(color),
+                Component.translatable("createfactorycontroller.gui.redstone_link.freq_tip").withStyle(ChatFormatting.GRAY));
+    }
 
     private boolean overRed(double mx, double my) { return in(mx, my, panelX + RED_X, panelY + RED_Y); }
     private boolean overBlue(double mx, double my) { return in(mx, my, panelX + BLUE_X, panelY + BLUE_Y); }

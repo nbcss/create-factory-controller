@@ -1,7 +1,7 @@
 ### Gradle ###
 .gradle
-lib/
-build/
+/lib/
+/build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/**/build/
 
@@ -18,6 +18,9 @@ out/
 ### Claude ###
 .claude
 
+### Design docs (local planning notes) ###
+.design/
+
 ### Eclipse ###
 .apt_generated
 .classpath
@@ -27,7 +30,7 @@ out/
 .settings
 .springBeans
 .sts4-cache
-bin/
+/bin/
 !**/src/**/bin/
 
 ### VS Code ###
@@ -37,10 +40,10 @@ bin/
 .DS_Store
 
 ### Minecraft Modding ###
-run/
+/run/
 !**/src/**/run/
 **/src/generated/**/.cache/
-repo/
+/repo/
 !**/src/**/repo/
 
 ### Asset authoring tools

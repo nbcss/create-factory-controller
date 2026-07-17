@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= h document.title %></title>
+    <link rel="stylesheet" href="<%= h attach_cache_id '../style.css' %>">
+  </head>
+  <body>
+    <header>
+      <div class="header-inner">
+        <div class="site-name"><%= h t 'site-name' %></div>
+        <nav>
+          <ol>
+            <li class="nav-item nav-project-toc">
+              <button><%= h t 'site-nav-manual' %></button>
+              <div class="nav-menu-container">
+                <ol class="nav-menu">
+                  <li><a href=".">
+                    <span class="toc-menu-title"><%= h t 'site-nav-manual' %></span>
+                    <span class="toc-menu-home"><%= h t 'site-nav-manual-home' %></span>
+                  </a></li>
+                  <%= manual_toc %>
+                </ol>
+              </div>
+            </li>
+            <li class="nav-item nav-page-toc">
+              <button title="<%= h t 'toc-title' %>"><i class="fa-solid">&#xf03a;</i></button>
+              <div class="nav-menu-container">
+                <ol class="nav-menu">
+                  <li><a href="#top">
+                    <span class="toc-menu-title"><%= h document.title %></span>
+                  </a></li>
+                  <%= page_toc %>
+                </ol>
+              </div>
+            </li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <article>
+        <h1><%= h document.title %></h1>
+        <%= document.content %>
+      </article>
+    </main>
+  </body>
+</html>

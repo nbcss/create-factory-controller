@@ -2,8 +2,10 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
@@ -12,6 +14,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -29,7 +32,8 @@ class RegularEditor extends GaugeWorkModeEditor {
     List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
         s.patternHovered = false;
         List<Component> tooltip = null;
-        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
+        // Scaled layout while the multiplier bar is hovered (previewScale = 1 otherwise → unchanged).
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.previewScale(mouseX, mouseY));
         for (int i = 0; i < slots.size(); i++) {
             ConfigureRecipeScreen.InputSlot slot = slots.get(i);
             int ix = cellX(i), iy = cellY(i);
@@ -60,8 +64,8 @@ class RegularEditor extends GaugeWorkModeEditor {
                         inHeader,
                         CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                             .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                        CreateLang.translate("gui.factory_panel.left_click_disconnect")
-                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()),
+                        Component.translatable("createfactorycontroller.gui.action_disconnect")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
                         srcIgnore);
             }
         }
@@ -78,7 +82,9 @@ class RegularEditor extends GaugeWorkModeEditor {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
         for (int i = 0; i < slots.size(); i++) {
             if (!in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) continue;
-            s.disconnectInput(slots.get(i).connectionIndex());
+            // Shift-click disconnects (matches CUSTOM mode's clear gesture); a plain click is absorbed here
+            // so it doesn't fall through to whatever's behind the panel.
+            if (button == 0 && Screen.hasShiftDown()) s.disconnectInput(slots.get(i).connectionIndex());
             return true;
         }
         return false;
@@ -95,5 +101,52 @@ class RegularEditor extends GaugeWorkModeEditor {
             }
         }
         return false;
+    }
+
+    @Override
+    boolean[] occupiedCells() {
+        boolean[] cells = new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS];
+        // Only called while the bar is hovered, so preview at the full multiplier (scaled spill included).
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.maxRequestMultiplier);
+        for (int i = 0; i < slots.size() && i < cells.length; i++) cells[i] = true;
+        return cells;
+    }
+
+    @Override
+    void onChange(GaugeWorkMode previous) {
+        if (previous == GaugeWorkMode.CRAFTING) {
+            bakeCraftingOutput();
+            int batch = s.effectiveBatch();
+            for (int c = 0; c < s.inputConnections.size(); c++) {
+                ItemStack ing = s.ingredientOf(s.inputConnections.get(c));
+                int cells = s.craftingIngredients.stream()
+                    .filter(b -> !b.stack.isEmpty() && ItemStack.isSameItemSameComponents(b.stack, ing))
+                    .mapToInt(b -> Math.max(1, b.stack.getCount())).sum();
+                s.inputTotals.set(c, Math.max(1, cells) * batch);
+            }
+            clampTotalsToGrid();
+        } else if (previous == GaugeWorkMode.CUSTOM) {
+            for (int c = 0; c < s.inputConnections.size(); c++) {
+                VirtualComponentPosition pos = s.inputConnections.get(c);
+                int total = s.customSlots.stream()
+                    .filter(sl -> !sl.isEmpty() && pos.equals(sl.source()))
+                    .mapToInt(RecipeSlot::count).sum();
+                s.inputTotals.set(c, Math.max(1, total));
+            }
+            clampTotalsToGrid();
+        }
+    }
+
+    /** Reduces each connection total to what still fits the 9-slot grid (best-effort, order-dependent). */
+    private void clampTotalsToGrid() {
+        for (int c = 0; c < s.inputConnections.size(); c++) {
+            if (s.isFluidConn(c)) {
+                s.inputTotals.set(c, Mth.clamp(s.inputTotals.get(c), 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB));
+            } else {
+                int ss = ConfigureRecipeScreen.stackSizeOf(s.ingredientOf(s.inputConnections.get(c)));
+                int maxTotal = Math.max(1, ConfigureRecipeScreen.MAX_INPUT_SLOTS - s.slotsUsedExcept(c)) * ss;
+                s.inputTotals.set(c, Mth.clamp(s.inputTotals.get(c), 1, maxTotal));
+            }
+        }
     }
 }

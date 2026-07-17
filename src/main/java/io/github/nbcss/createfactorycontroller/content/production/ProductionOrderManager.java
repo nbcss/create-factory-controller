@@ -11,6 +11,9 @@ import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.simibubi.create.content.logistics.packager.PackagingRequest;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
+import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket.RequestedItem;
+import net.minecraft.server.level.ServerPlayer;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrder.Task;
 import net.minecraft.core.HolderLookup;
@@ -50,10 +53,21 @@ public class ProductionOrderManager extends SavedData {
     /** How long a fully-finished order lingers in the GUI before it is removed (5s). */
     private static final int LINGER_TICKS = 100;
 
+    /** How long a pending notification subscription survives before it's pruned (the subscribe packet arrives just
+     *  before the order packet, so this only needs to cover packet-processing latency). */
+    private static final int PENDING_SUB_TTL_TICKS = 100;
+
     /** Orders keyed by their shared orderId. */
     private final Map<Integer, ProductionOrder> orders = new LinkedHashMap<>();
     /** Game time at which an order first became all-terminal — transient, drives the {@link #LINGER_TICKS} grace. */
     private final Map<Integer, Long> completedAt = new java.util.HashMap<>();
+    private final Map<OrderKey, PendingSub> pendingSubs = new java.util.HashMap<>();
+
+    private record OrderKey(UUID network, String address) {}
+    private static final class PendingSub {
+        final java.util.Set<UUID> players = new java.util.LinkedHashSet<>();
+        long expiry;
+    }
 
     public ProductionOrderManager() {}
 
@@ -82,6 +96,20 @@ public class ProductionOrderManager extends SavedData {
     public void addOrder(ProductionOrder order) {
         orders.put(order.orderId(), order);
         setDirty();
+    }
+
+    /** Registers {@code player} to be toasted about the order they're placing on ({@code network}, {@code address});
+     *  claimed by the next {@link #interceptProductionOrder} for that key, else it expires. */
+    public void subscribe(UUID network, String address, UUID player, long now) {
+        PendingSub p = pendingSubs.computeIfAbsent(new OrderKey(network, address), k -> new PendingSub());
+        p.players.add(player);
+        p.expiry = now + PENDING_SUB_TTL_TICKS;
+    }
+
+    /** Takes (and clears) the pending subscribers for ({@code network}, {@code address}); empty if none registered. */
+    private java.util.Set<UUID> consumePendingSubscribers(UUID network, String address) {
+        PendingSub p = pendingSubs.remove(new OrderKey(network, address));
+        return p == null ? new java.util.LinkedHashSet<>() : p.players;
     }
 
     public List<ProductionOrder> getOrdersForNetwork(UUID network) {
@@ -120,22 +148,26 @@ public class ProductionOrderManager extends SavedData {
      *  — used when a gauge is removed or stops being orderable. Such a task no longer creates demand, but the
      *  manager still ships it (→ SENT) if the network happens to have enough stock; otherwise it keeps the order
      *  open until the player removes it. */
-    public void invalidateTasksFor(UUID network, UUID patternId) {
+    public void invalidateTasksFor(MinecraftServer server, UUID network, UUID patternId) {
         boolean changed = false;
+        List<ProductionOrder> affected = new ArrayList<>();
         for (ProductionOrder o : orders.values())
             if (o.network().equals(network))
                 for (Task t : o.tasks())
                     if (t.isActive() && patternId.equals(t.patternId)) {
                         t.state = Task.State.INVALID_PATTERN;
                         changed = true;
+                        if (!o.subscribers().isEmpty() && !affected.contains(o)) affected.add(o);   // once per order
                     }
         if (changed) setDirty();
+        for (ProductionOrder o : affected) notifyGaugeInvalid(server, o);
     }
 
     /** Static convenience for controllers (server side only). */
     public static void invalidateTasksFor(Level level, UUID network, UUID patternId) {
-        ProductionOrderManager m = get(level);
-        if (m != null) m.invalidateTasksFor(network, patternId);
+        if (!(level instanceof ServerLevel sl)) return;
+        ProductionOrderManager m = get(sl.getServer());
+        if (m != null) m.invalidateTasksFor(sl.getServer(), network, patternId);
     }
 
     /**
@@ -198,7 +230,9 @@ public class ProductionOrderManager extends SavedData {
             if (b.count > 0)
                 tasks.add(Task.completed(network, b.stack.copy(), b.count, address, orderId, 0, false));
 
-        mgr.addOrder(new ProductionOrder(orderId, network, address, server.overworld().getGameTime(), tasks));
+        // Claim any players who registered for a toast on this (network, address) — see RegisterOrderNotificationPacket.
+        mgr.addOrder(new ProductionOrder(orderId, network, address, server.overworld().getGameTime(),
+            mgr.consumePendingSubscribers(network, address), tasks));
 
         if (!inStock.isEmpty()) {
             // Instant in-stock items = link 0 of the order, NOT the final link, so the Re-Packager holds them and
@@ -207,6 +241,43 @@ public class ProductionOrderManager extends SavedData {
             dispatchWithOrderId(network, type, realOrder, address, orderId, 0, false);
         }
         return true;
+    }
+
+    // ── Notifications (subscribed players only, online only) ────────────────────
+
+    /** Toasts the order's subscribers (those online) that production finished. */
+    private static void notifyOrderComplete(MinecraftServer server, ProductionOrder order) {
+        OrderNotificationPacket packet =
+            new OrderNotificationPacket(OrderNotificationPacket.KIND_ORDER_COMPLETE, requestedItems(order), order.address());
+        for (ServerPlayer player : onlineSubscribers(server, order))
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    /** Toasts the order's subscribers (those online) that a gauge their order needs went invalid. */
+    private static void notifyGaugeInvalid(MinecraftServer server, ProductionOrder order) {
+        OrderNotificationPacket packet =
+            new OrderNotificationPacket(OrderNotificationPacket.KIND_GAUGE_INVALID, requestedItems(order), order.address());
+        for (ServerPlayer player : onlineSubscribers(server, order))
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    /** The order's subscriber {@link ServerPlayer}s who are currently online (offline ones are skipped). */
+    private static List<ServerPlayer> onlineSubscribers(MinecraftServer server, ProductionOrder order) {
+        List<ServerPlayer> out = new ArrayList<>();
+        if (server == null) return out;
+        for (UUID id : order.subscribers()) {
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player != null) out.add(player);
+        }
+        return out;
+    }
+
+    /** Every item in an order, paired with the amount originally requested. */
+    private static List<RequestedItem> requestedItems(ProductionOrder order) {
+        List<RequestedItem> items = new ArrayList<>();
+        for (Task task : order.tasks())
+            if (!task.item.isEmpty()) items.add(new RequestedItem(task.item.copy(), task.amount));
+        return items;
     }
 
     // ── Demand ──────────────────────────────────────────────────────
@@ -232,6 +303,7 @@ public class ProductionOrderManager extends SavedData {
     public void tick(MinecraftServer server) {
         long now = server.overworld().getGameTime();   // single server clock for heartbeat freshness
         OrderableGaugeRegistry.pruneStale(now);         // evict dead controllers even when no orders are open
+        pendingSubs.values().removeIf(p -> now > p.expiry);   // drop unclaimed notification subscriptions
         if (orders.isEmpty()) return;
         boolean dirty = false;
         List<Integer> completed = new ArrayList<>();
@@ -258,7 +330,9 @@ public class ProductionOrderManager extends SavedData {
             }
             // Linger: once every task is terminal, keep the entry visible for LINGER_TICKS before removing it.
             if (order.isComplete()) {
+                boolean firstComplete = !completedAt.containsKey(order.orderId());
                 long since = completedAt.computeIfAbsent(order.orderId(), id -> now);
+                if (firstComplete) notifyOrderComplete(server, order);   // fire once, when it finishes producing
                 if (now - since >= LINGER_TICKS) completed.add(order.orderId());
             } else if (completedAt.remove(order.orderId()) != null) {
                 dirty = true;   // re-opened (e.g. a task added) — cancel any pending linger

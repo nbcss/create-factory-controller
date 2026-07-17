@@ -1,0 +1,54 @@
+= Redstone Link
+
+Redstone links enable remote transmission and reception of redstone signals, as described in their in-game ponder. When placed in factory controllers, they may be connected with other components with redstone capabilities, allowing them to interoperate with contraptions outside the factory controller.
+
+.Redstone links placed in factory controllers
+[%autowidth,cols="3*"]
+|===
+|
+s| Send
+s| Receive
+
+s| Unpowered
+| image:redstone-link-send-unpowered.png[,64,64]
+| image:redstone-link-receive-unpowered.png[,64,64]
+
+s| Powered
+| image:redstone-link-send-powered.png[,64,64]
+| image:redstone-link-receive-powered.png[,64,64]
+|===
+
+[#principle]
+== Operating Principle
+
+A redstone link has 2 modes of operation:
+
+[horizontal]
+Send:: Sends the powered state of its incoming redstone connections to other redstone links on the same channel.
+Receive:: Receives from other redstone links on the same channel. If any of them is powered, it powers its outgoing redstone connections.
+
+Redstone links are distinguished by channels, which consists of 2 item types. Each channel carries a redstone signal independently of the others. Examples of distinct channels are:
+
+- (Oak Plank, Cobblestone)
+- (Oak Plank, Air)
+- (Air, Oak Plank)
+- (Air, Air)
+
+[#configuration]
+== Configuration
+
+After placing a redstone link on the virtual board, clicking the component opens its configuration screen.
+
+.Redstone link settings
+image::redstone-link-settings.png[,384,207]
+
+&#x2776; &#x2777; Channel::
+  Place an item, or drag a ghost item from JEI, to set the channel of the redstone link.
+&#x2778; Relocate button::
+  Click to move the location of this redstone link on the virtual board.
+&#x2779; Add connection button::
+  Click to connect to other components via redstone. Directions of connections are decided automatically. Send-mode links may only have incoming connections, receive-mode links may only have outgoing connections.
+&#x277A; Mode switch::
+  Click to switch between send image:btn-send-mode.png[,18,18] and receive image:btn-receive-mode.png[,18,18] modes.
+&#x277B; Confirm button::
+  Click to confirm settings and close the screen.
