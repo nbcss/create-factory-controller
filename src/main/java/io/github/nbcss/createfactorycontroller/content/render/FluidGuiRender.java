@@ -44,7 +44,7 @@ public final class FluidGuiRender {
         // Thin slab (z ∈ [-1/32, 0]) so only the viewer-facing +Z face shows: a flat fluid icon.
         NeoForgeCatnipServices.FLUID_RENDERER.renderFluidBox(
             fluid, -0.5f, -0.5f, -1 / 32f, 0.5f, 0.5f, 0f, buffer, ps, LightTexture.FULL_BRIGHT, true, false);
-        buffer.endBatch();
+        gfx.flush();
         ps.popPose();
     }
 
