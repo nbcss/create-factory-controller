@@ -11,11 +11,11 @@
 - [DONE] Gauge Custom Layout Mode
 - [DONE] Network Rename/Set Icon
 - [DONE] Dynamic Batch Size (Request Multiplier)
+- [DONE] Per gauge request interval
 - [DOING] Properly handle stock link not loaded warning
 - [DOING] Improve panel sync packet (transfer delta only)
 - [DOING] Blueprint Save/Load
 - [DOING] Production Order Status Notification
-- [DOING] Per gauge request interval
 - [TODO] Paper as component
 - [TODO] Integer Connection & Arithmetic Component
 - [TODO] Alt mode button
