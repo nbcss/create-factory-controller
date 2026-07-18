@@ -60,7 +60,7 @@
   "createfactorycontroller.toast.order_complete": "Заказ отправлен",
   "createfactorycontroller.toast.gauge_invalid": "Контроллер стал недействительным",
   "createfactorycontroller.gui.custom_arrangement": "Использовать пользовательскую схему",
-  "createfactorycontroller.gui.custom_arrangement.tip": "Распаковывать по настроенной схеме",
+  "createfactorycontroller.gui.custom_arrangement.tip": "Unpackage into specific slots",
   "createfactorycontroller.gui.custom_slot_tip": "Распаковать в слот инвентаря %1$s",
   "createfactorycontroller.gui.custom_slot_move": "Перетащите с ЛКМ, чтобы переместить",
   "createfactorycontroller.gui.custom_slot_copy": "Перетащите с ПКМ, чтобы скопировать",
