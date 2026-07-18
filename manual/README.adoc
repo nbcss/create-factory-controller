@@ -36,6 +36,13 @@ bundle install
 bundle exec rake build
 ----
 
+Alternatively, use a Docker container:
+
+[source,sh]
+----
+docker run --rm -v .:/work ghcr.io/nbcss/create-factory-controller/manual-builder:latest rake build
+----
+
 == Writing Source Documents
 
 Update translation files after making changes: `bundle exec rake po4a:update`
