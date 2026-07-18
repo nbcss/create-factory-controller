@@ -60,7 +60,7 @@
   "createfactorycontroller.toast.order_complete": "生产订单已配送",
   "createfactorycontroller.toast.gauge_invalid": "生产仪表失效",
   "createfactorycontroller.gui.custom_arrangement": "使用自定义布局",
-  "createfactorycontroller.gui.custom_arrangement.tip": "以设定的布局进行解包",
+  "createfactorycontroller.gui.custom_arrangement.tip": "Unpackage into specific slots",
   "createfactorycontroller.gui.custom_slot_tip": "解包至库存栏位%1$s",
   "createfactorycontroller.gui.custom_slot_move": "左键拖动以移动",
   "createfactorycontroller.gui.custom_slot_copy": "右键拖动以复制",
