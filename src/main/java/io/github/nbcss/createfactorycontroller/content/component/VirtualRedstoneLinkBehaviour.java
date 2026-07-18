@@ -9,6 +9,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
@@ -82,7 +83,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
             b.receive = buf.readBoolean();
             b.redFreq = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
             b.blueFreq = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
-            b.powered = buf.readBoolean();
+            b.readClientState(buf);
             return b;
         }
     };
@@ -96,7 +97,17 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         buf.writeBoolean(receive);
         ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, redFreq);
         ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, blueFreq);
-        buf.writeBoolean(powered);   // runtime
+        writeClientState(buf);
+    }
+
+    @Override
+    public void writeClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        buf.writeBoolean(powered);
+    }
+
+    @Override
+    public void readClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        powered = buf.readBoolean();
     }
 
     public static final ResourceLocation TEXTURE =
@@ -204,7 +215,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         if (now == powered) return;
         powered = now;
         publish(RedstoneConnection.TYPE);
-        if (controller != null) { controller.setChanged(); controller.sendData(); }
+        if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
 
     /** The strongest in-range transmitted signal on this link's frequency network — mirrors the handler's
@@ -237,7 +248,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         if (any == powered) return;
         powered = any;
         updateTransmittedPower();
-        if (controller != null) { controller.setChanged(); controller.sendData(); }
+        if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
 
     @Override
@@ -287,7 +298,11 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         // every wired gauge in reorientRedstoneConnections; updatePower then pulls (RECEIVE) or re-notifies transmit
         // (SEND) for the freq change. settleConnections folds every flagged sink once.
         updatePower();
-        if (controller != null) { controller.settleConnections(); controller.setChanged(); controller.sendData(); }
+        if (controller != null) {
+            controller.settleConnections();
+            controller.setChanged();
+            controller.syncComponentFull(position);   // mode/frequencies are config
+        }
     }
 
     private void reorientRedstoneConnections() {
@@ -299,7 +314,11 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
             affected.add(conn.from);
             affected.add(conn.to);                                  // both endpoints (same set after the reverse)
             if (position.equals(conn.from) == receive) continue;    // already oriented for the new mode
+            if (controller != null)
+                controller.syncConnectionRemoved(ConnectionKey.of(conn));   // reversing re-keys the wire
             graph().reverse(conn);
+            if (controller != null)
+                controller.syncConnection(ConnectionKey.of(conn));
         }
         // Every affected component's incoming AND outgoing set may have changed: re-publish its output (writes edges +
         // flags its sinks) and flag itself so it re-folds its own inputs. settleConnections (in configure) folds once.

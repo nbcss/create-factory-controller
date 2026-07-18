@@ -11,14 +11,17 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixer;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
+import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelDeltaPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -109,9 +112,39 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
 
-    /** Set by {@link #sendData()}, flushed once per server tick so the heavy menu packet isn't sent
-     *  multiple times in a tick (e.g. when several gauges change state in the same tick). */
-    private boolean menuSyncQueued = false;
+    // ── Menu sync bookkeeping ──────────────────────────────────────────────
+    // Mutation paths mark what changed (syncComponentState/Full/Removed, syncConnection[Removed],
+    // syncHeader, syncNetworks); the tick flush ships ONE packet per tick to every viewer — a small
+    // SyncPanelDeltaPacket, or the full SyncPanelStatePacket when someone marked everything().
+
+    /** What changed since the last flush; cleared by {@link #syncMenuToPlayers}. */
+    private final PanelDeltaTracker deltaTracker = new PanelDeltaTracker();
+    /** Random per-BE-load token stamped on every menu-sync payload. A client holding state from a previous
+     *  BE instance (reload/restart) can never match it, so it detects the swap and requests a full resync. */
+    private final int syncEpoch = java.util.concurrent.ThreadLocalRandom.current().nextInt();
+    /** Bumps once per flush that sends anything; a delta carries {@code (base = rev, new = rev + 1)} so the
+     *  client detects a gap (missed/unordered state — a bug, not normal operation) and requests a resync.
+     *  Transient: not saved, meaningless across BE reloads (that is what {@link #syncEpoch} covers). */
+    private int syncRevision = 0;
+
+    public int syncEpoch() { return syncEpoch; }
+    public int syncRevision() { return syncRevision; }
+
+    /** Component runtime tail changed (counts/flags — {@code writeClientState}). The cheap, per-tick mark. */
+    public void syncComponentState(VirtualComponentPosition pos) { deltaTracker.componentState(pos); }
+    /** Component config changed, or the component is new/replaced — ship its whole body. */
+    public void syncComponentFull(VirtualComponentPosition pos) { deltaTracker.componentFull(pos); }
+    public void syncComponentRemoved(VirtualComponentPosition pos) { deltaTracker.componentRemoved(pos); }
+    /** Wire changed (value/success/amount/bend) or is new — edges are small, always shipped whole. */
+    public void syncConnection(ConnectionKey key) { deltaTracker.connection(key); }
+    public void syncConnectionRemoved(ConnectionKey key) { deltaTracker.connectionRemoved(key); }
+    /** Controller name / redstone power changed. */
+    public void syncHeader() { deltaTracker.header(); }
+    /** Known-network list or shared network settings changed. */
+    public void syncNetworks() { deltaTracker.networks(); }
+    /** Escalate to a full snapshot — for mutations that touch an intricate web of state (relocations, setup
+     *  restore) where precise marking isn't worth the bug surface. Always correct, just fat. */
+    public void syncEverything() { deltaTracker.everything(); }
 
     /** Whether the controller block is currently receiving a redstone signal. While powered, every
      *  gauge stops issuing new requests (mirrors Create's factory-panel redstone gate). */
@@ -169,11 +202,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             orderableDirty = false;
             heartbeatOrderableGauges();
         }
-        // Flush at most one menu snapshot per tick (gauge ticks above may have queued several).
-        if (menuSyncQueued) {
-            menuSyncQueued = false;
+        // Flush at most one menu-sync packet per tick (everything marked above rides one delta/snapshot).
+        if (!deltaTracker.isEmpty())
             syncMenuToPlayers();
-        }
     }
 
     @Override
@@ -290,7 +321,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // resume from a stale countdown (mirrors VirtualGaugeBehaviour.onInputChanged for its own link).
         for (VirtualComponentBehaviour c : components.values())
             if (c instanceof VirtualGaugeBehaviour g) g.resetRequestTimer();
-        sendData();   // push the new powered state to any open GUI
+        syncHeader();   // push the new powered state to any open GUI
     }
 
     public boolean isRedstonePowered() {
@@ -317,7 +348,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (LogisticallyLinkedBlockItem.isTuned(carried)) {
                 networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
                 if (networkId == null) return;
-                networks.add(networkId);
+                if (networks.add(networkId)) syncNetworks();   // a newly-known network joins the synced list
             } else {
                 if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
                     return;
@@ -338,7 +369,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         playBlockSound(carried.getItem(), true);
         markOrderableDirty();
         setChanged();
-        sendData();
+        syncComponentFull(pos);
     }
 
     // ── Component remove ───────────────────────────────────────────────────────
@@ -354,24 +385,25 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
             link.removeFromNetwork();
 
-        behaviour.disconnectAll();
+        behaviour.disconnectAll();   // marks its wires' removals for the sync
 
         // Return a component item
         ItemStack refund = new ItemStack(behaviour.getItem());
         if (!player.isCreative() && !player.getInventory().add(refund))
             player.drop(refund, false);
 
-        pruneEmptyNetworks();   // removing the last gauge on a network auto-forgets that network
+        if (pruneEmptyNetworks())   // removing the last gauge on a network auto-forgets that network
+            syncNetworks();
 
         playBlockSound(refund.getItem(), false);
         markOrderableDirty();
         setChanged();
-        sendData();
+        syncComponentRemoved(pos);
     }
 
-    private void pruneEmptyNetworks() {
-        // Forget networks this controller no longer uses.
-        networks.removeIf(net -> !isNetworkInUse(net));
+    /** Forgets networks this controller no longer uses; true when any was dropped. */
+    private boolean pruneEmptyNetworks() {
+        return networks.removeIf(net -> !isNetworkInUse(net));
     }
 
     private boolean isNetworkInUse(UUID network) {
@@ -404,7 +436,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
         markOrderableDirty();   // controllerPos is unchanged, but republish keeps the cached locator fresh
         setChanged();
-        sendData();
+        // A relocate re-keys an open-ended web of wires and other gauges' CUSTOM recipe slots — precise
+        // delta marks would be intricate for a rare player action, so escalate to a full snapshot.
+        syncEverything();
     }
 
     /**
@@ -452,7 +486,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
         markOrderableDirty();
         setChanged();
-        sendData();
+        syncEverything();   // same reasoning as moveComponent
     }
 
     // ── Configure panel ────────────────────────────────────────────────────
@@ -477,7 +511,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
         markOrderableDirty();   // filter (the blueprint's display item) changed
         setChanged();
-        sendData();
+        syncComponentFull(pos);
     }
 
     /**
@@ -493,7 +527,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.customRequestTimer = customRequestTimer <= 0 ? 0 : Math.clamp(customRequestTimer, 20, 1200);
         gauge.restartRequestTimer();
         setChanged();
-        sendData();
+        syncComponentFull(pos);
     }
 
     public void configureRecipe(VirtualComponentPosition pos, String address, int recipeOutput, int craftBatch,
@@ -523,12 +557,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.activeCraftingArrangement = new ArrayList<>();
             gauge.recipeSlots = new ArrayList<>();
             gauge.mode = GaugeWorkMode.REGULAR;
-            gauge.disconnectAll();
+            gauge.disconnectAll();   // marks its wires' removals for the sync
             refreshGaugeIdentity(gauge, true);
             updateGaugeOrderable(gauge);   // no longer orderable → abort tasks
             markOrderableDirty();
             setChanged();
-            sendData();
+            syncComponentFull(pos);
             return;
         }
 
@@ -557,8 +591,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // create-time check enforces one wire at a time. Reject the whole amount set on overflow (other config stands).
         if (gauge.projectedInputSlots(inputAmounts) <= VirtualGaugeBehaviour.MAX_INGREDIENTS)
             for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
-                if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn)
+                if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn) {
                     conn.amount = Math.max(1, e.getValue());
+                    syncConnection(ConnectionKey.of(conn));
+                }
         // Clamp last — the structural cap must see the just-applied mode, amounts, output, and batch.
         gauge.maxRequestMultiplier = gauge.clampMultiplierToStructure(maxRequestMultiplier);
         if (clearPromises) gauge.requestClearPromises();
@@ -567,7 +603,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
         markOrderableDirty();   // request mode / filter / address may have changed
         setChanged();
-        sendData();
+        syncComponentFull(pos);
     }
 
     @Override
@@ -594,12 +630,15 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Connection conn = type.create(source, sink);
         conn.arrowBendMode = arrowBendMode < 0 ? -1 : arrowBendMode % 4;   // client-chosen preview bend (or -1 = auto)
         connectionGraph.add(conn);
-        if (sink instanceof VirtualGaugeBehaviour g) g.reconcileRecipeSlots();   // CUSTOM: new wire → first empty cell
+        syncConnection(ConnectionKey.of(conn));
+        if (sink instanceof VirtualGaugeBehaviour g) {
+            g.reconcileRecipeSlots();   // CUSTOM: new wire → first empty cell
+            if (g.mode == GaugeWorkMode.CUSTOM) syncComponentFull(sinkPos);   // its recipe slots may have changed
+        }
         source.publish(type);          // write the new edge's value + flag the sink (new edge enters at fold identity)
         settleConnections();           // fold the sink once
         playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
         setChanged();
-        sendData();
     }
 
     /** Reconciles each sink's reactive state from the edge values after load/sync. Edges are authoritative — they carry
@@ -617,11 +656,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Connection conn = connectionGraph.get(from, to);
         if (conn == null) return;
         connectionGraph.remove(to, from);
-        if (components.get(to) instanceof VirtualGaugeBehaviour g) g.reconcileRecipeSlots();   // CUSTOM: clear its cells
+        syncConnectionRemoved(new ConnectionKey(from, to));
+        if (components.get(to) instanceof VirtualGaugeBehaviour g) {
+            g.reconcileRecipeSlots();   // CUSTOM: clear its cells
+            if (g.mode == GaugeWorkMode.CUSTOM) syncComponentFull(to);
+        }
         markSinkDirty(to, conn.type);   // re-fold without the removed edge (the source is unaffected)
         settleConnections();
         setChanged();
-        sendData();
     }
 
     /** Cycles one specific wire's arrow-bend mode through the four fixed bends (0 → 1 → 2 → 3 → 0; auto excluded, and
@@ -631,7 +673,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (conn == null) return;
         conn.arrowBendMode = (conn.arrowBendMode + 1) % 4;   // auto (-1) → 0 on the first press
         setChanged();
-        sendData();
+        syncConnection(ConnectionKey.of(conn));
     }
 
     /** Swaps the direction of the wire {@code from → to} (→ {@code to → from}), if the reversed orientation is legal
@@ -645,6 +687,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             return;
         }
         connectionGraph.reverse(conn);
+        syncConnectionRemoved(new ConnectionKey(from, to));   // reversing re-keys the wire
+        syncConnection(ConnectionKey.of(conn));
         // Re-evaluate both endpoints in their new roles (publish output + re-fold input), then settle once.
         for (VirtualComponentPosition p : List.of(from, to)) {
             VirtualComponentBehaviour c = components.get(p);
@@ -653,7 +697,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         settleConnections();
         playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
         setChanged();
-        sendData();
     }
 
     /** Disconnects every NON-logistics wire touching the gauge at {@code gaugePos} (the "link reset" slot): redstone
@@ -668,11 +711,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (!LogisticsConnection.TYPE.equals(conn.type)) toRemove.add(conn);
         for (Connection conn : toRemove) {
             connectionGraph.remove(conn.to, conn.from);
+            syncConnectionRemoved(ConnectionKey.of(conn));
             markSinkDirty(conn.to, conn.type);   // the gauge (its gate) or the wire's sink re-folds
         }
         settleConnections();
         setChanged();
-        sendData();
     }
 
     /** Cycles a component's operation mode, if it has one. */
@@ -703,7 +746,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (trimmed.equals(customName)) return;
         customName = trimmed;
         setChanged();
-        sendData();
+        syncHeader();
     }
 
     // ── Sounds ──────────────────────────────────────────────────────────────
@@ -739,12 +782,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Live menu sync ─────────────────────────────────────────────────────
 
+    /** Vanilla BE chunk update (carries no board, see write()) + fall back to a full menu snapshot on the
+     *  next flush. Precisely-marked paths call the {@code sync*} methods instead; anything still calling
+     *  this stays correct — it just ships the whole board like before the delta protocol. */
     @Override
     public void sendData() {
-        super.sendData();          // vanilla BE chunk update (coalesced per tick; carries no board, see write())
-        menuSyncQueued = true;     // defer the heavy menu snapshot to the tick flush (coalesced)
+        super.sendData();
+        deltaTracker.everything();
     }
 
+    /** Ships this tick's accumulated changes to every player with this controller's menu open: the full
+     *  snapshot when escalated (or requested via resync), else one delta. Bumps {@link #syncRevision} only
+     *  when something is actually sent; with no viewers the marks are dropped — the next menu open carries
+     *  full state anyway. */
     private void syncMenuToPlayers() {
         if (level == null || level.isClientSide()) return;
         ServerLevel serverLevel = (ServerLevel) level;
@@ -753,17 +803,77 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (player.containerMenu instanceof FactoryControllerMenu menu
                     && menu.controllerPos.equals(getBlockPos()))
                 viewers.add(player);
-        if (viewers.isEmpty()) return;
+        if (viewers.isEmpty()) {
+            deltaTracker.clear();
+            return;
+        }
 
+        syncRevision++;
+        CustomPacketPayload packet = deltaTracker.isEverything() ? buildFullSnapshot() : buildDelta();
+        deltaTracker.clear();
+        for (ServerPlayer player : viewers)
+            PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    /** The authoritative whole-board packet — sent on escalation/resync; also what a menu open embeds. */
+    private SyncPanelStatePacket buildFullSnapshot() {
         List<VirtualComponentBehaviour> comps = new ArrayList<>(components.values());
         List<Connection> conns = connectionGraph.connections();
+        return new SyncPanelStatePacket(getBlockPos(), syncEpoch, syncRevision,
+                comps, conns, currentNetworkSettings(), customName, redstonePowered);
+    }
+
+    /** Builds this flush's delta from the tracker marks. Bodies are captured to bytes here, on the server
+     *  thread — see {@link io.github.nbcss.createfactorycontroller.content.component.SyncCodecs#capture}. */
+    private SyncPanelDeltaPacket buildDelta() {
+        var registries = level.registryAccess();
+
+        // A marked component that is no longer on the board (and was never marked removed — normally the
+        // remove path does both) must not linger on clients: downgrade its upsert to a removal.
+        List<VirtualComponentPosition> removals = new ArrayList<>(deltaTracker.removedComponents());
+        List<SyncPanelDeltaPacket.ComponentUpsert> upserts = new ArrayList<>();
+        for (Map.Entry<VirtualComponentPosition, PanelDeltaTracker.Level> e : deltaTracker.components().entrySet()) {
+            VirtualComponentBehaviour component = components.get(e.getKey());
+            if (component == null) {
+                removals.add(e.getKey());
+                continue;
+            }
+            boolean full = e.getValue() == PanelDeltaTracker.Level.FULL;
+            byte[] body = SyncCodecs.capture(registries, buf -> {
+                if (full) {
+                    ComponentRegistry.writeComponent(buf, component);
+                } else {
+                    SyncCodecs.writePos(buf, component.position());
+                    component.writeClientState(buf);
+                }
+            });
+            upserts.add(new SyncPanelDeltaPacket.ComponentUpsert(full, body));
+        }
+
+        // Same downgrade for wires: a marked edge the graph no longer holds becomes a removal.
+        List<ConnectionKey> connRemovals = new ArrayList<>(deltaTracker.removedConnections());
+        List<byte[]> connUpserts = new ArrayList<>();
+        for (ConnectionKey key : deltaTracker.connections()) {
+            Connection conn = connectionGraph.get(key.from(), key.to());
+            if (conn == null) connRemovals.add(key);
+            else connUpserts.add(SyncCodecs.capture(registries, conn::writeClient));
+        }
+
+        List<NetworkSettings> netList = deltaTracker.isNetworksDirty() ? currentNetworkSettings() : null;
+        SyncPanelDeltaPacket.HeaderState header = deltaTracker.isHeaderDirty()
+                ? new SyncPanelDeltaPacket.HeaderState(customName, redstonePowered) : null;
+
+        return new SyncPanelDeltaPacket(getBlockPos(), syncEpoch, syncRevision - 1, syncRevision,
+                removals, connRemovals, upserts, connUpserts, netList, header);
+    }
+
+    /** The synced network-settings list: one entry per known network, defaults where nothing is stored. */
+    private List<NetworkSettings> currentNetworkSettings() {
         NetworkSettingsStore settingsStore = NetworkSettingsStore.get(level);
         List<NetworkSettings> netList = new ArrayList<>(networks.size());
         for (UUID id : networks)
             netList.add(settingsStore != null ? settingsStore.get(id) : NetworkSettings.defaultFor(id));
-        SyncPanelStatePacket packet = new SyncPanelStatePacket(getBlockPos(), comps, conns, netList, customName, redstonePowered);
-        for (ServerPlayer player : viewers)
-            PacketDistributor.sendToPlayer(player, packet);
+        return netList;
     }
 
     /** Re-syncs every open controller that uses {@code network} — called after its shared settings change,
@@ -774,7 +884,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (player.containerMenu instanceof FactoryControllerMenu menu
                     && player.level().getBlockEntity(menu.controllerPos) instanceof FactoryControllerBlockEntity be
                     && be.networks.contains(network))
-                be.sendData();
+                be.syncNetworks();
     }
 
     // ── MenuProvider ───────────────────────────────────────────────────────

@@ -65,7 +65,7 @@
   "createfactorycontroller.toast.order_complete": "Order shipped",
   "createfactorycontroller.toast.gauge_invalid": "Gauge became invalid",
   "createfactorycontroller.gui.custom_arrangement": "Use Custom Arrangement",
-  "createfactorycontroller.gui.custom_arrangement.tip": "Unpackage into configured layout",
+  "createfactorycontroller.gui.custom_arrangement.tip": "Unpackage into specific slots",
   "createfactorycontroller.gui.custom_slot_tip": "Unpack into inventory slot %1$s",
   "createfactorycontroller.gui.custom_slot_move": "Left-Drag to move",
   "createfactorycontroller.gui.custom_slot_copy": "Right-Drag to copy",

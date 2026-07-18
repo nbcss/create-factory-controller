@@ -76,7 +76,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
             Item item = BuiltInRegistries.ITEM.get(buf.readResourceLocation());
             LogicalTubeBehaviour t = new LogicalTubeBehaviour(null, pos, item);
             t.mode = SyncCodecs.readEnum(buf, Mode.values());
-            t.value = buf.readBoolean();
+            t.readClientState(buf);
             return t;
         }
     };
@@ -88,7 +88,17 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
         SyncCodecs.writePos(buf, position);
         buf.writeResourceLocation(getItemId());
         SyncCodecs.writeEnum(buf, mode);
-        buf.writeBoolean(value);   // runtime
+        writeClientState(buf);
+    }
+
+    @Override
+    public void writeClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        buf.writeBoolean(value);
+    }
+
+    @Override
+    public void readClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        value = buf.readBoolean();
     }
 
     public static final ResourceLocation TEXTURE =
@@ -169,7 +179,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
         if (value == nextValue) return;
         value = nextValue;
         publish(RedstoneConnection.TYPE);
-        if (controller != null) { controller.setChanged(); controller.sendData(); }
+        if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
 
     @Override
@@ -190,7 +200,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
         recomputeNext();
         if (controller != null) {
             controller.setChanged();
-            controller.sendData();
+            controller.syncComponentFull(position);   // mode is config, not runtime state
         }
     }
 

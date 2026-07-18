@@ -21,10 +21,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Server → client: full gauge + network snapshot so the open screen stays live.
- * Sent by FactoryControllerBlockEntity.sendData() to any player who has this menu open.
+ * Server → client: the authoritative full board snapshot (components + wires + networks + header), stamped
+ * with the controller's sync tokens. Sent by the menu-sync flush when a mutation escalated to
+ * {@code syncEverything()} (including the {@link RequestPanelResyncPacket} self-heal path); routine changes
+ * ride the much smaller {@link SyncPanelDeltaPacket} instead.
  */
 public record SyncPanelStatePacket(BlockPos pos,
+                                   int epoch,
+                                   int revision,
                                    List<VirtualComponentBehaviour> components,
                                    List<Connection> connections,
                                    List<NetworkSettings> networks,
@@ -81,16 +85,21 @@ public record SyncPanelStatePacket(BlockPos pos,
             @Override
             public @NotNull SyncPanelStatePacket decode(RegistryFriendlyByteBuf buf) {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
+                int epoch = buf.readVarInt();
+                int revision = buf.readVarInt();
                 List<VirtualComponentBehaviour> components = COMPONENT_LIST_CODEC.decode(buf);
                 List<Connection> connections = CONNECTION_LIST_CODEC.decode(buf);
                 List<NetworkSettings> networks = NETWORK_LIST_CODEC.decode(buf);
                 String controllerName = buf.readUtf();
                 boolean controllerPowered = buf.readBoolean();
-                return new SyncPanelStatePacket(pos, components, connections, networks, controllerName, controllerPowered);
+                return new SyncPanelStatePacket(pos, epoch, revision, components, connections, networks,
+                        controllerName, controllerPowered);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
                 BlockPos.STREAM_CODEC.encode(buf, packet.pos());
+                buf.writeVarInt(packet.epoch());
+                buf.writeVarInt(packet.revision());
                 COMPONENT_LIST_CODEC.encode(buf, packet.components());
                 CONNECTION_LIST_CODEC.encode(buf, packet.connections());
                 NETWORK_LIST_CODEC.encode(buf, packet.networks());
@@ -112,17 +121,8 @@ public record SyncPanelStatePacket(BlockPos pos,
             if (!(mc.player.containerMenu instanceof FactoryControllerMenu menu)) return;
             if (!menu.controllerPos.equals(packet.pos())) return;
 
-            menu.clearComponents();
-            for (VirtualComponentBehaviour b : packet.components()) menu.addComponent(b);
-            menu.loadConnections(packet.connections());   // rebuild the client graph from the synced central edge list
-            menu.knownNetworks.clear();
-            menu.networkSettings.clear();
-            for (NetworkSettings s : packet.networks()) {
-                menu.knownNetworks.add(s.network());
-                menu.networkSettings.put(s.network(), s);
-            }
-            menu.controllerName = packet.controllerName();
-            menu.controllerPowered = packet.controllerPowered();
+            menu.applyFullSync(packet.epoch(), packet.revision(), packet.components(), packet.connections(),
+                    packet.networks(), packet.controllerName(), packet.controllerPowered());
 
             // Refresh whichever of this controller's screens is active — the controller canvas itself
             // or a sub-screen (set-item / configure-recipe) that renders the canvas as its background.

@@ -14,9 +14,11 @@ Changes:
 
 Optimization:
 - Dashboard sync use much less bandwidth data now.
+- Open controller screen now receives incremental updates (only what changed each tick) instead of the whole board on every change, drastically reducing network traffic while the screen is open.
 
 Bugfixes:
 - Fixed gauge connection flow animation won't play without made at least one request attempt.
+- Fixed a compatibility issue which could cause connections to render incorrectly.
 - Fixed gauge request timer do not get reset when redstone powered state changes.
 - Fixed click suggested address in Recipe Settings screen could activate the count box input below.
 - Fixed controller screen view could move by WASD keys when typing in JEI/EMI search box.

@@ -4,6 +4,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
@@ -99,8 +100,10 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
         ConnectionValue out = outputValue(type);
         if (out == null) return;                       // I'm not a source of this type
         for (Connection c : graph().outgoingConnections(position, type))
-            if (c.setValue(out) && controller != null)
+            if (c.setValue(out) && controller != null) {
                 controller.markSinkDirty(c.to, type);
+                controller.syncConnection(ConnectionKey.of(c));   // the edge's carried value is rendered
+            }
     }
 
     @Override
@@ -110,13 +113,15 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
                 .toList();
         graph().disconnect(position);
         for (Connection conn : affected) {
+            if (controller != null) controller.syncConnectionRemoved(ConnectionKey.of(conn));
             if (position.equals(conn.to)) continue;       // we were the sink → the source side is unaffected
             VirtualComponentBehaviour sink = siblingAt(conn.to);
             if (sink == null) continue;
             if (controller != null) controller.markSinkDirty(conn.to, conn.type);
             else sink.onInputChanged(conn.type);
         }
-        if (controller != null) { controller.settleConnections(); controller.setChanged(); controller.sendData(); }
+        // Callers mark the component itself (removed / FULL); this only marks the wires it took down.
+        if (controller != null) { controller.settleConnections(); controller.setChanged(); }
     }
 
     @Override
@@ -127,7 +132,7 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
         for (Connection conn : toCycle) conn.arrowBendMode = sharedMode;
         if (controller != null) {
             controller.setChanged();
-            controller.sendData();
+            for (Connection conn : toCycle) controller.syncConnection(ConnectionKey.of(conn));
         }
     }
 

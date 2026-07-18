@@ -26,6 +26,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
+import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
@@ -497,7 +498,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         if (now == redstonePowered) return;
         redstonePowered = now;
         resetRequestTimer();
-        if (controller != null) { controller.setChanged(); controller.sendData(); }
+        if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
 
     public void resetRequestTimer() { timer = 1; }
@@ -705,7 +706,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         }
 
         controller.setChanged();
-        controller.sendData();
+        controller.syncComponentState(position);
     }
 
     // ── Storage queries ────────────────────────────────────────────────────
@@ -810,7 +811,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // Stamp the attempt so the client can flash the connections once per request (not continuously).
         lastRequestTick = controller.getLevel() == null ? 0 : controller.getLevel().getGameTime();
         controller.setChanged();
-        controller.sendData();
+        controller.syncComponentState(position);
         if (recipeAddress.isBlank()) return;            // recipe mode needs a packager address
 
         // A single request can carry several crafts in one package (crafter mode only); the per-craft
@@ -992,11 +993,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     private void setConnectionsSuccess(boolean value) {
         boolean changed = false;
         for (Connection conn : targetedBy().values())
-            if (conn instanceof LogisticsConnection lc && lc.success != value) { lc.success = value; changed = true; }
-        if (changed) {
+            if (conn instanceof LogisticsConnection lc && lc.success != value) {
+                lc.success = value;
+                changed = true;
+                controller.syncConnection(ConnectionKey.of(lc));
+            }
+        if (changed)
             controller.setChanged();
-            controller.sendData();
-        }
     }
 
     /** Crafts dispatched per request — {@code craftBatch} in crafter mode, forced to 1 elsewhere. Same value
@@ -1295,7 +1298,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (ItemStack s : activeCraftingArrangement) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, s);
         buf.writeVarInt(recipeSlots.size());
         for (RecipeSlot slot : recipeSlots) slot.write(buf);
-        // ── runtime ──
+        writeClientState(buf);
+    }
+
+    @Override
+    public void writeClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(count);
         buf.writeBoolean(satisfied);
         buf.writeBoolean(promisedSatisfied);
@@ -1304,6 +1311,18 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         buf.writeVarInt(stockLevel);
         buf.writeVarInt(promisedCount);
         buf.writeVarLong(lastRequestTick);
+    }
+
+    @Override
+    public void readClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
+        count = buf.readVarInt();
+        satisfied = buf.readBoolean();
+        promisedSatisfied = buf.readBoolean();
+        waitingForNetwork = buf.readBoolean();
+        redstonePowered = buf.readBoolean();
+        stockLevel = buf.readVarInt();
+        promisedCount = buf.readVarInt();
+        lastRequestTick = buf.readVarLong();
     }
 
     /** Reads the {@link #writeClient} body (everything after pos/item/network, which the {@code Type.fromClient} reads
@@ -1329,14 +1348,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         int slotCount = buf.readVarInt();
         recipeSlots = new ArrayList<>(slotCount);
         for (int i = 0; i < slotCount; i++) recipeSlots.add(RecipeSlot.read(buf));
-        count = buf.readVarInt();
-        satisfied = buf.readBoolean();
-        promisedSatisfied = buf.readBoolean();
-        waitingForNetwork = buf.readBoolean();
-        redstonePowered = buf.readBoolean();
-        stockLevel = buf.readVarInt();
-        promisedCount = buf.readVarInt();
-        lastRequestTick = buf.readVarLong();
+        readClientState(buf);
     }
 
     @Override

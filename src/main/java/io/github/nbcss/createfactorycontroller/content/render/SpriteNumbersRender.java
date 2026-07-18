@@ -25,6 +25,7 @@ public final class SpriteNumbersRender {
     public static final String MULTIPLY = "x";
     public static final String PLUS = "+";
     public static final String MINUS = "-";
+    public static final String HASH = "#";
     /** Clock face (row 4) — prefixes a request-interval readout, e.g. {@code CLOCK + "2"}. */
     public static final String CLOCK = "⏱";      // ⏱
 
@@ -108,6 +109,7 @@ public final class SpriteNumbersRender {
             case 'x' -> new int[]{ 33, 16, 5 };       // multiply
             case '+' -> new int[]{ 39, 16, 5 };       // plus
             case '-' -> new int[]{ 45, 16, 5 };       // minus
+            case '#' -> new int[]{ 51, 16, 7 };       // hash
             case '⏱' -> new int[]{ 0, 24, 7 };        // clock (row 4)
             default -> null;
         };

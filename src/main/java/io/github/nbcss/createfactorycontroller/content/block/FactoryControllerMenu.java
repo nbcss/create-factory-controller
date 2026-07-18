@@ -40,6 +40,15 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     public boolean controllerPowered = false;
     public final BlockPos controllerPos;
 
+    // ── Client-side sync tokens (mirrors of FactoryControllerBlockEntity#syncEpoch/syncRevision) ──
+    /** BE-instance token; a delta from a different BE load can never match it. */
+    public int syncEpoch;
+    /** Revision this menu's state reflects. A delta applies only when its base equals this. */
+    public int syncRevision;
+    /** True while a full-resync request is in flight, so a burst of bad deltas asks only once.
+     *  Cleared when the full snapshot arrives ({@link #applyFullSync}). */
+    public boolean resyncPending = false;
+
     // Server-side: reference to the actual BE
     @Nullable private final FactoryControllerBlockEntity blockEntity;
 
@@ -70,6 +79,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         this.blockEntity = null;
         this.controllerPos = buf.readBlockPos();
         this.cachedPlayerInventory = playerInventory;
+        this.syncEpoch = buf.readVarInt();
+        this.syncRevision = buf.readVarInt();
 
         int componentCount = buf.readVarInt();
         for (int i = 0; i < componentCount; i++) {
@@ -207,6 +218,72 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         bindConnectionHooks();
     }
 
+    // ── Sync apply (full snapshot + per-item deltas; called by the sync packet handlers) ─────────
+
+    /** Wholesale board replace from a full snapshot (menu-open equivalent). Authoritative: resets the sync
+     *  tokens unconditionally, which also ends any pending resync round-trip. */
+    public void applyFullSync(int epoch, int revision,
+                              Collection<? extends VirtualComponentBehaviour> newComponents,
+                              List<Connection> connections,
+                              List<NetworkSettings> networks,
+                              String name, boolean powered) {
+        setComponents(newComponents);
+        loadConnections(connections);
+        applyNetworkSettings(networks);
+        controllerName = name;
+        controllerPowered = powered;
+        syncEpoch = epoch;
+        syncRevision = revision;
+        resyncPending = false;
+    }
+
+    /** Replaces the synced network-settings mirror (full snapshot, or a delta's networks section). */
+    public void applyNetworkSettings(List<NetworkSettings> settings) {
+        knownNetworks.clear();
+        networkSettings.clear();
+        for (NetworkSettings s : settings) {
+            knownNetworks.add(s.network());
+            networkSettings.put(s.network(), s);
+        }
+    }
+
+    /** Delta apply: replace-or-add one component (a FULL upsert). Idempotent. */
+    public void upsertComponent(VirtualComponentBehaviour component) {
+        VirtualComponentBehaviour old = componentsByPosition.remove(component.position());
+        if (old != null) components.remove(old);
+        addComponent(component);
+    }
+
+    /** Delta apply: drop the component at {@code pos} and every wire touching it — mirroring the server's
+     *  remove path, whose packet also carries those wires as explicit removals (re-removal is a no-op). */
+    public void removeComponentAt(VirtualComponentPosition pos) {
+        VirtualComponentBehaviour old = componentsByPosition.remove(pos);
+        if (old != null) components.remove(old);
+        connectionGraph.disconnect(pos);
+    }
+
+    /** The wire currently held for {@code from → to}, or null. Lets the delta handler learn the type of a
+     *  wire it is about to remove (for the sink re-fold). */
+    public Connection connectionAt(VirtualComponentPosition from, VirtualComponentPosition to) {
+        return connectionGraph.get(from, to);
+    }
+
+    /** Delta apply: add-or-replace one wire (the graph keeps one wire per endpoint pair). */
+    public void putConnection(Connection conn) {
+        connectionGraph.add(conn);
+    }
+
+    /** Delta apply: remove the wire {@code from → to}, if present. */
+    public void removeConnectionAt(VirtualComponentPosition from, VirtualComponentPosition to) {
+        connectionGraph.remove(to, from);
+    }
+
+    /** Re-folds one sink after its incoming wires changed (the client-side mirror of the server's settle). */
+    public void refoldSink(VirtualComponentPosition pos, Connection.Type type) {
+        VirtualComponentBehaviour sink = componentAt(pos);
+        if (sink != null) sink.onInputChanged(type);
+    }
+
     private void bindConnectionHooks() {
         // Edges arrive with their value; each sink re-folds from them (no callbacks to rebind in the new model).
         for (Connection conn : connectionGraph.connections()) {
@@ -234,6 +311,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     /** Called by NeoForge when the server opens this menu for a player. */
     public static void writeExtraData(FactoryControllerBlockEntity be, RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(be.getBlockPos());
+        // Sync tokens: the deltas that follow this open build on exactly this revision. The end-of-tick
+        // flush may re-send state this snapshot already contains (base = this revision) — upserts are
+        // idempotent state carriers, so the double-apply is harmless.
+        buf.writeVarInt(be.syncEpoch());
+        buf.writeVarInt(be.syncRevision());
 
         buf.writeVarInt(be.components.size());
         for (VirtualComponentBehaviour b : be.components.values())

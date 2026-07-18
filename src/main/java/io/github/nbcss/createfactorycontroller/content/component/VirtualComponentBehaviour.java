@@ -60,8 +60,26 @@ public interface VirtualComponentBehaviour {
     String typeId();
 
     /** Writes everything the client needs to render this component, binary (no NBT keys). Body is ordered
-     *  config-then-runtime so it can later be split for a runtime-only delta packet. Read by {@code Type.fromClient}. */
+     *  config-then-runtime: it MUST end with exactly the {@link #writeClientState} bytes (implementations call it
+     *  as their last write), and {@code Type.fromClient} must end by reading them via {@link #readClientState}.
+     *  Read by {@code Type.fromClient}. */
     void writeClient(net.minecraft.network.RegistryFriendlyByteBuf buf);
+
+    /**
+     * Writes only the runtime ("hot") fields — the tail of {@link #writeClient}. These are the fields the server
+     * mutates during normal operation (counts, satisfied/powered flags, request stamps) and syncs via a cheap
+     * per-component STATE delta, as opposed to config fields, which only change on player edits and sync as a
+     * FULL body.
+     *
+     * <p><b>Adding a field:</b> a new runtime field goes in this write/read pair only — it then automatically
+     * rides both the full snapshot and the STATE delta. A new config field goes in the {@code writeClient} body /
+     * {@code Type.fromClient} instead (its edit path must mark {@code syncComponentFull}).</p>
+     */
+    void writeClientState(net.minecraft.network.RegistryFriendlyByteBuf buf);
+
+    /** Reads {@link #writeClientState} into this (client-side) instance, mutating it in place — the STATE delta
+     *  apply. The menu's widgets wrap behaviour instances, so they observe the new values without a rebuild. */
+    void readClientState(net.minecraft.network.RegistryFriendlyByteBuf buf);
 
     // ── Identity & placement ────────────────────────────────────────────────
 
