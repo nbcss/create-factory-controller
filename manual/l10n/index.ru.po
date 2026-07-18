@@ -1,21 +1,20 @@
-# Russian translations for Create: Factory Controller Manual package
-# Copyright (C) 2026 Contributors
-# This file is distributed under the same license as the Create: Factory Controller Manual package.
-# Automatically generated, 2026.
-#
 msgid ""
 msgstr ""
-"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"Project-Id-Version: createfactorycontroller\n"
 "POT-Creation-Date: 2026-07-18 01:46+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-18 12:48\n"
+"Last-Translator: \n"
+"Language-Team: Russian\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=4; plural=((n%10==1 && n%100!=11) ? 0 : ((n%10 >= 2 && n%10 <=4 && (n%100 < 12 || n%100 > 14)) ? 1 : ((n%10 == 0 || (n%10 >= 5 && n%10 <=9)) || (n%100 >= 11 && n%100 <= 14)) ? 2 : 3));\n"
+"X-Crowdin-Project: createfactorycontroller\n"
+"X-Crowdin-Project-ID: 906281\n"
+"X-Crowdin-Language: ru\n"
+"X-Crowdin-File: /main/manual/l10n/index.pot\n"
+"X-Crowdin-File-ID: 49\n"
 
 #. type: Title =
 #: ../src/index.adoc:1
@@ -25,13 +24,7 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/index.adoc:4
-msgid ""
-"Create: Factory Controller introduces a new block, the \"Factory "
-"Controller\". It allows you to place factory gauges on a virtual board "
-"stored in a single block, instead of having a wall of gauges in the game "
-"world. The factory gauges are managed via a GUI. The mod adds many "
-"enhancements to factory gauges, and some other components may also be placed "
-"in factory controllers."
+msgid "Create: Factory Controller introduces a new block, the \"Factory Controller\". It allows you to place factory gauges on a virtual board stored in a single block, instead of having a wall of gauges in the game world. The factory gauges are managed via a GUI. The mod adds many enhancements to factory gauges, and some other components may also be placed in factory controllers."
 msgstr ""
 
 #. type: Title ==
@@ -67,3 +60,4 @@ msgstr ""
 #, no-wrap
 msgid "xref:redstone-link.adoc[Redstone Link]"
 msgstr ""
+
