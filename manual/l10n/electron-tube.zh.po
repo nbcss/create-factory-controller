@@ -1,19 +1,20 @@
-# Chinese translations for Create: Factory Controller Manual package
-# Copyright (C) 2026 Contributors
-# This file is distributed under the same license as the Create: Factory Controller Manual package.
-# Automatically generated, 2026.
-#
 msgid ""
 msgstr ""
-"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"Project-Id-Version: createfactorycontroller\n"
 "POT-Creation-Date: 2026-07-18 00:38+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-18 12:48\n"
+"Last-Translator: \n"
+"Language-Team: Chinese Simplified\n"
 "Language: zh\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Crowdin-Project: createfactorycontroller\n"
+"X-Crowdin-Project-ID: 906281\n"
+"X-Crowdin-Language: zh-CN\n"
+"X-Crowdin-File: /main/manual/l10n/electron-tube.pot\n"
+"X-Crowdin-File-ID: 45\n"
 
 #. type: Title =
 #: ../src/electron-tube.adoc:1
@@ -23,10 +24,7 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/electron-tube.adoc:4
-msgid ""
-"Electron tubes may be placed inside factory controllers, in which they "
-"function as boolean logic operators for redstone connections. When placed, "
-"they are referred to as \"logical tubes\"."
+msgid "Electron tubes may be placed inside factory controllers, in which they function as boolean logic operators for redstone connections. When placed, they are referred to as \"logical tubes\"."
 msgstr ""
 
 #. type: Block title
@@ -49,10 +47,7 @@ msgstr ""
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:15
-msgid ""
-"Each logical tube may be connected with 0 or more redstone inputs, and "
-"outputs a redstone signal according the rules of a logical operator, "
-"determined by its mode."
+msgid "Each logical tube may be connected with 0 or more redstone inputs, and outputs a redstone signal according the rules of a logical operator, determined by its mode."
 msgstr ""
 
 #. type: #logical-operators
@@ -68,9 +63,7 @@ msgstr ""
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:20
-msgid ""
-"Output on when any connected input is on. Otherwise output off. When "
-"unconnected, output off."
+msgid "Output on when any connected input is on. Otherwise output off. When unconnected, output off."
 msgstr ""
 
 #. type: Labeled list
@@ -81,9 +74,7 @@ msgstr ""
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:22
-msgid ""
-"Output on when all connected inputs are on. Otherwise output off. When "
-"unconnected, output on."
+msgid "Output on when all connected inputs are on. Otherwise output off. When unconnected, output on."
 msgstr ""
 
 #. type: Labeled list
@@ -128,8 +119,7 @@ msgstr ""
 #. type: #configuration
 #: ../src/electron-tube.adoc:48
 #, no-wrap
-msgid ""
-"&#x2776; Inputs::\n"
+msgid "&#x2776; Inputs::\n"
 "  Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.\n"
 "&#x2777; Operator::\n"
 "  Displays the currently selected operator.\n"
@@ -144,3 +134,4 @@ msgid ""
 "&#x277C; Confirm button::\n"
 "  Click to confirm settings and close this screen.\n"
 msgstr ""
+
