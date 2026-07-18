@@ -23,7 +23,11 @@ Directory structure:
 
 == Build
 
-Install `ruby-bundler` and `po4a`.
+Install:
+
+* Ruby ≥ 3.4
+* Ruby Bundler
+* po4a ≥ 0.74
 
 [source,sh]
 ----

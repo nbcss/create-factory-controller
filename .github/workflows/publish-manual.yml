@@ -7,14 +7,52 @@ on:
     paths:
       - manual/**
       - .github/workflows/publish-manual.yml
-  workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
+
+  build-container:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: manual
+
+      - name: Check for container changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            container:
+              - manual/Containerfile
+              - manual/Gemfile
+              - manual/Gemfile.lock
+
+      - name: Log in to GitHub Container Registry
+        if: steps.filter.outputs.container == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push manual-builder
+        if: steps.filter.outputs.container == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./manual
+          file: ./manual/Containerfile
+          tags: ghcr.io/${{ github.repository }}/manual-builder:latest
+          push: true
+
   build:
-    runs-on: ubuntu-26.04
+    needs: build-container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -22,21 +60,8 @@ jobs:
           lfs: true
           sparse-checkout: manual
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.4.8'
-          bundler-cache: true
-          working-directory: ./manual
-
-      - name: Install po4a
-        uses: ConorMacBride/install-package@v1
-        with:
-          apt: po4a
-
       - name: Build manual
-        working-directory: manual
-        run: bundle exec rake build
+        run: docker run --rm --volume "${{ github.workspace }}/manual:/work" ghcr.io/${{ github.repository }}/manual-builder:latest -- rake build
 
       - name: Prepare Pages content
         run: |
@@ -53,14 +78,14 @@ jobs:
           include-hidden-files: true
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-26.04
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
