@@ -1,21 +1,20 @@
-# Russian translations for Create: Factory Controller Manual package
-# Copyright (C) 2026 Contributors
-# This file is distributed under the same license as the Create: Factory Controller Manual package.
-# Automatically generated, 2026.
-#
 msgid ""
 msgstr ""
-"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"Project-Id-Version: createfactorycontroller\n"
 "POT-Creation-Date: 2026-07-18 00:38+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-18 12:48\n"
+"Last-Translator: \n"
+"Language-Team: Russian\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=4; plural=((n%10==1 && n%100!=11) ? 0 : ((n%10 >= 2 && n%10 <=4 && (n%100 < 12 || n%100 > 14)) ? 1 : ((n%10 == 0 || (n%10 >= 5 && n%10 <=9)) || (n%100 >= 11 && n%100 <= 14)) ? 2 : 3));\n"
+"X-Crowdin-Project: createfactorycontroller\n"
+"X-Crowdin-Project-ID: 906281\n"
+"X-Crowdin-Language: ru\n"
+"X-Crowdin-File: /main/manual/l10n/redstone-link.pot\n"
+"X-Crowdin-File-ID: 51\n"
 
 #. type: Title ==
 #: ../src/electron-tube.adoc:28 ../src/redstone-link.adoc:38
@@ -31,12 +30,7 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/redstone-link.adoc:4
-msgid ""
-"Redstone links enable remote transmission and reception of redstone signals, "
-"as described in their in-game ponder. When placed in factory controllers, "
-"they may be connected with other components with redstone capabilities, "
-"allowing them to interoperate with contraptions outside the factory "
-"controller."
+msgid "Redstone links enable remote transmission and reception of redstone signals, as described in their in-game ponder. When placed in factory controllers, they may be connected with other components with redstone capabilities, allowing them to interoperate with contraptions outside the factory controller."
 msgstr ""
 
 #. type: Block title
@@ -106,24 +100,17 @@ msgstr ""
 
 #. type: horizontal
 #: ../src/redstone-link.adoc:28
-msgid ""
-"Sends the powered state of its incoming redstone connections to other "
-"redstone links on the same channel."
+msgid "Sends the powered state of its incoming redstone connections to other redstone links on the same channel."
 msgstr ""
 
 #. type: horizontal
 #: ../src/redstone-link.adoc:29
-msgid ""
-"Receives from other redstone links on the same channel. If any of them is "
-"powered, it powers its outgoing redstone connections."
+msgid "Receives from other redstone links on the same channel. If any of them is powered, it powers its outgoing redstone connections."
 msgstr ""
 
 #. type: horizontal
 #: ../src/redstone-link.adoc:31
-msgid ""
-"Redstone links are distinguished by channels, which consists of 2 item "
-"types. Each channel carries a redstone signal independently of the others. "
-"Examples of distinct channels are:"
+msgid "Redstone links are distinguished by channels, which consists of 2 item types. Each channel carries a redstone signal independently of the others. Examples of distinct channels are:"
 msgstr ""
 
 #. type: horizontal
@@ -148,9 +135,7 @@ msgstr ""
 
 #. type: #configuration
 #: ../src/redstone-link.adoc:41
-msgid ""
-"After placing a redstone link on the virtual board, clicking the component "
-"opens its configuration screen."
+msgid "After placing a redstone link on the virtual board, clicking the component opens its configuration screen."
 msgstr ""
 
 #. type: Block title
@@ -162,8 +147,7 @@ msgstr ""
 #. type: #configuration
 #: ../src/redstone-link.adoc:54
 #, no-wrap
-msgid ""
-"&#x2776; &#x2777; Channel::\n"
+msgid "&#x2776; &#x2777; Channel::\n"
 "  Place an item, or drag a ghost item from JEI, to set the channel of the redstone link.\n"
 "&#x2778; Relocate button::\n"
 "  Click to move the location of this redstone link on the virtual board.\n"
@@ -174,3 +158,4 @@ msgid ""
 "&#x277B; Confirm button::\n"
 "  Click to confirm settings and close the screen.\n"
 msgstr ""
+
