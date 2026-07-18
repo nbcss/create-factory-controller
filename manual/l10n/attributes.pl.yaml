@@ -1,0 +1,21 @@
+# Translatable attributes common to all documents
+0: '%YAML 1.2'
+---
+site-name: "Create: Factory Controller"
+site-nav-manual: Manual
+site-nav-manual-home: Home
+site-nav-langs: Change Language
+no-translation:
+  title: Translation Unavailable
+  content: "A translated version of this page is not yet available. You may:"
+  read-source-lang: Read the English version of this page
+  help-translate: Help translate this page
+toc-title: Table of Contents
+section-refsig: Section
+figure-caption: Figure
+table-caption: Table
+tip-caption: Tip
+note-caption: Note
+important-caption: Important
+caution-caption: Caution
+warning-caption: Warning
