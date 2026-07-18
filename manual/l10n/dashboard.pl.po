@@ -1,21 +1,20 @@
-# Polish translations for Create: Factory Controller Manual package
-# Copyright (C) 2026 Contributors
-# This file is distributed under the same license as the Create: Factory Controller Manual package.
-# Automatically generated, 2026.
-#
 msgid ""
 msgstr ""
-"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"Project-Id-Version: createfactorycontroller\n"
 "POT-Creation-Date: 2026-07-18 00:38+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-18 12:48\n"
+"Last-Translator: \n"
+"Language-Team: Polish\n"
 "Language: pl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
-"|| n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+"X-Crowdin-Project: createfactorycontroller\n"
+"X-Crowdin-Project-ID: 906281\n"
+"X-Crowdin-Language: pl\n"
+"X-Crowdin-File: /main/manual/l10n/dashboard.pot\n"
+"X-Crowdin-File-ID: 43\n"
 
 #. type: Title =
 #: ../src/dashboard.adoc:1
@@ -25,10 +24,7 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/dashboard.adoc:4
-msgid ""
-"The dashboard UI appears when you interact with a factory controller block. "
-"It displays a virtual 2D board on which you can place xref:factory-"
-"gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
+msgid "The dashboard UI appears when you interact with a factory controller block. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
 msgstr ""
 
 #. type: Block title
@@ -123,8 +119,7 @@ msgstr ""
 #. type: TIP
 #: ../src/dashboard.adoc:48
 #, no-wrap
-msgid ""
-"&#x2776; Title bar::\n"
+msgid "&#x2776; Title bar::\n"
 "  Shows the name of this factory controller. Name can be edited by clicking on it.\n"
 "&#x2777; Help button::\n"
 "  Opens this help page.\n"
@@ -149,9 +144,7 @@ msgstr ""
 
 #. type: #navigation
 #: ../src/dashboard.adoc:53
-msgid ""
-"Drag with the left mouse button to pan the view around the virtual board. "
-"The W, A, S, D keys can also be used to move the view in cardinal directions."
+msgid "Drag with the left mouse button to pan the view around the virtual board. The W, A, S, D keys can also be used to move the view in cardinal directions."
 msgstr ""
 
 #. type: #navigation
@@ -173,13 +166,7 @@ msgstr ""
 
 #. type: #components
 #: ../src/dashboard.adoc:63
-msgid ""
-"To place a component, grab a corresponding item from the inventory and click "
-"on an empty spot on the board. The xref:components.adoc[Components] page "
-"lists all items that may be placed. Notably, factory gauges need to be "
-"<<network-selector,tuned to a network>> before being placed. Placed items "
-"will be stored inside the factory controller, even when the factory "
-"controller block is mined."
+msgid "To place a component, grab a corresponding item from the inventory and click on an empty spot on the board. The xref:components.adoc[Components] page lists all items that may be placed. Notably, factory gauges need to be <<network-selector,tuned to a network>> before being placed. Placed items will be stored inside the factory controller, even when the factory controller block is mined."
 msgstr ""
 
 #. type: Block title
@@ -190,27 +177,17 @@ msgstr ""
 
 #. type: #components
 #: ../src/dashboard.adoc:68
-msgid ""
-"Holding shift and clicking on a component removes it from the controller and "
-"returns the item to your inventory."
+msgid "Holding shift and clicking on a component removes it from the controller and returns the item to your inventory."
 msgstr ""
 
 #. type: #components
 #: ../src/dashboard.adoc:70
-msgid ""
-"Either left- or right-clicking a component opens its configuration screen. "
-"To move a component, open its screen and click the image:btn-"
-"relocate.png[,18,18] \"relocate\" button, then click on a new location for "
-"the component."
+msgid "Either left- or right-clicking a component opens its configuration screen. To move a component, open its screen and click the image:btn-relocate.png[,18,18] \"relocate\" button, then click on a new location for the component."
 msgstr ""
 
 #. type: #components
 #: ../src/dashboard.adoc:72
-msgid ""
-"Multiple components may be selected. Hold Ctrl and drag with the left mouse "
-"button to select all components within a rectangular area. Selected "
-"components are indicated with a green outline. To add and remove individual "
-"components from the selection, hold Ctrl and left-click them."
+msgid "Multiple components may be selected. Hold Ctrl and drag with the left mouse button to select all components within a rectangular area. Selected components are indicated with a green outline. To add and remove individual components from the selection, hold Ctrl and left-click them."
 msgstr ""
 
 #. type: Block title
@@ -221,10 +198,7 @@ msgstr ""
 
 #. type: #components
 #: ../src/dashboard.adoc:77
-msgid ""
-"When components are selected, drag on any of them to move all selected "
-"components. Likewise, shift-clicking on any of them removes all selected "
-"components from the board."
+msgid "When components are selected, drag on any of them to move all selected components. Likewise, shift-clicking on any of them removes all selected components from the board."
 msgstr ""
 
 #. type: Title ==
@@ -235,27 +209,17 @@ msgstr ""
 
 #. type: #connections
 #: ../src/dashboard.adoc:82
-msgid ""
-"Components may be connected to one another. Refer to a specific component's "
-"documentation for the functionality provided by connections."
+msgid "Components may be connected to one another. Refer to a specific component's documentation for the functionality provided by connections."
 msgstr ""
 
 #. type: #connections
 #: ../src/dashboard.adoc:84
-msgid ""
-"To connect component A to B, click on B to open its UI, click on the "
-"image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
-"click A. Some components may only act as the source or sink of a connection, "
-"in which case a valid direction is automatically chosen."
+msgid "To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] \"add connection\" button, and then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen."
 msgstr ""
 
 #. type: #connections
 #: ../src/dashboard.adoc:86
-msgid ""
-"A component's UI may allow you to remove its connections. They can also be "
-"removed using the dashboard by hovering over them and shift-clicking. When "
-"multiple connections overlap, hold shift and scroll while hovering over a "
-"spot with overlapping connections to select one of them."
+msgid "A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them."
 msgstr ""
 
 #. type: Block title
@@ -266,11 +230,7 @@ msgstr ""
 
 #. type: #connections
 #: ../src/dashboard.adoc:91
-msgid ""
-"Connections automatically choose paths between their 2 ends. To customize "
-"this path, select from 4 path modes by hovering over a connection and "
-"pressing R. The bend modes of all connections on one component can be "
-"changed by pressing R on the component."
+msgid "Connections automatically choose paths between their 2 ends. To customize this path, select from 4 path modes by hovering over a connection and pressing R. The bend modes of all connections on one component can be changed by pressing R on the component."
 msgstr ""
 
 #. type: Block title
@@ -293,11 +253,7 @@ msgstr ""
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:102
-msgid ""
-"Factory gauges need to be tuned to a network before being placed in the "
-"controller. The first gauge needs to be tuned the usual way (e.g. by "
-"interacting with a stock link with a gauge in hand). Once a tuned gauge is "
-"placed in the controller, its network appears in the network selector."
+msgid "Factory gauges need to be tuned to a network before being placed in the controller. The first gauge needs to be tuned the usual way (e.g. by interacting with a stock link with a gauge in hand). Once a tuned gauge is placed in the controller, its network appears in the network selector."
 msgstr ""
 
 #. type: Block title
@@ -308,20 +264,12 @@ msgstr ""
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:107
-msgid ""
-"With an empty cursor, scrolling with the mouse wheel selects one of the "
-"tuned networks, highlighting all components tuned to that network with a "
-"blue outline. The number of components tuned to the network also appears on "
-"the network selector icon."
+msgid "With an empty cursor, scrolling with the mouse wheel selects one of the tuned networks, highlighting all components tuned to that network with a blue outline. The number of components tuned to the network also appears on the network selector icon."
 msgstr ""
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:109
-msgid ""
-"While holding a factory gauge item, scrolling on the network selector "
-"changes the network this item is tuned to, allowing you to quickly tune a "
-"new gauge to an existing network. Holding shift and scrolling accomplishes "
-"the same."
+msgid "While holding a factory gauge item, scrolling on the network selector changes the network this item is tuned to, allowing you to quickly tune a new gauge to an existing network. Holding shift and scrolling accomplishes the same."
 msgstr ""
 
 #. type: Title ==
@@ -332,19 +280,12 @@ msgstr ""
 
 #. type: #additional-interactions
 #: ../src/dashboard.adoc:114
-msgid ""
-"Some components, like the xref:redstone-link.adoc[redstone link], have modes "
-"of operation that can be switched either by pressing the F key while "
-"hovering over them in the dashboard, or through their configuration UI."
+msgid "Some components, like the xref:redstone-link.adoc[redstone link], have modes of operation that can be switched either by pressing the F key while hovering over them in the dashboard, or through their configuration UI."
 msgstr ""
 
 #. type: #additional-interactions
 #: ../src/dashboard.adoc:116
-msgid ""
-"Each factory gauge displays a label, providing relevant information (e.g. "
-"items in stock) at a glance. When the labels become distracting or obstruct "
-"other components, they can be hidden by pressing Alt. Then only the label of "
-"the hovered component is displayed. Press Alt again to show all labels."
+msgid "Each factory gauge displays a label, providing relevant information (e.g. items in stock) at a glance. When the labels become distracting or obstruct other components, they can be hidden by pressing Alt. Then only the label of the hovered component is displayed. Press Alt again to show all labels."
 msgstr ""
 
 #. type: Block title
@@ -472,3 +413,4 @@ msgstr ""
 #, no-wrap
 msgid "Alt"
 msgstr ""
+
