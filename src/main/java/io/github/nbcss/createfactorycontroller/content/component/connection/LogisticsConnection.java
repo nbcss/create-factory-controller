@@ -98,6 +98,13 @@ public class LogisticsConnection extends Connection {
     }
 
     @Override
+    public CompoundTag toExportNBT() {
+        CompoundTag tag = super.toNBT();
+        tag.putInt("Amount", Math.max(1, amount));
+        return tag;
+    }
+
+    @Override
     protected void writeClientExtra(net.minecraft.network.RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(Math.max(1, amount));
         buf.writeBoolean(success);

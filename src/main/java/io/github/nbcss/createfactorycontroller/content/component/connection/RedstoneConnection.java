@@ -82,6 +82,11 @@ public class RedstoneConnection extends Connection {
     }
 
     @Override
+    public CompoundTag toExportNBT() {
+        return super.toNBT();
+    }
+
+    @Override
     protected void writeClientExtra(net.minecraft.network.RegistryFriendlyByteBuf buf) {
         io.github.nbcss.createfactorycontroller.content.component.SyncCodecs.writeEnum(buf, state);
     }

@@ -56,6 +56,12 @@ public abstract class Connection {
         return tag;
     }
 
+    /**
+     * Writes the persistent configuration that belongs in a component blueprint. Runtime state must be omitted.
+     * This is deliberately abstract so every new connection kind has to make an explicit export decision.
+     */
+    public abstract CompoundTag toExportNBT();
+
     public int getConnectionColor(ComponentHolder holder) { return 0x888898; }
 
     public long getAnimationTick(ComponentHolder holder) { return -1; }

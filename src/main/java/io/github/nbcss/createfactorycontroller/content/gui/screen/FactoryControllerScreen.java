@@ -44,7 +44,9 @@ import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionP
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.Rect2i;
@@ -57,7 +59,6 @@ import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -151,8 +152,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings");
     private static final ResourceLocation SETTINGS_BTN_HOVER_SPRITE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/settings_hover");
+    private static final ResourceLocation BP_OPEN_BTN_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_open");
+    private static final ResourceLocation BP_OPEN_BTN_HOVER_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_open_hover");
+    private static final ResourceLocation BP_SAVE_BTN_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_save");
+    private static final ResourceLocation BP_SAVE_BTN_HOVER_SPRITE =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_save_hover");
     private static final String HELP_URL = "https://github.com/nbcss/create-factory-controller/wiki/Dashboard";
     @Nullable private GraphicButton settingsButton = null;
+    @Nullable private BlueprintButton blueprintButton = null;
     @Nullable private HelpButton helpButton = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
@@ -210,10 +220,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      *  the target it applies to. Reset to -1 (auto) whenever the hovered target changes. Applied to the created wire. */
     private int previewArrowMode = -1;
     @Nullable private VirtualComponentPosition previewArrowTarget = null;
-    @Nullable private Component actionPrompt = null;
-    // When the prompt should disappear (millis). Long.MAX_VALUE for the persistent mode prompts;
-    // a finite value for transient messages (e.g. the arrow-mode chime), which fade out near expiry.
-    private long actionPromptExpiry = Long.MAX_VALUE;
+    /** Long-lived mode prompt (connect / relocate). The current selection status is also rendered in this channel. */
+    @Nullable private Component persistentActionPrompt = null;
+    /** Most recent transient result/chime. Independent from the persistent channel so both can be visible. */
+    @Nullable private Component temporaryActionPrompt = null;
+    /** Wall-clock expiry of {@link #temporaryActionPrompt}; it fades during its final second. */
+    private long temporaryActionPromptExpiry = 0;
 
     // Pan drag state (middle mouse)
     private boolean isDragging = false;
@@ -299,6 +311,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .addGraphic(GraphicButton.DISPLAY_HOVER, SETTINGS_BTN_HOVER_SPRITE)
                 .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
+
+        if (blueprintButton != null) removeWidget(blueprintButton);
+        blueprintButton = new BlueprintButton(settingsButtonX(), blueprintButtonY());
+        addWidget(blueprintButton);
 
         // Rebuild the rename field at the new layout, preserving any in-progress edit across resize.
         String currentName = nameBox != null ? nameBox.getValue() : menu.controllerName;
@@ -405,6 +421,49 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return topPos + CANVAS_TOP_PADDING + 8;
     }
 
+    private int blueprintButtonY() {
+        return settingsButtonY() + SETTINGS_BTN_H;
+    }
+
+    /** One toolbar widget whose visuals, tooltip and click action follow the current selection state. */
+    private class BlueprintButton extends AbstractWidget {
+        BlueprintButton(int x, int y) {
+            super(x, y, SETTINGS_BTN_W, SETTINGS_BTN_H, Component.empty());
+        }
+
+        private boolean saveMode() {
+            return !selected.isEmpty();
+        }
+
+        private Component tooltip() {
+            return Component.translatable(saveMode()
+                    ? "createfactorycontroller.gui.blueprint.save_blueprint"
+                    : "createfactorycontroller.gui.blueprint.load_blueprint");
+        }
+
+        @Override
+        protected void renderWidget(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            boolean save = saveMode();
+            ResourceLocation sprite = save
+                    ? (isHovered() ? BP_SAVE_BTN_HOVER_SPRITE : BP_SAVE_BTN_SPRITE)
+                    : (isHovered() ? BP_OPEN_BTN_HOVER_SPRITE : BP_OPEN_BTN_SPRITE);
+            RenderSystem.enableBlend();
+            graphics.blitSprite(sprite, getX(), getY(), getWidth(), getHeight());
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (!isValidClickButton(button) || !clicked(mouseX, mouseY) || !saveMode()) return false;
+            playDownSound(Minecraft.getInstance().getSoundManager());
+            Minecraft.getInstance().setScreen(
+                    new BlueprintSaveScreen(FactoryControllerScreen.this, new LinkedHashSet<>(selected)));
+            return true;
+        }
+
+        @Override
+        protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {}
+    }
+
     private void toggleInventory() {
         inventoryExpanded = !inventoryExpanded;
         menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
@@ -502,6 +561,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY)
                     && settingsButton.getTooltipText() != null)
                 graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
+            else if (blueprintButton != null && blueprintButton.isMouseOver(mouseX, mouseY))
+                graphics.renderTooltip(font, blueprintButton.tooltip(), mouseX, mouseY);
             else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY)
                     && helpButton.getTooltipText() != null)
                 graphics.renderTooltip(font, helpButton.getTooltipText(), mouseX, mouseY);
@@ -530,35 +591,46 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         renderInventoryBackground(graphics);
         if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
 
-        Component selectionStatus = selectionStatusPrompt();
-        Component prompt;
-        int alpha = 255;
-        if (selectionStatus != null) {
-            prompt = selectionStatus;
-        } else {
-            prompt = actionPrompt;
-            if (prompt != null) {
-                long remaining = actionPromptExpiry - Util.getMillis();
-                if (remaining <= 0) { actionPrompt = null; prompt = null; }
-                else alpha = (int) (Mth.clamp(remaining / 1000f, 0f, 1f) * 255f);
+        Component persistentPrompt = selectionStatusPrompt();
+        if (persistentPrompt == null) persistentPrompt = persistentActionPrompt;
+
+        Component temporaryPrompt = temporaryActionPrompt;
+        int temporaryAlpha = 255;
+        if (temporaryPrompt != null) {
+            long remaining = temporaryActionPromptExpiry - Util.getMillis();
+            if (remaining <= 0) {
+                temporaryActionPrompt = null;
+                temporaryPrompt = null;
+            } else {
+                temporaryAlpha = (int) (Mth.clamp(remaining / 1000f, 0f, 1f) * 255f);
             }
         }
-        if (prompt != null && alpha > 4) {
+
+        if (persistentPrompt != null || (temporaryPrompt != null && temporaryAlpha > 4)) {
             int invTop = topPos + invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0) - INV_TEX_TITLE_H;
-            int px = leftPos + imageWidth / 2 - font.width(prompt) / 2;
-            int py = invTop - 14;
             // 8-direction outline (like the gauge count labels) so the prompt reads over any canvas content;
-            // the prompt keeps its own colour (white mode / tan chime), with the fade folded into the alpha.
+            // each prompt keeps its own colour, with the transient fade folded into its alpha.
             graphics.pose().pushPose();
             graphics.pose().translate(0, 0, 200);
             Matrix4f matrix = graphics.pose().last().pose();
-            font.drawInBatch8xOutline(prompt.getVisualOrderText(), px, py,
-                    (alpha << 24) | 0xFFFFFF, (alpha << 24),
-                    matrix, graphics.bufferSource(), LightTexture.FULL_BRIGHT);
+            int baseY = invTop - 14;
+            if (persistentPrompt != null)
+                drawActionPrompt(graphics, matrix, persistentPrompt, baseY, 255);
+            if (temporaryPrompt != null && temporaryAlpha > 4) {
+                int temporaryY = persistentPrompt == null ? baseY : baseY - font.lineHeight - 2;
+                drawActionPrompt(graphics, matrix, temporaryPrompt, temporaryY, temporaryAlpha);
+            }
             graphics.flush();
             graphics.pose().popPose();
         }
         RenderSystem.enableDepthTest();
+    }
+
+    private void drawActionPrompt(GuiGraphics graphics, Matrix4f matrix, Component prompt, int y, int alpha) {
+        int x = leftPos + imageWidth / 2 - font.width(prompt) / 2;
+        font.drawInBatch8xOutline(prompt.getVisualOrderText(), x, y,
+                (alpha << 24) | 0xFFFFFF, alpha << 24,
+                matrix, graphics.bufferSource(), LightTexture.FULL_BRIGHT);
     }
 
     /**
@@ -709,6 +781,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         zoomLabelBounds = new int[]{labelX, row1Y, zoomTextX + font.width(zoomStr), row1Y + font.lineHeight};
 
         if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
+        if (blueprintButton != null)
+            blueprintButton.render(graphics, mouseX, mouseY, partialTick);
 
         if (helpButton != null && !inOverlay) helpButton.render(graphics, mouseX, mouseY, partialTick);
 
@@ -1084,14 +1158,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** A prompt that stays until the mode ends (no fade). */
     private void setPersistentPrompt(Component prompt) {
-        actionPrompt = prompt;
-        actionPromptExpiry = Long.MAX_VALUE;
+        persistentActionPrompt = prompt;
     }
 
-    /** A transient prompt that fades out {@code durationMs} after being shown. */
+    /** Replaces the transient channel with a prompt that fades out after {@code durationMs}. */
     private void setTimedPrompt(Component prompt, long durationMs) {
-        actionPrompt = prompt;
-        actionPromptExpiry = Util.getMillis() + durationMs;
+        temporaryActionPrompt = prompt;
+        temporaryActionPromptExpiry = Util.getMillis() + durationMs;
+    }
+
+    /** Called by the blueprint editor after its atomic file write succeeds. */
+    public void showBlueprintSaved(String fileName) {
+        setTimedPrompt(Component.translatable("createfactorycontroller.gui.blueprint.saved", fileName)
+                .withStyle(ChatFormatting.GREEN), 4000);
     }
 
     /** Create's rejection blip, played client-side for board actions the client rejects before sending. */
@@ -1147,7 +1226,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                                     @Nullable VirtualComponentWidget clickedWidget) {
         VirtualComponentPosition targetPos = pendingConnectionTarget;
         pendingConnectionTarget = null;
-        actionPrompt = null;
+        persistentActionPrompt = null;
         if (clickedWidget == null || clickedPos.equals(targetPos)) {
             setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
                     .style(ChatFormatting.WHITE).component(), 3000);
@@ -1186,7 +1265,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void completeRelocate(VirtualComponentPosition clicked, @Nullable VirtualComponentWidget widget) {
         VirtualComponentPosition from = pendingRelocateTarget;
         pendingRelocateTarget = null;
-        actionPrompt = null;
+        persistentActionPrompt = null;
         VirtualComponentBehaviour moving = componentAt(from);
         Component name = moving == null ? Component.empty() : moving.getName();
         if (widget == null && !FactoryControllerBlockEntity.isOutBoard(clicked)) {
@@ -1587,6 +1666,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Settings button — let its click reach the widget (via super.mouseClicked) instead of panning.
         if (settingsButton != null && x >= settingsButtonX() && x < settingsButtonX() + SETTINGS_BTN_W
                 && y >= settingsButtonY() && y < settingsButtonY() + SETTINGS_BTN_H) return false;
+        if (x >= settingsButtonX() && x < settingsButtonX() + SETTINGS_BTN_W
+                && y >= blueprintButtonY() && y < blueprintButtonY() + SETTINGS_BTN_H) return false;
 
         return true;
     }
