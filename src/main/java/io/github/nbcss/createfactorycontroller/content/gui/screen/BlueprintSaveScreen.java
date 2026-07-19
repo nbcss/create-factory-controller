@@ -52,6 +52,7 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
     private static final ResourceLocation NETWORK_SLOT = resource("common/network_slot");
     private static final ResourceLocation NETWORK_HEADER = resource("blueprint_edit/network_slot_header");
     private static final ResourceLocation DEFAULT_NETWORK_ICON = resource("factory_controller/network_selector/network");
+    private static final ResourceLocation WARNING_ICON = resource("icons/warning");
     private static final ResourceLocation INFO_ICON = resource("icons/info");
 
     private static final int PANEL_W = 204;
@@ -137,7 +138,7 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
         super.init();
         menu.repositionSlots(-2000, -2000, false);
 
-        String oldName = nameBox == null ? defaultBlueprintName() : nameBox.getValue();
+        String oldName = nameBox == null ? "" : nameBox.getValue();
         String oldNote = noteBox == null ? "" : noteBox.getValue();
 
         nameBox = new CenteredEditBox(font, 0, 0, ELEMENT_W, NAME_H, Component.empty());
@@ -175,10 +176,6 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
         relayout();
     }
 
-    private String defaultBlueprintName() {
-        return Component.translatable("createfactorycontroller.gui.blueprint.default_name").getString();
-    }
-
     private void updateNameValidity() {
         validName = nameBox != null && ComponentBlueprintStorage.isValidBlueprintName(nameBox.getValue());
         if (nameBox != null) nameBox.setTextColor(validName ? 0xFFFFFF : 0xFF5555);
@@ -196,6 +193,14 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
         Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
         int x = panelX + LABEL_X + font.width(nameTitle) + 2;
         int y = viewportY - (int) renderedScroll + nameLabelY + (font.lineHeight - 8) / 2;
+        return mouseX >= x && mouseX < x + 8 && mouseY >= y && mouseY < y + 8;
+    }
+
+    private boolean overNetworkInfo(double mouseX, double mouseY) {
+        if (networks.isEmpty() || !insideViewport(mouseX, mouseY)) return false;
+        Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
+        int x = panelX + LABEL_X + font.width(networkTitle) + 2;
+        int y = viewportY - (int) renderedScroll + networkLabelY + (font.lineHeight - 8) / 2;
         return mouseX >= x && mouseX < x + 8 && mouseY >= y && mouseY < y + 8;
     }
 
@@ -321,6 +326,12 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
             gfx.renderTooltip(font,
                     Component.translatable("createfactorycontroller.gui.blueprint.overwrite_existing"),
                     mouseX, mouseY);
+        } else if (overNetworkInfo(mouseX, mouseY)) {
+            gfx.renderComponentTooltip(font, List.of(
+                    Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"),
+                    Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"),
+                    Component.translatable("createfactorycontroller.gui.blueprint.network_info_3")),
+                    mouseX, mouseY);
         } else if (insideViewport(mouseX, mouseY)) {
             int material = materialAt(mouseX, mouseY);
             if (material >= 0) {
@@ -330,7 +341,10 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
             } else {
                 int network = networkAt(mouseX, mouseY);
                 if (network >= 0)
-                    gfx.renderTooltip(font, menu.networkName(networks.get(network)), mouseX, mouseY);
+                    gfx.renderComponentTooltip(font, List.of(
+                            menu.networkName(networks.get(network)),
+                            Component.translatable("createfactorycontroller.gui.blueprint.drag_to_reorder")
+                                    .withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
             }
         }
         if (draggedNetwork < 0)
@@ -366,7 +380,7 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
         gfx.drawString(font, nameTitle, labelX, top + nameLabelY, textColor, false);
         if (overwriteExisting) {
             RenderSystem.enableBlend();
-            gfx.blitSprite(INFO_ICON, labelX + font.width(nameTitle) + 2,
+            gfx.blitSprite(WARNING_ICON, labelX + font.width(nameTitle) + 2,
                     top + nameLabelY + (font.lineHeight - 8) / 2, 8, 8);
         }
         borderedBox(gfx, INPUT_FIELD, x, top + nameY, ELEMENT_W, NAME_H);
@@ -380,8 +394,11 @@ public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryCont
         renderMaterialBox(gfx, x, top + materialBoxY);
 
         if (!networks.isEmpty()) {
-            gfx.drawString(font, Component.translatable("createfactorycontroller.gui.blueprint.networks"),
-                    labelX, top + networkLabelY, textColor, false);
+            Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
+            gfx.drawString(font, networkTitle, labelX, top + networkLabelY, textColor, false);
+            RenderSystem.enableBlend();
+            gfx.blitSprite(INFO_ICON, labelX + font.width(networkTitle) + 2,
+                    top + networkLabelY + (font.lineHeight - 8) / 2, 8, 8);
             renderNetworkBox(gfx, x, top + networkBoxY, mouseX, mouseY);
         }
 

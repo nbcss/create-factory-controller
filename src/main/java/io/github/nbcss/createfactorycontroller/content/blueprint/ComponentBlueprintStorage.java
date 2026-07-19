@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 
 /** Client-local persistence for reusable Factory Controller component blueprints. */
 public final class ComponentBlueprintStorage {
-    public static final int FORMAT_VERSION = 2;
+    public static final int FORMAT_VERSION = 1;
     public static final String EXTENSION = ".nbt";
 
     private ComponentBlueprintStorage() {}
@@ -129,13 +129,7 @@ public final class ComponentBlueprintStorage {
         root.putInt("Height", maxY - minY + 1);
         root.putInt("ComponentCount", positions.size());
 
-        ListTag networks = new ListTag();
-        for (int index = 1; index <= placeholders.size(); index++) {
-            CompoundTag entry = new CompoundTag();
-            entry.putInt("Index", index);
-            networks.add(entry);
-        }
-        root.put("Networks", networks);
+        root.putInt("NetworkCount", placeholders.size());
 
         ListTag components = new ListTag();
         for (VirtualComponentPosition pos : positions) {
