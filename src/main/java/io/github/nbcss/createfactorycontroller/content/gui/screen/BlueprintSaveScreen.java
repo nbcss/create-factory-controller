@@ -42,15 +42,15 @@ import java.util.UUID;
 /** Editor and preview for saving the controller's current component selection as a reusable blueprint. */
 public class BlueprintSaveScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
-    private static final ResourceLocation FRAME = resource("blueprint_edit/frame");
+    private static final ResourceLocation FRAME = resource("blueprint/frame");
     private static final ResourceLocation BOTTOM_BAR = resource("common/bottom_bar");
     private static final ResourceLocation BOTTOM_VDIV = resource("common/bottom_bar_vdiv");
-    private static final ResourceLocation ELEMENT_BORDER = resource("blueprint_edit/element_border");
+    private static final ResourceLocation ELEMENT_BORDER = resource("blueprint/element_border");
     private static final ResourceLocation INPUT_FIELD = resource("common/input_field");
     private static final ResourceLocation TEXTBOX = resource("common/textbox");
     private static final ResourceLocation MATERIAL_SLOT = resource("common/display_slot_blue");
     private static final ResourceLocation NETWORK_SLOT = resource("common/network_slot");
-    private static final ResourceLocation NETWORK_HEADER = resource("blueprint_edit/network_slot_header");
+    private static final ResourceLocation NETWORK_HEADER = resource("blueprint/network_slot_header");
     private static final ResourceLocation DEFAULT_NETWORK_ICON = resource("factory_controller/network_selector/network");
     private static final ResourceLocation WARNING_ICON = resource("icons/warning");
     private static final ResourceLocation INFO_ICON = resource("icons/info");

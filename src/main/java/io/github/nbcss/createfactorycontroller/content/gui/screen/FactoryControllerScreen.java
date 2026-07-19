@@ -428,10 +428,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (!isValidClickButton(button) || !clicked(mouseX, mouseY) || !saveMode()) return false;
+            if (!isValidClickButton(button) || !clicked(mouseX, mouseY)) return false;
             playDownSound(Minecraft.getInstance().getSoundManager());
-            Minecraft.getInstance().setScreen(
-                    new BlueprintSaveScreen(FactoryControllerScreen.this, new LinkedHashSet<>(selected)));
+            if (saveMode()) {
+                Minecraft.getInstance().setScreen(
+                        new BlueprintSaveScreen(FactoryControllerScreen.this, new LinkedHashSet<>(selected)));
+            } else {
+                Minecraft.getInstance().setScreen(new BlueprintLibraryScreen(FactoryControllerScreen.this));
+            }
             return true;
         }
 

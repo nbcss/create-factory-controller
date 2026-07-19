@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
@@ -46,6 +47,20 @@ public final class ComponentBlueprintStorage {
         for (VirtualComponentPosition pos : positions) {
             VirtualComponentBehaviour component = menu.componentAt(pos);
             if (component != null) counts.merge(component.getItemId(), 1, Integer::sum);
+        }
+        return counts.entrySet().stream().map(e -> new Material(e.getKey(), e.getValue())).toList();
+    }
+
+    /** Reads and aggregates the component items stored in a blueprint file. */
+    public static List<Material> materials(Path blueprint) throws IOException {
+        CompoundTag root = NbtIo.readCompressed(blueprint, NbtAccounter.unlimitedHeap());
+        ListTag components = root.getList("Components", Tag.TAG_COMPOUND);
+        Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
+        for (int i = 0; i < components.size(); i++) {
+            CompoundTag component = components.getCompound(i);
+            if (!component.contains("Item", Tag.TAG_STRING)) continue;
+            ResourceLocation item = ResourceLocation.tryParse(component.getString("Item"));
+            if (item != null) counts.merge(item, 1, Integer::sum);
         }
         return counts.entrySet().stream().map(e -> new Material(e.getKey(), e.getValue())).toList();
     }
