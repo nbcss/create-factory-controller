@@ -79,7 +79,7 @@ def build_lang(lang)
 
   # Read index.adoc for a TOC of the entire manual
   lang_manual_toc ||= Hash.new do |hash, lang|
-    source_path = lang == LANGS.default ? 'src/index.adoc' : "translated/#{lang}/index.adoc"
+    source_path = ["translated/#{lang}/index.adoc", 'src/index.adoc'].find(&File.method(:exist?))
     doc = Asciidoctor.load_file source_path, adoc_options
     toc = doc.find_by(id: 'manual-toc')[0].convert
     lang_manual_toc[lang] = Util.html_strip toc, layers: 2
