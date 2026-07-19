@@ -18,16 +18,13 @@ public final class SpriteNumbersRender {
     private static final int TEX = 64, GLYPH_H = 7;
     private static final int Y_NUDGE = 1;
 
-    /** "Too big to display" indicator, drawn as ∞ (replaces the old {@code +} sentinel). */
     public static final String INFINITE = "∞";   // ∞
-    // Extra symbols on row 3 after b — usable in any string passed to the draw methods.
     public static final String STACK = "▤";       // ▤
     public static final String ARROW = "^";
     public static final String MULTIPLY = "x";
     public static final String PLUS = "+";
     public static final String MINUS = "-";
     public static final String HASH = "#";
-    /** Clock face (row 4) — prefixes a request-interval readout, e.g. {@code CLOCK + "2"}. */
     public static final String CLOCK = "⏱";      // ⏱
 
     private SpriteNumbersRender() {}
@@ -127,7 +124,7 @@ public final class SpriteNumbersRender {
             case '+' -> new int[]{ 39, 16, 5 };       // plus
             case '-' -> new int[]{ 45, 16, 5 };       // minus
             case '#' -> new int[]{ 51, 16, 7 };       // hash
-            case '⏱' -> new int[]{ 0, 24, 7 };        // clock (row 4)
+            case '⏱' -> new int[]{ 0, 24, 7 };        // clock
             default -> null;
         };
     }

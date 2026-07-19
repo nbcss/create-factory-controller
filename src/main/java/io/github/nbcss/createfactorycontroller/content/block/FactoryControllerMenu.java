@@ -192,9 +192,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     public void addComponent(VirtualComponentBehaviour component) {
         components.add(component);
         componentsByPosition.put(component.position(), component);
-        // Client behaviours carry no controller; give them the sibling lookup + the client connection graph so
-        // validation and targetedBy()/targeting() resolve. Both are harmless on the server (the controller wins).
-        component.setSiblingLookup(this::componentAt);
+        component.setHolder(this);
         component.setGraph(connectionGraph);
     }
 

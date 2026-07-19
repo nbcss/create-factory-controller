@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.component;
 
+import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.*;
 import net.minecraft.core.HolderLookup;
@@ -23,7 +24,7 @@ import java.util.function.Function;
 public interface VirtualComponentBehaviour {
     enum NbtProfile {
         SERVER(true, true),
-        CLIENT(true, false),
+        // CLIENT(true, false), //looks like we no longer need CLIENT profile after rework sync packet
         EXPORT(false, false);
 
         private final boolean runtime;
@@ -41,7 +42,6 @@ public interface VirtualComponentBehaviour {
     interface Type {
         String id();
         List<ResourceLocation> items();
-        /** Accent colour (0xRRGGBB) of this component kind */
         int color();
         boolean isRequireNetwork();
         VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
@@ -151,9 +151,8 @@ public interface VirtualComponentBehaviour {
      *  caps its ingredient slots; a link rejects a link partner.) */
     ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source);
 
-    /** Injects a sibling-component lookup for cross-component checks when this behaviour has no controller (client
-     *  snapshot). The server leaves it unset and uses the controller. See {@code AbstractVirtualComponent#siblingAt}. */
-    void setSiblingLookup(Function<VirtualComponentPosition, VirtualComponentBehaviour> lookup);
+    /** For component to look up other components. */
+    void setHolder(ComponentHolder holder);
 
     /** Injects the central {@link ConnectionGraph} this component is a view into (client snapshot — the server uses the
      *  controller's graph). */

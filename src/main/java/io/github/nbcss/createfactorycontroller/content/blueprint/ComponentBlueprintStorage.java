@@ -135,15 +135,11 @@ public final class ComponentBlueprintStorage {
             if (!placeholders.containsKey(network)) placeholders.put(network, placeholders.size() + 1);
 
         CompoundTag root = new CompoundTag();
-        root.putString("Format", CreateFactoryController.MODID + ":component_blueprint");
+        root.putString("Format", CreateFactoryController.MODID + ":blueprint");
         root.putInt("Version", FORMAT_VERSION);
         root.putString("Note", note.length() > 500 ? note.substring(0, 500) : note);
-        root.putLong("CreatedAt", System.currentTimeMillis());
         root.putInt("Width", maxX - minX + 1);
         root.putInt("Height", maxY - minY + 1);
-        root.putInt("ComponentCount", positions.size());
-
-        root.putInt("NetworkCount", placeholders.size());
 
         ListTag components = new ListTag();
         for (VirtualComponentPosition pos : positions) {
