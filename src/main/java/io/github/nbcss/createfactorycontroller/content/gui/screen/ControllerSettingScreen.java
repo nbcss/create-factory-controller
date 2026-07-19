@@ -70,8 +70,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         scanOptionsAsync();
     }
 
-    /** Lists the .png files under {@link #BACKGROUND_DIR} in our namespace off the render thread (resource-pack
-     *  listing does real I/O), then swaps the full sorted set in on the client thread once ready. */
+    /** Lists the .png files under {@link #BACKGROUND_DIR} in our namespace off the render thread. */
     private void scanOptionsAsync() {
         Util.backgroundExecutor().execute(() -> {
             List<String> found = Minecraft.getInstance().getResourceManager()
@@ -137,7 +136,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
             BACKGROUND_DIR + "/" + name + ".png");
     }
 
-    /** Applies the current index to the live config (immediate effect on the board behind us). */
+    /** Applies the current index to the live config */
     private void applySelection() {
         if (selected >= 0 && selected < options.size()) {
             currentName = options.get(selected);
@@ -145,7 +144,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
-    /** Scroll the selector: up → previous, down → next, clamped (no wrap), with Create's scroll chime. */
     private void scrollSelection(double scrollY) {
         if (options.isEmpty()) return;
         int next = Mth.clamp(selected - (int) Math.signum(scrollY), 0, options.size() - 1);
@@ -165,7 +163,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private void returnToController() {
-        ClientConfig.save();   // persist the background selection to disk (set() only updates memory) before leaving
+        ClientConfig.save();
         Minecraft.getInstance().setScreen(controller);
     }
 
@@ -179,7 +177,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         lines.add(Component.translatable("createfactorycontroller.gui.controller_settings")
             .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
-        // Fixed-height centred window with "> ..." markers for hidden rows (see ScrollListWindow).
         for (int i : ScrollListWindow.rows(options.size(), selected)) {
             if (i == ScrollListWindow.MARKER) {
                 lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
@@ -216,7 +213,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         if (!options.isEmpty())
             gfx.blit(textureOf(options.get(selected)), panelX + PREVIEW_X, panelY + PREVIEW_Y, 0, 0, 16, 16, 16, 16);
 
-        // Current option name, centred in the selector box.
         gfx.enableScissor(panelX + SELECTOR_X, panelY + SELECTOR_Y,
                 panelX + SELECTOR_X + SELECTOR_W - 4, panelY + SELECTOR_Y + SELECTOR_H);
         String name = options.isEmpty() ? "—" : options.get(selected);
@@ -252,7 +248,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public void onClose() {
-        returnToController();   // return to the controller without closing the shared container
+        returnToController();
     }
 
     @Override

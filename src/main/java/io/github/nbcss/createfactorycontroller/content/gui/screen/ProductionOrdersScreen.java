@@ -54,9 +54,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Standalone screen for the Production Orders page. Extends {@link AbstractSimiContainerScreen} so it goes through
- * Create's exact render pipeline (same background handling as the Stock Keeper, so no stray blur/dim) and centres
- * the panel identically — which keeps the borrowed Deployer tab strip aligned.
+ * For the Production Orders page (sub-page of stock keeper GUI).
  */
 public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKeeperRequestMenu> {
 
@@ -79,19 +77,15 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     private final BlockPos keeperPos;
     private int refreshTimer = 0;
 
-    // Vertical pixel scroll of the order list (Create-style smooth chaser).
     private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
     private boolean scrollHandleActive;
 
     /** Green gutter button that returns to the Stock Keeper; only present (and only built) when Deployer is absent. */
     private TooltipIconButton backButton;
 
-    // The keeper sitting beside the Stock Ticker (rendered at the panel's left), mirroring Create's screen.
     private WeakReference<LivingEntity> stockKeeper = new WeakReference<>(null);
     private WeakReference<BlazeBurnerBlockEntity> blaze = new WeakReference<>(null);
-    /** Cancel-button hitboxes built each render: [x0,y0,x1,y1,orderId]. */
     private final List<int[]> cancelButtons = new ArrayList<>();
-    /** Task-slot hover targets built each render (for tooltips). */
     private final List<SlotTip> slotTips = new ArrayList<>();
 
     private record SlotTip(int x0, int y0, int x1, int y1, ProductionOrderView.RequestView req) {
@@ -105,16 +99,12 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         this.keeperPos = menu.contentHolder.getBlockPos();
     }
 
-    /** Window height like Create's StockKeeperRequestScreen#init: fill the screen height (minus a small margin),
-     *  snapped to whole body tiles, capped at header + footer + 17 body tiles. Uses Create's footer height so the
-     *  total stays identical to a Stock Keeper window. */
     private static int appropriateHeight() {
         int h = Minecraft.getInstance().getWindow().getGuiScaledHeight() - 10;
         h -= Mth.positiveModulo(h - HEADER_H - FOOTER_RESERVED, BODY_H);
         return Math.min(h, HEADER_H + FOOTER_RESERVED + BODY_H * 17);
     }
 
-    /** How many of Create's body rows the window reserves (footer space included as if it were Create's tall footer). */
     private int bodyCount() {
         return (imageHeight - HEADER_H - FOOTER_RESERVED) / BODY_H;
     }
@@ -138,7 +128,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         }
     }
 
-    /** Locates the seated keeper / blaze burner beside the Stock Ticker, replicating StockKeeperRequestScreen#init. */
+    /** Locates the stock keeper entity */
     private void findKeeper() {
         stockKeeper = new WeakReference<>(null);
         blaze = new WeakReference<>(null);
@@ -186,9 +176,6 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         scroll.tickChaser();
         float clamped = Mth.clamp(scroll.getChaseTarget(), 0, maxScroll());
         if (clamped != scroll.getChaseTarget()) scroll.chase(clamped, 0.5, Chaser.EXP);
-        // Snap once within half a pixel, otherwise the EXP chaser keeps inching toward the target for many ticks
-        // (the bar appears to drift after the scroll has visually settled). Note scroll is in PIXELS, so the
-        // threshold must be a sub-pixel value — Create's 0.0625 is for its much smaller row-unit scroll.
         if (Math.abs(scroll.getValue() - scroll.getChaseTarget()) < 0.5F)
             scroll.setValue(scroll.getChaseTarget());
         if (refreshTimer-- <= 0) {
@@ -202,7 +189,6 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     @Override
     protected void renderBg(@NotNull GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        // Header + (bodyCount + 3 extra) body rows + short footer = same total height as a Stock Keeper window.
         gfx.blit(TEX, x - 15, y, 0, 0f, 0f, 256, HEADER_H, 256, 256);
         int by = y + HEADER_H;
         int rows = bodyCount() + EXTRA_BODY_ROWS;
@@ -253,7 +239,6 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
 
         int lineY = oy + 4;
 
-        // Cancel button (top-right), hover-swapped; record hitbox in screen coords.
         int btnW = 9, btnH = 10;
         int btnX = fx + FRAME_W - 5 - btnW;
         int btnY = oy + 3;
@@ -263,8 +248,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         if (btnY >= viewTop() - btnH && btnY < viewBottom())
             cancelButtons.add(new int[]{btnX, btnY, btnX + btnW, btnY + btnH, order.orderId()});
 
-        // Age timer (mm:ss, or hh:mm:ss past an hour) just left of the cancel button, with the clock glyph. While the
-        // order is unfinished it counts up; once every task is sent the timer freezes (server-synced) and turns green.
+        // Age timer
         boolean sent = allSent(order);
         int ageTicks = sent ? order.ageTicks() : ProductionOrdersClient.ageTicksNow(order);
         String timer = formatTime(ageTicks);
@@ -276,23 +260,22 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         gfx.blit(TEX, clockX, timerY, 0, 49f, 154f, 8, 8, 256, 256);
         gfx.drawString(font, timer, timerX, lineY, timerColor, true);
 
-        // Address (top-left), trimmed to the space left of the clock.
+        // Address
         String address = order.address().isBlank() ? "—" : order.address();
         int addrX = fx + 13;
         int addrMaxW = clockX - 4 - addrX;
         gfx.blit(TEX, fx + 2, timerY, 0, 39f, 154f, 9, 8, 256, 256);
         gfx.drawString(font, trim(address, addrMaxW), addrX, lineY, 0xF5F5E9, true);
 
-        // Task slots (up to 9) below the frame.
+        // Task slots
         int sy = oy + 15;
         int sx0 = slotX0();
         List<ProductionOrderView.RequestView> reqs = order.requests();
         for (int i = 0; i < reqs.size() && i < 9; i++) {
             int sx = sx0 + i * 20;
-            gfx.blit(TEX, sx, sy, 0, 39f, 165f, 18, 18, 256, 256);   // slot background (from our texture)
+            gfx.blit(TEX, sx, sy, 0, 39f, 165f, 18, 18, 256, 256);
             ProductionOrderView.RequestView r = reqs.get(i);
             ItemStack stack = r.display();
-            // A fluid task draws the fluid (not its filter-wrapper item) and counts in buckets (B = amount mB / 1000).
             boolean fluid = FluidCompat.isFluidFilter(stack);
             if (fluid) FluidGuiRender.filterIcon(gfx, stack, sx + 1, sy + 1);
             else gfx.renderItem(stack, sx + 1, sy + 1);
@@ -308,7 +291,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         }
     }
 
-    /** Renders the per-state symbol (from our texture) in the slot's top-right; nothing for WAITING / READY. */
+    /** Renders the per-state symbol */
     private void drawStateSymbol(GuiGraphics gfx, Task.State state, int sx, int sy) {
         int u, v, w, h;
         switch (state) {
@@ -327,8 +310,6 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         int totalH = visibleH + max;
         int barSize = Math.max(10, (int) ((long) visibleH * visibleH / totalH));
         int barX = leftPos + 204;
-        // The track's top guide is 2px above viewTop, its bottom guide is at viewBottom — so the travel range is
-        // (visibleH + 2) - barSize, letting the bar touch both the top and bottom lines.
         int trackTop = viewTop() - 2;
         int travel = (visibleH + 2) - barSize;
         int barY = trackTop + Math.round((currentScroll / max) * travel);
@@ -340,7 +321,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         AllGuiTextures.STOCK_KEEPER_REQUEST_SCROLL_BOT.render(gfx, barX, barY + barSize - 5);
     }
 
-    /** True once every task has been sent — the order is then complete (timer freezes + turns green). */
+    /** True once every task has been sent — the order is then complete */
     private static boolean allSent(ProductionOrderView order) {
         for (ProductionOrderView.RequestView r : order.requests())
             if (r.stateEnum() != Task.State.SENT) return false;
@@ -362,7 +343,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         return text + ellipsis;
     }
 
-    /** The keeper entity / blaze burner at the panel's left — a faithful replica of StockKeeperRequestScreen#renderBg. */
+    /** The keeper entity / blaze burner at the left */
     private void renderKeeper(GuiGraphics gfx, int mouseX, int mouseY) {
         PoseStack ms = gfx.pose();
         int x = leftPos, y = topPos;
@@ -426,7 +407,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, backButton);
     }
 
-    /** Per-task tooltip: gold item name, request progress, and coloured status. */
+    /** Per-task tooltip */
     private List<Component> slotTooltip(ProductionOrderView.RequestView r) {
         List<Component> lines = new ArrayList<>();
         // A fluid task: name from the fluid (not its filter-wrapper) and amounts in buckets (B) with a "B" suffix.
@@ -471,13 +452,12 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
                 dragScrollTo(mouseY);
                 return true;
             }
-            // Back-to-keeper button (only present without Deployer's tab strip); delegates hit-test + callback.
             if (backButton != null && backButton.mouseClicked(mouseX, mouseY, button)) return true;
         }
         if (DeployerCompat.isLoaded()) {
             int result = ProductionOrdersStrip.mouseClicked(host, mouseX, mouseY, button);
             if (result == ProductionOrdersStrip.GO_BACK) {
-                Minecraft.getInstance().setScreen(host);   // selection moved off our tab → back to the keeper
+                Minecraft.getInstance().setScreen(host);
                 return true;
             }
             if (result == ProductionOrdersStrip.STAY) return true;

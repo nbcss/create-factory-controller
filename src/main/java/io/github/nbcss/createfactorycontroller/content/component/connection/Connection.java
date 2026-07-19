@@ -92,6 +92,11 @@ public abstract class Connection {
             return null;
     }
 
+    /** Null-safe wire identity, stable across syncs that replace connection instances. */
+    public static boolean sameConnection(@Nullable Connection a, @Nullable Connection b) {
+        return a != null && b != null && a.type.equals(b.type) && a.from.equals(b.from) && a.to.equals(b.to);
+    }
+
     // ── Client sync (binary) ──────────────────────────────────────────────────
 
     public void writeClient(RegistryFriendlyByteBuf buf) {

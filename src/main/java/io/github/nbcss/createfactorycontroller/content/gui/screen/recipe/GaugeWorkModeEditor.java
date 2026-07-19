@@ -1,10 +1,13 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
+import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
@@ -19,6 +22,18 @@ import java.util.List;
  * on the {@link ConfigureRecipeScreen} and is reached through {@link #s}.</p>
  */
 abstract class GaugeWorkModeEditor {
+
+    /** The mode-specific values written by {@link ConfigureRecipeScreen} when its edits are committed. */
+    record Configuration(int craftBatch, int craftDimension,
+                         List<VirtualComponentPosition> inputPositions, List<Integer> inputAmounts,
+                         List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots) {
+        Configuration {
+            inputPositions = List.copyOf(inputPositions);
+            inputAmounts = inputAmounts.stream().map(amount -> Math.max(1, amount)).toList();
+            craftingArrangement = List.copyOf(craftingArrangement);
+            recipeSlots = List.copyOf(recipeSlots);
+        }
+    }
 
     protected final ConfigureRecipeScreen s;
 
@@ -57,6 +72,16 @@ abstract class GaugeWorkModeEditor {
 
     /** Handles a scroll inside the ingredient grid (not the output slot); {@code true} if consumed. */
     abstract boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step);
+
+    /** Provides the packet-facing values whose representation differs between work modes. */
+    abstract Configuration configuration();
+
+    /** Builds a configuration using the current connection order shared by every work mode. */
+    protected Configuration configuration(List<Integer> inputAmounts, int craftBatch, int craftDimension,
+                                          List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots) {
+        return new Configuration(craftBatch, craftDimension, s.inputConnections, inputAmounts,
+            craftingArrangement, recipeSlots);
+    }
 
     /** Handles a scroll on the output slot; {@code true} if consumed. Default: freely tune the produced
      *  count (item stack/snap steps, or fluid steps for a fluid output); crafting locks this to the recipe. */

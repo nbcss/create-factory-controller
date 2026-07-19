@@ -7,10 +7,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * All access to Deployer's keeper tab strip ({@code TabsWidget}), kept out of {@link ProductionOrdersScreen} so that
- * screen carries no direct Deployer reference and can be class-loaded without Deployer installed. Every method here is
- * only ever called from a branch guarded by {@link io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat#isLoaded()},
- * so this class is itself only loaded when Deployer is present.
+ * All access to Deployer's keeper tab strip ({@code TabsWidget})
  */
 final class ProductionOrdersStrip {
 

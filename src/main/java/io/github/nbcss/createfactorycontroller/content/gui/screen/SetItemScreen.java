@@ -36,13 +36,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Set-item configuration screen for a virtual gauge — a replica of Create's
- * {@code FactoryPanelSetItemScreen}. A separate screen that <b>shares the controller's
- * {@link FactoryControllerMenu}</b> (no server container swap) and draws the live controller board as
- * a dimmed backdrop. The filter is a real ghost {@code Slot} on the shared menu (vanilla renders its
- * icon + hover highlight): click it with a held item, shift-click an inventory item, or drop a JEI
- * ingredient. Confirm/Escape commits and returns. Extends the same base as the controller so the
- * {@code renderBg}/{@code renderForeground} flow is identical and proven.
+ * Set-item configuration screen for a virtual gauge.
  */
 @OnlyIn(Dist.CLIENT)
 public class SetItemScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
@@ -74,7 +68,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private final Component ignoreDataName = CreateLang.translateDirect("gui.filter.ignore_data");
     private final Component ignoreDataDesc = CreateLang.translateDirect("gui.filter.ignore_data.description");
     private List<Rect2i> extraAreas = Collections.emptyList();
-    // Set-item panel top-left, and the player-inventory background top-left — centered in the GUI rect.
+
     private int panelX, panelY;
     private int invBgX, invBgY;
 
@@ -93,7 +87,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     @Override
     protected void init() {
-        // Match the controller's GUI rect so JEI's layout (item list, exclusion zone) is unchanged.
         setWindowSize(controller.guiWidth(), controller.guiHeight());
         setWindowOffset(0, 0);
         super.init();
@@ -104,8 +97,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         panelX = leftPos + (imageWidth - blockW) / 2;
         panelY = topPos + (imageHeight - blockH) / 2;
 
-        // Inventory background sits just below the panel; the slot grid is derived from it so the
-        // slots always line up with the texture's recesses (hotbar row at INV_TEX_HOTBAR_Y).
         invBgX = panelX + (blockW - INV_TEX_W) / 2;
         invBgY = panelY + bg.getHeight() + 6;
         int originX = invBgX + 8 - leftPos;                                   // slot grid origin
@@ -115,16 +106,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
         int buttonY = panelY + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getHeight() - 25;
 
-        // Real confirm button (like Create's set-item screen) instead of a hit-tested icon.
+        // why create's confirm button doesn't have tooltip here? it is inconsistent :/
         confirm = new TooltipIconButton(panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() - 40,
                 buttonY, AllIcons.I_CONFIRM);
         confirm.withCallback(this::returnToController);
         confirm.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirm);
 
-        // Relocate button, left of the filter slot — commits the chosen item (so a placed selection
-        // isn't lost), then hands off to the controller's relocate mode where the next empty cell
-        // clicked becomes this gauge's new position. Mirrors ConfigureRecipeScreen's relocate button.
         relocateButton = new TooltipIconButton(panelX + 3, buttonY, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> {
             PacketDistributor.sendToServer(new GaugeSetItemPacket(
@@ -135,7 +123,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
         addWidget(relocateButton);
 
-        // Respect-/ignore-data toggle (reuses Create's brass-filter icons), in the bottom button row.
+        // Respect-/ignore-data toggle
         int ignoreDataX = panelX + 97;
         respectDataButton = new TooltipIconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
         respectDataButton.withCallback(() -> { ignoreData = false; updateIgnoreDataButtons(); });
@@ -152,13 +140,10 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     private void updateIgnoreDataButtons() {
-        // Ignore-data is an item-gauge concept; hide it for any non-item gauge (fluid/energy have no NBT variants),
-        // and for an item gauge once its chosen filter is a fluid.
         boolean noIgnoreData = !behaviour.filterResolver().supportsIgnoreData() || FluidCompat.isFluidFilter(filter);
         if (noIgnoreData) ignoreData = false;   // can't ignore data; the server clamps this too
         respectDataButton.visible = !noIgnoreData;
         ignoreDataButton.visible = !noIgnoreData;
-        // green highlights the current mode (Create's handleIndicators: green = !isButtonEnabled).
         respectDataButton.green = !noIgnoreData && !ignoreData;
         ignoreDataButton.green = !noIgnoreData && ignoreData;
     }
@@ -174,8 +159,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     @Override
     public void resize(@NotNull Minecraft minecraft, int width, int height) {
-        // Re-lay-out the controller too so its (backdrop) geometry tracks the new window size; then
-        // our init() runs and re-applies the set-item slot layout over the controller's.
         controller.resize(minecraft, width, height);
         super.resize(minecraft, width, height);
     }
@@ -184,8 +167,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private int filterX()   { return panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() / 2 - 18; }
     private int filterY()   { return panelY + 28; }
 
-    // Sub-screen renders the controller board as its background (renderBg → controller.renderBoard),
-    // so refresh the parent's gauge-widget cache when a sync lands while this screen is open.
     @Override
     public void onPanelSync() {
         controller.onPanelSync();
@@ -194,7 +175,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();     // keep the background board's indicator bulbs animating
+        controller.tickBulbs();
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -278,12 +259,11 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     @Override
     public void onClose() {
-        returnToController();   // return to the controller without closing the shared container
+        returnToController();
     }
 
     @Override
     public void removed() {
-        // Chime on every exit path (confirm button, Escape) as the overlay returns to the controller.
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
         super.removed();
@@ -329,12 +309,8 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                 && my >= filterY() && my < filterY() + FILTER_SLOT_SIZE;
     }
 
-    /** Empty-filter-slot hint: two lines (left = item, right = fluid) when the cursor holds a fluid
-     *  container and this gauge accepts a fluid filter; otherwise the generic single-line hint. */
+    /** Empty-filter-slot hint */
     private List<Component> filterEmptyTooltip() {
-        // Left/Right click only differ when this gauge accepts BOTH an item and a fluid filter — a
-        // fluid-only gauge (e.g. Repackaged's fluid gauge) always resolves the carried container to a
-        // fluid regardless of button, so it gets the plain single-line hint like an item-only gauge.
         boolean fluidCandidate = behaviour.filterResolver().acceptsItemDrop()
                 && behaviour.filterResolver().acceptsFluidDrop()
                 && !FluidCompat.fluidInContainer(menu.getCarried()).isEmpty();

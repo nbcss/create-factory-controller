@@ -82,7 +82,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     }
 
     /** Places one crafting cell into custom slot {@code cell}: resolves the item to its source wire and clamps the
-     *  amount to the cell's capacity (one stack, or the fluid mB cap). Skips items with no matching wire. */
+     *  amount to the cell's capacity (one stack, or the fluid mB cap). */
     private void placeCraftingCell(int cell, ItemStack item, int amount) {
         VirtualComponentPosition src = sourceForItem(item);
         if (src == null) return;
@@ -141,9 +141,6 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         return tooltip;
     }
 
-    /** What a cell shows, accounting for the swap-drag preview (left button only): the source cell shows the
-     *  hovered target's item (a fake swap preview), and the hovered target cell itself renders empty — its
-     *  own item is "lifted" while the source item (shown following the cursor) is about to land there. */
     private RecipeSlot slotDisplay(int i, int hover) {
         if (dragFrom >= 0 && dragButton == 0) {
             if (i == dragFrom)
@@ -170,12 +167,9 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
 
         gfx.pose().pushPose();
         gfx.pose().translate(0, 0, 199);
-        // Hovering the source slot itself never draws a box, in either mode.
         if (hover >= 0 && hover != dragFrom) {
             int hx = cellX(hover), hy = cellY(hover);
             boolean targetEmpty = s.customSlots.get(hover).isEmpty();
-            // Copy (right-drag): white = valid empty target, red = occupied (can't copy there).
-            // Swap (left-drag): white.
             int color = dragButton == 1
                 ? (targetEmpty ? 0x80FFFFFF : 0x80FF4040)
                 : 0x80FFFFFF;
@@ -185,7 +179,6 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         gfx.fill(fx, fy, fx + 16, fy + 16, 0x4485F2A2);   // source slot highlight
         gfx.pose().popPose();
 
-        // The picked-up (source) item follows the cursor, above everything (including every count).
         RecipeSlot src = s.customSlots.get(dragFrom);
         ItemStack stack = src.isEmpty() ? ItemStack.EMPTY : s.ingredientOf(src.source());
         if (!stack.isEmpty()) {
@@ -223,7 +216,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (dragFrom < 0 || button != dragButton) { dragFrom = -1; return false; }
         int from = dragFrom;
         dragFrom = -1;
-        // A move dropped outside the whole panel is a removal, same as shift-click (drag it off entirely).
+        // A move dropped outside the whole panel is a removal
         if (button == 0 && !s.inPanelBounds(mouseX, mouseY)) {
             clearSlot(from);
             return true;
@@ -250,7 +243,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         int slot = dragFrom >= 0 ? dragFrom : slotAt(mouseX, mouseY);
         if (slot < 0) return false;
         RecipeSlot rs = s.customSlots.get(slot);
-        if (rs.isEmpty()) return true;   // consume the scroll, but a gap has nothing to tune
+        if (rs.isEmpty()) return true;
         ItemStack ingredient = s.ingredientOf(rs.source());
         boolean ctrl = Screen.hasControlDown();
         boolean fluid = FluidCompat.isFluidFilter(ingredient);
@@ -281,6 +274,17 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             }
         }
         return true;
+    }
+
+    @Override
+    Configuration configuration() {
+        List<Integer> amounts = s.inputConnections.stream()
+            .map(pos -> s.customSlots.stream()
+                .filter(slot -> !slot.isEmpty() && pos.equals(slot.source()))
+                .mapToInt(RecipeSlot::count)
+                .sum())
+            .toList();
+        return configuration(amounts, 1, 0, List.of(), s.customSlots);
     }
 
     @Override

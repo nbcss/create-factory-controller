@@ -82,8 +82,7 @@ class RegularEditor extends GaugeWorkModeEditor {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
         for (int i = 0; i < slots.size(); i++) {
             if (!in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) continue;
-            // Shift-click disconnects (matches CUSTOM mode's clear gesture); a plain click is absorbed here
-            // so it doesn't fall through to whatever's behind the panel.
+            // Shift-click disconnects
             if (button == 0 && Screen.hasShiftDown()) s.disconnectInput(slots.get(i).connectionIndex());
             return true;
         }
@@ -101,6 +100,11 @@ class RegularEditor extends GaugeWorkModeEditor {
             }
         }
         return false;
+    }
+
+    @Override
+    Configuration configuration() {
+        return configuration(s.inputTotals, 1, 0, List.of(), List.of());
     }
 
     @Override

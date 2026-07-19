@@ -12,12 +12,7 @@ import java.util.Set;
 /**
  * Accumulates what changed on a controller's board since the last menu-sync flush, at the granularity the
  * delta packet ships: per component (STATE = only the runtime tail of the sync body, FULL = the whole body),
- * per connection, plus the header (name / controller power) and the network-settings list.
- *
- * <p>{@link #everything()} escalates the next flush to a full board snapshot — the always-correct fallback
- * for mutation paths where precise marking is impractical (relocations, setup restore) or not yet done
- * (anything still going through {@code sendData()}). Pure bookkeeping: no networking, no component
- * knowledge; the controller builds the packet from these marks and {@link #clear()}s once per tick.</p>
+ * for optimize bandwidth usage.
  */
 public class PanelDeltaTracker {
 

@@ -31,13 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 /**
- * Full-configuration overlay for a Redstone Link component — its two type frequencies (Red/Blue) and Send/Receive
- * mode. Shares the controller's {@link FactoryControllerMenu} (no container swap) and draws the live board as a dimmed
- * backdrop, with the player inventory shown so items can be grabbed onto the frequency slots (or dropped from JEI).
- *
- * <p>Edits are staged locally ({@link #red}/{@link #blue}/{@link #receive}) and committed once via
- * {@link ConfigureRedstoneLinkPacket} when the screen closes — by the confirm/relocate buttons, ESC, or any other
- * path (see {@link #removed()}). Frequency items are filters: they're copied count-1 and never consumed.</p>
+ * Full-configuration overlay for a Redstone Link component.
  */
 @OnlyIn(Dist.CLIENT)
 public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
@@ -160,7 +154,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();   // keep the backdrop board's indicator bulbs animating
+        controller.tickBulbs();
     }
 
     @Override

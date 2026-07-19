@@ -76,7 +76,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
-
     // Responsive sizing — all in GUI-scaled pixels.
     private static final int SIDE_MARGIN = 160;
     private static final int VERTICAL_MARGIN = 10;
@@ -609,7 +608,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /**
      * Renders the board itself — tiled background, gauges, connection arrows, frame and the network
-     * selector — but <b>not</b> the player inventory.
+     * selector — but <b>not</b> the player inventory. Needs to be called by overlay to display controller background.
      */
     public void renderBoard(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick, boolean inOverlay) {
         int x0 = leftPos + CANVAS_SIDE_PADDING;
@@ -788,7 +787,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private ConnectionWidget reconcileConnectionSelection(List<ConnectionWidget> connWidgets) {
         if (connArrowLocked && selectedConnection != null) {
             for (ConnectionWidget w : connWidgets)
-                if (sameConnection(w.connection, selectedConnection)) return w;
+                if (Connection.sameConnection(w.connection, selectedConnection)) return w;
             connArrowLocked = false;   // the wire is gone (e.g. removed) → drop the lock and fall through
         }
         if (hoverHits.isEmpty()) {
@@ -798,17 +797,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
         ConnectionWidget keep = null;
         for (ConnectionWidget w : hoverHits)
-            if (sameConnection(w.connection, selectedConnection)) { keep = w; break; }
+            if (Connection.sameConnection(w.connection, selectedConnection)) { keep = w; break; }
         if (keep == null) keep = hoverHits.getFirst();
         selectedConnection = keep.connection;
         if (connHoverSinceMs == 0) connHoverSinceMs = Util.getMillis();
         return keep;
-    }
-
-    /** Value identity for a wire, stable across panel syncs (which replace the {@link Connection} instances): a wire is
-     *  uniquely identified by its kind and its two endpoints. */
-    private static boolean sameConnection(@Nullable Connection a, @Nullable Connection b) {
-        return a != null && b != null && a.type.equals(b.type) && a.from.equals(b.from) && a.to.equals(b.to);
     }
 
     /** Tooltip lines for the hovered wire — the widget owns the format; we supply the overlap count and selected index. */
@@ -816,7 +809,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int count = hoverHits.size();
         int sel = 0;
         for (int i = 0; i < count; i++)
-            if (sameConnection(hoverHits.get(i).connection, selectedConnection)) { sel = i; break; }
+            if (Connection.sameConnection(hoverHits.get(i).connection, selectedConnection)) { sel = i; break; }
         return hoveredConn.getTooltip(count, sel, connArrowLocked);
     }
 
@@ -911,7 +904,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** In connection mode, the resolver result for wiring the currently-hovered component to the pending target, or
      *  {@code null} when the hover isn't a wireable partner (empty cell, or the initiator itself). {@code ok()}
-     *  distinguishes a valid target from an invalid one. Shared by the hover preview and the cycle-arrow key. */
+     *  distinguishes a valid target from an invalid one. */
     @Nullable
     private ConnectionResolver.Result connectionHoverResult() {
         if (pendingConnectionTarget == null || hoveredPosition == null
@@ -922,9 +915,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return ConnectionResolver.resolve(hovered, initiator, initiator);
     }
 
-    /** Draws a half-translucent preview of {@code item}'s component at {@code pos} (its back + front, as a fresh/blank
-     *  component — no bulb, filter, or other content). Built from a throwaway client behaviour and drawn in the canvas
-     *  pose, so it lands on {@code pos}. Used both for cursor placement and for relocate destinations. */
+    /** Draws a component preview */
     private void renderGhostAt(GuiGraphics graphics, VirtualComponentPosition pos, net.minecraft.world.item.Item item) {
         VirtualComponentBehaviour ghost = ComponentRegistry.createFromItem(null, pos, item, null);
         VirtualComponentWidget widget = ghost == null ? null : ComponentWidgetRegistry.create(ghost);
@@ -954,8 +945,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.disableBlend();
     }
 
-    /** Same as {@link #renderTarget} but pushed to a higher z, so the reticle sits ON TOP of the translucent
-     *  placement/relocate ghost (both otherwise draw at z 0, where blitSprite ordering doesn't reliably win). */
     private void renderTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 200);
@@ -1432,7 +1421,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 if (!hoverHits.isEmpty()) {
                     int idx = 0;
                     for (int i = 0; i < hoverHits.size(); i++)
-                        if (sameConnection(hoverHits.get(i).connection, selectedConnection)) { idx = i; break; }
+                        if (Connection.sameConnection(hoverHits.get(i).connection, selectedConnection)) { idx = i; break; }
                     idx = Math.floorMod(idx + (int) Math.signum(-scrollY), hoverHits.size());
                     selectedConnection = hoverHits.get(idx).connection;   // timer keeps running across the switch
                     return true;

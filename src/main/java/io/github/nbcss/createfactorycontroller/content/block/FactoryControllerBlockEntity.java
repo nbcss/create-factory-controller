@@ -113,7 +113,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public String customName = "";
 
     // ── Menu sync bookkeeping ──────────────────────────────────────────────
-    // Mutation paths mark what changed (syncComponentState/Full/Removed, syncConnection[Removed],
+    // Mutation paths mark what changed (syncComponentState/Full/Removed,
     // syncHeader, syncNetworks); the tick flush ships ONE packet per tick to every viewer — a small
     // SyncPanelDeltaPacket, or the full SyncPanelStatePacket when someone marked everything().
 

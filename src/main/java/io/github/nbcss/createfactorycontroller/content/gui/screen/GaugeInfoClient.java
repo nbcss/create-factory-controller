@@ -8,10 +8,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 /**
- * Client-side holder for the latest {@link GaugeInfoPacket}
- * reply, so the open {@link io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen}
- * can show a gauge's live in-flight promise count without that count being synced every tick. Keyed by gauge cell so a
- * reply for a different gauge is ignored.
+ * Client-side holder for the latest {@link GaugeInfoPacket} state
  */
 @OnlyIn(Dist.CLIENT)
 public final class GaugeInfoClient {
@@ -52,13 +49,7 @@ public final class GaugeInfoClient {
         return gaugePos.equals(pos) && ticking && maxTimer > 0;
     }
 
-    /** Charge-up progress [0,1] of {@code gaugePos}'s request timer — 0 just after a request fires, rising to 1 as
-     *  the next fire nears. Returns 0 when no reply for that gauge has arrived.
-     *
-     *  <p>Two estimates are combined and the higher (more-recently-reset) wins: the <b>fire-based</b> one, anchored
-     *  to the promptly-synced {@code lastRequestTick} (so a fresh cycle snaps to frame 0 immediately, not on the
-     *  next ≤10-tick poll — which is why the animation used to skip the first frame); and the <b>poll-based</b> one,
-     *  which stays correct across a satisfied-pause where the timer freezes without a new fire.</p> */
+    /** request timer */
     public static float timerProgress(VirtualComponentPosition gaugePos, long lastRequestTick) {
         if (!gaugePos.equals(pos) || maxTimer <= 0) return 0f;
         long now = clientGameTime();
@@ -72,7 +63,6 @@ public final class GaugeInfoClient {
         return Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0L;
     }
 
-    /** Forget the cached reply (called when the recipe screen opens for a gauge, so a stale value isn't shown). */
     public static void clear() {
         pos = null;
     }

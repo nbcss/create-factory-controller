@@ -53,7 +53,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
             }
             if (hovering) {
                 if (Screen.hasControlDown())
-                    s.patternHovered = true;   // draw the N×M layout grid in render()
+                    s.patternHovered = true;
                 else {
                     int dim = s.effectiveCraftDimension();
                     tooltip = List.of(
@@ -129,6 +129,19 @@ class CraftingEditor extends GaugeWorkModeEditor {
         // Per-craft yield is fixed, so scrolling the output changes how many crafts ride one request.
         s.adjustCraftBatch(dir * step);
         return true;
+    }
+
+    @Override
+    Configuration configuration() {
+        List<Integer> amounts = s.inputConnections.stream().map(pos -> {
+            ItemStack ingredient = s.ingredientOf(pos);
+            return (int) s.craftingIngredients.stream()
+                .filter(entry -> !entry.stack.isEmpty()
+                    && ItemStack.isSameItemSameComponents(entry.stack, ingredient))
+                .count();
+        }).toList();
+        List<ItemStack> arrangement = s.craftingIngredients.stream().map(entry -> entry.stack).toList();
+        return configuration(amounts, s.effectiveBatch(), s.effectiveCraftDimension(), arrangement, List.of());
     }
 
     @Override

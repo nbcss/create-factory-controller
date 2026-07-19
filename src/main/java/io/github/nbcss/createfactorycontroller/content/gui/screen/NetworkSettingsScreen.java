@@ -31,11 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
 /**
- * Overlay for editing a network's <b>shared</b> settings (custom name + icon), opened by clicking the
- * network selector empty-handed. Shares the controller's {@link FactoryControllerMenu} (no server
- * container swap) and draws the live board as a dimmed backdrop, mirroring {@link ControllerSettingScreen}.
- * The icon is a ghost item (never consumed) like {@link SetItemScreen}. Commit (confirm / Escape) sends a
- * {@link SetNetworkSettingsPacket}; blank name + empty icon reverts the network to its defaults.
+ * for editing a network's settings
  */
 @OnlyIn(Dist.CLIENT)
 public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
@@ -64,7 +60,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Y of the hotbar slot row within player_inventory.png (matches SetItemScreen). */
     private static final int INV_TEX_HOTBAR_Y = 76;
 
-    // Icon slot + name box geometry (panel-relative), reusing settings.png's slot/selector recesses.
     private static final int ICON_X = 22, ICON_Y = 28, ICON_SIZE = 16;
     private static final int NAME_X = 46, NAME_Y = 28, NAME_W = 138, NAME_H = 16;
 
@@ -90,7 +85,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
             SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
     }
 
-    /** The default name shown when no custom name is set — matches the selector's fallback label. */
     private Component defaultName() {
         return NetworkSettings.defaultFor(network).displayName();
     }
@@ -101,21 +95,16 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         setWindowOffset(0, 0);
         super.init();
 
-        // Centre the panel + player-inventory block together (like SetItemScreen), so the player can drop
-        // an inventory item onto the icon slot.
         int blockH = PANEL_H + INV_TEX_H;
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - blockH) / 2;
 
-        // Inventory background below the panel; the slot grid is derived from it so slots line up with the
-        // texture recesses (hotbar row at INV_TEX_HOTBAR_Y).
         invBgX = panelX + (PANEL_W - INV_TEX_W) / 2;
         invBgY = panelY + PANEL_H + 6;
         int originX = invBgX + 8 - leftPos;                    // slot grid origin
         int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;    // hotbar row
         menu.repositionSlots(originX, hotbarY, true);
 
-        // Two buttons at the top-left: clear (reset to default) then confirm.
         clearButton = new TooltipIconButton(panelX + PANEL_W - 47, panelY + PANEL_H - 24, AllIcons.I_TRASH);
         clearButton.withCallback(this::clearToDefault);
         clearButton.setToolTip(CreateLang.translate("gui.factory_panel.reset").component());
@@ -126,7 +115,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         confirmButton.setToolTip(CommonComponents.GUI_DONE);
         addWidget(confirmButton);
 
-        // Name box in the selector recess; empty shows the default name as a hint. Plain font ⇒ drawn with shadow.
         String currentName = nameBox != null ? nameBox.getValue() : menu.networkSettings(network).name();
         nameBox = new EditBox(font,
             panelX + NAME_X + 4, panelY + NAME_Y + (NAME_H - 8) / 2, NAME_W - 8, 10, Component.empty());
@@ -147,7 +135,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();   // keep the background board's indicator bulbs animating
+        controller.tickBulbs();
     }
 
     @Override
@@ -168,7 +156,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
 
     // ── Actions ────────────────────────────────────────────────────────────────
 
-    /** Resets the staged name + icon to empty (default) without closing the window. */
     private void clearToDefault() {
         nameBox.setValue("");
         nameBox.setFocused(false);
@@ -181,8 +168,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         Minecraft.getInstance().setScreen(controller);
     }
 
-    /** Sends the staged settings to the server, with an optimistic mirror update so the UI is instant.
-     *  No-ops when nothing changed, so merely opening/closing doesn't resync every controller on the network. */
     private void commit() {
         NetworkSettings staged = new NetworkSettings(network, nameBox.getValue().strip(), icon.copy());
         if (staged.matches(menu.networkSettings(network))) return;   // unchanged — don't resync everyone
@@ -199,8 +184,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         icon = plainIcon(source);   // ghost — the held stack is not consumed
     }
 
-    /** Icon is a pure item-type token — strip any NBT/data components so it can't drag along, e.g., a
-     *  specific enchantment or custom name. */
     private static ItemStack plainIcon(ItemStack source) {
         return new ItemStack(source.getItem());
     }
@@ -236,7 +219,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         TiledSpriteRenderer.create(PANEL_BOTTOM_VDIV).render(gfx, panelX + PANEL_W - 53, panelY + PANEL_H - PANEL_BOTTOM_H, 2, PANEL_BOTTOM_H);
         gfx.blit(PLAYER_INVENTORY_TEX, invBgX, invBgY, 0, 0, INV_TEX_W, INV_TEX_H);
 
-        // Icon slot: the staged custom item, or the selector's default tinted network icon.
+        // Icon slot
         renderNetworkIcon(gfx, new NetworkSettings(network, "", icon), panelX + ICON_X, panelY + ICON_Y);
 
         if (overIcon(mouseX, mouseY))
@@ -303,7 +286,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
-        // Shift-click an inventory item → set it as the icon (a ghost copy; the item stays in the inventory).
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
             icon = plainIcon(slot.getItem());
             playClickSound();

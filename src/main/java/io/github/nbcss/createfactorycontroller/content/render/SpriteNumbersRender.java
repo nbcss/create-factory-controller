@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.simibubi.create.content.logistics.BigItemStack;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersScreen;
@@ -31,13 +32,29 @@ public final class SpriteNumbersRender {
 
     private SpriteNumbersRender() {}
 
-    /** Stock-Keeper-style abbreviation: k / m for large counts, {@link #INFINITE} once astronomically large. */
+    /** Stock-Keeper-style abbreviation */
     public static String abbreviate(int count) {
-        if (count >= 1000000000) return INFINITE;
+        if (count >= BigItemStack.INF) return INFINITE;
         return count >= 1000000 ? count / 1000000 + "m"
             : count >= 10000 ? count / 1000 + "k"
             : count >= 1000 ? (float) (count * 10 / 1000) / 10.0F + "k"
             : count >= 100 ? count + "" : " " + count;
+    }
+
+    public static String abbreviateFluid(int mb) {
+        if (mb >= BigItemStack.INF) return SpriteNumbersRender.INFINITE;
+        if (mb >= 1_000_000) return compactFluid(mb, 1_000_000, "kB");
+        if (mb >= 100) return compactFluid(mb, 1000, "B");
+        return mb + "mB";
+    }
+
+    private static String compactFluid(int amount, int divisor, String suffix) {
+        if (amount % divisor == 0) return (amount / divisor) + suffix;
+        if (amount / divisor <= 10)
+            return String.format(java.util.Locale.ROOT, "%.1f%s",
+                    Math.floor(amount / (divisor / 10.0)) / 10.0, suffix);
+        return String.format(java.util.Locale.ROOT, "%.0f%s",
+                Math.floor(amount / (double) divisor), suffix);
     }
 
     /**

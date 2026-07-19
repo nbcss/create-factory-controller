@@ -57,6 +57,7 @@ public enum ThresholdUnit {
     public final String suffix;
     /** Whether this unit measures a fluid (mB/B) rather than items; fluid and item units never mix. */
     public final Type type;
+    /** Maximum value in gauge's target storage amount */
     public final int maxRequestCount;
 
     ThresholdUnit(String suffix, Type type, int maxRequestCount) {

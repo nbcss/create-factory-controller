@@ -62,8 +62,7 @@ public final class ComponentBlueprintStorage {
     }
 
     /**
-     * Writes one compressed, versioned Minecraft NBT blueprint. The chosen network order defines placeholders
-     * 1, 2, ...; no UUID is written. An existing file with the same player-entered name is atomically replaced.
+     * Writes one compressed, versioned Minecraft NBT blueprint.
      */
     public static Path save(FactoryControllerMenu menu,
                             Iterable<VirtualComponentPosition> selectedPositions,
