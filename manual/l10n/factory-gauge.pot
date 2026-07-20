@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 03:13+1000\n"
+"POT-Creation-Date: 2026-07-21 04:10+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,19 +17,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/factory-gauge.adoc:184
+#: ../src/components.adoc:7 ../src/factory-gauge.adoc:189
 #, no-wrap
 msgid "Icon"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/factory-gauge.adoc:184
+#: ../src/components.adoc:7 ../src/factory-gauge.adoc:189
 #, no-wrap
 msgid "Name"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:17 ../src/factory-gauge.adoc:216
+#: ../src/components.adoc:17 ../src/factory-gauge.adoc:221
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr ""
@@ -445,21 +445,40 @@ msgstr ""
 msgid ""
 "For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 "
 "slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. "
-"The planks and slabs can be produced with gauges in \"follow demand\" mode. "
-"The gauge for slabs receives a demand of 2. The gauge for planks receives a "
-"demand of 9: 6 from barrels, 3 from slabs. First, 3 logs are crafted into 12 "
-"planks, then 3 of which are crafted into 6 slabs. After crafting 1 barrel, 3 "
-"planks and 4 slabs are left over."
+"The planks and slabs can be produced with gauges in \"follow demand\" mode:"
+msgstr ""
+
+#. type: #figure-follow-demand
+#: ../src/factory-gauge.adoc:152
+msgid "The gauge for slabs receives a demand of 2."
+msgstr ""
+
+#. type: #figure-follow-demand
+#: ../src/factory-gauge.adoc:153
+msgid ""
+"The gauge for planks receives a demand of 9: 6 from barrels, 3 from slabs."
+msgstr ""
+
+#. type: #figure-follow-demand
+#: ../src/factory-gauge.adoc:154
+msgid ""
+"First, 3 logs are crafted into 12 planks, then 3 of which are crafted into 6 "
+"slabs."
+msgstr ""
+
+#. type: #figure-follow-demand
+#: ../src/factory-gauge.adoc:155
+msgid "After crafting 1 barrel, 3 planks and 4 slabs are left over."
 msgstr ""
 
 #. type: Title ===
-#: ../src/factory-gauge.adoc:152
+#: ../src/factory-gauge.adoc:157
 #, no-wrap
 msgid "Ordering from Stock Keeper"
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:155
+#: ../src/factory-gauge.adoc:160
 msgid ""
 "Another mode of the factory gauge, \"follow demand and order\", additionally "
 "allows the item produceable by a gauge to be manually ordered from a stock "
@@ -468,13 +487,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:156
+#: ../src/factory-gauge.adoc:161
 #, no-wrap
 msgid "A production task of oak planks"
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:160
+#: ../src/factory-gauge.adoc:165
 msgid ""
 "Sending an order containing production tasks creates a production order, "
 "causing the corresponding gauges to add the number of items in the order to "
@@ -483,7 +502,7 @@ msgid ""
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:162
+#: ../src/factory-gauge.adoc:167
 msgid ""
 "Pending production orders can be viewed in the \"production orders\" tab in "
 "the stock keeper UI. They are automatically removed when all ordered items "
@@ -491,124 +510,124 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:163
+#: ../src/factory-gauge.adoc:168
 #, no-wrap
 msgid "Production orders UI"
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:168
+#: ../src/factory-gauge.adoc:173
 msgid "❶ Production orders tab:: Click to switch to this tab."
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:171
+#: ../src/factory-gauge.adoc:176
 msgid ""
 "❷ Destination address:: The address the items are sent to after they arrive "
 "in storage."
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:174
+#: ../src/factory-gauge.adoc:179
 msgid "❸ Elapsed time:: Time elapsed since the order was created."
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:177
+#: ../src/factory-gauge.adoc:182
 msgid "❹ Cancel button:: Click to cancel the order."
 msgstr ""
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:180
+#: ../src/factory-gauge.adoc:185
 msgid "❺ Ordered items:: Type, amount, and status of the ordered items."
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:181
+#: ../src/factory-gauge.adoc:186
 #, no-wrap
 msgid "Statuses of ordered items"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:186
+#: ../src/factory-gauge.adoc:191
 #, no-wrap
 msgid "Description"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:187
+#: ../src/factory-gauge.adoc:192
 #, no-wrap
 msgid "Waiting for ingredients"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:189
+#: ../src/factory-gauge.adoc:194
 #, no-wrap
 msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:189
+#: ../src/factory-gauge.adoc:194
 #, no-wrap
 msgid "⏶"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:190
+#: ../src/factory-gauge.adoc:195
 #, no-wrap
 msgid "Processing"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:192
+#: ../src/factory-gauge.adoc:197
 #, no-wrap
 msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:192
+#: ../src/factory-gauge.adoc:197
 #, no-wrap
 msgid "✓"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:193
+#: ../src/factory-gauge.adoc:198
 #, no-wrap
 msgid "Sent"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:195
+#: ../src/factory-gauge.adoc:200
 #, no-wrap
 msgid "The produced item has arrived in storage, and been dispatched to the destination address."
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:195
+#: ../src/factory-gauge.adoc:200
 #, no-wrap
 msgid "🗙"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:196
+#: ../src/factory-gauge.adoc:201
 #, no-wrap
 msgid "Invalid gauge"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:197
+#: ../src/factory-gauge.adoc:202
 #, no-wrap
 msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:200
+#: ../src/factory-gauge.adoc:205
 #, no-wrap
 msgid "Fluid Transport"
 msgstr ""
 
 #. type: #fluid
-#: ../src/factory-gauge.adoc:203
+#: ../src/factory-gauge.adoc:208
 msgid ""
 "When you have a compatible fluid transportation mod installed, factory "
 "gauges placed in factory controllers may utilize that mod's ability to "
@@ -616,61 +635,61 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:204
+#: ../src/factory-gauge.adoc:209
 #, no-wrap
 msgid "Compatibility of fluid transportation mods"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:207
+#: ../src/factory-gauge.adoc:212
 #, no-wrap
 msgid "Mod"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:209
+#: ../src/factory-gauge.adoc:214
 #, no-wrap
 msgid "Compatibility"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:210
+#: ../src/factory-gauge.adoc:215
 #, no-wrap
 msgid "Create: FluidLogistic"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:212 ../src/factory-gauge.adoc:218
+#: ../src/factory-gauge.adoc:217 ../src/factory-gauge.adoc:223
 #, no-wrap
 msgid "Yes"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:213
+#: ../src/factory-gauge.adoc:218
 #, no-wrap
 msgid "Create: Fluid"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:215
+#: ../src/factory-gauge.adoc:220
 #, no-wrap
 msgid "Yes, but may drop support in the future"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:219
+#: ../src/factory-gauge.adoc:224
 #, no-wrap
 msgid "Create Factory Logistics"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:220
+#: ../src/factory-gauge.adoc:225
 #, no-wrap
 msgid "No, will crash the game"
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:223
+#: ../src/factory-gauge.adoc:228
 msgid ""
 "When using Create: Repackaged, place fluid gauges provided by this mod to "
 "monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
@@ -679,7 +698,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:225
+#: ../src/factory-gauge.adoc:230
 msgid ""
 "When using the other mods, regular factory gauges gain the ability to "
 "monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
@@ -688,14 +707,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:227
+#: ../src/factory-gauge.adoc:232
 msgid ""
 "Fluids do not contain NBT data, therefore when monitoring a fluid, the "
 "option to ignore NBT data disappears."
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:229
+#: ../src/factory-gauge.adoc:234
 msgid ""
 "When using a fluid as an ingredient or output, scrolling on the ingredient "
 "or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust "
@@ -704,13 +723,13 @@ msgid ""
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:231
+#: ../src/factory-gauge.adoc:236
 #, no-wrap
 msgid "Promise Limits"
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:234
+#: ../src/factory-gauge.adoc:239
 msgid ""
 "Each time a factory gauge requests a set of ingredients to be sent to its "
 "destination address, a promise is created (also referred to as a pending "
@@ -723,13 +742,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:235
+#: ../src/factory-gauge.adoc:240
 #, no-wrap
 msgid "UI elements related to promises"
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:240
+#: ../src/factory-gauge.adoc:245
 msgid ""
 "❶ Promised items:: Displays the total number of items recorded in promises "
 "created by all gauges in the same network producing the same item. Click to "
@@ -737,7 +756,7 @@ msgid ""
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:244
+#: ../src/factory-gauge.adoc:249
 #, no-wrap
 msgid ""
 "❷ Expire time::\n"
@@ -746,7 +765,7 @@ msgid ""
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:248
+#: ../src/factory-gauge.adoc:253
 #, no-wrap
 msgid ""
 "❸ Pending requests::\n"
@@ -755,13 +774,13 @@ msgid ""
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:250
+#: ../src/factory-gauge.adoc:255
 #, no-wrap
 msgid "Redstone"
 msgstr ""
 
 #. type: #redstone
-#: ../src/factory-gauge.adoc:253
+#: ../src/factory-gauge.adoc:258
 msgid ""
 "A factory gauge can be connected to some other components, such as "
 "xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone "
@@ -772,13 +791,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:254
+#: ../src/factory-gauge.adoc:259
 #, no-wrap
 msgid "A factory gauge disabled by an incoming redstone signal, and outputting a redstone signal"
 msgstr ""
 
 #. type: #redstone
-#: ../src/factory-gauge.adoc:257
+#: ../src/factory-gauge.adoc:262
 msgid ""
 "Additionally, when a factory controller block is redstone-powered, all "
 "factory gauges inside are disabled."

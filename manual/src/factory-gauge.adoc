@@ -146,7 +146,12 @@ In this mode, the target amount (❶) cannot be modified manually. It is automat
 .An example setup to produce barrels from oak logs
 image::gauge-follow-demand-barrel-example.png[,329,198]
 
-For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. The planks and slabs can be produced with gauges in "follow demand" mode. The gauge for slabs receives a demand of 2. The gauge for planks receives a demand of 9: 6 from barrels, 3 from slabs. First, 3 logs are crafted into 12 planks, then 3 of which are crafted into 6 slabs. After crafting 1 barrel, 3 planks and 4 slabs are left over.
+For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. The planks and slabs can be produced with gauges in "follow demand" mode:
+
+* The gauge for slabs receives a demand of 2.
+* The gauge for planks receives a demand of 9: 6 from barrels, 3 from slabs.
+* First, 3 logs are crafted into 12 planks, then 3 of which are crafted into 6 slabs.
+* After crafting 1 barrel, 3 planks and 4 slabs are left over.
 
 [#production-orders]
 === Ordering from Stock Keeper
