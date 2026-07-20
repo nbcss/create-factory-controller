@@ -51,4 +51,13 @@ module Util
     doc.children
   end
 
+  def self.get_language_endonym(lang)
+    @language_endonyms ||= {}
+    @language_endonyms[lang] ||= IO.popen(
+      ["node", "-e", "console.log(new Intl.DisplayNames(process.argv[1], {type: 'language'}).of(process.argv[1]))", lang],
+      &:read)
+      .tap{raise unless $?.success?}
+      .chomp
+  end
+
 end

@@ -4,7 +4,6 @@ require 'yaml'
 require 'asciidoctor'
 require 'asciidoctor-html5s'
 require 'nokogiri'
-require 'twitter_cldr'
 require 'font-awesome-sass'
 require_relative 'lib/replacements'
 require_relative 'lib/util'
@@ -14,7 +13,7 @@ CLOBBER << 'build'
 # Get languages from po4a config
 LANGS = File.readlines("l10n/po4a.cfg")
   .find{|x| x =~ /^\[po4a_langs\]/ }
-  .split(?])[1].scan(/\w+/)
+  .split(?])[1].scan(/[\w_-]+/)
 
 LANGS.prepend 'en'
 def LANGS.default() first end
@@ -141,7 +140,7 @@ LayoutContext = Struct.new *%i(
   def binding() Kernel.binding end
   def h(value) ERB::Util.html_escape(value) end
   def t(key) attributes[key] || key end
-  def lang_name(lang) TwitterCldr::Shared::Languages.from_code_for_locale lang, lang end
+  def lang_name(lang) Util.get_language_endonym(lang) end
   def attach_cache_id(path) Util.add_cache_id(path, output_path) end
 end
 

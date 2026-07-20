@@ -1,4 +1,4 @@
-# Chinese translations for Create: Factory Controller Manual package
+# Language zh-hans translations for Create: Factory Controller Manual package
 # Copyright (C) 2026 Contributors
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # Automatically generated, 2026.
@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-18 01:46+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
+"PO-Revision-Date: 2026-07-18 01:46+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
-"Language: zh\n"
+"Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
