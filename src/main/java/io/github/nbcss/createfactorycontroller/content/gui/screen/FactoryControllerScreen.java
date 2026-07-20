@@ -19,6 +19,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.IndicatorColumnWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
@@ -241,6 +242,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     // Network selector widget
     private NetworkSelectorWidget networkSelector;
+    private IndicatorColumnWidget indicatorColumn;
 
     private int @Nullable [] capacityLabelBounds = null;
     private int @Nullable [] zoomLabelBounds = null;
@@ -323,6 +325,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
         else
             networkSelector.setPosition(selectorX, selectorY);
+        if (indicatorColumn == null)
+            indicatorColumn = new IndicatorColumnWidget(selectorX, selectorY, menu);
+        else
+            indicatorColumn.refresh();
+        indicatorColumn.setPosition(
+                selectorX,
+                selectorY + 28);
 
         lastPanFrameMs = 0;
         heldPanKeys.clear();
@@ -530,6 +539,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderComponentTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
             else if (networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
+            else if (indicatorColumn.isMouseOver(mouseX, mouseY))
+                graphics.renderComponentTooltip(font, indicatorColumn.getTooltipLines(mouseX, mouseY), mouseX, mouseY);
             else if (inBounds(capacityLabelBounds, mouseX, mouseY))
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.capacity"), mouseX, mouseY);
             else if (inBounds(zoomLabelBounds, mouseX, mouseY))
@@ -731,6 +742,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
+        indicatorColumn.render(graphics, mouseX, mouseY, partialTick);
 
         int labelX = networkSelector.getX() + networkSelector.getWidth() + 3;
         int row0Y = networkSelector.getY() + 2;
@@ -1277,6 +1289,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
         }
+        if (indicatorColumn.isMouseOver(mouseX, mouseY)) return true;
 
         if (isInCanvasArea(mouseX, mouseY)) {
             int x0 = leftPos + CANVAS_SIDE_PADDING;
@@ -1648,6 +1661,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (x >= invLeft && x < invLeft + INV_TEX_W && y >= invTop && y < invBot) return false;
 
         if (networkSelector.isMouseOver(x, y)) return false;
+        if (indicatorColumn.isMouseOver(x, y)) return false;
 
         // Settings button — let its click reach the widget (via super.mouseClicked) instead of panning.
         if (settingsButton != null && x >= settingsButtonX() && x < settingsButtonX() + SETTINGS_BTN_W
@@ -1662,6 +1676,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void onPanelSync() {
         rebuildGaugeWidgets();   // components were replaced with fresh instances; re-index them
+        if (indicatorColumn != null) indicatorColumn.refresh();
     }
 
     public int guiWidth()  { return imageWidth; }

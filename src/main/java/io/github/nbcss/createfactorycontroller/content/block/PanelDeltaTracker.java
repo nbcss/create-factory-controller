@@ -30,6 +30,7 @@ public class PanelDeltaTracker {
     private final Set<ConnectionKey> removedConnections = new LinkedHashSet<>();
     private boolean header = false;
     private boolean networks = false;
+    private boolean missingLinks = false;
     private boolean everything = false;
 
     /** Runtime-only change (stock/promise counts, satisfied flags, powered, …). Never downgrades a FULL mark. */
@@ -70,13 +71,18 @@ public class PanelDeltaTracker {
         networks = true;
     }
 
+    /** Controller-wide unloaded logistics-link diagnostics changed. */
+    public void missingLinks() {
+        missingLinks = true;
+    }
+
     /** Escalate the next flush to a full snapshot (supersedes every precise mark). */
     public void everything() {
         everything = true;
     }
 
     public boolean isEmpty() {
-        return !everything && !header && !networks
+        return !everything && !header && !networks && !missingLinks
             && components.isEmpty() && removedComponents.isEmpty()
             && connections.isEmpty() && removedConnections.isEmpty();
     }
@@ -84,6 +90,7 @@ public class PanelDeltaTracker {
     public boolean isEverything() { return everything; }
     public boolean isHeaderDirty() { return header; }
     public boolean isNetworksDirty() { return networks; }
+    public boolean isMissingLinksDirty() { return missingLinks; }
 
     public Map<VirtualComponentPosition, Level> components() { return Collections.unmodifiableMap(components); }
     public Set<VirtualComponentPosition> removedComponents() { return Collections.unmodifiableSet(removedComponents); }
@@ -97,6 +104,7 @@ public class PanelDeltaTracker {
         removedConnections.clear();
         header = false;
         networks = false;
+        missingLinks = false;
         everything = false;
     }
 }

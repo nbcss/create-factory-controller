@@ -7,6 +7,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
+import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -32,6 +33,7 @@ public record SyncPanelStatePacket(BlockPos pos,
                                    List<VirtualComponentBehaviour> components,
                                    List<Connection> connections,
                                    List<NetworkSettings> networks,
+                                   List<MissingLinkStatus> missingLinks,
                                    String controllerName,
                                    boolean controllerPowered)
         implements CustomPacketPayload {
@@ -90,9 +92,10 @@ public record SyncPanelStatePacket(BlockPos pos,
                 List<VirtualComponentBehaviour> components = COMPONENT_LIST_CODEC.decode(buf);
                 List<Connection> connections = CONNECTION_LIST_CODEC.decode(buf);
                 List<NetworkSettings> networks = NETWORK_LIST_CODEC.decode(buf);
+                List<MissingLinkStatus> missingLinks = MissingLinkStatus.readList(buf);
                 String controllerName = buf.readUtf();
                 boolean controllerPowered = buf.readBoolean();
-                return new SyncPanelStatePacket(pos, epoch, revision, components, connections, networks,
+                return new SyncPanelStatePacket(pos, epoch, revision, components, connections, networks, missingLinks,
                         controllerName, controllerPowered);
             }
             @Override
@@ -103,6 +106,7 @@ public record SyncPanelStatePacket(BlockPos pos,
                 COMPONENT_LIST_CODEC.encode(buf, packet.components());
                 CONNECTION_LIST_CODEC.encode(buf, packet.connections());
                 NETWORK_LIST_CODEC.encode(buf, packet.networks());
+                MissingLinkStatus.writeList(buf, packet.missingLinks());
                 buf.writeUtf(packet.controllerName());
                 buf.writeBoolean(packet.controllerPowered());
             }
@@ -122,7 +126,7 @@ public record SyncPanelStatePacket(BlockPos pos,
             if (!menu.controllerPos.equals(packet.pos())) return;
 
             menu.applyFullSync(packet.epoch(), packet.revision(), packet.components(), packet.connections(),
-                    packet.networks(), packet.controllerName(), packet.controllerPowered());
+                    packet.networks(), packet.missingLinks(), packet.controllerName(), packet.controllerPowered());
 
             // Refresh whichever of this controller's screens is active — the controller canvas itself
             // or a sub-screen (set-item / configure-recipe) that renders the canvas as its background.

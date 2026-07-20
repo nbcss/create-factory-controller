@@ -9,6 +9,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBeh
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettingsStore;
+import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -35,6 +36,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
      *  entry, though its customized fields may be empty. Read via {@link #networkSettings(UUID)}, which never
      *  returns null. */
     public final Map<UUID, NetworkSettings> networkSettings = new HashMap<>();
+    /** Runtime-only unloaded-link diagnostics, ordered by the controller's known-network list. */
+    public List<MissingLinkStatus> missingLinkStatuses = List.of();
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";
     public boolean controllerPowered = false;
@@ -67,6 +70,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         // Snapshot data from BE for client sync
         setComponents(be.components.values());
         this.knownNetworks.addAll(be.networks);
+        this.missingLinkStatuses = be.missingLinkStatuses();
         this.controllerName = be.customName;
         this.controllerPowered = be.isRedstonePowered();
 
@@ -101,6 +105,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
             knownNetworks.add(settings.network());
             networkSettings.put(settings.network(), settings);
         }
+        missingLinkStatuses = MissingLinkStatus.readList(buf);
 
         this.controllerName = buf.readUtf();
         this.controllerPowered = buf.readBoolean();
@@ -224,10 +229,12 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
                               Collection<? extends VirtualComponentBehaviour> newComponents,
                               List<Connection> connections,
                               List<NetworkSettings> networks,
+                              List<MissingLinkStatus> missingLinks,
                               String name, boolean powered) {
         setComponents(newComponents);
         loadConnections(connections);
         applyNetworkSettings(networks);
+        applyMissingLinkStatuses(missingLinks);
         controllerName = name;
         controllerPowered = powered;
         syncEpoch = epoch;
@@ -243,6 +250,10 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
             knownNetworks.add(s.network());
             networkSettings.put(s.network(), s);
         }
+    }
+
+    public void applyMissingLinkStatuses(List<MissingLinkStatus> statuses) {
+        missingLinkStatuses = List.copyOf(statuses);
     }
 
     /** Delta apply: replace-or-add one component (a FULL upsert). Idempotent. */
@@ -329,6 +340,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
             NetworkSettings settings = settingsStore != null ? settingsStore.get(id) : NetworkSettings.defaultFor(id);
             NetworkSettings.STREAM_CODEC.encode(buf, settings);
         }
+        MissingLinkStatus.writeList(buf, be.missingLinkStatuses());
 
         buf.writeUtf(be.customName);
         buf.writeBoolean(be.isRedstonePowered());

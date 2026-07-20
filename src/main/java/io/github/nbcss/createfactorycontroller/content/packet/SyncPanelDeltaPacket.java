@@ -10,6 +10,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
+import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
@@ -44,7 +45,7 @@ import java.util.Set;
  * STATE body is {@code pos + writeClientState} and mutates the client's existing instance in place.</p>
  *
  * <p><b>Apply order</b> (fixed, makes remove+re-add and remove-with-wires atomic within one packet):
- * connection removals → component removals → component upserts → connection upserts → header/networks →
+ * connection removals → component removals → component upserts → connection upserts → header/networks/diagnostics →
  * re-fold sinks whose incoming wires changed → {@link PanelSyncListener#onPanelSync()}.</p>
  */
 public record SyncPanelDeltaPacket(BlockPos pos,
@@ -56,6 +57,7 @@ public record SyncPanelDeltaPacket(BlockPos pos,
                                    List<ComponentUpsert> componentUpserts,
                                    List<byte[]> connectionUpserts,
                                    @Nullable List<NetworkSettings> networks,
+                                   @Nullable List<MissingLinkStatus> missingLinks,
                                    @Nullable HeaderState header)
         implements CustomPacketPayload {
 
@@ -92,9 +94,10 @@ public record SyncPanelDeltaPacket(BlockPos pos,
                 List<byte[]> connectionUpserts = new ArrayList<>(n);
                 for (int i = 0; i < n; i++) connectionUpserts.add(buf.readByteArray());
                 List<NetworkSettings> networks = buf.readBoolean() ? NETWORK_LIST_CODEC.decode(buf) : null;
+                List<MissingLinkStatus> missingLinks = buf.readBoolean() ? MissingLinkStatus.readList(buf) : null;
                 HeaderState header = buf.readBoolean() ? new HeaderState(buf.readUtf(), buf.readBoolean()) : null;
                 return new SyncPanelDeltaPacket(pos, epoch, baseRevision, newRevision, removedComponents,
-                        removedConnections, componentUpserts, connectionUpserts, networks, header);
+                        removedConnections, componentUpserts, connectionUpserts, networks, missingLinks, header);
             }
 
             @Override
@@ -116,6 +119,8 @@ public record SyncPanelDeltaPacket(BlockPos pos,
                 for (byte[] body : packet.connectionUpserts()) buf.writeByteArray(body);
                 buf.writeBoolean(packet.networks() != null);
                 if (packet.networks() != null) NETWORK_LIST_CODEC.encode(buf, packet.networks());
+                buf.writeBoolean(packet.missingLinks() != null);
+                if (packet.missingLinks() != null) MissingLinkStatus.writeList(buf, packet.missingLinks());
                 buf.writeBoolean(packet.header() != null);
                 if (packet.header() != null) {
                     buf.writeUtf(packet.header().name());
@@ -190,6 +195,8 @@ public record SyncPanelDeltaPacket(BlockPos pos,
 
             if (packet.networks() != null)
                 menu.applyNetworkSettings(packet.networks());
+            if (packet.missingLinks() != null)
+                menu.applyMissingLinkStatuses(packet.missingLinks());
             if (packet.header() != null) {
                 menu.controllerName = packet.header().name();
                 menu.controllerPowered = packet.header().powered();

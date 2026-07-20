@@ -8,14 +8,14 @@ Features:
 - Added "Request Multiplier" feature in gauge: by set the maximum request multiplier value, gauge would attempt to combine ingredients from multiple requests into one request if stock allows.
 - Added per gauge "Request Interval" setting, player could also visualize gauge request progress in RecipeSettingScreen.
 - Added blueprint system to allow save components & connections to file.
+- Added tooltip warning and controller indicator for unloaded stock links.
 
 Changes:
 - Maximum batch crafting multiplier is 64 now, regardless recipe output count.
-- Gauge ingredient slot need to use Shift-Click to remove now
+- Gauge ingredient slot need to use Shift-Click to remove now.
 
 Optimization:
 - Dashboard sync use much less bandwidth data now.
-- Open controller screen now receives incremental updates (only what changed each tick) instead of the whole board on every change, drastically reducing network traffic while the screen is open.
 
 Bugfixes:
 - Fixed gauge connection flow animation won't play without made at least one request attempt.

@@ -1,7 +1,10 @@
 package io.github.nbcss.createfactorycontroller.content.block;
 
 import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
+import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
+import com.simibubi.create.content.logistics.packagerLink.LogisticsNetwork;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
@@ -48,6 +51,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettingsStore;
+import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -70,6 +75,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Max characters of the controller's custom display name (clamped server-side, authoritative). */
     public static final int MAX_NAME_LENGTH = 25;
     public static final int BOARD_LIMIT = 64;
+    private static final Comparator<GlobalPos> MISSING_LINK_POSITION_ORDER = Comparator
+        .comparing((GlobalPos pos) -> pos.dimension().location().toString())
+        .thenComparingInt(pos -> pos.pos().getX())
+        .thenComparingInt(pos -> pos.pos().getY())
+        .thenComparingInt(pos -> pos.pos().getZ());
 
     public static final int DATA_VERSION = 1;
     /** Version of the data most recently {@link #read}; {@code 0} = pre-versioning. For future migration logic. */
@@ -115,6 +125,13 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     }
     public final Set<UUID> networks = new LinkedHashSet<>();
 
+    /** Controller-wide 20-tick snapshot of unloaded links, ordered like {@link #networks}. Runtime-only. */
+    private List<MissingLinkStatus> missingLinkStatuses = List.of();
+
+    public List<MissingLinkStatus> missingLinkStatuses() {
+        return missingLinkStatuses;
+    }
+
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
 
@@ -148,6 +165,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void syncHeader() { deltaTracker.header(); }
     /** Known-network list or shared network settings changed. */
     public void syncNetworks() { deltaTracker.networks(); }
+    /** Controller-wide unloaded-link diagnostics changed. */
+    public void syncMissingLinks() { deltaTracker.missingLinks(); }
     /** Escalate to a full snapshot — for mutations that touch an intricate web of state (relocations, setup
      *  restore) where precise marking isn't worth the bug surface. Always correct, just fat. */
     public void syncEverything() { deltaTracker.everything(); }
@@ -214,9 +233,52 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         super.lazyTick();
         if (level != null && !level.isClientSide()) {
             updateRedstonePower();
+            refreshMissingLinks();
             heartbeatOrderableGauges();   // 20t heartbeat keeps this controller's gauges "live" in the registry
             for (VirtualComponentBehaviour component : components.values())
                 component.lazyTick();
+        }
+    }
+
+    /**
+     * Samples Create's logistics-link registry once per known network on the controller's 20-tick lazy tick.
+     * Gauges consume this shared result instead of each polling the same network every tick.
+     */
+    private void refreshMissingLinks() {
+        List<MissingLinkStatus> next = new ArrayList<>();
+        Set<UUID> missingNetworks = new HashSet<>();
+        for (UUID network : networks) {
+            LogisticsNetwork logisticsNetwork = Create.LOGISTICS.logisticsNetworks.get(network);
+            if (logisticsNetwork == null) continue;
+            List<GlobalPos> missing = logisticsNetwork.totalLinks.stream()
+                .filter(link -> !logisticsNetwork.loadedLinks.contains(link))
+                .sorted(MISSING_LINK_POSITION_ORDER)
+                .toList();
+            if (missing.isEmpty()) continue;
+            missingNetworks.add(network);
+            next.add(new MissingLinkStatus(network, missing));
+        }
+        next = List.copyOf(next);
+
+        Set<UUID> previouslyMissing = new HashSet<>();
+        for (MissingLinkStatus status : missingLinkStatuses) previouslyMissing.add(status.network());
+        for (UUID resolved : previouslyMissing)
+            if (!missingNetworks.contains(resolved)) LogisticsManager.SUMMARIES.invalidate(resolved);
+
+        boolean gaugeChanged = false;
+        for (VirtualComponentBehaviour component : components.values()) {
+            if (!(component instanceof VirtualGaugeBehaviour gauge)) continue;
+            boolean waiting = !gauge.filter.isEmpty() && missingNetworks.contains(gauge.networkId);
+            if (gauge.waitingForNetwork == waiting) continue;
+            gauge.waitingForNetwork = waiting;
+            syncComponentState(gauge.position());
+            gaugeChanged = true;
+        }
+        if (gaugeChanged) setChanged();
+
+        if (!missingLinkStatuses.equals(next)) {
+            missingLinkStatuses = next;
+            syncMissingLinks();
         }
     }
 
@@ -1006,7 +1068,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<VirtualComponentBehaviour> comps = new ArrayList<>(components.values());
         List<Connection> conns = connectionGraph.connections();
         return new SyncPanelStatePacket(getBlockPos(), syncEpoch, syncRevision,
-                comps, conns, currentNetworkSettings(), customName, redstonePowered);
+                comps, conns, currentNetworkSettings(), missingLinkStatuses, customName, redstonePowered);
     }
 
     /** Builds this flush's delta from the tracker marks. Bodies are captured to bytes here, on the server
@@ -1046,11 +1108,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
 
         List<NetworkSettings> netList = deltaTracker.isNetworksDirty() ? currentNetworkSettings() : null;
+        List<MissingLinkStatus> missingLinks = deltaTracker.isMissingLinksDirty() ? missingLinkStatuses : null;
         SyncPanelDeltaPacket.HeaderState header = deltaTracker.isHeaderDirty()
                 ? new SyncPanelDeltaPacket.HeaderState(customName, redstonePowered) : null;
 
         return new SyncPanelDeltaPacket(getBlockPos(), syncEpoch, syncRevision - 1, syncRevision,
-                removals, connRemovals, upserts, connUpserts, netList, header);
+                removals, connRemovals, upserts, connUpserts, netList, missingLinks, header);
     }
 
     /** The synced network-settings list: one entry per known network, defaults where nothing is stored. */

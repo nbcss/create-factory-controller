@@ -233,7 +233,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public boolean redstonePowered = false;
 
     // Internal tick state
-    private int lastReportedUnloadedLinks = 0;
     /** Last synced {@link #count}; in passive mode count is recomputed each tick, so it must be part of the
      *  storage-monitor dirty check or a count-only change wouldn't reach the client's gray number. */
     private int lastReportedCount = -1;
@@ -625,17 +624,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         if (filter.isEmpty()) {
             satisfied = true;
             promisedSatisfied = true;
-            waitingForNetwork = false;
             stockLevel = 0;
             promisedCount = 0;
             updateRedstoneOutput();
             return;
         }
-
-        int unloadedLinkCount = Create.LOGISTICS.getUnloadedLinkCount(networkId);
-
-        if (unloadedLinkCount == 0 && lastReportedUnloadedLinks != 0)
-            LogisticsManager.SUMMARIES.invalidate(networkId);
 
         // Apply a pending player-forced clear (side effect only). Its promised drop is absorbed by the hold
         // below exactly like a settlement or an expiry — no per-cause disambiguation is needed any more.
@@ -660,7 +653,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // Snapshot the committed state for the satisfy chime and the sync dirty-check.
         boolean wasSatisfied = satisfied;
         int prevStock = stockLevel, prevPromised = promisedCount;
-        boolean prevPromiseSatisfy = promisedSatisfied, prevWait = waitingForNetwork;
+        boolean prevPromiseSatisfy = promisedSatisfied;
 
         if (inStorage >= stockLevel)   { stockLevel = inStorage; stockDropPending = false; }
         else if (stockDropPending)     { stockLevel = inStorage; stockDropPending = false; }
@@ -685,18 +678,15 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         int demand = count * unit.toCountMultiplier(filter);
         satisfied = stockLevel >= demand;
         promisedSatisfied = heldSum >= demand;
-        waitingForNetwork = unloadedLinkCount > 0;
 
         boolean redstoneChanged = updateRedstoneOutput();
 
         if (!redstoneChanged && stockLevel == prevStock && promisedCount == prevPromised
                 && satisfied == wasSatisfied
-                && promisedSatisfied == prevPromiseSatisfy && waitingForNetwork == prevWait
-                && lastReportedCount == count && lastReportedUnloadedLinks == unloadedLinkCount)
+                && promisedSatisfied == prevPromiseSatisfy && lastReportedCount == count)
             return;
 
         lastReportedCount = count;
-        lastReportedUnloadedLinks = unloadedLinkCount;
 
         // Bulb-update chime on the unsatisfied → satisfied transition (Create's tickStorageMonitor),
         // played at the controller block so nearby players hear the gauge light up.

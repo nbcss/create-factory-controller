@@ -13,6 +13,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
     public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
+    public static final ModConfigSpec.BooleanValue HIDE_MISSING_LINK_WARNING;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -40,6 +41,10 @@ public final class ClientConfig {
                         "sprite (the same glyphs as the stock icon) instead of the vanilla item-count font.")
                 .translation("createfactorycontroller.config.compact_recipe_count_font")
                 .define("compactRecipeCountFont", true);
+        HIDE_MISSING_LINK_WARNING = builder
+                .comment("Hide the missing logistics-link warning indicators in the Controller Screen.")
+                .translation("createfactorycontroller.config.hide_missing_link_warning")
+                .define("hideMissingLinkWarning", false);
         SPEC = builder.build();
     }
 
@@ -59,6 +64,10 @@ public final class ClientConfig {
 
     public static boolean compactRecipeCountFont() {
         return COMPACT_RECIPE_COUNT_FONT.get();
+    }
+
+    public static boolean hideMissingLinkWarning() {
+        return HIDE_MISSING_LINK_WARNING.get();
     }
 
     public static String getControllerBackground() {
