@@ -57,7 +57,7 @@
   "createfactorycontroller.gui.network_settings": "网络设置",
   "createfactorycontroller.gui.network_settings.icon_tip": "使用物品点击来设置图标",
   "createfactorycontroller.gui.network_settings.name_tip": "设置网络自定义命名",
-  "createfactorycontroller.gui.indicator.missing_links": "%1$s的未加载仓储链接:",
+  "createfactorycontroller.gui.indicator.missing_links": "%1$s存在未加载的仓储链接:",
   "createfactorycontroller.gui.indicator.missing_link_entry": "- 坐标: %1$s (%2$s)",
   "createfactorycontroller.toast.order_complete": "生产订单已配送",
   "createfactorycontroller.toast.gauge_invalid": "生产仪表失效",
