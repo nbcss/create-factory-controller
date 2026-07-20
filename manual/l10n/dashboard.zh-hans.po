@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-21 03:13+1000\n"
-"PO-Revision-Date: 2026-07-20 16:46+0000\n"
+"PO-Revision-Date: 2026-07-20 18:12+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
 "weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
@@ -130,12 +130,12 @@ msgstr "界面概览"
 msgid ""
 "❶ Title bar:: Shows the name of this factory controller. Name can be edited "
 "by clicking on it."
-msgstr ""
+msgstr "❶ 标题栏:: 显示当前工厂控制台的名称。单击名称可进行修改。"
 
 #. type: TIP
 #: ../src/dashboard.adoc:38
 msgid "❷ Help button:: Opens this help page."
-msgstr ""
+msgstr "❷ 帮助按钮:: 打开此帮助页面。"
 
 #. type: TIP
 #: ../src/dashboard.adoc:41
@@ -145,6 +145,8 @@ msgid ""
 "components. While holding a gauge, scroll to tune the gauge to a network. "
 "<<Network Selector,More Info>>"
 msgstr ""
+"❸ 网络选择器:: 列出控制台内组件已经绑定的全部网络。滚动可选择网络并高亮其中的"
+"组件，也可为手中的工厂仪表设定网络。<<Network Selector,详情>>"
 
 #. type: TIP
 #: ../src/dashboard.adoc:45
@@ -153,16 +155,18 @@ msgid ""
 "❹ Capacity indicator:: Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up.\n"
 "The capacity may be modified by the \"Controller Capacity\" server setting."
 msgstr ""
+"❹ 容量指示:: 显示控制台最多能够容纳的组件数量及当前已使用的容量。\n"
+"最大容量可通过服务端的“控制台最大组件数量”配置修改。"
 
 #. type: TIP
 #: ../src/dashboard.adoc:48
 msgid "❺ Zoom indicator:: Shows the current zoom level."
-msgstr ""
+msgstr "❺ 缩放指示:: 显示当前缩放比例。"
 
 #. type: TIP
 #: ../src/dashboard.adoc:51
 msgid "❻ Settings button:: Opens the settings screen."
-msgstr ""
+msgstr "❻ 设置按钮:: 打开设置界面。"
 
 #. type: TIP
 #: ../src/dashboard.adoc:54
@@ -170,6 +174,8 @@ msgid ""
 "❼ Player inventory:: Shows the player inventory. Only the 9 hotbar slots are "
 "shown by default. Click the \"+\" button to expand the other 27 slots."
 msgstr ""
+"❼ 玩家物品栏:: 显示玩家持有的物品。默认只显示快捷栏的 9 个槽位，单击“+”可展开"
+"其余 27 个槽位。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:56
