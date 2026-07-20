@@ -7,6 +7,7 @@ import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
+import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
@@ -32,6 +33,8 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -42,6 +45,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettingsStore;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -50,6 +54,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.*;
 
 public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider, ComponentHolder {
@@ -173,18 +179,13 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
-        // Sequential components (logic tubes) commit the output they computed last tick, before any settle this tick —
-        // this is what gives them their deterministic one-tick delay. No-op for combinational components.
+
         for (VirtualComponentBehaviour component : components.values())
             component.preTick();
-        // Drain signal changes from preTick commits, network events, and the lazy tick (e.g. RECEIVE-link power) before
-        // gauges run, so their request gate is fresh this tick.
+        // Drain signal changes from preTick
         settleConnections();
-        // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot, so a multi-stage production
-        // chain's demand all derives from the same state, before any gauge ticks/requests. (The redstone-link power +
-        // gauge gate are refreshed on the lazy tick — see lazyTick — like Create's redstone links.)
-        // With the total-demand strategy a single controller-wide topological solve sizes every passive gauge at once;
-        // otherwise each gauge sizes itself to one recipe set per demanding consumer.
+
+        // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot
         if (ServerConfig.passiveTotalDemand()) {
             PassiveDemandSolver.solve(this);
         } else {
@@ -195,8 +196,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         for (VirtualComponentBehaviour component : components.values())
             component.tick();
-        // Drain signal changes published during this tick (a gauge becoming satisfied → its SEND links, etc.).
+
         settleConnections();
+
         // Promptly heartbeat when an orderable gauge's state may have changed (the 20t lazyTick keeps it fresh).
         if (orderableDirty) {
             orderableDirty = false;
@@ -213,14 +215,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (level != null && !level.isClientSide()) {
             updateRedstonePower();
             heartbeatOrderableGauges();   // 20t heartbeat keeps this controller's gauges "live" in the registry
-
-            // Redstone-link power + the gauge gate it drives refresh on the lazy tick (like Create's redstone links).
-            // Links first, then gauges, so each gauge reads freshly-updated link power.
             for (VirtualComponentBehaviour component : components.values())
-                if (component instanceof VirtualRedstoneLinkBehaviour link) {
-                    link.addToNetwork();   // lazy (re)registration after load; no-op once registered
-                    link.updatePower();
-                }
+                component.lazyTick();
         }
     }
 
@@ -372,13 +368,203 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         syncComponentFull(pos);
     }
 
+    // ── Blueprint placement ────────────────────────────────────────────────
+
+    /** Cap on the decompressed blueprint NBT — the payload arrives gzipped from an untrusted client. */
+    private static final long MAX_BLUEPRINT_NBT_BYTES = 2 * 1024 * 1024;
+
+    /**
+     * Materialises a client-held blueprint at {@code anchor}. {@code assignments} binds each network
+     * placeholder (1-based in the file, 0-based here) to a real network.
+     *
+     * <p>Everything is validated before anything is committed: a partially placed blueprint would leave
+     * dangling wires and half-charged materials, so any failure aborts the whole operation.</p>
+     */
+    public void placeBlueprint(byte[] payload, VirtualComponentPosition anchor,
+                               List<UUID> assignments, ServerPlayer player) {
+        if (level == null || level.isClientSide()) return;
+
+        CompoundTag root;
+        try {
+            root = NbtIo.readCompressed(new ByteArrayInputStream(payload),
+                    NbtAccounter.create(MAX_BLUEPRINT_NBT_BYTES));
+        } catch (IOException | RuntimeException ignored) {
+            playDenySound();
+            return;
+        }
+        if (!root.getString("Format").equals(CreateFactoryController.MODID + ":blueprint")
+                || root.getInt("Version") > BlueprintStorage.FORMAT_VERSION) {
+            playDenySound();
+            return;
+        }
+
+        ListTag componentList = root.getList("Components", Tag.TAG_COMPOUND);
+        if (componentList.isEmpty() || components.size() + componentList.size() > maxComponents()) {
+            playDenySound();
+            return;
+        }
+
+        // network
+        Set<UUID> bindable = new LinkedHashSet<>(networks);
+        bindable.addAll(inventoryNetworks(player));
+
+        Set<VirtualComponentPosition> targets = new LinkedHashSet<>();
+        Map<ResourceLocation, Integer> needed = new LinkedHashMap<>();
+        for (int i = 0; i < componentList.size(); i++) {
+            CompoundTag component = componentList.getCompound(i);
+            ResourceLocation itemId = ResourceLocation.tryParse(component.getString("Item"));
+            if (itemId == null || !ComponentRegistry.contains(itemId)) {
+                playDenySound();
+                return;
+            }
+            VirtualComponentPosition target = offsetBy(
+                    VirtualComponentPosition.fromNBT(component.getCompound("Pos")), anchor);
+            if (isOutBoard(target) || components.containsKey(target) || !targets.add(target)) {
+                playDenySound();
+                return;
+            }
+            if (ComponentRegistry.needsNetwork(itemId) && resolveNetwork(component, assignments, bindable) == null) {
+                playDenySound();
+                return;
+            }
+            needed.merge(itemId, 1, Integer::sum);
+        }
+
+        if (!player.isCreative() && !takeMaterials(player, needed, false)) {
+            playDenySound();
+            return;
+        }
+
+        // ── Commit ──
+        if (!player.isCreative()) takeMaterials(player, needed, true);
+
+        Set<UUID> newNetworks = new LinkedHashSet<>();
+        List<VirtualComponentBehaviour> placed = new ArrayList<>();
+        Set<VirtualComponentPosition> placedCells = new LinkedHashSet<>();
+        for (int i = 0; i < componentList.size(); i++) {
+            CompoundTag component = componentList.getCompound(i).copy();
+            VirtualComponentPosition target = offsetBy(
+                    VirtualComponentPosition.fromNBT(component.getCompound("Pos")), anchor);
+            component.put("Pos", target.toNBT());
+            UUID network = resolveNetwork(component, assignments, bindable);
+            if (network != null) {
+                component.remove("Network");   // the file holds an int placeholder, the component wants a UUID
+                component.putUUID("Network", network);
+                if (!networks.contains(network)) newNetworks.add(network);
+            }
+            offsetRecipeSources(component, anchor);
+
+            VirtualComponentBehaviour behaviour = ComponentRegistry.fromNBT(this, component,
+                    level.registryAccess());
+            if (behaviour == null) continue;   // a type from a mod no longer present; the rest still places
+            components.put(target, behaviour);
+            placed.add(behaviour);
+            placedCells.add(target);
+        }
+
+        ListTag connectionList = root.getList("Connections", Tag.TAG_COMPOUND);
+        for (int i = 0; i < connectionList.size(); i++) {
+            CompoundTag tag = connectionList.getCompound(i).copy();
+            VirtualComponentPosition from = offsetBy(
+                    VirtualComponentPosition.fromNBT(tag.getCompound("From")), anchor);
+            VirtualComponentPosition to = offsetBy(
+                    VirtualComponentPosition.fromNBT(tag.getCompound("To")), anchor);
+            tag.put("From", from.toNBT());
+            tag.put("To", to.toNBT());
+            Connection conn = Connection.fromNBT(tag);
+            if (conn != null && placedCells.contains(from) && placedCells.contains(to))
+                connectionGraph.add(conn);
+        }
+
+        networks.addAll(newNetworks);
+
+        // Re-derive the imported signal state
+        for (VirtualComponentBehaviour c : placed)
+            for (Connection.Type type : Connection.Type.values())
+                c.publish(type);
+        for (VirtualComponentBehaviour c : placed)
+            if (c instanceof VirtualRedstoneLinkBehaviour link)
+                link.updateState();
+        for (VirtualComponentBehaviour c : placed)
+            if (c instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.allowsOrder())
+                updateGaugeOrderable(gauge);
+        bindConnectionHooks();
+        settleConnections();
+
+        if (!newNetworks.isEmpty()) syncNetworks();
+        playBlockSound(placed.isEmpty() ? Items.AIR : placed.getFirst().getItem(), true);
+        markOrderableDirty();
+        setChanged();
+        syncEverything();
+    }
+
+    private static VirtualComponentPosition offsetBy(VirtualComponentPosition local,
+                                                     VirtualComponentPosition anchor) {
+        return new VirtualComponentPosition(anchor.x() + local.x(), anchor.y() + local.y());
+    }
+
+    /** The network a blueprint component binds to, or {@code null} when its placeholder has no valid binding. */
+    @Nullable
+    private static UUID resolveNetwork(CompoundTag component, List<UUID> assignments, Set<UUID> bindable) {
+        if (!component.contains("Network", Tag.TAG_INT)) return null;
+        int placeholder = component.getInt("Network") - 1;   // placeholders are 1-based in the file
+        if (placeholder < 0 || placeholder >= assignments.size()) return null;
+        UUID network = assignments.get(placeholder);
+        return network != null && bindable.contains(network) ? network : null;
+    }
+
+    /** CUSTOM arrangements reference their source component by position — follow the placement offset. */
+    private static void offsetRecipeSources(CompoundTag component, VirtualComponentPosition anchor) {
+        ListTag slots = component.getList("RecipeSlots", Tag.TAG_COMPOUND);
+        for (int i = 0; i < slots.size(); i++) {
+            CompoundTag slot = slots.getCompound(i);
+            if (!slot.contains("Source", Tag.TAG_COMPOUND)) continue;
+            CompoundTag source = slot.getCompound("Source");
+            source.putInt("X", source.getInt("X") + anchor.x());
+            source.putInt("Y", source.getInt("Y") + anchor.y());
+        }
+    }
+
+    /** Networks carried on tuned component items in the player's inventory. */
+    private static Set<UUID> inventoryNetworks(Player player) {
+        Set<UUID> result = new LinkedHashSet<>();
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (!ComponentRegistry.containsNetworkItem(stack)) continue;
+            if (!LogisticallyLinkedBlockItem.isTuned(stack)) continue;
+            UUID network = LogisticallyLinkedBlockItem.networkFromStack(stack);
+            if (network != null) result.add(network);
+        }
+        return result;
+    }
+
+    /**
+     * Checks (and optionally consumes) the blueprint's materials
+     */
+    private static boolean takeMaterials(Player player, Map<ResourceLocation, Integer> needed, boolean commit) {
+        Inventory inventory = player.getInventory();
+        for (Map.Entry<ResourceLocation, Integer> entry : needed.entrySet()) {
+            Item item = BuiltInRegistries.ITEM.get(entry.getKey());
+            int remaining = entry.getValue();
+            for (int slot = 0; slot < inventory.getContainerSize() && remaining > 0; slot++) {
+                ItemStack stack = inventory.getItem(slot);
+                if (stack.isEmpty() || stack.getItem() != item) continue;
+                int taken = Math.min(remaining, stack.getCount());
+                remaining -= taken;
+                if (commit) stack.shrink(taken);
+            }
+            if (remaining > 0) return false;
+        }
+        if (commit) inventory.setChanged();
+        return true;
+    }
+
     // ── Component remove ───────────────────────────────────────────────────────
 
     public void removeComponent(VirtualComponentPosition pos, Player player) {
         VirtualComponentBehaviour behaviour = components.remove(pos);
         if (behaviour == null) return;
 
-        // The gauge is gone → abort any production tasks targeting it.
         if (behaviour instanceof VirtualGaugeBehaviour g && g.gaugeId != null && level != null)
             ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.gaugeId);
         // A link is gone → leave Create's frequency network.
@@ -1063,8 +1249,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 c.publish(type);   // overwrite the stale imported edges with each source's clean baseline output
         for (VirtualComponentBehaviour c : components.values())
             if (c instanceof VirtualRedstoneLinkBehaviour link) {
-                link.addToNetwork();   // idempotent; the lazy tick would also do this
-                link.updatePower();    // RECEIVE pulls real network power (may re-publish POWERED); SEND re-notifies
+                link.updateState();
             }
         settleConnections();
     }

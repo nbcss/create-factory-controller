@@ -7,6 +7,7 @@ Features:
 - Added "Custom Arrangement" mode in gauge; you can customize which item needs to be in which slot, and packager can only unpackage items to correct slot in target inventory.
 - Added "Request Multiplier" feature in gauge: by set the maximum request multiplier value, gauge would attempt to combine ingredients from multiple requests into one request if stock allows.
 - Added per gauge "Request Interval" setting, player could also visualize gauge request progress in RecipeSettingScreen.
+- Added blueprint system to allow save components & connections to file.
 
 Changes:
 - Maximum batch crafting multiplier is 64 now, regardless recipe output count.
@@ -22,6 +23,7 @@ Bugfixes:
 - Fixed gauge request timer do not get reset when redstone powered state changes.
 - Fixed click suggested address in Recipe Settings screen could activate the count box input below.
 - Fixed controller screen view could move by WASD keys when typing in JEI/EMI search box.
+- Fixed drag view while having selected components would clear the selections.
 
 ## 1.0.0
 IMPORTANT: this version changed Factory Controller block data structure, once upgraded to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.

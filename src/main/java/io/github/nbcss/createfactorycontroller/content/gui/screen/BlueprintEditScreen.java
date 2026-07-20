@@ -1,6 +1,8 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
+import com.simibubi.create.foundation.gui.AllIcons;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
+import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -13,7 +15,7 @@ import java.util.List;
 public class BlueprintEditScreen extends BlueprintFormScreen {
     private final Path file;
     private final String originalName;
-    private BlueprintStorage.Info info = new BlueprintStorage.Info("", List.of(), 0);
+    private BlueprintStorage.Info info = BlueprintStorage.Info.EMPTY;
 
     public BlueprintEditScreen(FactoryControllerScreen controller, String blueprintName) {
         super(controller, Component.translatable("createfactorycontroller.gui.blueprint.edit_title"));
@@ -44,6 +46,16 @@ public class BlueprintEditScreen extends BlueprintFormScreen {
     @Override
     protected String initialNote() {
         return info.note();
+    }
+
+    @Override
+    protected ScreenElement discardIcon() {
+        return AllIcons.I_MTD_CLOSE;
+    }
+
+    @Override
+    protected Component discardTooltip() {
+        return Component.translatable("createfactorycontroller.gui.blueprint.cancel");
     }
 
     @Override

@@ -268,7 +268,12 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override
     public void tick() {
-        // Redstone-link power is refreshed on the controller's lazy tick (see updatePower), not every tick.
+        // Redstone-link power is refreshed on the lazy tick (see lazyTick/updatePower), not every tick.
+    }
+
+    @Override
+    public void lazyTick() {
+        updateState();
     }
 
     // ── Frequencies / mode ─────────────────────────────────────────────────────
@@ -371,6 +376,11 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // ── Network lifecycle (server only) ────────────────────────────────────────
 
     private RedstoneLinkNetworkHandler handler() { return Create.REDSTONE_LINK_NETWORK_HANDLER; }
+
+    public void updateState() {
+        addToNetwork();
+        updatePower();
+    }
 
     public void addToNetwork() {
         Level level = controller == null ? null : controller.getLevel();

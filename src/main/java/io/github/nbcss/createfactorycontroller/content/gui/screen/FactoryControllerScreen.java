@@ -40,7 +40,10 @@ import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacke
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RenameControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RetuneCarriedPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.ReturnCarriedPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
+import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
+import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -201,6 +204,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Board action mode (e.g. connecting).
     @Nullable private VirtualComponentPosition pendingConnectionTarget = null;
     @Nullable private VirtualComponentPosition pendingRelocateTarget = null;
+    @Nullable private BlueprintPlacement pendingPlacement = null;
     /** Connection-mode preview bend override */
     private int previewArrowMode = -1;
     @Nullable private VirtualComponentPosition previewArrowTarget = null;
@@ -370,14 +374,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 "textures/gui/controller_background/" + ClientConfig.getControllerBackground() + ".png");
     }
 
-    /** Re-tunes the carried component item (selector scroll): optimistic client update + server packet. */
     private void retuneCarried(boolean clear, @Nullable UUID network) {
         ItemStack carried = menu.getCarried();
-        if (!ComponentRegistry.containsNetworkItem(carried)) return;   // networkless items (links) carry no frequency
-        RetuneCarriedPacket.apply(carried, clear ? null : network);   // immediate cursor feedback
+        if (!ComponentRegistry.containsNetworkItem(carried)) return;
+        RetuneCarriedPacket.apply(carried, clear ? null : network);
         menu.setCarried(carried);
         PacketDistributor.sendToServer(new RetuneCarriedPacket(clear, network));
-        // (the scroll sound is played by the selector for both holding and non-holding scrolls)
     }
 
     @Override
@@ -480,13 +482,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         tickBulbs();
     }
 
-    /**
-     * Advance each gauge's indicator bulb (mirrors FactoryPanelBehaviour#tick): chase satisfied, and
-     * flash to full on every fresh request attempt (detected via the synced lastRequestTick).
-     */
     public void tickBulbs() {
         for (VirtualComponentWidget w : componentWidgets.values()) {
-            if (!(w.behaviour() instanceof VirtualGaugeBehaviour g)) continue;   // only gauges have bulbs
+            if (!(w.behaviour() instanceof VirtualGaugeBehaviour g)) continue;
             VirtualComponentPosition pos = g.position();
             boolean firstSeen = !bulbSeenRequest.containsKey(pos);
             float steady = g.satisfied || g.redstonePowered ? 1 : 0;
@@ -495,7 +493,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (firstSeen) {
                 bulbSeenRequest.put(pos, g.lastRequestTick);
             } else if (g.lastRequestTick > bulbSeenRequest.get(pos)) {
-                bulb.setValue(1);                 // request fired → flash
+                bulb.setValue(1);
                 bulbSeenRequest.put(pos, g.lastRequestTick);
             }
             bulb.updateChaseTarget(steady);
@@ -522,7 +520,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
         // No hover tooltips while a selection drag (rubber-band rectangle or batch relocate) is in progress.
         boolean selectionDragging = rubberBanding || batchRelocating;
-        if (pendingConnectionTarget == null && pendingRelocateTarget == null && !selectionDragging) {
+        if (pendingConnectionTarget == null && pendingRelocateTarget == null && pendingPlacement == null
+                && !selectionDragging) {
             if (hoveredConn != null) {
                 // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
                 if (Util.getMillis() - connHoverSinceMs >= CONN_TOOLTIP_DELAY_MS)
@@ -685,8 +684,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
 
         renderSelectedNetworkMask(graphics);
-        if (hoveredConn == null) renderHoverTarget(graphics);
+        // The blueprint ghost owns the cursor cell while placing; the normal hover reticle would fight it.
+        if (hoveredConn == null && pendingPlacement == null) renderHoverTarget(graphics);
         renderSelectionTargets(graphics);
+        renderPlacementGhost(graphics);
 
         // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
         for (VirtualComponentWidget component : componentWidgets.values())
@@ -1097,6 +1098,40 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .withStyle(ChatFormatting.WHITE));
     }
 
+    public void beginBlueprintPlacement(BlueprintPlacement placement) {
+        clearSelection();
+        pendingConnectionTarget = null;
+        pendingRelocateTarget = null;
+        pendingPlacement = placement;
+        PacketDistributor.sendToServer(new ReturnCarriedPacket());
+        setPersistentPrompt(Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt")
+                .withStyle(ChatFormatting.WHITE));
+    }
+
+    public void abortBlueprintPlacement() {
+        if (pendingPlacement == null) return;
+        pendingPlacement = null;
+        persistentActionPrompt = null;
+    }
+
+    private void cancelBlueprintPlacement() {
+        abortBlueprintPlacement();
+        setTimedPrompt(Component.translatable("createfactorycontroller.gui.blueprint.placement_aborted")
+                .withStyle(ChatFormatting.RED), 3000);
+        playDenySound();
+    }
+
+    private void renderPlacementGhost(GuiGraphics graphics) {
+        if (pendingPlacement == null || hoveredPosition == null) return;
+        VirtualComponentPosition anchor = pendingPlacement.anchorFor(hoveredPosition);
+        for (BlueprintStorage.Placement placement : pendingPlacement.info().placements()) {
+            VirtualComponentPosition cell = BlueprintPlacement.cellFor(placement, anchor);
+            boolean valid = pendingPlacement.cellFree(cell, menu);
+            if (valid) renderGhostAt(graphics, cell, BuiltInRegistries.ITEM.get(placement.item()));
+            renderTargetAboveGhost(graphics, cell, valid ? TARGET_WHITE : TARGET_RED);
+        }
+    }
+
     /** A prompt that stays until the mode ends (no fade). */
     private void setPersistentPrompt(Component prompt) {
         persistentActionPrompt = prompt;
@@ -1209,6 +1244,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (pendingPlacement != null) {
+            if (button == 0 && isInCanvasArea(mouseX, mouseY)) {
+                VirtualComponentPosition anchor = pendingPlacement.anchorFor(cellAt(mouseX, mouseY));
+                if (pendingPlacement.fits(anchor, menu)) {
+                    Minecraft.getInstance().setScreen(new BlueprintPlaceScreen(this, pendingPlacement, anchor));
+                    return true;
+                }
+            }
+            cancelBlueprintPlacement();
+            return true;
+        }
+
         if (nameBox != null) {
             boolean inNameBar = inBounds(nameAreaBounds, mouseX, mouseY);
             if (!nameBox.isFocused() && inNameBar) {
@@ -1222,7 +1269,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 commitName();
         }
 
-        // Empty-handed click on the network selector with a real (known) network selected → configure it.
         if (menu.getCarried().isEmpty() && networkSelector.isMouseOver(mouseX, mouseY)) {
             UUID net = networkSelector.getSelectedNetwork();
             if (net != null && menu.knownNetworks.contains(net)) {
@@ -1244,8 +1290,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualComponentWidget widget = componentWidgetAt(clicked);
             boolean leftOrRight = button == 0 || button == 1;
 
-            // Shift-click on a hovered wire removes it (takes priority over selection / rubber-band / placement, which
-            // is consistent with the hover already suppressing component interaction).
             if (hoveredConn != null && leftOrRight && hasShiftDown()) {
                 PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos,
                         hoveredConn.connection.from, hoveredConn.connection.to));
@@ -1459,14 +1503,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         long now = Util.getMillis();
         long previous = lastPanFrameMs;
         lastPanFrameMs = now;
-        if (previous == 0) return;   // first frame: establish the time base, don't jump
+        if (previous == 0) return;
 
         if (nameBox != null && nameBox.isFocused()) return;
         Minecraft mc = Minecraft.getInstance();
         double dx = 0, dy = 0;
         if (panActive(mc.options.keyLeft))  dx -= 1;
         if (panActive(mc.options.keyRight)) dx += 1;
-        if (panActive(mc.options.keyUp))    dy -= 1;   // Forward → reveal content above (view moves up)
+        if (panActive(mc.options.keyUp))    dy -= 1;
         if (panActive(mc.options.keyDown))  dy += 1;
         if (dx == 0 && dy == 0) return;
 
@@ -1631,8 +1675,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // While renaming, route keys to the name field: Enter commits, Escape reverts, and every other
-        // key is swallowed so it can't trigger a board shortcut or the inventory-close key.
         if (nameBox != null && nameBox.isFocused()) {
             if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
                     || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
@@ -1640,7 +1682,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
             if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
-                nameBox.setValue(menu.controllerName);   // revert the in-progress edit
+                nameBox.setValue(menu.controllerName);
                 nameBox.setFocused(false);
                 collapseNameSelection();
                 return true;
@@ -1649,8 +1691,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
         }
 
-        // Record a movement key only once its press has reached this screen — i.e. no focused text field
-        // (ours or a JEI/EMI search box) consumed it upstream. tickKeyboardPan pans only recorded keys.
+        if (pendingPlacement != null && keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            cancelBlueprintPlacement();
+            return true;
+        }
+
         if (isPanKey(keyCode)) heldPanKeys.add(keyCode);
 
         VirtualComponentBehaviour hover = componentAt(hoveredPosition);
@@ -1685,8 +1730,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         hoveredConn.connection.from, hoveredConn.connection.to));
                 return true;
             }
-            // In connection mode, cycle the PREVIEW wire's bend (applied when the wire is created), not existing wires.
-            // Always consume the key here so it never falls through to the hovered component's outgoing-wire cycle.
+
             if (pendingConnectionTarget != null) {
                 ConnectionResolver.Result result = connectionHoverResult();
                 if (result != null && result.ok()) {
@@ -1699,7 +1743,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 }
                 return true;
             }
-            // Otherwise fall back to the hovered component's outgoing wires (shared 4-mode cycle, auto excluded).
+
             if (hover != null) {
                 Integer mode = outgoingArrowBendMode(hoveredPosition);
                 if (mode != null) {
@@ -1783,9 +1827,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 selected.addAll(pendingMoveDestinations);
                 clearPendingMove();
             } else if (--pendingMoveSyncs <= 0) {
-                clearPendingMove();   // move never landed (rejected/lost) → fall through to normal retainAll
+                clearPendingMove();
             } else {
-                selected.clear();     // still waiting: hold the selection on the sources that remain
+                selected.clear();
                 assert pendingMoveSources != null;
                 selected.addAll(pendingMoveSources);
             }

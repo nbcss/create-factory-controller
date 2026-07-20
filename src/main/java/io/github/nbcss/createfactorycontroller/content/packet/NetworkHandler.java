@@ -34,6 +34,8 @@ public final class NetworkHandler {
         registrar.playToServer(RequestGaugePromiseInfoPacket.TYPE, RequestGaugePromiseInfoPacket.STREAM_CODEC, RequestGaugePromiseInfoPacket::handle);
         registrar.playToServer(RegisterOrderNotificationPacket.TYPE, RegisterOrderNotificationPacket.STREAM_CODEC, RegisterOrderNotificationPacket::handle);
         registrar.playToServer(RequestPanelResyncPacket.TYPE, RequestPanelResyncPacket.STREAM_CODEC, RequestPanelResyncPacket::handle);
+        registrar.playToServer(ReturnCarriedPacket.TYPE, ReturnCarriedPacket.STREAM_CODEC, ReturnCarriedPacket::handle);
+        registrar.playToServer(BlueprintPlacePacket.TYPE, BlueprintPlacePacket.STREAM_CODEC, BlueprintPlacePacket::handle);
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
         registrar.playToClient(SyncPanelDeltaPacket.TYPE, SyncPanelDeltaPacket.STREAM_CODEC, SyncPanelDeltaPacket::handle);
         registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);

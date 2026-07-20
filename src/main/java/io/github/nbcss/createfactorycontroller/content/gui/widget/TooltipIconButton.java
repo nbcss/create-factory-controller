@@ -41,11 +41,20 @@ public class TooltipIconButton extends IconButton {
 
     /** Renders this button's tooltip in the screen's final tooltip pass. */
     public boolean renderDeferredTooltip(GuiGraphics gfx, Font font, int mouseX, int mouseY) {
-        if (!visible || !isMouseOver(mouseX, mouseY)) return false;
+        if (!visible || !hovering(mouseX, mouseY)) return false;
         List<Component> lines = deferredTooltip.get();
         if (lines == null || lines.isEmpty()) return false;
         gfx.renderComponentTooltip(font, lines, mouseX, mouseY);
         return true;
+    }
+
+    /**
+     * Bounds test that ignores {@code active}, unlike {@link #isMouseOver} — a disabled button is exactly
+     * when the player most needs its tooltip, since that is what explains why it cannot be clicked.
+     */
+    private boolean hovering(int mouseX, int mouseY) {
+        return mouseX >= getX() && mouseX < getX() + getWidth()
+                && mouseY >= getY() && mouseY < getY() + getHeight();
     }
 
     /** Renders at most one hovered tooltip, using argument order as the overlap precedence. */

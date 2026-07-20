@@ -55,7 +55,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final ResourceLocation PLAYER_INVENTORY_TEX =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/player_inventory.png");
     private static final ResourceLocation NETWORK = ResourceLocation.fromNamespaceAndPath(
-            "createfactorycontroller", "factory_controller/network_selector/network");
+            "createfactorycontroller", "common/network");
     private static final int INV_TEX_W = 176, INV_TEX_H = 108;
     /** Y of the hotbar slot row within player_inventory.png (matches SetItemScreen). */
     private static final int INV_TEX_HOTBAR_Y = 76;

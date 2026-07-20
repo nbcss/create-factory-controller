@@ -3,13 +3,17 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.packet.BlueprintPlacePacket;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
+import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,8 +24,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -29,8 +36,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Displays the reusable component blueprints available to the controller. */
 public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
@@ -58,11 +67,13 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     private static final int ENTRY_CONTROL_Y = 20;
     private static final int PLACE_BUTTON_X = 119;
     private static final int EDIT_BUTTON_X = 141;
-    private static final int COMPACT_FONT_COLOR = 0xFFDDE5FF;
+    private static final int MATERIAL_HELD_COLOR = BlueprintPlacement.MATERIAL_HELD_COLOR;
+    private static final int MATERIAL_MISSING_COLOR = BlueprintPlacement.MATERIAL_MISSING_COLOR;
 
     private final FactoryControllerScreen controller;
     private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
     private final List<EntryWidget> entryWidgets = new ArrayList<>();
+    private final Map<Item, Integer> inventoryCounts = new HashMap<>();
     private List<BlueprintEntry> blueprints = List.of();
 
     private TooltipIconButton openFolderButton;
@@ -82,8 +93,6 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
                 Component.translatable("createfactorycontroller.gui.blueprint.library_title"));
         this.controller = controller;
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
     }
 
     private static ResourceLocation resource(String path) {
@@ -98,6 +107,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         menu.repositionSlots(-2000, -2000, false);
         blueprints = enumerateBlueprints();
         entryWidgets.clear();
+        refreshInventoryCounts();
 
         openFolderButton = new TooltipIconButton(0, 0, AllIcons.I_OPEN_FOLDER);
         openFolderButton.withCallback(this::openBlueprintFolder);
@@ -216,6 +226,24 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         scroll.tickChaser();
         float clamped = Mth.clamp(scroll.getChaseTarget(), 0, (float) maxScroll());
         if (clamped != scroll.getChaseTarget()) scroll.chase(clamped, 0.5, Chaser.EXP);
+        refreshInventoryCounts();
+    }
+
+    private void refreshInventoryCounts() {
+        inventoryCounts.clear();
+        assert Minecraft.getInstance().player != null;
+        Inventory inventory = Minecraft.getInstance().player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty()) inventoryCounts.merge(stack.getItem(), stack.getCount(), Integer::sum);
+        }
+    }
+
+    private boolean isMaterialSufficient(BlueprintStorage.Material material) {
+        assert Minecraft.getInstance().player != null;
+        return Minecraft.getInstance().player.isCreative() ||
+                inventoryCounts.getOrDefault(BuiltInRegistries.ITEM.get(material.item()), 0)
+                        >= material.count();
     }
 
     @Override
@@ -397,16 +425,52 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
     private class EntryWidget extends AbstractWidget {
         private BlueprintEntry blueprint;
-        private List<BlueprintStorage.Material> materials = List.of();
+        private BlueprintStorage.Info info = BlueprintStorage.Info.EMPTY;
         private final TooltipIconButton placeButton;
         private final TooltipIconButton editButton;
 
         private EntryWidget() {
             super(0, 0, ENTRY_W, ENTRY_H, Component.empty());
             this.placeButton = createButton(PLACE_ICON,
-                    Component.translatable("createfactorycontroller.gui.blueprint.place"), () -> {});
+                    Component.translatable("createfactorycontroller.gui.blueprint.place"), this::place);
+            this.placeButton.withDeferredTooltip(() -> {
+                Component blocked = placeBlockedReason();
+                return blocked == null
+                        ? List.of(Component.translatable("createfactorycontroller.gui.blueprint.place"))
+                        : List.of(Component.translatable("createfactorycontroller.gui.blueprint.place"),
+                                blocked.copy().withStyle(ChatFormatting.RED));
+            });
             this.editButton = createButton(EDIT_ICON,
                     Component.translatable("createfactorycontroller.gui.blueprint.edit"), this::edit);
+        }
+
+        @Nullable
+        private Component placeBlockedReason() {
+            if (info.placements().isEmpty() || blueprint.oversized())
+                return Component.translatable("createfactorycontroller.gui.blueprint.unplaceable");
+            if (menu.components.size() + info.placements().size()
+                    > FactoryControllerBlockEntity.maxComponents())
+                return Component.translatable("createfactorycontroller.gui.blueprint.capacity_reached");
+            if (!hasAllMaterials())
+                return Component.translatable("createfactorycontroller.gui.blueprint.missing_materials");
+            return null;
+        }
+
+        private boolean hasAllMaterials() {
+            for (BlueprintStorage.Material material : info.materials())
+                if (!isMaterialSufficient(material)) return false;   // already creative-aware
+            return true;
+        }
+
+        private void place() {
+            byte[] payload;
+            try {
+                payload = BlueprintStorage.payload(BlueprintStorage.blueprintPath(blueprint.name()));
+            } catch (IOException | RuntimeException ignored) {
+                return;
+            }
+            controller.beginBlueprintPlacement(new BlueprintPlacement(blueprint.name(), info, payload));
+            Minecraft.getInstance().setScreen(controller);
         }
 
         private void edit() {
@@ -416,7 +480,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         private void bind(BlueprintEntry blueprint) {
             if (this.blueprint == blueprint) return;
             this.blueprint = blueprint;
-            this.materials = blueprint.loadMaterials();
+            this.info = blueprint.info();
             setMessage(Component.literal(blueprint.name()));
         }
 
@@ -448,6 +512,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                 gfx.blitSprite(DISPLAY_SLOT, x + 3 + slot * SLOT_SIZE, y + ENTRY_CONTROL_Y,
                         SLOT_SIZE, SLOT_SIZE);
             renderMaterials(gfx);
+            placeButton.active = placeBlockedReason() == null;
             boolean mouseInsideViewport = insideViewport(mouseX, mouseY);
             int buttonMouseX = mouseInsideViewport ? mouseX : Integer.MIN_VALUE;
             int buttonMouseY = mouseInsideViewport ? mouseY : Integer.MIN_VALUE;
@@ -462,11 +527,10 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         }
 
         private void renderMaterials(GuiGraphics gfx) {
-            int visibleMaterials = Math.min(materials.size(), SLOT_COUNT);
-            if (materials.size() > SLOT_COUNT) visibleMaterials--;
+            List<BlueprintStorage.Material> materials = info.materials();
             int x = getX() + 3;
             int y = getY() + ENTRY_CONTROL_Y;
-            for (int i = 0; i < visibleMaterials; i++) {
+            for (int i = 0; i < visibleMaterialCount(); i++) {
                 int slotX = x + i * SLOT_SIZE;
                 BlueprintStorage.Material material = materials.get(i);
                 ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(material.item()));
@@ -474,13 +538,20 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                 gfx.pose().pushPose();
                 gfx.pose().translate(0, 0, 200);
                 SpriteNumbersRender.drawCountRightAligned(gfx, Integer.toString(material.count()),
-                        slotX + 17, y + 10, COMPACT_FONT_COLOR);
+                        slotX + 17, y + 10,
+                        isMaterialSufficient(material) ? MATERIAL_HELD_COLOR : MATERIAL_MISSING_COLOR);
                 gfx.pose().popPose();
             }
             if (materials.size() > SLOT_COUNT) {
                 int slotX = x + (SLOT_COUNT - 1) * SLOT_SIZE;
                 gfx.blitSprite(ELLIPSIS_ICON, slotX + 1, y + 1, 16, 16);
             }
+        }
+
+        /** Materials with a slot of their own; the last slot becomes an ellipsis once they overflow. */
+        private int visibleMaterialCount() {
+            int size = info.materials().size();
+            return size > SLOT_COUNT ? SLOT_COUNT - 1 : size;
         }
 
         private boolean renderTooltip(GuiGraphics gfx, int mouseX, int mouseY) {
@@ -494,14 +565,15 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         private boolean renderNameTooltip(GuiGraphics gfx, int mouseX, int mouseY) {
             int localX = mouseX - getX();
             int localY = mouseY - getY();
-            String displayedName = ellipsize(blueprint.name(), ENTRY_W - 10);
-            if (!displayedName.equals(blueprint.name())
-                    && localX >= 5 && localX < 5 + font.width(displayedName)
-                    && localY >= 6 && localY < 6 + font.lineHeight) {
-                gfx.renderTooltip(font, Component.literal(blueprint.name()), mouseX, mouseY);
-                return true;
-            }
-            return false;
+            if (localX < 5 || localX >= 5 + font.width(ellipsize(blueprint.name(), ENTRY_W - 10))
+                    || localY < 6 || localY >= 6 + font.lineHeight) return false;
+            gfx.renderComponentTooltip(font, List.of(
+                    Component.literal(blueprint.name()).withStyle(ChatFormatting.BLUE),
+                    Component.translatable("createfactorycontroller.gui.blueprint.dimension",
+                                    Component.literal(info.width() + "x" + info.height())
+                                            .withStyle(ChatFormatting.WHITE))
+                            .withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
+            return true;
         }
 
         private boolean renderMaterialTooltip(GuiGraphics gfx, int mouseX, int mouseY) {
@@ -510,10 +582,8 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             if (localX < 3 || localX >= 3 + SLOT_COUNT * SLOT_SIZE
                     || localY < ENTRY_CONTROL_Y || localY >= ENTRY_CONTROL_Y + SLOT_SIZE) return false;
             int slot = (localX - 3) / SLOT_SIZE;
-            int materialSlots = Math.min(materials.size(), SLOT_COUNT);
-            if (materials.size() > SLOT_COUNT) materialSlots--;
-            if (slot >= materialSlots) return false;
-            BlueprintStorage.Material material = materials.get(slot);
+            if (slot >= visibleMaterialCount()) return false;
+            BlueprintStorage.Material material = info.materials().get(slot);
             ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(material.item()));
             gfx.renderTooltip(font, stack, mouseX, mouseY);
             return true;
@@ -544,7 +614,8 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
     private static class BlueprintEntry {
         private final String name;
-        private WeakReference<List<BlueprintStorage.Material>> materialCache = new WeakReference<>(null);
+        private WeakReference<BlueprintStorage.Info> infoCache = new WeakReference<>(null);
+        private long fileSize = -1;
 
         private BlueprintEntry(String name) {
             this.name = name;
@@ -554,16 +625,23 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             return name;
         }
 
-        private List<BlueprintStorage.Material> loadMaterials() {
-            List<BlueprintStorage.Material> cached = materialCache.get();
+        private BlueprintStorage.Info info() {
+            BlueprintStorage.Info cached = infoCache.get();
             if (cached != null) return cached;
+            Path path = BlueprintStorage.blueprintPath(name);
             try {
-                cached = BlueprintStorage.materials(BlueprintStorage.blueprintPath(name));
+                cached = BlueprintStorage.read(path);
+                fileSize = Files.size(path);
             } catch (IOException | RuntimeException ignored) {
-                cached = List.of();
+                cached = BlueprintStorage.Info.EMPTY;
+                fileSize = -1;
             }
-            materialCache = new WeakReference<>(cached);
+            infoCache = new WeakReference<>(cached);
             return cached;
+        }
+
+        private boolean oversized() {
+            return fileSize > BlueprintPlacePacket.MAX_PAYLOAD_BYTES;
         }
     }
 }

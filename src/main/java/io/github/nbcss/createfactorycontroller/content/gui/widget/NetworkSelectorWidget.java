@@ -57,8 +57,11 @@ public class NetworkSelectorWidget extends AbstractWidget {
                 "factory_controller/network_selector/" + name);
     }
     private static final ResourceLocation SELECTION_FRAME = sprite("selection_frame");
-    private static final ResourceLocation NETWORK         = sprite("network");
-    private static final ResourceLocation NO_NETWORK      = sprite("no_network");
+    /** Both network icons live under common/ — the blueprint screens draw them for their network slots too. */
+    public static final ResourceLocation NETWORK =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "common/network");
+    public static final ResourceLocation NO_NETWORK =
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "common/no_network");
 
     private static int spriteW(ResourceLocation loc) {
         return Minecraft.getInstance().getGuiSprites().getSprite(loc).contents().width();

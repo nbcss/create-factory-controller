@@ -42,8 +42,14 @@ public final class BlueprintStorage {
 
     public record Material(ResourceLocation item, int count) {}
 
+    /** One component of a stored blueprint, positioned in blueprint-local coordinates. */
+    public record Placement(ResourceLocation item, VirtualComponentPosition pos) {}
+
     /** Everything the blueprint screens display about a stored blueprint. */
-    public record Info(String note, List<Material> materials, int networkCount) {}
+    public record Info(String note, List<Material> materials, int networkCount, int width, int height,
+                       List<Placement> placements) {
+        public static final Info EMPTY = new Info("", List.of(), 0, 0, 0, List.of());
+    }
 
     /** Aggregates the component items in stable first-appearance order for the save-screen preview. */
     public static List<Material> materials(FactoryControllerMenu menu,
@@ -56,27 +62,31 @@ public final class BlueprintStorage {
         return counts.entrySet().stream().map(e -> new Material(e.getKey(), e.getValue())).toList();
     }
 
-    /** Reads and aggregates the component items stored in a blueprint file. */
-    public static List<Material> materials(Path blueprint) throws IOException {
-        return read(blueprint).materials();
-    }
-
-    /** Reads the note, materials and network placeholder count of a stored blueprint. */
+    /** Reads everything the blueprint screens need: note, materials, placeholder count, size and layout. */
     public static Info read(Path blueprint) throws IOException {
         CompoundTag root = NbtIo.readCompressed(blueprint, NbtAccounter.unlimitedHeap());
         ListTag components = root.getList("Components", Tag.TAG_COMPOUND);
         Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
         Set<Integer> networks = new LinkedHashSet<>();
+        List<Placement> placements = new ArrayList<>();
         for (int i = 0; i < components.size(); i++) {
             CompoundTag component = components.getCompound(i);
             if (component.contains("Network", Tag.TAG_INT)) networks.add(component.getInt("Network"));
             if (!component.contains("Item", Tag.TAG_STRING)) continue;
             ResourceLocation item = ResourceLocation.tryParse(component.getString("Item"));
-            if (item != null) counts.merge(item, 1, Integer::sum);
+            if (item == null) continue;
+            counts.merge(item, 1, Integer::sum);
+            placements.add(new Placement(item, VirtualComponentPosition.fromNBT(component.getCompound("Pos"))));
         }
         List<Material> materials = counts.entrySet().stream()
                 .map(e -> new Material(e.getKey(), e.getValue())).toList();
-        return new Info(root.getString("Note"), materials, networks.size());
+        return new Info(root.getString("Note"), materials, networks.size(),
+                root.getInt("Width"), root.getInt("Height"), List.copyOf(placements));
+    }
+
+    /** The stored file verbatim — already gzipped NBT, shipped to the server to place the blueprint. */
+    public static byte[] payload(Path blueprint) throws IOException {
+        return Files.readAllBytes(blueprint);
     }
 
     /** Returns distinct logistics networks in stable component-selection order. */

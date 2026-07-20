@@ -12,6 +12,8 @@ import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRende
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
+import net.createmod.catnip.gui.element.ScreenElement;
+import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -21,7 +23,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultilineTextField;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -30,6 +31,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,13 +44,15 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private static final ResourceLocation ELEMENT_BORDER = resource("blueprint/element_border");
     private static final ResourceLocation INPUT_FIELD = resource("common/input_field");
     private static final ResourceLocation TEXTBOX = resource("common/textbox");
+    private static final ResourceLocation INPUT_FIELD_LOCKED = resource("blueprint/input_field_disabled");
+    private static final ResourceLocation TEXTBOX_LOCKED = resource("blueprint/textbox_disabled");
     private static final ResourceLocation MATERIAL_SLOT = resource("common/display_slot_blue");
     private static final ResourceLocation NETWORK_HEADER = resource("blueprint/network_slot_header");
     private static final ResourceLocation WARNING_ICON = resource("icons/warning");
     private static final ResourceLocation INFO_ICON = resource("icons/info");
     private static final ResourceLocation NETWORK_SLOT = resource("common/network_slot");
-    private static final ResourceLocation DEFAULT_NETWORK_ICON = resource("factory_controller/network_selector/network");
-    private static final int UNKNOWN_NETWORK_TINT = 0x8B8B8B;
+    private static final ResourceLocation DEFAULT_NETWORK_ICON = resource("common/network");
+    private static final ResourceLocation NO_NETWORK_ICON = resource("common/no_network");
 
     private static final int PANEL_W = 204;
     private static final int HEADER_H = 16;
@@ -70,6 +74,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private static final int NETWORK_CELL_H = NETWORK_SLOT_Y + SLOT;
     private static final int NETWORK_ROW_SEPARATOR_H = 1;
     private static final int NETWORK_ROW_STEP = NETWORK_CELL_H + NETWORK_ROW_SEPARATOR_H;
+    private static final int NO_NETWORK_COLOR = 0xFFCCCCCC;
     private static final int COMPACT_FONT_COLOR = 0xFFDDE5FF;
     private static final int SCROLLBAR_X = 198;
 
@@ -111,8 +116,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     protected BlueprintFormScreen(FactoryControllerScreen controller, Component title) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(), title);
         this.controller = controller;
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
     }
 
     protected static ResourceLocation resource(String path) {
@@ -128,14 +131,16 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     /** Writes the edited name and note; only called once the name is valid. */
     protected abstract void confirm();
 
-    /** Contents the name editor opens with. */
     protected abstract String initialName();
 
-    /** Contents the note editor opens with. */
     protected abstract String initialNote();
 
     protected void renderNetworkSlotIcon(GuiGraphics gfx, int slot, int x, int y) {
-        renderNetworkIcon(gfx, x, y, NetworkSettings.DARK_FILL, UNKNOWN_NETWORK_TINT);
+        int rgb = NO_NETWORK_COLOR;
+        renderNetworkSlotBackground(gfx, x, y, NetworkSettings.DARK_FILL);
+        gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+        gfx.blitSprite(NO_NETWORK_ICON, x + 1, y + 1, 16, 16);
+        gfx.setColor(1f, 1f, 1f, 1f);
     }
 
     protected void renderNetworkSlotBackground(GuiGraphics gfx, int x, int y, int background) {
@@ -144,7 +149,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         gfx.blitSprite(NETWORK_SLOT, x, y, SLOT, SLOT);
     }
 
-    /** Slot backdrop plus the generic network sprite tinted {@code rgb}. */
     protected void renderNetworkIcon(GuiGraphics gfx, int x, int y, int background, int rgb) {
         renderNetworkSlotBackground(gfx, x, y, background);
         gfx.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f,
@@ -153,28 +157,65 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         gfx.setColor(1f, 1f, 1f, 1f);
     }
 
-    /** Tooltip lines of a hovered network slot, empty for none. */
+    protected void renderNetworkSlotDecoration(GuiGraphics gfx, int slot, int x, int y) {}
+
     protected List<Component> networkTooltip(int slot) {
         return List.of();
     }
 
-    /** Whether network slots can be dragged into a different order. */
+    protected boolean scrollNetworkSlot(int slot, double direction) {
+        return false;
+    }
+
+    protected boolean editable() {
+        return true;
+    }
+
+    protected boolean canConfirm() {
+        return validName;
+    }
+
+    protected ScreenElement confirmIcon() {
+        return AllIcons.I_CONFIG_SAVE;
+    }
+
+    protected Component confirmTooltip() {
+        return Component.translatable("createfactorycontroller.gui.blueprint.save");
+    }
+
+    protected int materialCountColor(BlueprintStorage.Material material) {
+        return COMPACT_FONT_COLOR;
+    }
+
+    protected ScreenElement discardIcon() {
+        return AllIcons.I_TRASH;
+    }
+
+    protected Component discardTooltip() {
+        return Component.translatable("createfactorycontroller.gui.blueprint.discard");
+    }
+
+    @Nullable
+    protected Component confirmBlockedReason() {
+        return validName ? null
+                : Component.translatable("createfactorycontroller.gui.blueprint.invalid_name");
+    }
+
     protected boolean networksDraggable() {
         return false;
     }
 
-    /** Commits a finished network drag. */
     protected void moveNetwork(int from, int to) {}
 
-    /** True while the typed name still resolves to this screen's own file, suppressing the overwrite warning. */
     protected boolean isOwnName(String name) {
         return false;
     }
 
-    /** Screen returned to when the editor is dismissed. */
     protected Screen previousScreen() {
         return controller;
     }
+
+    protected void onDiscard() {}
 
     protected String blueprintName() {
         return nameBox.getValue();
@@ -203,23 +244,31 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         nameBox.setTextColor(0xFFFFFF);
         nameBox.setMaxLength(BlueprintStorage.MAX_NAME_LENGTH);
         nameBox.setValue(oldName);
-        addWidget(nameBox);
 
         noteBox = new SpacedMultiLineEditBox(font, 0, 0, ELEMENT_W, 32, Component.empty(),
                 Component.translatable("createfactorycontroller.gui.blueprint.note_hint"));
-        noteBox.setCharacterLimit(BlueprintStorage.MAX_NOTE_LENGTH);
+        noteBox.setCharacterLimit();
         noteBox.setValue(oldNote);
         noteBox.setValueListener(value -> relayout());
-        addWidget(noteBox);
 
-        discardButton = new TooltipIconButton(0, 0, AllIcons.I_TRASH);
+        // Read-only screens still render both fields; leaving them unregistered is what makes them inert.
+        if (editable()) {
+            addWidget(nameBox);
+            addWidget(noteBox);
+        }
+
+        discardButton = new TooltipIconButton(0, 0, discardIcon());
         discardButton.withCallback(this::discard);
-        discardButton.setToolTip(Component.translatable("createfactorycontroller.gui.blueprint.discard"));
+        discardButton.setToolTip(discardTooltip());
         addWidget(discardButton);
 
-        confirmButton = new TooltipIconButton(0, 0, AllIcons.I_CONFIG_SAVE);
+        confirmButton = new TooltipIconButton(0, 0, confirmIcon());
         confirmButton.withCallback(this::trySave);
-        confirmButton.setToolTip(Component.translatable("createfactorycontroller.gui.blueprint.save"));
+        confirmButton.withDeferredTooltip(() -> {
+            Component blocked = confirmBlockedReason();
+            return blocked == null ? List.of(confirmTooltip())
+                    : List.of(confirmTooltip(), blocked.copy().withStyle(ChatFormatting.RED));
+        });
         addWidget(confirmButton);
 
         nameBox.setResponder(value -> {
@@ -235,14 +284,14 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
 
     private void updateNameValidity() {
         validName = nameBox != null && BlueprintStorage.isValidBlueprintName(nameBox.getValue());
-        if (nameBox != null) nameBox.setTextColor(validName ? 0xFFFFFF : 0xFF5555);
-        if (confirmButton != null) confirmButton.active = validName;
+        if (nameBox != null) nameBox.setTextColor(!editable() || validName ? 0xFFFFFF : 0xFF5555);
+        if (confirmButton != null) confirmButton.active = canConfirm();
         if (!validName) overwriteExisting = false;
     }
 
     private void refreshOverwriteState() {
         updateNameValidity();
-        overwriteExisting = validName && !isOwnName(nameBox.getValue())
+        overwriteExisting = editable() && validName && !isOwnName(nameBox.getValue())
                 && BlueprintStorage.blueprintExists(nameBox.getValue());
     }
 
@@ -302,7 +351,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     }
 
     private int boxYAfter(int labelY) {
-        // The returned coordinate is the fill's top; the outline itself begins one pixel earlier.
         return labelY + font.lineHeight + LABEL_TO_ELEMENT_GAP + 1;
     }
 
@@ -349,7 +397,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         if (nameFocused && !nameWasFocused) overwriteExisting = false;
         if (!nameFocused && nameWasFocused) refreshOverwriteState();
         nameWasFocused = nameFocused;
-        confirmButton.active = validName;
+        confirmButton.active = canConfirm();
     }
 
     @Override
@@ -359,10 +407,11 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
 
     private void trySave() {
         updateNameValidity();
-        if (validName) confirm();
+        if (canConfirm()) confirm();
     }
 
     private void discard() {
+        onDiscard();
         Minecraft.getInstance().setScreen(previousScreen());
     }
 
@@ -428,11 +477,11 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             gfx.blitSprite(WARNING_ICON, labelX + font.width(nameTitle) + 2,
                     top + nameLabelY + (font.lineHeight - 8) / 2, 8, 8);
         }
-        borderedBox(gfx, INPUT_FIELD, x, top + nameY, ELEMENT_W, NAME_H);
+        borderedBox(gfx, editable() ? INPUT_FIELD : INPUT_FIELD_LOCKED, x, top + nameY, ELEMENT_W, NAME_H);
 
         gfx.drawString(font, Component.translatable("createfactorycontroller.gui.blueprint.note"),
                 labelX, top + noteLabelY, textColor, false);
-        borderedBox(gfx, TEXTBOX, x, top + noteY, ELEMENT_W, noteHeight);
+        borderedBox(gfx, editable() ? TEXTBOX : TEXTBOX_LOCKED, x, top + noteY, ELEMENT_W, noteHeight);
 
         gfx.drawString(font, Component.translatable("createfactorycontroller.gui.blueprint.materials"),
                 labelX, top + materialLabelY, textColor, false);
@@ -473,7 +522,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
             SpriteNumbersRender.drawCountRightAligned(gfx, Integer.toString(material.count()),
-                    sx + 17, sy + 10, COMPACT_FONT_COLOR);
+                    sx + 17, sy + 10, materialCountColor(material));
             gfx.pose().popPose();
         }
     }
@@ -500,8 +549,10 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             String index = Integer.toString(i + 1);
             SpriteNumbersRender.drawCountRightAligned(gfx, index,
                     sx + (SLOT + SpriteNumbersRender.width(index)) / 2, sy + 1, COMPACT_FONT_COLOR);
-            if (displayedSlots[i] >= 0)
+            if (displayedSlots[i] >= 0) {
                 renderNetworkSlotIcon(gfx, displayedSlots[i], sx, sy + NETWORK_SLOT_Y);
+                renderNetworkSlotDecoration(gfx, displayedSlots[i], sx, sy + NETWORK_SLOT_Y);
+            }
         }
 
         int hoveredSlot = networksDraggable() ? networkAt(mouseX, mouseY) : -1;
@@ -515,7 +566,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         }
     }
 
-    /** Slot to network index, leaving a movable gap while the dragged icon itself is rendered at the cursor. */
     private int[] displayedNetworkSlots() {
         int count = networkCount();
         int[] slots = new int[count];
@@ -629,6 +679,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int network = networkAt(mouseX, mouseY);
+        if (network >= 0 && scrollNetworkSlot(network, scrollY)) return true;
         if (insideViewport(mouseX, mouseY) && maxScroll() > 0) {
             double target = Mth.clamp(scroll.getChaseTarget() - scrollY * 18, 0, maxScroll());
             scroll.chase(target, 0.5, Chaser.EXP);
@@ -701,8 +753,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             } else {
                 noteBox.keyPressed(keyCode, scanCode, modifiers);
             }
-            // Consume every key while editing. Printable characters arrive through charTyped(), but allowing an
-            // unhandled inventory key such as E to reach the container screen closes the editor.
             return true;
         }
         if (nameBox.isFocused() && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
@@ -717,13 +767,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     @Override
     public void onClose() {
         discard();
-    }
-
-    @Override
-    public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
-        super.removed();
     }
 
     private static class CenteredEditBox extends EditBox {
@@ -749,8 +792,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         }
     }
 
-    /** Multiline editor using Minecraft's text model with blueprint-specific 12px visual rows. */
-    private static class SpacedMultiLineEditBox extends AbstractWidget {
+    private class SpacedMultiLineEditBox extends AbstractWidget {
         private final Font font;
         private final Component placeholder;
         private final MultilineTextField textField;
@@ -764,8 +806,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             this.textField = new MultilineTextField(font, width - NOTE_PADDING * 2);
         }
 
-        void setCharacterLimit(int limit) {
-            textField.setCharacterLimit(limit);
+        void setCharacterLimit() {
+            textField.setCharacterLimit(BlueprintStorage.MAX_NOTE_LENGTH);
         }
 
         void setValueListener(java.util.function.Consumer<String> listener) {
@@ -836,7 +878,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             String value = textField.value();
             int textX = getX() + NOTE_PADDING;
             int firstTextY = getY() + NOTE_PADDING + (NOTE_LINE_H - font.lineHeight) / 2;
-            if (value.isEmpty() && !isFocused()) {
+            if (value.isEmpty() && !isFocused() && editable()) {
                 gfx.drawString(font, placeholder, textX, firstTextY, 0xCCDFDFDF, false);
                 return;
             }
