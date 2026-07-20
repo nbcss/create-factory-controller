@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-21 02:23+1000\n"
-"PO-Revision-Date: 2026-07-20 15:29+0000\n"
+"PO-Revision-Date: 2026-07-20 16:46+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
 "weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
@@ -34,7 +34,7 @@ msgid ""
 "gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
 msgstr ""
 "与工厂控制台方块交互即可打开控制台界面。控制台界面可用于放置xref:factory-"
-"gauge.adoc[工厂仪表]（及xref:components.adoc其他组件）。"
+"gauge.adoc[工厂仪表]（及xref:components.adoc[其他组件]）。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:5
@@ -88,7 +88,7 @@ msgstr "放置组件"
 #: ../src/dashboard.adoc:21
 #, no-wrap
 msgid "Hold a xref:components.adoc[placeable item] + Click on empty space"
-msgstr "手持xref:components.adoc{可放置物品]并单击空白位置"
+msgstr "手持xref:components.adoc[可放置物品]并单击空白位置"
 
 #. type: Table
 #: ../src/dashboard.adoc:22
