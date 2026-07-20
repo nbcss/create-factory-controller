@@ -2,6 +2,9 @@
 
 User manual of the mod.
 
+[NOTE]
+To translate the documents, go to link:https://weblate.fiveyellowmice.com/engage/create-factory-controller/[Weblate].
+
 Directory structure:
 
 * `src/`

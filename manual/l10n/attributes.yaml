@@ -5,6 +5,7 @@ site-name: "Create: Factory Controller"
 site-nav-manual: Manual
 site-nav-manual-home: Home
 site-nav-langs: Change Language
+site-nav-help-translate: Help Translate this Page
 
 no-translation:
   title: Translation Unavailable

@@ -13,25 +13,28 @@ html {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
 }
 
 /* Layout */
 
 main {
+  flex: 1;
   max-width: 48rem;
+  width: 100%;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 }
 
-header {
+header, footer {
   background: #1a1a1a;
   color: #fff;
-  position: sticky;
-  top: 0;
 }
 
-.header-inner {
+.header-inner, .footer-inner {
   display: flex;
   align-items: center;
   gap: 0.5rem 1rem;
@@ -39,7 +42,14 @@ header {
   max-width: 48rem;
   margin: 0 auto;
   padding: 0.5rem 1.5rem;
+}
 
+header {
+  position: sticky;
+  top: 0;
+}
+
+.header-inner {
   anchor-name: --anchor-header-inner;
 }
 
@@ -47,12 +57,17 @@ main :target {
   scroll-margin-top: 6rem;
 }
 
+footer {
+  background: #1a1a1a;
+  color: #fff;
+}
+
 @media (max-width: 600px) {
   main {
     padding: 1.5rem 1rem 3rem;
   }
 
-  .header-inner {
+  .header-inner, .footer-inner {
     padding: 0.5rem 1rem;
   }
 }
@@ -227,6 +242,13 @@ header nav > ol {
     font-family: "Font Awesome 6 Solid";
     margin-right: 0.5em;
   }
+}
+
+/* Footer */
+
+footer a {
+  color: #fff;
+  font-size: 0.9rem;
 }
 
 /* Content */

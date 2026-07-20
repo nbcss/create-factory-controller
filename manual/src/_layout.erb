@@ -71,10 +71,15 @@
         <p><%= h t 'no-translation.content' %></p>
         <ul class="action-list">
           <li><a href="../<%= languages.default %>/<%= output_filename.sub(/index\.html$/, '') %>"><%= h t 'no-translation.read-source-lang' %></a></li>
-          <li><a href="https://crowdin.com/project/createfactorycontroller"><%= h t 'no-translation.help-translate' %></a></li>
+          <li><a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'no-translation.help-translate' %></a></li>
         </ul>
       </div>
       <% end %>
     </main>
+    <footer>
+      <div class="footer-inner">
+        <a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'site-nav-help-translate' %></a>
+      </div>
+    </footer>
   </body>
 </html>
