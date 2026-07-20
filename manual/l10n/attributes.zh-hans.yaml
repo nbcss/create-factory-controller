@@ -1,0 +1,19 @@
+site-name: 机械动力：工厂仪表
+site-nav-manual: 使用手册
+site-nav-manual-home: 首页
+site-nav-langs: 更改语言
+site-nav-help-translate: 协助翻译此页面
+no-translation:
+  title: 译文不可用
+  content: 此页面目前还没有翻译版本。你可以：
+  read-source-lang: 阅读英文版本
+  help-translate: 协助翻译此页面
+toc-title: 目录
+section-refsig: 节
+figure-caption: 图
+table-caption: 表
+tip-caption: 提示
+note-caption: 注
+important-caption: 重要
+caution-caption: 注意
+warning-caption: 警告

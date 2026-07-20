@@ -3,23 +3,28 @@
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # Automatically generated, 2026.
 #
+# FiveYellowMice <me@fiveyellowmice.com>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-18 00:38+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-20 15:29+0000\n"
+"Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
+"Language-Team: Chinese (Simplified Han script) <https://"
+"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
+"dashboard/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.7.1\n"
 
 #. type: Title =
 #: ../src/dashboard.adoc:1
 #, no-wrap
 msgid "Dashboard"
-msgstr ""
+msgstr "控制台界面"
 
 #. type: Plain text
 #: ../src/dashboard.adoc:4
@@ -28,95 +33,97 @@ msgid ""
 "It displays a virtual 2D board on which you can place xref:factory-"
 "gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
 msgstr ""
+"与工厂控制台方块交互即可打开控制台界面。控制台界面可用于放置xref:factory-"
+"gauge.adoc[工厂仪表]（及xref:components.adoc其他组件）。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:5
 #, no-wrap
 msgid "Dashboard UI"
-msgstr ""
+msgstr "控制台界面"
 
 #. type: Block title
 #: ../src/dashboard.adoc:8
 #, no-wrap
 msgid "Basic interactions"
-msgstr ""
+msgstr "基本操作"
 
 #. type: Table
 #: ../src/dashboard.adoc:12
 #, no-wrap
 msgid "Pan view"
-msgstr ""
+msgstr "平移视角"
 
 #. type: Table
 #: ../src/dashboard.adoc:13
 #, no-wrap
 msgid "Drag with left mouse button"
-msgstr ""
+msgstr "按住鼠标左键拖动"
 
 #. type: Table
 #: ../src/dashboard.adoc:15
 #, no-wrap
 msgid "W, A, S, D"
-msgstr ""
+msgstr "W、A、S、D"
 
 #. type: Table
 #: ../src/dashboard.adoc:16
 #, no-wrap
 msgid "Zoom in/out"
-msgstr ""
+msgstr "放大/缩小"
 
 #. type: Table
 #: ../src/dashboard.adoc:18
 #, no-wrap
 msgid "Mouse scroll wheel"
-msgstr ""
+msgstr "滚动鼠标滚轮"
 
 #. type: Table
 #: ../src/dashboard.adoc:19
 #, no-wrap
 msgid "Place component"
-msgstr ""
+msgstr "放置组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:21
 #, no-wrap
 msgid "Hold a xref:components.adoc[placeable item] + Click on empty space"
-msgstr ""
+msgstr "手持xref:components.adoc{可放置物品]并单击空白位置"
 
 #. type: Table
 #: ../src/dashboard.adoc:22
 #, no-wrap
 msgid "Open component"
-msgstr ""
+msgstr "打开组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:24
 #, no-wrap
 msgid "Left/right click"
-msgstr ""
+msgstr "左键或右键单击"
 
 #. type: Table
 #: ../src/dashboard.adoc:25
 #, no-wrap
 msgid "Remove component"
-msgstr ""
+msgstr "移除组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:26 ../src/dashboard.adoc:140
 #, no-wrap
 msgid "Shift + Click"
-msgstr ""
+msgstr "按住 Shift 单击组件"
 
 #. type: TIP
 #: ../src/dashboard.adoc:30
 msgid "Most of the controls can be changed in _Options--Controls--Key Binds_."
-msgstr ""
+msgstr "大部分按键都可在“选项—控制—按键绑定”中修改。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:31
 #, no-wrap
 msgid "UI Overview"
-msgstr ""
+msgstr "界面概览"
 
 #. type: TIP
 #: ../src/dashboard.adoc:48
@@ -143,7 +150,7 @@ msgstr ""
 #: ../src/dashboard.adoc:50
 #, no-wrap
 msgid "Navigation"
-msgstr ""
+msgstr "移动视角"
 
 #. type: #navigation
 #: ../src/dashboard.adoc:53
@@ -151,23 +158,25 @@ msgid ""
 "Drag with the left mouse button to pan the view around the virtual board. "
 "The W, A, S, D keys can also be used to move the view in cardinal directions."
 msgstr ""
+"按住鼠标左键拖动即可在虚拟面板上平移视角，也可使用 W、A、S、D 向四个方向移动"
+"。"
 
 #. type: #navigation
 #: ../src/dashboard.adoc:55
 msgid "Scroll with the mouse wheel to zoom in/out."
-msgstr ""
+msgstr "滚动鼠标滚轮可放大或缩小界面。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:57
 #, no-wrap
 msgid "Working with Components"
-msgstr ""
+msgstr "使用组件"
 
 #. type: Block title
 #: ../src/dashboard.adoc:59
 #, no-wrap
 msgid "Holding a tuned factory gauge over an empty location"
-msgstr ""
+msgstr "手持已设定网络的工厂仪表指向空白位置"
 
 #. type: #components
 #: ../src/dashboard.adoc:63
@@ -179,19 +188,22 @@ msgid ""
 "will be stored inside the factory controller, even when the factory "
 "controller block is mined."
 msgstr ""
+"从物品栏拿起对应物品，再单击面板上的空白位置即可放置组件。"
+"xref:components.adoc[“可放置组件”]一章列出了所有可用物品。需要注意的是，工厂"
+"仪表必须先<<network-selector,设定物流网络>>，才能放入工厂控制台。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:64
 #, no-wrap
 msgid "A just-placed factory gauge"
-msgstr ""
+msgstr "刚刚放置的工厂仪表"
 
 #. type: #components
 #: ../src/dashboard.adoc:68
 msgid ""
 "Holding shift and clicking on a component removes it from the controller and "
 "returns the item to your inventory."
-msgstr ""
+msgstr "按住 Shift 并单击组件可将其从控制台中移除，物品会返回玩家物品栏。"
 
 #. type: #components
 #: ../src/dashboard.adoc:70
@@ -201,6 +213,8 @@ msgid ""
 "relocate.png[,18,18] \"relocate\" button, then click on a new location for "
 "the component."
 msgstr ""
+"左键或右键单击组件都会打开其配置界面。若要移动组件，先打开配置界面并点击 "
+"image:btn-relocate.png[,18,18]“移动组件”按钮，再点击新的位置。"
 
 #. type: #components
 #: ../src/dashboard.adoc:72
@@ -210,12 +224,15 @@ msgid ""
 "components are indicated with a green outline. To add and remove individual "
 "components from the selection, hold Ctrl and left-click them."
 msgstr ""
+"仪表盘支持同时选择多个组件。按住 Ctrl 并按住左键拖动，可框选矩形区域内的所有"
+"组件。被选中的组件会显示绿色轮廓。按住 Ctrl 并左键单击单个组件，可将其加入选"
+"择或从选择中移除。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:73
 #, no-wrap
 msgid "Rectangle-selecting multiple components"
-msgstr ""
+msgstr "框选多个组件"
 
 #. type: #components
 #: ../src/dashboard.adoc:77
@@ -224,19 +241,21 @@ msgid ""
 "components. Likewise, shift-clicking on any of them removes all selected "
 "components from the board."
 msgstr ""
+"选中多个组件后，拖动其中任意一个即可一起移动所有选中组件；同样地，如果按住 "
+"Shift 单击其中任意一个组建，则会从面板中移除所有选中组件。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:79
 #, no-wrap
 msgid "Creating and Modifying Connections"
-msgstr ""
+msgstr "创建和修改连接"
 
 #. type: #connections
 #: ../src/dashboard.adoc:82
 msgid ""
 "Components may be connected to one another. Refer to a specific component's "
 "documentation for the functionality provided by connections."
-msgstr ""
+msgstr "组件之间可以建立连接，参见特定组件的文档以了解连接所提供的功能。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:84
@@ -246,6 +265,9 @@ msgid ""
 "click A. Some components may only act as the source or sink of a connection, "
 "in which case a valid direction is automatically chosen."
 msgstr ""
+"若要将组件 A 连接至组件 B，请打开 B 的配置界面，单击 image:btn-add-"
+"connection.png[,18,18]“新建连接”按钮，再单击 A。部分组件只能作为连接的输入端"
+"或输出端；此时系统会自动选择有效方向。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:86
@@ -255,12 +277,15 @@ msgid ""
 "multiple connections overlap, hold shift and scroll while hovering over a "
 "spot with overlapping connections to select one of them."
 msgstr ""
+"连接通常可以在组件的配置界面中移除。也可在控制台界面中将鼠标悬停在连接线上，"
+"再按住 Shift 单击来移除连接。当多条连接线重叠时，按住 Shift 并在重叠位置滚动"
+"鼠标滚轮，可依次选择其中一条连接。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:87
 #, no-wrap
 msgid "Selecting overlapping connections"
-msgstr ""
+msgstr "选择重叠的连接"
 
 #. type: #connections
 #: ../src/dashboard.adoc:91
@@ -270,24 +295,27 @@ msgid ""
 "pressing R. The bend modes of all connections on one component can be "
 "changed by pressing R on the component."
 msgstr ""
+"连接线会自动规划两端之间的路径。如需改变路径形状，将鼠标悬停在连接线上并按 R"
+"，可在四种箭头路径模式之间切换。在组件上按 R，则会同时改变连接到该组件的所有"
+"连接线的路径样式。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:92
 #, no-wrap
 msgid "Path modes"
-msgstr ""
+msgstr "连接路径样式"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:96
 #, no-wrap
 msgid "Network Selector"
-msgstr ""
+msgstr "网络选择器"
 
 #. type: Block title
 #: ../src/dashboard.adoc:98
 #, no-wrap
 msgid "Network selector with no network"
-msgstr ""
+msgstr "未选中网络时的网络选择器"
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:102
@@ -297,12 +325,15 @@ msgid ""
 "interacting with a stock link with a gauge in hand). Once a tuned gauge is "
 "placed in the controller, its network appears in the network selector."
 msgstr ""
+"工厂仪表在放入控制台前必须设定物流网络。第一个工厂仪表需要按常规方式绑定（例"
+"如手持仪表与仓储链接站交互）。将已设定网络的仪表放入控制台后，对应网络便会出"
+"现在网络选择器中。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:103
 #, no-wrap
 msgid "Network selector with a network selected"
-msgstr ""
+msgstr "选中一个网络后的网络选择器"
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:107
@@ -312,6 +343,8 @@ msgid ""
 "blue outline. The number of components tuned to the network also appears on "
 "the network selector icon."
 msgstr ""
+"鼠标指针为空时，在网络选择器上滚动鼠标滚轮可选择其中一个网络。所有已绑定至该"
+"网络的组件会显示蓝色轮廓，网络选择器图标上也会显示该网络中的组件数量。"
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:109
@@ -321,12 +354,14 @@ msgid ""
 "new gauge to an existing network. Holding shift and scrolling accomplishes "
 "the same."
 msgstr ""
+"手持工厂仪表时，在网络选择器上滚动鼠标滚轮可改变手中仪表所绑定的网络，从而快"
+"速将新仪表加入现有网络。按住 Shift 滚动也能完成相同操作。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:111
 #, no-wrap
 msgid "Additional Interactions"
-msgstr ""
+msgstr "其他操作"
 
 #. type: #additional-interactions
 #: ../src/dashboard.adoc:114
@@ -335,6 +370,8 @@ msgid ""
 "of operation that can be switched either by pressing the F key while "
 "hovering over them in the dashboard, or through their configuration UI."
 msgstr ""
+"部分组件，如xref:redstone-link.adoc[无线红石信号终端]，具有多个工作模式。该模"
+"式可在控制台界面中将鼠标指向组件并按 F 切换，也可以打开其配置界面设置。"
 
 #. type: #additional-interactions
 #: ../src/dashboard.adoc:116
@@ -344,129 +381,132 @@ msgid ""
 "other components, they can be hidden by pressing Alt. Then only the label of "
 "the hovered component is displayed. Press Alt again to show all labels."
 msgstr ""
+"每个工厂仪表都会显示悬浮字体信息，方便快速查看库存等信息。如果悬浮字体遮挡组"
+"件或影响观察，按 Alt 可隐藏所有悬浮字体，仅显示鼠标所指组件的信息。再次按 "
+"Alt 可恢复显示。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:117
 #, no-wrap
 msgid "Summary"
-msgstr ""
+msgstr "概要"
 
 #. type: Table
 #: ../src/dashboard.adoc:121
 #, no-wrap
 msgid "Rectangle select"
-msgstr ""
+msgstr "框选"
 
 #. type: Table
 #: ../src/dashboard.adoc:123
 #, no-wrap
 msgid "Ctrl + Drag with left mouse button"
-msgstr ""
+msgstr "Ctrl + 按住左键拖动"
 
 #. type: Table
 #: ../src/dashboard.adoc:124
 #, no-wrap
 msgid "Add to selection"
-msgstr ""
+msgstr "加入选择"
 
 #. type: Table
 #: ../src/dashboard.adoc:126
 #, no-wrap
 msgid "Ctrl + Click component"
-msgstr ""
+msgstr "Ctrl + 单击组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:128
 #, no-wrap
 msgid "Remove from selection"
-msgstr ""
+msgstr "移出选择"
 
 #. type: Table
 #: ../src/dashboard.adoc:129
 #, no-wrap
 msgid "Move selected components"
-msgstr ""
+msgstr "移动选中的组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:131
 #, no-wrap
 msgid "Drag on a selected component"
-msgstr ""
+msgstr "拖动任意选中的组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:132
 #, no-wrap
 msgid "Remove selected components"
-msgstr ""
+msgstr "移除选中的组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:134
 #, no-wrap
 msgid "Shift + Click on a selected component"
-msgstr ""
+msgstr "Shift + 单击任意选中的组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:135
 #, no-wrap
 msgid "Select overlapping connection"
-msgstr ""
+msgstr "选择重叠连接"
 
 #. type: Table
 #: ../src/dashboard.adoc:137
 #, no-wrap
 msgid "Shift + Scroll"
-msgstr ""
+msgstr "Shift + 滚动"
 
 #. type: Table
 #: ../src/dashboard.adoc:138
 #, no-wrap
 msgid "Remove connection"
-msgstr ""
+msgstr "移除连接"
 
 #. type: Table
 #: ../src/dashboard.adoc:141
 #, no-wrap
 msgid "Change connection shape"
-msgstr ""
+msgstr "改变连接样式"
 
 #. type: Table
 #: ../src/dashboard.adoc:143
 #, no-wrap
 msgid "R on component or connection"
-msgstr ""
+msgstr "将鼠标指向组件或连接，并按 R"
 
 #. type: Table
 #: ../src/dashboard.adoc:144
 #, no-wrap
 msgid "Change component mode"
-msgstr ""
+msgstr "切换组件模式"
 
 #. type: Table
 #: ../src/dashboard.adoc:146
 #, no-wrap
 msgid "F on component"
-msgstr ""
+msgstr "在组件上按 F"
 
 #. type: Table
 #: ../src/dashboard.adoc:147
 #, no-wrap
 msgid "Tune item to network"
-msgstr ""
+msgstr "为物品调节网络"
 
 #. type: Table
 #: ../src/dashboard.adoc:149
 #, no-wrap
 msgid "Hold item + Shift + Scroll"
-msgstr ""
+msgstr "手持物品并按住 Shift 滚动"
 
 #. type: Table
 #: ../src/dashboard.adoc:150
 #, no-wrap
 msgid "Toggle gauge labels"
-msgstr ""
+msgstr "开关仪表标签显示"
 
 #. type: Table
 #: ../src/dashboard.adoc:151
 #, no-wrap
 msgid "Alt"
-msgstr ""
+msgstr "Alt"
