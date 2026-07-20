@@ -118,7 +118,13 @@ public class BlueprintPlacement {
 
     public static VirtualComponentPosition cellFor(BlueprintStorage.Placement placement,
                                                    VirtualComponentPosition anchor) {
-        return new VirtualComponentPosition(anchor.x() + placement.pos().x(), anchor.y() + placement.pos().y());
+        return cellFor(placement.pos(), anchor);
+    }
+
+    /** A blueprint-local cell in board coordinates for the given anchor. */
+    public static VirtualComponentPosition cellFor(VirtualComponentPosition local,
+                                                   VirtualComponentPosition anchor) {
+        return new VirtualComponentPosition(anchor.x() + local.x(), anchor.y() + local.y());
     }
 
     /**

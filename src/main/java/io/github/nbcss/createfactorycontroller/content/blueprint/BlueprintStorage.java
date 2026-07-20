@@ -45,10 +45,20 @@ public final class BlueprintStorage {
     /** One component of a stored blueprint, positioned in blueprint-local coordinates. */
     public record Placement(ResourceLocation item, VirtualComponentPosition pos) {}
 
+    /** Stored connection in blueprint-local coordinates */
+    public record Wire(String type, VirtualComponentPosition from, VirtualComponentPosition to, int arrowBendMode) {
+        public int color() {
+            Connection.Type resolved = Connection.Type.get(type);
+            return resolved != null ? resolved.color() : UNKNOWN_WIRE_COLOR;
+        }
+    }
+
+    private static final int UNKNOWN_WIRE_COLOR = 0x888898;
+
     /** Everything the blueprint screens display about a stored blueprint. */
     public record Info(String note, List<Material> materials, int networkCount, int width, int height,
-                       List<Placement> placements) {
-        public static final Info EMPTY = new Info("", List.of(), 0, 0, 0, List.of());
+                       List<Placement> placements, List<Wire> connections) {
+        public static final Info EMPTY = new Info("", List.of(), 0, 0, 0, List.of(), List.of());
     }
 
     /** Aggregates the component items in stable first-appearance order for the save-screen preview. */
@@ -80,8 +90,20 @@ public final class BlueprintStorage {
         }
         List<Material> materials = counts.entrySet().stream()
                 .map(e -> new Material(e.getKey(), e.getValue())).toList();
+
+        ListTag storedConnections = root.getList("Connections", Tag.TAG_COMPOUND);
+        List<Wire> wires = new ArrayList<>();
+        for (int i = 0; i < storedConnections.size(); i++) {
+            CompoundTag connection = storedConnections.getCompound(i);
+            if (!connection.contains("Type", Tag.TAG_STRING)) continue;
+            wires.add(new Wire(connection.getString("Type"),
+                    VirtualComponentPosition.fromNBT(connection.getCompound("From")),
+                    VirtualComponentPosition.fromNBT(connection.getCompound("To")),
+                    connection.getInt("ArrowBendMode")));
+        }
+
         return new Info(root.getString("Note"), materials, networks.size(),
-                root.getInt("Width"), root.getInt("Height"), List.copyOf(placements));
+                root.getInt("Width"), root.getInt("Height"), List.copyOf(placements), List.copyOf(wires));
     }
 
     /** The stored file verbatim — already gzipped NBT, shipped to the server to place the blueprint. */

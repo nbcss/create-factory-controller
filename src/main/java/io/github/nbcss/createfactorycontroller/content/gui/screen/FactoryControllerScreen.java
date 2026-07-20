@@ -1136,11 +1136,33 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void renderPlacementGhost(GuiGraphics graphics) {
         if (pendingPlacement == null || hoveredPosition == null) return;
         VirtualComponentPosition anchor = pendingPlacement.anchorFor(hoveredPosition);
+        renderPlacementWires(graphics, anchor);   // under the blueprint's own ghosts and reticles
         for (BlueprintStorage.Placement placement : pendingPlacement.info().placements()) {
             VirtualComponentPosition cell = BlueprintPlacement.cellFor(placement, anchor);
             boolean valid = pendingPlacement.cellFree(cell, menu);
             if (valid) renderGhostAt(graphics, cell, BuiltInRegistries.ITEM.get(placement.item()));
             renderTargetAboveGhost(graphics, cell, valid ? TARGET_WHITE : TARGET_RED);
+        }
+    }
+
+    /** Translucency of the previewed blueprint wires, matching {@link #renderGhostAt}'s component ghosts. */
+    private static final float GHOST_WIRE_ALPHA = 0.5f;
+
+    private void renderPlacementWires(GuiGraphics graphics, VirtualComponentPosition anchor) {
+        assert pendingPlacement != null;
+        List<BlueprintStorage.Wire> wires = pendingPlacement.info().connections();
+        if (wires.isEmpty()) return;
+
+        Set<VirtualComponentPosition> occupied = occupiedCells();
+        for (BlueprintStorage.Placement placement : pendingPlacement.info().placements())
+            occupied.add(BlueprintPlacement.cellFor(placement, anchor));
+
+        for (BlueprintStorage.Wire wire : wires) {
+            List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(
+                    BlueprintPlacement.cellFor(wire.from(), anchor),
+                    BlueprintPlacement.cellFor(wire.to(), anchor),
+                    wire.arrowBendMode(), occupied);
+            if (path != null) VirtualConnectionRenderer.drawGuiPath(graphics, path, wire.color(), GHOST_WIRE_ALPHA);
         }
     }
 
