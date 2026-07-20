@@ -34,29 +34,40 @@ Clicking on a factory gauge with an item set opens its recipe settings screen.
 image::gauge-recipe-settings.png[,384,367]
 
 ❶ Output::
-  The type and number of items this gauge is set to produce. See <<basic-production>>.
+The type and number of items this gauge is set to produce. See <<basic-production>>.
+
 ❷ Ingredients::
-  The types and numbers of ingredients required to produce the output.
+The types and numbers of ingredients required to produce the output.
+
 ❸ Add connection button::
-  Click to add a connection to other factory gauges or <<redstone,other components>>.
+Click to add a connection to other factory gauges or <<redstone,other components>>.
+
 ❹ Relocate button::
-  Click to move the location of this gauge on the virtual board.
+Click to move the location of this gauge on the virtual board.
+
 ❺ Destination address::
-  The address to which the ingredients will be packaged and sent.
+The address to which the ingredients will be packaged and sent.
+
 ❻ Storage amount::
-  The number of monitored items stored in the logistic network.
+The number of monitored items stored in the logistic network.
+
 ❼ Target amount::
-  The number of items in storage this factory gauge is configured to reach.
+The number of items in storage this factory gauge is configured to reach.
+
 ❽ Item measure::
-  Unit of measurement of the target amount: Items/Stacks
+Unit of measurement of the target amount: Items/Stacks
+
 ❾ Mode of operation::
-  How the target amount is set or determined. See <<on-demand>>.
+How the target amount is set or determined. See <<on-demand>>.
+
 ❿⓫⓬ Promises::
-  Requests made by factory gauges awaiting their outputs, and options for limiting them. See <<promise>>.
+Requests made by factory gauges awaiting their outputs, and options for limiting them. See <<promise>>.
+
 ⓭ Reset button::
-  Click to clear all configurations of this gauge, including the set item.
+Click to clear all configurations of this gauge, including the set item.
+
 ⓮ Confirm button::
-  Click to confirm the configurations, and close this screen.
+Click to confirm the configurations, and close this screen.
 
 [#basic-production]
 == Basic Production
@@ -153,15 +164,19 @@ Pending production orders can be viewed in the "production orders" tab in the st
 image::gauge-production-orders-ui.png[,474,186]
 
 ❶ Production orders tab::
-  Click to switch to this tab.
+Click to switch to this tab.
+
 ❷ Destination address::
-  The address the items are sent to after they arrive in storage.
+The address the items are sent to after they arrive in storage.
+
 ❸ Elapsed time::
-  Time elapsed since the order was created.
+Time elapsed since the order was created.
+
 ❹ Cancel button::
-  Click to cancel the order.
+Click to cancel the order.
+
 ❺ Ordered items::
-  Type, amount, and status of the ordered items.
+Type, amount, and status of the ordered items.
 
 .Statuses of ordered items
 [%header%autowidth,cols="3*"]
@@ -221,14 +236,14 @@ Each time a factory gauge requests a set of ingredients to be sent to its destin
 image::gauge-promise-ui.png[,267,53]
 
 ❶ Promised items::
-  Displays the total number of items recorded in promises created by all gauges in the same network producing the same item. Click to void all promises of the same item type.
+Displays the total number of items recorded in promises created by all gauges in the same network producing the same item. Click to void all promises of the same item type.
 
 ❷ Expire time::
-  Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default. +
+Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default. +
   This option is useful when the ingredients do not reliably produce the expected output, such as with recipes with probabilities.
 
 ❸ Pending requests::
-  Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests. +
+Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests. +
   Limiting pending requests is useful for preventing excessive packages from overloading transportation lines.
 
 [#redstone]

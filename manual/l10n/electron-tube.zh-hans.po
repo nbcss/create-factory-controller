@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 02:23+1000\n"
+"POT-Creation-Date: 2026-07-21 03:13+1000\n"
 "PO-Revision-Date: 2026-07-18 00:38+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -74,73 +74,95 @@ msgid ""
 msgstr ""
 
 #. type: Labeled list
-#: ../src/electron-tube.adoc:20
+#: ../src/electron-tube.adoc:21
 #, no-wrap
 msgid "AND"
 msgstr ""
 
 #. type: #logical-operators
-#: ../src/electron-tube.adoc:22
+#: ../src/electron-tube.adoc:23
 msgid ""
 "Output on when all connected inputs are on. Otherwise output off. When "
 "unconnected, output on."
 msgstr ""
 
 #. type: Labeled list
-#: ../src/electron-tube.adoc:22
+#: ../src/electron-tube.adoc:24
 #, no-wrap
 msgid "NOR"
 msgstr ""
 
 #. type: #logical-operators
-#: ../src/electron-tube.adoc:24
+#: ../src/electron-tube.adoc:26
 msgid "Inverse of OR."
 msgstr ""
 
 #. type: Labeled list
-#: ../src/electron-tube.adoc:24
+#: ../src/electron-tube.adoc:27
 #, no-wrap
 msgid "NAND"
 msgstr ""
 
 #. type: #logical-operators
-#: ../src/electron-tube.adoc:26
+#: ../src/electron-tube.adoc:29
 msgid "Inverse of AND."
 msgstr ""
 
 #. type: Title ==
-#: ../src/electron-tube.adoc:28 ../src/redstone-link.adoc:38
+#: ../src/electron-tube.adoc:31 ../src/redstone-link.adoc:38
 #, no-wrap
 msgid "Configuration"
 msgstr ""
 
 #. type: #configuration
-#: ../src/electron-tube.adoc:31
+#: ../src/electron-tube.adoc:34
 msgid "Clicking on the placed logical tube opens its settings screen."
 msgstr ""
 
 #. type: Block title
-#: ../src/electron-tube.adoc:32
+#: ../src/electron-tube.adoc:35
 #, no-wrap
 msgid "Logical tube settings"
 msgstr ""
 
 #. type: #configuration
-#: ../src/electron-tube.adoc:48
-#, no-wrap
+#: ../src/electron-tube.adoc:40
 msgid ""
-"❶ Inputs::\n"
-"  Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.\n"
-"❷ Operator::\n"
-"  Displays the currently selected operator.\n"
-"❸ Outputs::\n"
-"  Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect.\n"
-"❹ Relocate button::\n"
-"  Click to move the location of this logical tube on the virtual board.\n"
-"❺ Add connection button::\n"
-"  Click to connect to other components via redstone.\n"
-"❻ Mode switch::\n"
-"  Click to switch between OR, AND, NOR, NAND modes.\n"
-"❼ Confirm button::\n"
-"  Click to confirm settings and close this screen.\n"
+"❶ Inputs:: Displays the components connected as inputs to this tube. Click a "
+"component to switch it to an output, shift-click to disconnect."
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:43
+msgid "❷ Operator:: Displays the currently selected operator."
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:46
+msgid ""
+"❸ Outputs:: Displays the components connected as outputs to this tube. Click "
+"a component to switch it to an input, shift-click to disconnect."
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:49
+msgid ""
+"❹ Relocate button:: Click to move the location of this logical tube on the "
+"virtual board."
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:52
+msgid ""
+"❺ Add connection button:: Click to connect to other components via redstone."
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:55
+msgid "❻ Mode switch:: Click to switch between OR, AND, NOR, NAND modes."
+msgstr ""
+
+#. type: #configuration
+#: ../src/electron-tube.adoc:57
+msgid "❼ Confirm button:: Click to confirm settings and close this screen."
 msgstr ""

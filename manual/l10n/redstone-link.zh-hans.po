@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 02:23+1000\n"
+"POT-Creation-Date: 2026-07-21 03:07+1000\n"
 "PO-Revision-Date: 2026-07-18 00:38+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -158,17 +158,36 @@ msgid "Redstone link settings"
 msgstr ""
 
 #. type: #configuration
-#: ../src/redstone-link.adoc:54
-#, no-wrap
+#: ../src/redstone-link.adoc:47
 msgid ""
-"❶ ❷ Channel::\n"
-"  Place an item, or drag a ghost item from JEI, to set the channel of the redstone link.\n"
-"❸ Relocate button::\n"
-"  Click to move the location of this redstone link on the virtual board.\n"
-"❹ Add connection button::\n"
-"  Click to connect to other components via redstone. Directions of connections are decided automatically. Send-mode links may only have incoming connections, receive-mode links may only have outgoing connections.\n"
-"❺ Mode switch::\n"
-"  Click to switch between send image:btn-send-mode.png[,18,18] and receive image:btn-receive-mode.png[,18,18] modes.\n"
-"❻ Confirm button::\n"
-"  Click to confirm settings and close the screen.\n"
+"❶ ❷ Channel:: Place an item, or drag a ghost item from JEI, to set the "
+"channel of the redstone link."
+msgstr ""
+
+#. type: #configuration
+#: ../src/redstone-link.adoc:50
+msgid ""
+"❸ Relocate button:: Click to move the location of this redstone link on the "
+"virtual board."
+msgstr ""
+
+#. type: #configuration
+#: ../src/redstone-link.adoc:53
+msgid ""
+"❹ Add connection button:: Click to connect to other components via redstone. "
+"Directions of connections are decided automatically. Send-mode links may "
+"only have incoming connections, receive-mode links may only have outgoing "
+"connections."
+msgstr ""
+
+#. type: #configuration
+#: ../src/redstone-link.adoc:56
+msgid ""
+"❺ Mode switch:: Click to switch between send image:btn-send-mode.png[,18,18] "
+"and receive image:btn-receive-mode.png[,18,18] modes."
+msgstr ""
+
+#. type: #configuration
+#: ../src/redstone-link.adoc:58
+msgid "❻ Confirm button:: Click to confirm settings and close the screen."
 msgstr ""

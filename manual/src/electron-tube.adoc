@@ -16,13 +16,16 @@ Each logical tube may be connected with 0 or more redstone inputs, and outputs a
 The available modes are:
 
 OR::
-  Output on when any connected input is on. Otherwise output off. When unconnected, output off.
+Output on when any connected input is on. Otherwise output off. When unconnected, output off.
+
 AND::
-  Output on when all connected inputs are on. Otherwise output off. When unconnected, output on.
+Output on when all connected inputs are on. Otherwise output off. When unconnected, output on.
+
 NOR::
-  Inverse of OR.
+Inverse of OR.
+
 NAND::
-  Inverse of AND.
+Inverse of AND.
 
 [#configuration]
 == Configuration
@@ -33,16 +36,22 @@ Clicking on the placed logical tube opens its settings screen.
 image::logical-tube-settings.png[,386,205]
 
 ❶ Inputs::
-  Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.
+Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.
+
 ❷ Operator::
-  Displays the currently selected operator.
+Displays the currently selected operator.
+
 ❸ Outputs::
-  Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect.
+Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect.
+
 ❹ Relocate button::
-  Click to move the location of this logical tube on the virtual board.
+Click to move the location of this logical tube on the virtual board.
+
 ❺ Add connection button::
-  Click to connect to other components via redstone.
+Click to connect to other components via redstone.
+
 ❻ Mode switch::
-  Click to switch between OR, AND, NOR, NAND modes.
+Click to switch between OR, AND, NOR, NAND modes.
+
 ❼ Confirm button::
-  Click to confirm settings and close this screen.
+Click to confirm settings and close this screen.
