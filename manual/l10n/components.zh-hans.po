@@ -49,7 +49,8 @@ msgstr "可放置组件"
 msgid ""
 "Some items can be placed inside a factory controller. Once placed, they are "
 "referred to as \"virtual components\". These include:"
-msgstr "部分物品可以被放入工厂控制台。放入后，它们被称为“虚拟组件”。这些组件包括："
+msgstr ""
+"部分物品可以被放入工厂控制台。放入后，它们被称为“虚拟组件”。这些组件包括："
 
 #. type: Table
 #: ../src/components.adoc:7 ../src/factory-gauge.adoc:169

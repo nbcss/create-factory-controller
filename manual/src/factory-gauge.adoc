@@ -33,29 +33,29 @@ Clicking on a factory gauge with an item set opens its recipe settings screen.
 .Recipe settings screen for a gauge monitoring iron ingots
 image::gauge-recipe-settings.png[,384,367]
 
-&#x2776; Output::
+❶ Output::
   The type and number of items this gauge is set to produce. See <<basic-production>>.
-&#x2777; Ingredients::
+❷ Ingredients::
   The types and numbers of ingredients required to produce the output.
-&#x2778; Add connection button::
+❸ Add connection button::
   Click to add a connection to other factory gauges or <<redstone,other components>>.
-&#x2779; Relocate button::
+❹ Relocate button::
   Click to move the location of this gauge on the virtual board.
-&#x277A; Destination address::
+❺ Destination address::
   The address to which the ingredients will be packaged and sent.
-&#x277B; Storage amount::
+❻ Storage amount::
   The number of monitored items stored in the logistic network.
-&#x277C; Target amount::
+❼ Target amount::
   The number of items in storage this factory gauge is configured to reach.
-&#x277D; Item measure::
+❽ Item measure::
   Unit of measurement of the target amount: Items/Stacks
-&#x277E; Mode of operation::
+❾ Mode of operation::
   How the target amount is set or determined. See <<on-demand>>.
-&#x277F;&#x24EB;&#x24EC; Promises::
+❿⓫⓬ Promises::
   Requests made by factory gauges awaiting their outputs, and options for limiting them. See <<promise>>.
-&#x24ED; Reset button::
+⓭ Reset button::
   Click to clear all configurations of this gauge, including the set item.
-&#x24EE; Confirm button::
+⓮ Confirm button::
   Click to confirm the configurations, and close this screen.
 
 [#basic-production]
@@ -63,7 +63,7 @@ image::gauge-recipe-settings.png[,384,367]
 
 Beyond monitoring storage, the most basic usage of a factory gauge is to represent a recipe to produce an item, for example, smelting 1 raw iron into 1 iron ingot. The type of the output is simply the monitored item. To define the ingredient(s), connect this gauge with other factory gauges set to monitor those ingredients.
 
-This connection can be made by clicking "add connection" (<<figure-recipe-settings>> &#x2778;), and then the gauge responsible for the ingredient. Such connections are shown as item icons in the ingredient list (<<figure-iron-smelting-recipe>> &#x2777;), and can be removed by clicking on them.
+This connection can be made by clicking "add connection" (<<figure-recipe-settings>> ❸), and then the gauge responsible for the ingredient. Such connections are shown as item icons in the ingredient list (<<figure-iron-smelting-recipe>> ❷), and can be removed by clicking on them.
 
 .A gauge monitoring raw iron is connected to a gauge set to produce iron ingots
 image::gauge-ingredient-connection.png[,200,68]
@@ -72,7 +72,7 @@ image::gauge-ingredient-connection.png[,200,68]
 .Recipe settings of a gauge smelting 1 raw iron to 1 iron ingot
 image::gauge-iron-smelting-recipe.png[,385,367]
 
-In its default mode (&#x277E;), a factory gauge monitors the amount of its item in the logistic network storage it is tuned to (&#x277B;). When this amount is below the set target (&#x277C;&#x277D;), it requests a set of ingredients to be sent to the destination address (&#x277A;), expecting the output (&#x2776;) to later arrive in storage (&#x277B;).
+In its default mode (❾), a factory gauge monitors the amount of its item in the logistic network storage it is tuned to (❻). When this amount is below the set target (❼❽), it requests a set of ingredients to be sent to the destination address (❺), expecting the output (❶) to later arrive in storage (❻).
 
 Both the number of each ingredient and output can be adjusted by scrolling on them, allowing a configurable number of output items to be produced from configurable numbers of ingredients. Scrolling on an ingredient allows you to configure more than 1 stack of the same item. However, there cannot be more than 9 stacks of ingredients in total, the output is also limited to 9 stacks.
 
@@ -91,13 +91,13 @@ When a factory gauge A is used as an ingredient for another gauge B, most of A's
 [#crafting]
 == Mechanical Crafting
 
-When the ingredients and output match a mechanical crafting recipe, a "use mechanical crafting" button (<<figure-crafting-1>> &#x2776;) is revealed. With this option toggled on, when packages created by this gauge are unpacked onto mechanical crafters, the ingredients are automatically arranged into the crafting pattern (&#x2777;).
+When the ingredients and output match a mechanical crafting recipe, a "use mechanical crafting" button (<<figure-crafting-1>> ❶) is revealed. With this option toggled on, when packages created by this gauge are unpacked onto mechanical crafters, the ingredients are automatically arranged into the crafting pattern (❷).
 
 [#figure-crafting-1]
 .Crafting 1 iron sword
 image::gauge-crafting-iron-sword.png[,311,156]
 
-The crafting recipe may be at most 10×10 in size. However, when it is larger than 3×3, &#x2777; no longer previews the pattern, and factory gauges that ignore NBT data may not be used as ingredients.
+The crafting recipe may be at most 10×10 in size. However, when it is larger than 3×3, ❷ no longer previews the pattern, and factory gauges that ignore NBT data may not be used as ingredients.
 
 .Crafting crushing wheels
 image::gauge-crafting-crushing-wheels.png[,311,156]
@@ -109,7 +109,7 @@ It is recommended to use a repackager before unpacking onto mechanical crafters,
 [#batch-crafting]
 === Batch Crafting
 
-A factory gauge may be configured to send ingredients enough to craft multiple output items at once. When mechanical crafting is turned on, scroll on the output slot (<<figure-crafting-batch>> &#x2776;) to adjust how many items to craft each batch. The number of ingredients (&#x2777;) are matched automatically and cannot be adjusted individually.
+A factory gauge may be configured to send ingredients enough to craft multiple output items at once. When mechanical crafting is turned on, scroll on the output slot (<<figure-crafting-batch>> ❶) to adjust how many items to craft each batch. The number of ingredients (❷) are matched automatically and cannot be adjusted individually.
 
 [#figure-crafting-batch]
 .Crafting iron swords in 64-item batches
@@ -124,13 +124,13 @@ Batch crafting may not be used if any of the ingredients come from a factory gau
 [#on-demand]
 == On-Demand Production
 
-By default, a factory gauge operates in "maintain stock" mode, which activates (requests ingredients to be sent to the destination) when the monitored item in storage is below the configured target amount. By clicking <<figure-follow-demand>> &#x2777;, you may switch it to "follow demand" mode, which instead activates the gauge when there is downstream demand, that is, when another gauge uses this gauge as an ingredient, and that gauge would like to request this ingredient.
+By default, a factory gauge operates in "maintain stock" mode, which activates (requests ingredients to be sent to the destination) when the monitored item in storage is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to "follow demand" mode, which instead activates the gauge when there is downstream demand, that is, when another gauge uses this gauge as an ingredient, and that gauge would like to request this ingredient.
 
 [#figure-follow-demand]
 .A gauge producing oak planks in "follow demand" mode
 image::gauge-follow-demand-mode.png[,297,46]
 
-In this mode, the target amount (&#x2776;) cannot be modified manually. It is automatically set according to downstream demand. Specifically, it is the total quantity requested by all currently active factory gauges that use this gauge as an ingredient.
+In this mode, the target amount (❶) cannot be modified manually. It is automatically set according to downstream demand. Specifically, it is the total quantity requested by all currently active factory gauges that use this gauge as an ingredient.
 
 .An example setup to produce barrels from oak logs
 image::gauge-follow-demand-barrel-example.png[,329,198]
@@ -152,15 +152,15 @@ Pending production orders can be viewed in the "production orders" tab in the st
 .Production orders UI
 image::gauge-production-orders-ui.png[,474,186]
 
-&#x2776; Production orders tab::
+❶ Production orders tab::
   Click to switch to this tab.
-&#x2777; Destination address::
+❷ Destination address::
   The address the items are sent to after they arrive in storage.
-&#x2778; Elapsed time::
+❸ Elapsed time::
   Time elapsed since the order was created.
-&#x2779; Cancel button::
+❹ Cancel button::
   Click to cancel the order.
-&#x277A; Ordered items::
+❺ Ordered items::
   Type, amount, and status of the ordered items.
 
 .Statuses of ordered items
@@ -220,14 +220,14 @@ Each time a factory gauge requests a set of ingredients to be sent to its destin
 .UI elements related to promises
 image::gauge-promise-ui.png[,267,53]
 
-&#x2776; Promised items::
+❶ Promised items::
   Displays the total number of items recorded in promises created by all gauges in the same network producing the same item. Click to void all promises of the same item type.
 
-&#x2777; Expire time::
+❷ Expire time::
   Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default. +
   This option is useful when the ingredients do not reliably produce the expected output, such as with recipes with probabilities.
 
-&#x2778; Pending requests::
+❸ Pending requests::
   Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests. +
   Limiting pending requests is useful for preventing excessive packages from overloading transportation lines.
 

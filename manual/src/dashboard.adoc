@@ -30,20 +30,20 @@ Most of the controls can be changed in _Options--Controls--Key Binds_.
 
 == UI Overview
 
-&#x2776; Title bar::
+❶ Title bar::
   Shows the name of this factory controller. Name can be edited by clicking on it.
-&#x2777; Help button::
+❷ Help button::
   Opens this help page.
-&#x2778; Network selector::
+❸ Network selector::
   All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components. While holding a gauge, scroll to tune the gauge to a network. <<Network Selector,More Info>>
-&#x2779; Capacity indicator::
+❹ Capacity indicator::
   Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up. +
   The capacity may be modified by the "Controller Capacity" server setting.
-&#x277A; Zoom indicator::
+❺ Zoom indicator::
   Shows the current zoom level.
-&#x277B; Settings button::
+❻ Settings button::
   Opens the settings screen.
-&#x277C; Player inventory::
+❼ Player inventory::
   Shows the player inventory. Only the 9 hotbar slots are shown by default. Click the "+" button to expand the other 27 slots.
 
 [#navigation]

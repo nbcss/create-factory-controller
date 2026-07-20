@@ -32,17 +32,17 @@ Clicking on the placed logical tube opens its settings screen.
 .Logical tube settings
 image::logical-tube-settings.png[,386,205]
 
-&#x2776; Inputs::
+❶ Inputs::
   Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.
-&#x2777; Operator::
+❷ Operator::
   Displays the currently selected operator.
-&#x2778; Outputs::
+❸ Outputs::
   Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect.
-&#x2779; Relocate button::
+❹ Relocate button::
   Click to move the location of this logical tube on the virtual board.
-&#x277A; Add connection button::
+❺ Add connection button::
   Click to connect to other components via redstone.
-&#x277B; Mode switch::
+❻ Mode switch::
   Click to switch between OR, AND, NOR, NAND modes.
-&#x277C; Confirm button::
+❼ Confirm button::
   Click to confirm settings and close this screen.

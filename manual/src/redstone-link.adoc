@@ -42,13 +42,13 @@ After placing a redstone link on the virtual board, clicking the component opens
 .Redstone link settings
 image::redstone-link-settings.png[,384,207]
 
-&#x2776; &#x2777; Channel::
+❶ ❷ Channel::
   Place an item, or drag a ghost item from JEI, to set the channel of the redstone link.
-&#x2778; Relocate button::
+❸ Relocate button::
   Click to move the location of this redstone link on the virtual board.
-&#x2779; Add connection button::
+❹ Add connection button::
   Click to connect to other components via redstone. Directions of connections are decided automatically. Send-mode links may only have incoming connections, receive-mode links may only have outgoing connections.
-&#x277A; Mode switch::
+❺ Mode switch::
   Click to switch between send image:btn-send-mode.png[,18,18] and receive image:btn-receive-mode.png[,18,18] modes.
-&#x277B; Confirm button::
+❻ Confirm button::
   Click to confirm settings and close the screen.
