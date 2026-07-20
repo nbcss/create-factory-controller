@@ -3,23 +3,28 @@
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # Automatically generated, 2026.
 #
+# FiveYellowMice <me@fiveyellowmice.com>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-21 03:13+1000\n"
-"PO-Revision-Date: 2026-07-18 00:38+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-20 19:06+0000\n"
+"Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
+"Language-Team: Chinese (Simplified Han script) <https://"
+"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
+"electron-tube/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.7.1\n"
 
 #. type: Title =
 #: ../src/electron-tube.adoc:1
 #, no-wrap
 msgid "Electron Tube"
-msgstr ""
+msgstr "电子管"
 
 #. type: Plain text
 #: ../src/electron-tube.adoc:4
@@ -28,24 +33,28 @@ msgid ""
 "function as boolean logic operators for redstone connections. When placed, "
 "they are referred to as \"logical tubes\"."
 msgstr ""
+"电子管可以放入工厂控制台，并作为红石连接的布尔逻辑运算组件。放入后，电子管被"
+"称为“逻辑管”。"
 
 #. type: Block title
 #: ../src/electron-tube.adoc:5
 #, no-wrap
 msgid "Logical tubes in each of the 4 modes, powered on and off"
-msgstr ""
+msgstr "四种模式下的逻辑管，包括未充能和已充能的"
 
 #. type: Block title
 #: ../src/electron-tube.adoc:8
 #, no-wrap
 msgid "A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputs to a xref:redstone-link.adoc[redstone link]"
 msgstr ""
+"从xref:factory-gauge.adoc[工厂仪表]接收输入并向xref:redstone-link.adoc[无线红"
+"石信号终端]输出的逻辑或组件"
 
 #. type: Title ==
 #: ../src/electron-tube.adoc:12
 #, no-wrap
 msgid "Logical Operators"
-msgstr ""
+msgstr "逻辑运算符"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:15
@@ -54,76 +63,78 @@ msgid ""
 "outputs a redstone signal according the rules of a logical operator, "
 "determined by its mode."
 msgstr ""
+"每个逻辑管都可连接零个或多个红石输入，并根据当前逻辑运算模式决定是否输出红石"
+"信号。"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:17
 msgid "The available modes are:"
-msgstr ""
+msgstr "支持的模式有："
 
 #. type: Labeled list
 #: ../src/electron-tube.adoc:18
 #, no-wrap
 msgid "OR"
-msgstr ""
+msgstr "或"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:20
 msgid ""
 "Output on when any connected input is on. Otherwise output off. When "
 "unconnected, output off."
-msgstr ""
+msgstr "任意一个输入为真时输出真，否则输出假。没有连接时输出假。"
 
 #. type: Labeled list
 #: ../src/electron-tube.adoc:21
 #, no-wrap
 msgid "AND"
-msgstr ""
+msgstr "和"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:23
 msgid ""
 "Output on when all connected inputs are on. Otherwise output off. When "
 "unconnected, output on."
-msgstr ""
+msgstr "所有输入均为真时输出真，否则输出假。没有连接时输出真。"
 
 #. type: Labeled list
 #: ../src/electron-tube.adoc:24
 #, no-wrap
 msgid "NOR"
-msgstr ""
+msgstr "或非"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:26
 msgid "Inverse of OR."
-msgstr ""
+msgstr "逻辑或的反相结果。"
 
 #. type: Labeled list
 #: ../src/electron-tube.adoc:27
 #, no-wrap
 msgid "NAND"
-msgstr ""
+msgstr "与非"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:29
 msgid "Inverse of AND."
-msgstr ""
+msgstr "逻辑与的反相结果。"
 
 #. type: Title ==
 #: ../src/electron-tube.adoc:31 ../src/redstone-link.adoc:38
 #, no-wrap
 msgid "Configuration"
-msgstr ""
+msgstr "配置"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:34
 msgid "Clicking on the placed logical tube opens its settings screen."
-msgstr ""
+msgstr "点击已放置的逻辑管可打开设置界面。"
 
 #. type: Block title
 #: ../src/electron-tube.adoc:35
 #, no-wrap
 msgid "Logical tube settings"
-msgstr ""
+msgstr "逻辑管设置界面"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:40
@@ -131,11 +142,13 @@ msgid ""
 "❶ Inputs:: Displays the components connected as inputs to this tube. Click a "
 "component to switch it to an output, shift-click to disconnect."
 msgstr ""
+"❶ 输入:: 显示作为此逻辑管输入的组件。点击组件可将其切换为输出，按住 Shift 点"
+"击以断开连接。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:43
 msgid "❷ Operator:: Displays the currently selected operator."
-msgstr ""
+msgstr "❷ 运算符:: 显示当前选择的逻辑运算。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:46
@@ -143,26 +156,28 @@ msgid ""
 "❸ Outputs:: Displays the components connected as outputs to this tube. Click "
 "a component to switch it to an input, shift-click to disconnect."
 msgstr ""
+"❸ 输出:: 显示作为此逻辑管输出的组件。点击组件可将其切换为输入，按住 Shift 点"
+"击以断开连接。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:49
 msgid ""
 "❹ Relocate button:: Click to move the location of this logical tube on the "
 "virtual board."
-msgstr ""
+msgstr "❹ 移动组件:: 点击以在虚拟面板上移动逻辑管。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:52
 msgid ""
 "❺ Add connection button:: Click to connect to other components via redstone."
-msgstr ""
+msgstr "❺ 新建连接按钮:: 点击通过红石连接到其他组件。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:55
 msgid "❻ Mode switch:: Click to switch between OR, AND, NOR, NAND modes."
-msgstr ""
+msgstr "❻ 模式切换:: 在逻辑或、与、或非、与非之间切换。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:57
 msgid "❼ Confirm button:: Click to confirm settings and close this screen."
-msgstr ""
+msgstr "❼ 确认按钮:: 保存设置并关闭界面。"
