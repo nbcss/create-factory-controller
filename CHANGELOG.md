@@ -24,6 +24,7 @@ Bugfixes:
 - Fixed click suggested address in Recipe Settings screen could activate the count box input below.
 - Fixed controller screen view could move by WASD keys when typing in JEI/EMI search box.
 - Fixed drag view while having selected components would clear the selections.
+- Fixed FluidLogistics compat does not properly work in 1.20 port.
 
 ## 1.0.0
 IMPORTANT: this version changed Factory Controller block data structure, once upgraded to this version, your factory controller cannot downgrade to previous mod version, so backup before upgrade.
