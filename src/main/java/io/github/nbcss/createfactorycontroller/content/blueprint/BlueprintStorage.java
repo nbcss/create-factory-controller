@@ -32,13 +32,18 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /** Client-local persistence for reusable Factory Controller component blueprints. */
-public final class ComponentBlueprintStorage {
+public final class BlueprintStorage {
     public static final int FORMAT_VERSION = 1;
     public static final String EXTENSION = ".nbt";
+    public static final int MAX_NAME_LENGTH = 50;
+    public static final int MAX_NOTE_LENGTH = 500;
 
-    private ComponentBlueprintStorage() {}
+    private BlueprintStorage() {}
 
     public record Material(ResourceLocation item, int count) {}
+
+    /** Everything the blueprint screens display about a stored blueprint. */
+    public record Info(String note, List<Material> materials, int networkCount) {}
 
     /** Aggregates the component items in stable first-appearance order for the save-screen preview. */
     public static List<Material> materials(FactoryControllerMenu menu,
@@ -53,16 +58,25 @@ public final class ComponentBlueprintStorage {
 
     /** Reads and aggregates the component items stored in a blueprint file. */
     public static List<Material> materials(Path blueprint) throws IOException {
+        return read(blueprint).materials();
+    }
+
+    /** Reads the note, materials and network placeholder count of a stored blueprint. */
+    public static Info read(Path blueprint) throws IOException {
         CompoundTag root = NbtIo.readCompressed(blueprint, NbtAccounter.unlimitedHeap());
         ListTag components = root.getList("Components", Tag.TAG_COMPOUND);
         Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
+        Set<Integer> networks = new LinkedHashSet<>();
         for (int i = 0; i < components.size(); i++) {
             CompoundTag component = components.getCompound(i);
+            if (component.contains("Network", Tag.TAG_INT)) networks.add(component.getInt("Network"));
             if (!component.contains("Item", Tag.TAG_STRING)) continue;
             ResourceLocation item = ResourceLocation.tryParse(component.getString("Item"));
             if (item != null) counts.merge(item, 1, Integer::sum);
         }
-        return counts.entrySet().stream().map(e -> new Material(e.getKey(), e.getValue())).toList();
+        List<Material> materials = counts.entrySet().stream()
+                .map(e -> new Material(e.getKey(), e.getValue())).toList();
+        return new Info(root.getString("Note"), materials, networks.size());
     }
 
     /** Returns distinct logistics networks in stable component-selection order. */
@@ -92,10 +106,30 @@ public final class ComponentBlueprintStorage {
 
         if (!isValidBlueprintName(name)) throw new IOException("Invalid blueprint file name");
 
-        CompoundTag root = build(menu, positions, orderedNetworks, note, registries);
+        return writeThroughTemporary(build(menu, positions, orderedNetworks, note, registries),
+                blueprintPath(name));
+    }
+
+    /**
+     * Rewrites a stored blueprint's note, renaming its file when the name changed. Everything else
+     * the blueprint holds - components, connections and network placeholders - is carried over as-is.
+     */
+    public static Path edit(Path source, String name, String note) throws IOException {
+        if (!isValidBlueprintName(name)) throw new IOException("Invalid blueprint file name");
+        CompoundTag root = NbtIo.readCompressed(source, NbtAccounter.unlimitedHeap());
+        root.putString("Note", truncateNote(note));
+
+        Path target = blueprintPath(name);
+        boolean renamed = !sameBlueprintFile(source, target);
+        writeThroughTemporary(root, target);
+        if (renamed) Files.deleteIfExists(source);
+        return target;
+    }
+
+    /** Writes to a sibling temporary file first so a failed write cannot truncate the target. */
+    private static Path writeThroughTemporary(CompoundTag root, Path target) throws IOException {
         Path directory = blueprintDirectory();
         Files.createDirectories(directory);
-        Path target = blueprintPath(name);
         Path temporary = Files.createTempFile(directory, ".saving-", EXTENSION + ".tmp");
         boolean moved = false;
         try {
@@ -111,6 +145,20 @@ public final class ComponentBlueprintStorage {
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
         }
+    }
+
+    /** True when both paths lead to one file, including names differing only in case on Windows. */
+    public static boolean sameBlueprintFile(Path a, Path b) {
+        if (a.equals(b)) return true;
+        try {
+            return Files.isRegularFile(a) && Files.isRegularFile(b) && Files.isSameFile(a, b);
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private static String truncateNote(String note) {
+        return note.length() > MAX_NOTE_LENGTH ? note.substring(0, MAX_NOTE_LENGTH) : note;
     }
 
     static CompoundTag build(FactoryControllerMenu menu,
@@ -137,7 +185,7 @@ public final class ComponentBlueprintStorage {
         CompoundTag root = new CompoundTag();
         root.putString("Format", CreateFactoryController.MODID + ":blueprint");
         root.putInt("Version", FORMAT_VERSION);
-        root.putString("Note", note.length() > 500 ? note.substring(0, 500) : note);
+        root.putString("Note", truncateNote(note));
         root.putInt("Width", maxX - minX + 1);
         root.putInt("Height", maxY - minY + 1);
 

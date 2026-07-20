@@ -135,6 +135,7 @@
   "createfactorycontroller.gui.selection.count": "Selected %1$s components",
   "createfactorycontroller.gui.drag_to_relocate": "Drag to relocate",
   "createfactorycontroller.gui.blueprint.save_title": "New Blueprint",
+  "createfactorycontroller.gui.blueprint.edit_title": "Edit Blueprint",
   "createfactorycontroller.gui.blueprint.name": "Blueprint Name",
   "createfactorycontroller.gui.blueprint.note": "Description",
   "createfactorycontroller.gui.blueprint.note_hint": "Add a description...",
@@ -157,6 +158,7 @@
   "createfactorycontroller.gui.blueprint.saved": "Saved: %1$s",
   "createfactorycontroller.gui.blueprint.overwrite_existing": "Overwriting existing file",
   "createfactorycontroller.gui.blueprint.save_failed": "Save failed: %1$s",
+  "createfactorycontroller.gui.blueprint.load_failed": "Load failed: %1$s",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",
   "key.createfactorycontroller.cycle_arrow_mode": "Cycle Arrow Mode",
