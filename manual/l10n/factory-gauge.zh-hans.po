@@ -7,8 +7,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 04:10+1000\n"
-"PO-Revision-Date: 2026-07-20 15:29+0000\n"
+"POT-Creation-Date: 2026-07-21 03:13+1000\n"
+"PO-Revision-Date: 2026-07-20 18:12+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
 "weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
@@ -42,7 +42,7 @@ msgstr "Create: Repackaged"
 #: ../src/factory-gauge.adoc:1
 #, no-wrap
 msgid "Factory Gauge"
-msgstr ""
+msgstr "工厂仪表"
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:5
@@ -52,18 +52,20 @@ msgid ""
 "the in-game ponder. When placed in a factory controller, they operate in "
 "recipe mode."
 msgstr ""
+"工厂仪表可用于自动发送物流请求和进行自动生产，其常规用途与高级物流的基础概念"
+"可参阅游戏内的“思索”。工厂仪表放入工厂控制台后只能以配方模式工作。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:6
 #, no-wrap
 msgid "A new factory gauge placed in a factory controller"
-msgstr ""
+msgstr "控制台内新放置的工厂仪表"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:10
 #, no-wrap
 msgid "Place and Monitor Item"
-msgstr ""
+msgstr "放置仪表与设置监测对象"
 
 #. type: #place-set-item
 #: ../src/factory-gauge.adoc:13
@@ -74,6 +76,9 @@ msgid ""
 "selector[network selector] in dashboard UI to tune to a network that is "
 "already tuned to by another gauge in the factory controller."
 msgstr ""
+"工厂仪表必须先设定物流网络，才能放入工厂控制台。可以手持仪表与世界中的仓储链"
+"接站交互，也可以使用控制台界面中的xref:dashboard.adoc#network-selector[网络选"
+"择器]，将其设定为控制台内其他仪表已经使用的网络。"
 
 #. type: #place-set-item
 #: ../src/factory-gauge.adoc:15
@@ -83,19 +88,21 @@ msgid ""
 "on the cursor, or by using the \"set item\" screen. Either way, you may also "
 "drag a ghost item from JEI or EMI to the filter slot."
 msgstr ""
+"放置后，需要为新仪表设置要监测的物品。可手持目标物品单击尚未配置的仪表，也可"
+"打开“设置物品”界面。两种方式都支持从 JEI 或 EMI 将虚拟物品拖入过滤槽。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:17
 #, no-wrap
 msgid "\"Set item\" screen"
-msgstr ""
+msgstr "“设置物品”界面"
 
 #. type: #figure-set-item
 #: ../src/factory-gauge.adoc:21
 msgid ""
 "If you use the \"set item\" screen, you can choose whether to respect or "
 "ignore the item's NBT data. NBT is respected by default."
-msgstr ""
+msgstr "在“设置物品”界面中，可以选择匹配或忽略物品的 NBT 数据。默认会匹配 NBT。"
 
 #. type: #figure-set-item
 #: ../src/factory-gauge.adoc:23
@@ -103,92 +110,94 @@ msgid ""
 "Once an item is set, the gauge starts monitoring the number of these items "
 "in the tuned logistic network and displays the count on its label."
 msgstr ""
+"设置完成后，仪表会开始监测已绑定物流网络中的目标物品数量，并将库存数显示在标"
+"签上。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:24
 #, no-wrap
 msgid "A factory gauge monitoring iron ingots, for which there are 6"
-msgstr ""
+msgstr "监测到 6 个铁锭的工厂仪表"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:28
 #, no-wrap
 msgid "Recipe Settings Screen"
-msgstr ""
+msgstr "配方设置界面"
 
 #. type: #recipe-settings
 #: ../src/factory-gauge.adoc:31
 msgid ""
 "Clicking on a factory gauge with an item set opens its recipe settings "
 "screen."
-msgstr ""
+msgstr "单击已经设置监测物品的工厂仪表，会打开配方设置界面。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:33
 #, no-wrap
 msgid "Recipe settings screen for a gauge monitoring iron ingots"
-msgstr ""
+msgstr "监测铁锭的仪表的配方设置界面"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:38
 msgid ""
 "❶ Output:: The type and number of items this gauge is set to produce. See "
 "<<basic-production>>."
-msgstr ""
+msgstr "❶ 产物:: 该仪表每次生产的物品类型与数量。参见<<basic-production>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:41
 msgid ""
 "❷ Ingredients:: The types and numbers of ingredients required to produce the "
 "output."
-msgstr ""
+msgstr "❷ 原材料:: 生产上述产物所需的物品类型与数量。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:44
 msgid ""
 "❸ Add connection button:: Click to add a connection to other factory gauges "
 "or <<redstone,other components>>."
-msgstr ""
+msgstr "❸ 新建连接按钮:: 点击以连接其他工厂仪表或<<redstone,其他组件>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:47
 msgid ""
 "❹ Relocate button:: Click to move the location of this gauge on the virtual "
 "board."
-msgstr ""
+msgstr "❹ 移动组件按钮:: 点击以在虚拟面板上移动该仪表。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:50
 msgid ""
 "❺ Destination address:: The address to which the ingredients will be "
 "packaged and sent."
-msgstr ""
+msgstr "❺ 目标地址:: 原材料打包后需要发送到的地址。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:53
 msgid ""
 "❻ Storage amount:: The number of monitored items stored in the logistic "
 "network."
-msgstr ""
+msgstr "❻ 库存数量:: 被监测物品在物流网络中当前储存的数量。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:56
 msgid ""
 "❼ Target amount:: The number of items in storage this factory gauge is "
 "configured to reach."
-msgstr ""
+msgstr "❼ 目标数量:: 该仪表被设定的使库存达到的数量。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:59
 msgid "❽ Item measure:: Unit of measurement of the target amount: Items/Stacks"
-msgstr ""
+msgstr "❽ 计量单位:: 以“个”或“组”为单位设置目标数量。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:62
 msgid ""
 "❾ Mode of operation:: How the target amount is set or determined. See <<on-"
 "demand>>."
-msgstr ""
+msgstr "❾ 工作模式:: 目标数量的设定或计算方式。参见<<on-demand>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:65
@@ -196,26 +205,28 @@ msgid ""
 "❿⓫⓬ Promises:: Requests made by factory gauges awaiting their outputs, and "
 "options for limiting them. See <<promise>>."
 msgstr ""
+"❿⓫⓬ 承诺与待处理请求:: 显示正在等待产物返回的请求，与限制请求数量的配置。参"
+"见<<promise>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:68
 msgid ""
 "⓭ Reset button:: Click to clear all configurations of this gauge, including "
 "the set item."
-msgstr ""
+msgstr "⓭ 重置按钮:: 清除该仪表的全部配置，包括被监测物品。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:71
 msgid ""
 "⓮ Confirm button:: Click to confirm the configurations, and close this "
 "screen."
-msgstr ""
+msgstr "⓮ 确认按钮:: 保存配置并关闭界面。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:73
 #, no-wrap
 msgid "Basic Production"
-msgstr ""
+msgstr "基础生产"
 
 #. type: #basic-production
 #: ../src/factory-gauge.adoc:76
@@ -226,6 +237,9 @@ msgid ""
 "the ingredient(s), connect this gauge with other factory gauges set to "
 "monitor those ingredients."
 msgstr ""
+"除了监测库存，工厂仪表最基础的用途是表示一条物品生产配方。例如使用 1 个粗铁生"
+"产 1 个铁锭。产物类型即当前仪表监测的物品。若要指定原材料，请将该仪表连接到分"
+"别监测这些原材料的其他工厂仪表。"
 
 #. type: #basic-production
 #: ../src/factory-gauge.adoc:78
@@ -235,18 +249,21 @@ msgid ""
 "connections are shown as item icons in the ingredient list (<<figure-iron-"
 "smelting-recipe>> ❷), and can be removed by clicking on them."
 msgstr ""
+"要建立连接，前往配方设置界面中单击“新建连接”（<<figure-recipe-settings>> ❸）"
+"，再单击负责原材料的仪表。连接后的原材料会以物品图标显示在原材料列表"
+"（<<figure-iron-smelting-recipe>> ❷）中，单击图标即可移除。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:79
 #, no-wrap
 msgid "A gauge monitoring raw iron is connected to a gauge set to produce iron ingots"
-msgstr ""
+msgstr "监测粗铁的仪表连接至生产铁锭的仪表"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:83
 #, no-wrap
 msgid "Recipe settings of a gauge smelting 1 raw iron to 1 iron ingot"
-msgstr ""
+msgstr "使用 1 个粗铁冶炼 1 个铁锭的配方设置"
 
 #. type: #figure-iron-smelting-recipe
 #: ../src/factory-gauge.adoc:87
@@ -257,6 +274,9 @@ msgid ""
 "destination address (❺), expecting the output (❶) to later arrive in storage "
 "(❻)."
 msgstr ""
+"在默认工作模式（❾）下，工厂仪表会监测其物流网络中的目标物品库存（❻）。当库存"
+"低于设定目标（❼❽）时，仪表会请求将一组原材料发送到目标地址（❺），并等待产物（"
+"❶）稍后进入物流网络库存（❻）。"
 
 #. type: #figure-iron-smelting-recipe
 #: ../src/factory-gauge.adoc:89
@@ -268,36 +288,39 @@ msgid ""
 "more than 9 stacks of ingredients in total, the output is also limited to 9 "
 "stacks."
 msgstr ""
+"在原材料或产物上滚动鼠标滚轮，可调整每种物品的数量，这意味着一批生产可以包含"
+"任意数量的原材料与产物。同一种原材料可超过 1 组，但一批配方的原材料总量最多"
+"为 9 组，产物也最多为 9 组。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:90
 #, no-wrap
 msgid "Examples"
-msgstr ""
+msgstr "示例"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:94
 #, no-wrap
 msgid "Smelting raw iron to ingots in 32-item batches"
-msgstr ""
+msgstr "每批将 32 个粗铁冶炼成 32 个铁锭"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:96
 #, no-wrap
 msgid "image:gauge-batch-smelting-example.png[,252,153]"
-msgstr ""
+msgstr "image:gauge-batch-smelting-example.png[,252,153]"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:97
 #, no-wrap
 msgid "Mixing concrete powder in 256-item batches"
-msgstr ""
+msgstr "每批混合 256 个混凝土粉末"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:98
 #, no-wrap
 msgid "image:gauge-batch-mixing-example.png[,252,153]"
-msgstr ""
+msgstr "image:gauge-batch-mixing-example.png[,252,153]"
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:101
@@ -307,12 +330,15 @@ msgid ""
 "monitor and the network A is tuned to. This means A can produce its item by "
 "any means or merely monitor it, B treats both cases identically."
 msgstr ""
+"当仪表 A 被仪表 B 用作原材料时，B 只会使用 A 所监测的物品类型及 A 所绑定的物"
+"流网络。A 的其他配置不会影响 B。这意味着 A 可以用任意方式生产该物品，也可以只"
+"负责监测库存。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:103
 #, no-wrap
 msgid "Mechanical Crafting"
-msgstr ""
+msgstr "动力合成"
 
 #. type: #crafting
 #: ../src/factory-gauge.adoc:106
@@ -323,12 +349,15 @@ msgid ""
 "onto mechanical crafters, the ingredients are automatically arranged into "
 "the crafting pattern (❷)."
 msgstr ""
+"当原材料和产物与一条动力合成配方相符时，界面会出现“使用动力合成”按钮"
+"（<<figure-crafting-1>> ❶）。启用后，仪表生成的包裹在动力合成器上解包时，原材"
+"料会自动按照 ❷ 显示的配方布局排列。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:108
 #, no-wrap
 msgid "Crafting 1 iron sword"
-msgstr ""
+msgstr "合成 1 把铁剑"
 
 #. type: #figure-crafting-1
 #: ../src/factory-gauge.adoc:112
@@ -337,12 +366,14 @@ msgid ""
 "than 3×3, ❷ no longer previews the pattern, and factory gauges that ignore "
 "NBT data may not be used as ingredients."
 msgstr ""
+"动力合成配方最大可为 10×10。配方大于 3×3 时，❷ 不再预览具体布局。忽略 NBT 数"
+"据的工厂仪表不能作为此类配方的原材料。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:113
 #, no-wrap
 msgid "Crafting crushing wheels"
-msgstr ""
+msgstr "合成粉碎轮"
 
 #. type: #figure-crafting-1
 #: ../src/factory-gauge.adoc:117
@@ -353,19 +384,22 @@ msgid ""
 "ingredients to adjust the crafting grid size to match the crafter "
 "arrangement they will be sent to."
 msgstr ""
+"动力合成器必须使用扳手互相连接，并排列为 3×3 至 10×10 的正方形网格。较小配方"
+"可以发送到更大的动力合成器阵列：按住 Ctrl 并在原材料上滚动，可调整合成网格大"
+"小，使其与目标合成器大小相同。"
 
 #. type: #figure-crafting-1
 #: ../src/factory-gauge.adoc:119
 msgid ""
 "It is recommended to use a repackager before unpacking onto mechanical "
 "crafters, see the in-game ponder on repackagers."
-msgstr ""
+msgstr "建议在动力合成器前使用理包机，参阅游戏内关于理包机的“思索”。"
 
 #. type: Title ===
 #: ../src/factory-gauge.adoc:121
 #, no-wrap
 msgid "Batch Crafting"
-msgstr ""
+msgstr "批量合成"
 
 #. type: #batch-crafting
 #: ../src/factory-gauge.adoc:124
@@ -376,18 +410,21 @@ msgid ""
 "craft each batch. The number of ingredients (❷) are matched automatically "
 "and cannot be adjusted individually."
 msgstr ""
+"工厂仪表可以一次发送足够进行多次合成的原材料。启用动力合成后，在产物槽"
+"（<<figure-crafting-batch>> ❶）上滚动可调整每批需要合成的产物数量。原材料数量"
+"（❷）会自动匹配，不能逐项调整。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:126
 #, no-wrap
 msgid "Crafting iron swords in 64-item batches"
-msgstr ""
+msgstr "每批合成 64 把铁剑"
 
 #. type: #figure-crafting-batch
 #: ../src/factory-gauge.adoc:130
 msgid ""
 "The maximum number of output items when using mechanical crafting is 64."
-msgstr ""
+msgstr "动力合成每批最多生产 64 个产物。"
 
 #. type: #figure-crafting-batch
 #: ../src/factory-gauge.adoc:132
@@ -397,19 +434,22 @@ msgid ""
 "is repackaged into multiple smaller packages containing ingredients for 1 "
 "craft each, which may then be unpacked onto mechanical crafters."
 msgstr ""
+"使用批量合成时，必须使用理包机。理包机会把包含多次合成原材料的大包裹重新拆分"
+"成多个小包裹，每个小包裹只包含一次合成所需的原材料，才可以解包到动力合成器上"
+"。"
 
 #. type: #figure-crafting-batch
 #: ../src/factory-gauge.adoc:134
 msgid ""
 "Batch crafting may not be used if any of the ingredients come from a factory "
 "gauge that ignores the NBT data of its monitored item."
-msgstr ""
+msgstr "如果任一原材料来自忽略监测物品 NBT 数据的工厂仪表，则不能使用批量合成功能。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:136
 #, no-wrap
 msgid "On-Demand Production"
-msgstr ""
+msgstr "按需生产"
 
 #. type: #on-demand
 #: ../src/factory-gauge.adoc:139
@@ -422,12 +462,16 @@ msgid ""
 "when another gauge uses this gauge as an ingredient, and that gauge would "
 "like to request this ingredient."
 msgstr ""
+"工厂仪表默认为“维持库存”模式，监测物品的库存低于目标数量时，仪表会启动（请求"
+"将原材料发送到目标地址）。点击<<figure-follow-demand>> ❷ 将工作模式切换为“按"
+"需生产”后，仪表只会在存在下游需求时启动。所谓下游需求，是指另一个仪表将该仪表"
+"用作原材料，并准备请求这项原材料。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:141
 #, no-wrap
 msgid "A gauge producing oak planks in \"follow demand\" mode"
-msgstr ""
+msgstr "处于按需生产模式的橡木木板仪表"
 
 #. type: #figure-follow-demand
 #: ../src/factory-gauge.adoc:145
@@ -437,12 +481,14 @@ msgid ""
 "total quantity requested by all currently active factory gauges that use "
 "this gauge as an ingredient."
 msgstr ""
+"在此模式中，目标数量（❶）不能手动修改，而是根据下游需求自动计算。它等于当前所"
+"有以启动的下游工厂仪表请求的该项原材料总数。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:146
 #, no-wrap
 msgid "An example setup to produce barrels from oak logs"
-msgstr ""
+msgstr "由橡木原木生产木桶的示例"
 
 #. type: #figure-follow-demand
 #: ../src/factory-gauge.adoc:150
