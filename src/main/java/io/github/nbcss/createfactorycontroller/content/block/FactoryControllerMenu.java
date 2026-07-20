@@ -36,7 +36,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
      *  entry, though its customized fields may be empty. Read via {@link #networkSettings(UUID)}, which never
      *  returns null. */
     public final Map<UUID, NetworkSettings> networkSettings = new HashMap<>();
-    /** Runtime-only unloaded-link diagnostics, ordered by the controller's known-network list. */
+    /** Runtime-only unloaded-link cache */
     public List<MissingLinkStatus> missingLinkStatuses = List.of();
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";

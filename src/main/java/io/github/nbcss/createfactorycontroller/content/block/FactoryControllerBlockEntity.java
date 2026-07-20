@@ -240,10 +240,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
     }
 
-    /**
-     * Samples Create's logistics-link registry once per known network on the controller's 20-tick lazy tick.
-     * Gauges consume this shared result instead of each polling the same network every tick.
-     */
     private void refreshMissingLinks() {
         List<MissingLinkStatus> next = new ArrayList<>();
         Set<UUID> missingNetworks = new HashSet<>();

@@ -12,7 +12,7 @@
 - [DONE] Network Rename/Set Icon
 - [DONE] Dynamic Batch Size (Request Multiplier)
 - [DONE] Per gauge request interval
-- [DOING] Properly handle stock link not loaded warning
+- [DONE] Properly handle stock link not loaded warning
 - [DONE] Improve panel sync packet (transfer delta only)
 - [DONE] Blueprint Save/Load
 - [DONE] Production Order Status Notification
