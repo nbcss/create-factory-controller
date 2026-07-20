@@ -187,7 +187,9 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
                         .withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
                 .withStyle(ChatFormatting.DARK_GRAY));
-        if (!behaviour.targetedBy().isEmpty() && !behaviour.isActive())
+        if (behaviour.waitingForNetwork) {
+            lines.add(CreateLang.translate("factory_panel.some_links_unloaded").style(ChatFormatting.RED).component());
+        }else if (!behaviour.targetedBy().isEmpty() && !behaviour.isActive())
             lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());

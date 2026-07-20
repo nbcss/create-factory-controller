@@ -13,17 +13,18 @@
 - [DONE] Dynamic Batch Size (Request Multiplier)
 - [DONE] Per gauge request interval
 - [DOING] Properly handle stock link not loaded warning
-- [DOING] Improve panel sync packet (transfer delta only)
-- [DOING] Blueprint Save/Load
-- [DOING] Production Order Status Notification
+- [DONE] Improve panel sync packet (transfer delta only)
+- [DONE] Blueprint Save/Load
+- [DONE] Production Order Status Notification
+
+# Roadmap
+- [TODO] Custom Keybinding Preset
+- [TODO] Production Order Error Notification
+- [TODO] Selector Gauge
 - [TODO] Paper as component
 - [TODO] Integer Connection & Arithmetic Component
 - [TODO] Alt mode button
 - [TODO] Actual Guide Overlay GUI
-
-# Roadmap
-- [TODO] Custom Keybinding Preset
-- [TODO] Selector Gauge
 - [TBC] JEI to set custom arrangement layout / create gauge
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
 - [TODO] Set max item data length limit per gauge in configuration
