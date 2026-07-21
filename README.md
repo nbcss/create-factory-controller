@@ -5,7 +5,7 @@
 [Discord](https://discord.gg/yv77dsgeVx) |
 [Manual](https://nbcss.github.io/create-factory-controller/manual/en/)
 
-Having a large wall of factory gauges can get unwieldy. This addon introduces the "factory controller", where you can place factory gauges (and more) in a virtual dashboard, condensing the wall of gauges into a single block.
+Having a large wall of factory gauges can get unwieldy. This addon introduces the "factory controller", where you can place factory gauges (and [more](#other-components)) in a virtual dashboard, condensing the wall of gauges into a single block.
 
 Additionally, using a factory controller allows you to:
 
@@ -28,6 +28,7 @@ Factory gauges placed in factory controllers also receive a number of functional
 - Limit promises created by a given gauge.
 - Limit promises by destination address.
 
+<a id="other-components></a>
 You can also place these in factory controllers:
 
 - Redstone Link
@@ -71,10 +72,13 @@ Translations:
 - Russian: Makisk
 - Polish: Makisk
 
-Sounds:
-
-- Winding Noise - Music Box by charcrone -- https://freesound.org/s/347035/ -- License: Creative Commons 0
-- Pocket watch. Clicking open and closed, chain noise and picking up by JarredKarp -- https://freesound.org/s/490968/ -- License: Attribution NonCommercial 4.0
+<details>
+  <summary>Sound assets</summary>
+  <ul>
+    <li>Winding Noise - Music Box by charcrone -- https://freesound.org/s/347035/ -- License: Creative Commons 0</li>
+    <li>Pocket watch. Clicking open and closed, chain noise and picking up by JarredKarp -- https://freesound.org/s/490968/ -- License: Attribution NonCommercial 4.0</li>
+  </ul>
+</details>
 
 ## AI Disclosure
 
