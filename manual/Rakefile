@@ -94,7 +94,7 @@ def build_lang(lang)
 
     authors = Util.git_file_authors("src/#{source}")
     translators = lang == LANGS.default ? [] :
-      authors - Util.git_file_authors("l10n/#{source_basename}.#{lang}.po")
+      Util.git_file_authors("l10n/#{source_basename}.#{lang}.po") - authors
 
     title = nil
     content = nil

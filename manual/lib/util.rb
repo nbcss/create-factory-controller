@@ -64,7 +64,7 @@ module Util
 
   # Get all Git commit authors of a file that still has a line present
   def self.git_file_authors(path)
-    return [] unless File.exist?(path)
+    return [] if IO.popen(%W(git ls-files -- #{path}), &:read).chomp.empty?
 
     IO.popen(%W(git blame --incremental -- #{path}), &:readlines)
       .tap{raise unless $?.success?}
