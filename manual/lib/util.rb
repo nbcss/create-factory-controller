@@ -1,5 +1,6 @@
 require 'nokogiri'
 require 'digest'
+require 'ffi-icu'
 
 module Util
 
@@ -51,13 +52,14 @@ module Util
     doc.children
   end
 
-  def self.get_language_endonym(lang)
-    @language_endonyms ||= {}
-    @language_endonyms[lang] ||= IO.popen(
-      ["node", "-e", "console.log(new Intl.DisplayNames(process.argv[1], {type: 'language'}).of(process.argv[1]))", lang],
-      &:read)
-      .tap{raise unless $?.success?}
-      .chomp
+  # Get the endonym of a langauge.
+  def self.lang_name(lang)
+    locale = ICU::Locale.new(lang)
+    locale.with_locale_display_name(lang, [1]) do |names|
+      ICU::Lib::Util.read_uchar_buffer(256) do |buffer, status|
+        ICU::Lib.uldn_localeDisplayName(names, locale.id, buffer, buffer.size, status)
+      end
+    end
   end
 
   # Get all Git commit authors of a file that still has a line present

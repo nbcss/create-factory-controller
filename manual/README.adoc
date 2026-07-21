@@ -30,7 +30,6 @@ Install:
 
 * Ruby ≥ 3.4
 * Ruby Bundler
-* Node.js ≥ 24
 * po4a ≥ 0.74
 
 [source,sh]

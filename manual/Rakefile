@@ -147,7 +147,7 @@ LayoutContext = Struct.new *%i(
   def binding() Kernel.binding end
   def h(value) ERB::Util.html_escape(value) end
   def t(key) attributes[key] || key end
-  def lang_name(lang) Util.get_language_endonym(lang) end
+  def lang_name(lang) Util.lang_name(lang) end
   def attach_cache_id(path) Util.add_cache_id(path, output_path) end
 end
 

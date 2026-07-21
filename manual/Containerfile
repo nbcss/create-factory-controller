@@ -4,7 +4,7 @@ FROM docker.io/library/ruby:3.4-alpine3.24
 
 WORKDIR /work/manual
 
-RUN apk add --no-cache git nodejs icu-data-full po4a perl-yaml-tiny
+RUN apk add --no-cache git icu-libs icu-data-full po4a perl-yaml-tiny
 
 ADD Gemfile Gemfile.lock ./
 
