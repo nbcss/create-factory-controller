@@ -28,7 +28,7 @@ Factory gauges placed in factory controllers also receive a number of functional
 - Limit promises created by a given gauge.
 - Limit promises by destination address.
 
-<a id="other-components></a>
+<a id="other-components"></a>
 You can also place these in factory controllers:
 
 - Redstone Link
