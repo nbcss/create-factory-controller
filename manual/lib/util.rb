@@ -60,4 +60,14 @@ module Util
       .chomp
   end
 
+  # Get all Git commit authors of a file that still has a line present
+  def self.git_file_authors(path)
+    return [] unless File.exist?(path)
+
+    IO.popen(%W(git blame --incremental -- #{path}), &:readlines)
+      .tap{raise unless $?.success?}
+      .filter_map{|x| x.match('(?<=^author ).+$') }
+      .map(&:to_s).uniq
+  end
+
 end

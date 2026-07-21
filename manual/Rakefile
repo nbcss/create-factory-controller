@@ -89,8 +89,12 @@ def build_lang(lang)
 
   Dir.glob('[^_]*.adoc', base: 'src').each do |source|
     source_path = lang == LANGS.default ? "src/#{source}" : "translated/#{lang}/#{source}"
-    output_filename = source.sub(/\.adoc$/, '.html')
-    output_path = "build/#{lang}/#{output_filename}"
+    source_basename = source.sub(/\.adoc$/, '')
+    output_path = "build/#{lang}/#{source_basename}.html"
+
+    authors = Util.git_file_authors("src/#{source}")
+    translators = lang == LANGS.default ? [] :
+      authors - Util.git_file_authors("l10n/#{source_basename}.#{lang}.po")
 
     title = nil
     content = nil
@@ -115,13 +119,15 @@ def build_lang(lang)
     html = layout.result LayoutContext.new(
       title: title,
       content: content,
+      authors: authors,
+      translators: translators,
       attributes: attributes,
       language: lang,
       languages: LANGS,
       manual_toc: manual_toc,
       page_toc: page_toc,
       no_translation: no_translation,
-      output_filename: output_filename,
+      output_filename: "#{source_basename}.html",
       output_path: output_path,
     ).binding
 
@@ -132,6 +138,7 @@ end
 # Context object to provide variables and methods to the ERB template
 LayoutContext = Struct.new *%i(
   title content attributes
+  authors translators
   language languages
   manual_toc page_toc
   no_translation

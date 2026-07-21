@@ -44,7 +44,7 @@ Alternatively, use a Docker container:
 
 [source,sh]
 ----
-docker run --rm -v .:/work ghcr.io/nbcss/create-factory-controller/manual-builder:latest rake build
+docker run --rm -v ..:/work ghcr.io/nbcss/create-factory-controller/manual-builder:latest rake build
 ----
 
 == Writing Source Documents

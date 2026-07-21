@@ -246,9 +246,17 @@ header nav > ol {
 
 /* Footer */
 
+.footer-inner {
+  font-size: 0.9rem;
+}
+
 footer a {
   color: #fff;
-  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
+footer a:not(:hover) {
+  text-decoration-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Content */

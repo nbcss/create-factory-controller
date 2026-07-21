@@ -61,7 +61,7 @@ jobs:
           sparse-checkout: manual
 
       - name: Build manual
-        run: docker run --rm --volume "${{ github.workspace }}/manual:/work" ghcr.io/${{ github.repository }}/manual-builder:latest rake build
+        run: docker run --rm --volume "${{ github.workspace }}:/work" ghcr.io/${{ github.repository }}/manual-builder:latest rake build
 
       - name: Prepare Pages content
         run: |

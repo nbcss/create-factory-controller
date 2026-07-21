@@ -78,7 +78,13 @@
     </main>
     <footer>
       <div class="footer-inner">
-        <a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'site-nav-help-translate' %></a>
+        <% if authors.any? %>
+        <div><%= h t 'site-credit-authors-leadin' %> <%= h authors.join(', ') %></div>
+        <% end %>
+        <% if translators.any? %>
+        <div><%= h t 'site-credit-translators-leadin' %> <%= h translators.join(', ') %></div>
+        <% end %>
+        <div><a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'site-nav-help-translate' %></a></div>
       </div>
     </footer>
   </body>
