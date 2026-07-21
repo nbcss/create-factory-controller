@@ -12,6 +12,7 @@ RUN <<END
 apk add --no-cache build-base
 bundle install
 apk del --no-cache build-base
+git config --system --add safe.directory /work
 END
 
 CMD ["rake"]
