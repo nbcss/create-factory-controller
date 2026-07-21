@@ -9,10 +9,10 @@ Having a large wall of factory gauges can get unwieldy. This addon introduces th
 
 Additionally, using a factory controller allows you to:
 
-- Quickly tune a new factory gauge to a network already tuned to by existing gauges.
-- Select and move multiple gauges at once.
-- See the labels of all gauges at once.
-- Disable all factory gauges inside with redstone.
+- Quickly tune a new factory gauge to a network already tuned to by existing gauges. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#network-selector)
+- Select and move multiple gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#components)
+- See the labels of all gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#additional-interactions)
+- Disable all factory gauges inside with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
 - Display information with a display link.
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
@@ -20,19 +20,19 @@ Factory gauges placed in factory controllers also receive a number of functional
 - Use more than 1 stack of ingredients by connecting a single ingredient gauge.
 - Up to 9 stacks of expected products.
 - Mechanical crafting:
-  - Send multiple sets of ingredients in one package.
-  - Crafting grid sizes up to 10×10.
-- Optionally ignore item NBT data.
-- Produce only when there is demand, minimize intermediate items in storage.
-- Produce according to manually placed orders from a stock keeper.
-- Limit promises created by a given gauge.
-- Limit promises by destination address.
+  - Send multiple sets of ingredients in one package. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
+  - Crafting grid sizes up to 10×10. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
+- Optionally ignore item NBT data. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#recipe-settings)
+- Produce only when there is demand, minimize intermediate items in storage. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#on-demand)
+- Produce according to manually placed orders from a stock keeper. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#production-orders)
+- Limit promises created by a given gauge. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
+- Limit promises by destination address. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
 
 <a id="other-components"></a>
 You can also place these in factory controllers:
 
-- Redstone Link
-- Electron Tube: Act as logical gates for redstone signals.
+- Redstone Link [🕮](https://nbcss.github.io/create-factory-controller/manual/en/redstone-link.html)
+- Electron Tube: Act as logical gates for redstone signals. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/electron-tube.html)
 
 This mod does **not**:
 
