@@ -10,6 +10,7 @@ html {
   line-height: 1.6;
   color: #1a1a1a;
   background: #fff;
+  image-rendering: pixelated;
 }
 
 body {
@@ -189,25 +190,28 @@ header nav > ol {
     display: none;
   }
 
-  .nav-project-toc .nav-menu-container {
+  .nav-project-toc .nav-menu-container,
+  .nav-page-toc .nav-menu-container {
     display: flex;
-    left: auto;
-    right: calc(50% + 24rem);
     top: 100%;
     bottom: auto;
+    z-index: 0;
+  }
+
+  .nav-project-toc .nav-menu-container {
+    left: auto;
+    right: calc(50% + 24rem);
   }
 
   .nav-page-toc .nav-menu-container {
-    display: flex;
     left: calc(50% + 24rem);
     right: auto;
-    top: 100%;
-    bottom: auto;
   }
 
   .nav-project-toc .nav-menu,
   .nav-page-toc .nav-menu {
     padding: 2rem 0;
+    background: initial;
     border: initial;
     border-radius: initial;
     box-shadow: initial;
