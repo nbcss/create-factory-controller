@@ -10,23 +10,28 @@ Having a large wall of factory gauges can get unwieldy. This addon introduces th
 Additionally, using a factory controller allows you to:
 
 - Quickly tune a new factory gauge to a network already tuned to by existing gauges. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#network-selector)
+- Change specific connection's arrow bending path.
 - Select and move multiple gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#components)
-- See the labels of all gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#additional-interactions)
-- Disable all factory gauges inside with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
+- Save your components settings in blueprint.
+- See the item count labels of all gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#additional-interactions)
+- Disable all factory gauges in the controller with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
 - Display information with a display link.
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
 
-- Use more than 1 stack of ingredients by connecting a single ingredient gauge.
-- Up to 9 stacks of expected products.
+- Allow more than 1 stack of same-type ingredients.
+- Up to 9 stacks of expected outputs.
 - Mechanical crafting:
-  - Send multiple sets of ingredients in one package. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
-  - Crafting grid sizes up to 10×10. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
-- Optionally ignore item NBT data. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#recipe-settings)
+  - Allow up to 64 crafting outputs in single request. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
+  - Crafting grid sizes up to 10×10 (configurable). [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
+- Optionally ignore monitored item NBT data. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#recipe-settings)
+- Customize which item should be push to which target inventory slot.
+- Allow to condense multiple set of ingredients into one request if stock allows.
+- Customize request interval of specific gauge.
 - Produce only when there is demand, minimize intermediate items in storage. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#on-demand)
-- Produce according to manually placed orders from a stock keeper. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#production-orders)
-- Limit promises created by a given gauge. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
-- Limit promises by destination address. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
+- Produce according to manually placed orders from a Stock Keeper. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#production-orders)
+- Limit promises created by the gauge. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
+- Limit promises by shared destination address. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
 
 <a id="other-components"></a>
 You can also place these in factory controllers:
@@ -44,8 +49,9 @@ This mod replicates the logic of the vanilla factory gauge system. It is unlikel
 
 The currently supported mods are:
 
-- Create: FluidLogistic: Supports fluids in factory gauge recipes.
-- Create: Repackaged: Supports fluid gauges.
+- Create: FluidLogistic: Supports set fluids in factory gauge.
+- Create: Fluid: Supports set fluids in factory gauge, but we may stop future compatibility support.
+- Create: Repackaged: Supports fluid gauges in controller.
 
 ## Dependencies
 

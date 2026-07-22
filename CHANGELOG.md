@@ -1,3 +1,8 @@
+## 1.2.0
+
+Localization:
+- Added French translation, thanks to @totof-prod
+
 ## 1.1.0
 
 Features:
