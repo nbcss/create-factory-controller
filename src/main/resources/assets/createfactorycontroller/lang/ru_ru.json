@@ -116,6 +116,7 @@
   "createfactorycontroller.gui.request_multiplier": "Максимальный множитель запроса x%1$s/%2$s",
   "createfactorycontroller.gui.request_multiplier.tip_1": "Объединять несколько наборов ингредиентов",
   "createfactorycontroller.gui.request_multiplier.tip_2": "в один запрос, если позволяют запасы",
+  "createfactorycontroller.gui.production_output_header": "Recipe output:",
   "createfactorycontroller.gui.production_ingredients_header": "Ингредиенты:",
   "createfactorycontroller.gui.production_address_header": "На адрес:",
   "createfactorycontroller.gui.production_orders": "Задачи производства",
