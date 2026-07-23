@@ -5,7 +5,6 @@
   "block.createfactorycontroller.factory_controller.tooltip.condition1": "Lorsqu'alimenté en redstone",
   "block.createfactorycontroller.factory_controller.tooltip.behaviour1": "_Met en pause_ toutes les jauges gérées.",
   "createfactorycontroller.tooltip.configured_controller": "Contrôleur configuré",
-
   "createfactorycontroller.connection.connected": "%1$s connecté à %2$s",
   "createfactorycontroller.connection.type.logistics": "Connexion Logistique",
   "createfactorycontroller.connection.type.redstone": "Connexion Redstone",
@@ -15,9 +14,7 @@
   "createfactorycontroller.connection.mode_prompt": "Cliquez sur un composant pour vous connecter...",
   "createfactorycontroller.connection.already_connected": "Les composants sont déjà connectés",
   "createfactorycontroller.connection.cannot_connect": "%1$s ne peut pas se connecter à %2$s",
-
   "createfactorycontroller.display_source.factory_controller_pending_orders": "Commandes en attente",
-
   "createfactorycontroller.component.logical_tube": "Tube Logique",
   "createfactorycontroller.component.logical_tube.mode.and": "ET",
   "createfactorycontroller.component.logical_tube.mode.and.desc": "Sortie active quand TOUTES les entrées connectées sont actives.",
@@ -27,12 +24,10 @@
   "createfactorycontroller.component.logical_tube.mode.nor.desc": "Sortie active quand AUCUNE entrée connectée n'est active.",
   "createfactorycontroller.component.logical_tube.mode.nand": "NON-ET",
   "createfactorycontroller.component.logical_tube.mode.nand.desc": "Sortie active sauf si TOUTES les entrées connectées sont actives.",
-
   "createfactorycontroller.gui.logical_tube_settings": "Paramètres du Tube Logique",
   "createfactorycontroller.gui.logical_tube.reverse": "Cliquez pour inverser la direction",
   "createfactorycontroller.gui.logical_tube.input_connections": "Entrées : %1$s",
   "createfactorycontroller.gui.logical_tube.output_connections": "Sorties : %1$s",
-
   "createfactorycontroller.gui.help.allowed_components": "Objets autorisés :",
   "createfactorycontroller.gui.help.open_wiki": "Cliquez pour ouvrir la documentation en ligne",
   "createfactorycontroller.gui.capacity": "Capacité",
@@ -174,7 +169,6 @@
   "createfactorycontroller.gui.blueprint.network_scroll_tip": "Molette pour assigner un réseau",
   "createfactorycontroller.gui.blueprint.placement_prompt": "Clic gauche pour placer | Clic droit pour annuler",
   "createfactorycontroller.gui.blueprint.placement_aborted": "Placement annulé",
-
   "key.categories.createfactorycontroller": "Create : Contrôleur d'Usine",
   "key.createfactorycontroller.cycle_arrow_mode": "Changer le Mode de Flèche",
   "key.createfactorycontroller.cycle_operation_mode": "Changer le Mode de Fonctionnement",
@@ -184,7 +178,6 @@
   "key.createfactorycontroller.drag_selection": "Sélection par Glissement",
   "key.createfactorycontroller.toggle_always_show_label": "Basculer l'Affichage Permanent des Étiquettes",
   "key.createfactorycontroller.selection_mode": "Mode Sélection",
-
   "createfactorycontroller.config.controller_background": "Texture d'arrière-plan du contrôleur",
   "createfactorycontroller.config.controller_background.tooltip": "Chemin de la texture d'arrière-plan de l'écran du Contrôleur. Le fichier de texture doit se trouver dans le dossier 'createfactorycontroller/textures/gui/controller_background/', en résolution 16 pixels.",
   "createfactorycontroller.config.always_show_label": "Toujours Afficher l'Étiquette",
@@ -205,14 +198,11 @@
   "createfactorycontroller.config.preserve_controller_data.tooltip": "Conserve la configuration du tableau d'un Contrôleur d'Usine sur l'objet lâché lorsqu'il est cassé, et la restaure lorsqu'il est replacé. Si désactivé, le contrôleur est lâché vide et ses jauges tombent comme objets séparés.",
   "createfactorycontroller.config.passive_total_demand": "[Expérimental] Stratégie de Demande Passive Totale",
   "createfactorycontroller.config.passive_total_demand.tooltip": "Le stock cible de chaque jauge passive est dimensionné sur la demande totale restante en aval, afin que toute la chaîne reste active et produise en continu. Attention : cette stratégie pourrait surcharger votre réseau logistique si le système ne peut pas gérer la charge !",
-
   "item.createfactorycontroller.production_pattern": "Ajouter une nouvelle tâche de production",
   "item.createfactorycontroller.arrangement_marker": "Arrangement Personnalisé",
   "item.createfactorycontroller.fluid_filter": "Filtre à Fluide",
-
   "createfactorycontroller.network.default": "Réseau #%1$s",
   "createfactorycontroller.network.none": "Aucun réseau",
-
   "createfactorycontroller.subtitle.controller.open": "Le contrôleur d'usine s'ouvre",
   "createfactorycontroller.subtitle.controller.close": "Le contrôleur d'usine se ferme",
   "createfactorycontroller.subtitle.gauge.open": "Le panneau de jauge s'ouvre",
