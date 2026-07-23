@@ -72,12 +72,12 @@ public class ProductionPatternRenderer extends BlockEntityWithoutLevelRenderer {
         pose.translate(0.5f, 0.5f, 0f);
         FluidStack fluid = FluidCompat.getFilterFluid(display);
         if (!fluid.isEmpty()) {
-            Lighting.setupForFlatItems();
-            // Thin slab (z ∈ [-1/32, 0]), 14×16px of the 16px slot (±7/16) so the fluid sits slightly inset, like
-            // FluidGuiRender.icon — only the +Z face shows.
+            boolean inGui = context == ItemDisplayContext.GUI;
+            if (inGui) Lighting.setupForFlatItems();
             NeoForgeCatnipServices.FLUID_RENDERER.renderFluidBox(
                 fluid, -7 / 16f, -7 / 16f, -1 / 32f, 7 / 16f, 7 / 16f, 0f, buffers, pose, LightTexture.FULL_BRIGHT, true, false);
             if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+            if (inGui) Lighting.setupFor3DItems();
         } else {
             RenderSystem.enableBlend();
             ItemRenderer ir = Minecraft.getInstance().getItemRenderer();

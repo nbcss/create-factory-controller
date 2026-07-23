@@ -36,22 +36,21 @@ public final class FluidGuiRender {
         if (fluid.isEmpty()) return;
         PoseStack ps = gfx.pose();
         ps.pushPose();
-        ps.translate(x + size / 2f, y + size / 2f, 100);            // centre the quad on the slot
-        ps.scale(size, -size, size);                                // GUI px → model units (flip Y for GUIs)
+        ps.translate(x + size / 2f, y + size / 2f, 100);
+        ps.scale(size, -size, size);
 
-        Lighting.setupForFlatItems();                               // even front lighting (no diffuse darkening)
+        Lighting.setupForFlatItems();
         MultiBufferSource.BufferSource buffer = gfx.bufferSource();
         // Thin slab (z ∈ [-1/32, 0]) so only the viewer-facing +Z face shows: a flat fluid icon.
         NeoForgeCatnipServices.FLUID_RENDERER.renderFluidBox(
             fluid, -0.5f, -0.5f, -1 / 32f, 0.5f, 0.5f, 0f, buffer, ps, LightTexture.FULL_BRIGHT, true, false);
         gfx.flush();
+        Lighting.setupFor3DItems();
         ps.popPose();
     }
 
     /**
-     * The recipe-screen preview: {@code fluid} as a 3D block, oriented like the gauge block beside it. catnip's
-     * renderFluidBox emits the fluid faces (animated still sprite + tint + flow); we only set up the isometric GUI
-     * pose and 3D-item lighting around it.
+     * The recipe-screen preview
      */
     public static void cube(GuiGraphics gfx, FluidStack fluid, int x, int y, float px) {
         if (fluid.isEmpty()) return;
@@ -69,6 +68,5 @@ public final class FluidGuiRender {
             fluid, 0, 0, 0, 1, 1, 1, buffer, ps, LightTexture.FULL_BRIGHT, true, true);
         buffer.endBatch();
         ps.popPose();
-        Lighting.setupForFlatItems();                                // restore the GUI's flat lighting
     }
 }

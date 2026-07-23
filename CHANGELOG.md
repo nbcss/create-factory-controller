@@ -3,8 +3,9 @@
 Localization:
 - Added French translation, thanks to @totof-prod
 
-Compatibility:
+Bugfixes:
 - Fixed compatibilities issue with older version of fluid transportation mods.
+- Fixed item rendering brightness was incorrect in certain cases.
 
 ## 1.1.0
 
