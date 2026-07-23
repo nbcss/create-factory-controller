@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.compat.fluids;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -9,67 +10,73 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The seam between this mod and the optional fluid-logistics addons. A "fluid filter" is a virtual item carrying a
- * fluid type that stands in a factory-panel filter slot; this class recognises and builds them uniformly so the rest
- * of the mod (units, rendering, container reads) stays addon-agnostic. There are two families:
- *
- * <ul>
- * <li><b>Addon wrapper filters</b> — CreateFluidLogistic (modid {@code fluidlogistics}) and CreateFluid (modid
- *     {@code fluid}) each have their own item that rides Create's <i>item</i> logistics in millibuckets. The thin
- *     recognise/build seam per addon is a {@link FluidFilterProvider}; one is added (reflectively, so a missing class
- *     in a build without that addon's jar is simply skipped) only when its mod is loaded. The two are mutually
- *     incompatible, so at most one is ever active.</li>
- * <li><b>Non-item-logistics filters</b> — e.g. Create: Repackaged's Fluid Gauge uses this mod's fluid-filter token,
- *     which rides Deployer's separate fluid logistics rather than Create's item logistics.</li>
- * </ul>
- *
- * <p>Every addon reference is {@code compileOnly} and soft-detected at runtime, so the JVM never resolves an absent
- * addon's classes and the mod loads and runs fine with any combination present or none.</p>
+ * The seam between this mod and the optional fluid-logistics addons.
  */
 public final class FluidCompat {
 
-    private static final String CFL_MODID = "fluidlogistics";
-    private static final String CREATEFLUID_MODID = "fluid";
-    private static final String REPACKAGED_MODID = "repackaged";
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final String CFL_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CflFluidProvider";
     private static final String CREATEFLUID_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CreateFluidProvider";
     private static final String REPACKAGED_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.RepackagedFluidProvider";
 
-    /** The active providers (one per installed addon), tried in order. Built lazily because FluidCompat can be touched
-     * before ModList is ready during mod construction/component registration. */
+    private record Addon(String modid, @Nullable String filterItem, String providerClass) {}
+
+    private static final List<Addon> ADDONS = List.of(
+        new Addon("fluidlogistics", "compressed_storage_tank", CFL_PROVIDER),
+        new Addon("fluid", "fluid_manifest", CREATEFLUID_PROVIDER),
+        // Repackaged's filter is this mod's own item, and its provider already null-guards it.
+        new Addon("repackaged", null, REPACKAGED_PROVIDER));
+
     private static final List<FluidFilterProvider> PROVIDERS = new ArrayList<>();
     private static boolean providersInitialized = false;
+    private static volatile boolean registriesReady = false;
 
     private FluidCompat() {}
+
+    /**
+     * Resolves the providers, from common setup.
+     */
+    public static void onRegistriesComplete() {
+        registriesReady = true;
+        providers();
+    }
 
     private static List<FluidFilterProvider> providers() {
         if (providersInitialized) return PROVIDERS;
         ModList list = ModList.get();
-        if (list == null) return PROVIDERS;
+        if (list == null || !registriesReady) return PROVIDERS;
         providersInitialized = true;
-        if (list.isLoaded(CFL_MODID)) addProvider(PROVIDERS, CFL_PROVIDER);
-        if (list.isLoaded(CREATEFLUID_MODID)) addProvider(PROVIDERS, CREATEFLUID_PROVIDER);
-        if (list.isLoaded(REPACKAGED_MODID)) addProvider(PROVIDERS, REPACKAGED_PROVIDER);
+        for (Addon addon : ADDONS) {
+            if (!list.isLoaded(addon.modid())) continue;
+            if (!hasFilterItem(addon)) {
+                LOGGER.warn("{} is installed but registers no '{}' item, so it predates fluid-package support; "
+                    + "fluid filters are disabled. Update it to use fluid gauges.", addon.modid(), addon.filterItem());
+                continue;
+            }
+            addProvider(PROVIDERS, addon.providerClass());
+        }
         return PROVIDERS;
     }
 
-    /**
-     * Instantiates an addon provider by name and adds it. The provider's source is excluded from the build when its
-     * addon jar was absent at compile time, so the class may not exist here even though the addon is loaded (a build
-     * mismatch); in that case it's skipped. If the addon is loaded the class normally is present, so this resolves it.
-     */
+    private static boolean hasFilterItem(Addon addon) {
+        return addon.filterItem() == null || BuiltInRegistries.ITEM.containsKey(
+            ResourceLocation.fromNamespaceAndPath(addon.modid(), addon.filterItem()));
+    }
+
     private static void addProvider(List<FluidFilterProvider> providers, String className) {
         try {
             Class<?> cls = Class.forName(className);
             providers.add((FluidFilterProvider) cls.getDeclaredConstructor().newInstance());
         } catch (ReflectiveOperationException | LinkageError e) {
-            // Provider class not in this build (its addon jar wasn't on the compile classpath); skip it.
+            // Provider class not in this build
         }
     }
 
@@ -138,10 +145,7 @@ public final class FluidCompat {
         return provider == null ? 0 : provider.ownedPromises(network, ownerKey, gameTime);
     }
 
-    /** Active tagged fluid promises targeting {@code address} on {@code network} this tick, summed over every
-     *  dedicated fluid backend — no filter needed, so an <b>item</b> gauge can fold the fluid side into its
-     *  address-scope quota (shared cross-kind limit). 0 with no dedicated backend installed (item-only installs never
-     *  touch Deployer here). */
+    /** Active tagged fluid promises targeting {@code address} on {@code network} this tick */
     public static int fluidAddressPromises(java.util.UUID network, String address, long gameTime) {
         int total = 0;
         for (FluidFilterProvider provider : providers())
@@ -167,10 +171,6 @@ public final class FluidCompat {
         return provider != null && provider.dispatch(network, filter, amount, address, orderId, linkIndex, finalLink);
     }
 
-    /** Dispatches a whole recipe (Repackaged backend) as ONE order so the Package Shelf groups its fragments: the
-     *  item ingredients ({@code itemOrder}, may be empty) plus the Repackaged fluid ingredients ({@code fluidDemand} —
-     *  generic fluid filters whose {@code count} is the mB to fetch), to packagers at {@code address}. Returns whether
-     *  a packager accepted it. */
     public static boolean broadcastRepackagedRecipe(java.util.UUID network,
                                                     com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts itemOrder,
                                                     List<com.simibubi.create.content.logistics.BigItemStack> fluidDemand,
@@ -192,20 +192,13 @@ public final class FluidCompat {
     }
 
     /**
-     * Display name for a filter stack: the contained fluid's name when it's a fluid filter, otherwise the item's
-     * normal hover name. The addons' filter items render/name themselves as a "Fluid Manifest (water)"-style wrapper,
-     * so we always source the name (and icon, elsewhere) from the fluid itself for a clean, addon-agnostic label.
+     * Display name for a filter stack
      */
     public static Component filterName(ItemStack stack) {
         FluidStack fluid = getFilterFluid(stack);
         return fluid.isEmpty() ? stack.getHoverName() : fluid.getHoverName();
     }
 
-    /**
-     * A tooltip for a fluid, mirroring how an item's tooltip reads: the fluid's name, the registry id when advanced
-     * tooltips are on, and the blue-italic source-mod line ("which mod provides this fluid"). Fluids carry no native
-     * tooltip API, so we build the same lines from the fluid registry + {@link ModList}.
-     */
     public static List<Component> fluidTooltip(FluidStack fluid, boolean advanced) {
         List<Component> lines = new ArrayList<>();
         lines.add(fluid.getHoverName());
@@ -226,9 +219,7 @@ public final class FluidCompat {
     }
 
     /**
-     * The fluid held in a container item (bucket, tank, …) via the NeoForge fluid-handler role — used to turn a
-     * right-clicked container into a fluid filter. This reads the role only, so it needs no addon classes and is
-     * safe to call regardless of {@link #isLoaded()}; an empty result means "not a (filled) fluid container".
+     * The fluid held in a container item (bucket, tank, …) via the NeoForge fluid-handler role
      */
     public static FluidStack fluidInContainer(ItemStack container) {
         if (container.isEmpty()) return FluidStack.EMPTY;

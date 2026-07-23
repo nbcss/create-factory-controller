@@ -1,7 +1,10 @@
-## 1.2.0
+## 1.1.1
 
 Localization:
 - Added French translation, thanks to @totof-prod
+
+Compatibility:
+- Fixed compatibilities issue with older version of fluid transportation mods.
 
 ## 1.1.0
 

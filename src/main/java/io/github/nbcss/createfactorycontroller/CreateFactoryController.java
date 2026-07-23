@@ -9,6 +9,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
@@ -175,11 +176,11 @@ public class CreateFactoryController {
         Connection.Type.registerConnections();
     }
 
-    /** Bind the controller's Display Link source to its block (the binding map is not a registry — done in setup,
-     *  enqueued so it's on the main thread after all blocks/sources are registered). */
     private void commonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(() ->
-            DisplaySource.BY_BLOCK.add(FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get()));
+        event.enqueueWork(() -> {
+            DisplaySource.BY_BLOCK.add(FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get());
+            FluidCompat.onRegistriesComplete();
+        });
     }
 
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
