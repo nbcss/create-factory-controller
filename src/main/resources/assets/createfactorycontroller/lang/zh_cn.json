@@ -116,6 +116,7 @@
   "createfactorycontroller.gui.request_multiplier": "最大请求倍率 x%1$s/%2$s",
   "createfactorycontroller.gui.request_multiplier.tip_1": "在库存允许的情况下",
   "createfactorycontroller.gui.request_multiplier.tip_2": "翻倍单个包裹的原料",
+  "createfactorycontroller.gui.production_output_header": "Recipe output:",
   "createfactorycontroller.gui.production_ingredients_header": "原材料:",
   "createfactorycontroller.gui.production_address_header": "发送至:",
   "createfactorycontroller.gui.production_orders": "生产订单",
