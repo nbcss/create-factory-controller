@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 03:13+1000\n"
+"POT-Creation-Date: 2026-07-22 08:56+1000\n"
 "PO-Revision-Date: 2026-07-18 00:38+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -104,7 +104,7 @@ msgid "Remove component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:26 ../src/dashboard.adoc:146
+#: ../src/dashboard.adoc:26 ../src/dashboard.adoc:149
 #, no-wrap
 msgid "Shift + Click"
 msgstr ""
@@ -352,11 +352,17 @@ msgstr ""
 #. type: Title ==
 #: ../src/dashboard.adoc:117
 #, no-wrap
+msgid "Warnings"
+msgstr ""
+
+#. type: Title ==
+#: ../src/dashboard.adoc:120
+#, no-wrap
 msgid "Additional Interactions"
 msgstr ""
 
 #. type: #additional-interactions
-#: ../src/dashboard.adoc:120
+#: ../src/dashboard.adoc:123
 msgid ""
 "Some components, like the xref:redstone-link.adoc[redstone link], have modes "
 "of operation that can be switched either by pressing the F key while "
@@ -364,7 +370,7 @@ msgid ""
 msgstr ""
 
 #. type: #additional-interactions
-#: ../src/dashboard.adoc:122
+#: ../src/dashboard.adoc:125
 msgid ""
 "Each factory gauge displays a label, providing relevant information (e.g. "
 "items in stock) at a glance. When the labels become distracting or obstruct "
@@ -373,127 +379,127 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:123
+#: ../src/dashboard.adoc:126
 #, no-wrap
 msgid "Summary"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:127
+#: ../src/dashboard.adoc:130
 #, no-wrap
 msgid "Rectangle select"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:129
+#: ../src/dashboard.adoc:132
 #, no-wrap
 msgid "Ctrl + Drag with left mouse button"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:130
+#: ../src/dashboard.adoc:133
 #, no-wrap
 msgid "Add to selection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:132
+#: ../src/dashboard.adoc:135
 #, no-wrap
 msgid "Ctrl + Click component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:134
+#: ../src/dashboard.adoc:137
 #, no-wrap
 msgid "Remove from selection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:135
+#: ../src/dashboard.adoc:138
 #, no-wrap
 msgid "Move selected components"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:137
+#: ../src/dashboard.adoc:140
 #, no-wrap
 msgid "Drag on a selected component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:138
+#: ../src/dashboard.adoc:141
 #, no-wrap
 msgid "Remove selected components"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:140
+#: ../src/dashboard.adoc:143
 #, no-wrap
 msgid "Shift + Click on a selected component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:141
+#: ../src/dashboard.adoc:144
 #, no-wrap
 msgid "Select overlapping connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:143
+#: ../src/dashboard.adoc:146
 #, no-wrap
 msgid "Shift + Scroll"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:144
+#: ../src/dashboard.adoc:147
 #, no-wrap
 msgid "Remove connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:147
+#: ../src/dashboard.adoc:150
 #, no-wrap
 msgid "Change connection shape"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:149
+#: ../src/dashboard.adoc:152
 #, no-wrap
 msgid "R on component or connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:150
+#: ../src/dashboard.adoc:153
 #, no-wrap
 msgid "Change component mode"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:152
+#: ../src/dashboard.adoc:155
 #, no-wrap
 msgid "F on component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:153
+#: ../src/dashboard.adoc:156
 #, no-wrap
 msgid "Tune item to network"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:155
+#: ../src/dashboard.adoc:158
 #, no-wrap
 msgid "Hold item + Shift + Scroll"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:156
+#: ../src/dashboard.adoc:159
 #, no-wrap
 msgid "Toggle gauge labels"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:157
+#: ../src/dashboard.adoc:160
 #, no-wrap
 msgid "Alt"
 msgstr ""

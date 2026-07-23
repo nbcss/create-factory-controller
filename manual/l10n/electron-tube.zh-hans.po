@@ -46,9 +46,7 @@ msgstr "四种模式下的逻辑管，包括未充能和已充能的"
 #: ../src/electron-tube.adoc:8
 #, no-wrap
 msgid "A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputs to a xref:redstone-link.adoc[redstone link]"
-msgstr ""
-"从xref:factory-gauge.adoc[工厂仪表]接收输入并向xref:redstone-link.adoc[无线红"
-"石信号终端]输出的逻辑或组件"
+msgstr "从xref:factory-gauge.adoc[工厂仪表]接收输入并向xref:redstone-link.adoc[无线红石信号终端]输出的逻辑或组件"
 
 #. type: Title ==
 #: ../src/electron-tube.adoc:12

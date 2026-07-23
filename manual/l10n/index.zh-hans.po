@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-18 01:46+1000\n"
+"POT-Creation-Date: 2026-07-22 08:56+1000\n"
 "PO-Revision-Date: 2026-07-20 15:29+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
@@ -69,7 +69,26 @@ msgid "xref:electron-tube.adoc[Electron Tube]"
 msgstr "xref:electron-tube.adoc[电子管]"
 
 #. type: Table
-#: ../src/index.adoc:13 ../src/components.adoc:19
+#: ../src/index.adoc:14 ../src/components.adoc:19
 #, no-wrap
 msgid "xref:redstone-link.adoc[Redstone Link]"
 msgstr "xref:redstone-link.adoc[无线红石信号终端]"
+
+#. type: #manual-toc
+#: ../src/index.adoc:15
+#, fuzzy
+#| msgid "xref:electron-tube.adoc[Electron Tube]"
+msgid "xref:blueprint.adoc[Blueprint]"
+msgstr "xref:electron-tube.adoc[电子管]"
+
+#. type: #manual-toc
+#: ../src/index.adoc:16
+#, fuzzy
+#| msgid "xref:redstone-link.adoc[Redstone Link]"
+msgid "xref:display-link.adoc[Display Link]"
+msgstr "xref:redstone-link.adoc[无线红石信号终端]"
+
+#. type: #manual-toc
+#: ../src/index.adoc:16
+msgid "xref:production-orders.adoc[Production Orders]"
+msgstr ""

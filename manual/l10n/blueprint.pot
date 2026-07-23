@@ -1,0 +1,23 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-22 09:02+1000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Title =
+#: ../src/blueprint.adoc:1
+#, no-wrap
+msgid "Blueprint"
+msgstr ""

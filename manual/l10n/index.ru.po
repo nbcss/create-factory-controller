@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-18 01:46+1000\n"
+"POT-Creation-Date: 2026-07-22 08:56+1000\n"
 "PO-Revision-Date: 2026-07-18 00:38+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -63,7 +63,22 @@ msgid "xref:electron-tube.adoc[Electron Tube]"
 msgstr ""
 
 #. type: Table
-#: ../src/index.adoc:13 ../src/components.adoc:19
+#: ../src/index.adoc:14 ../src/components.adoc:19
 #, no-wrap
 msgid "xref:redstone-link.adoc[Redstone Link]"
+msgstr ""
+
+#. type: #manual-toc
+#: ../src/index.adoc:15
+msgid "xref:blueprint.adoc[Blueprint]"
+msgstr ""
+
+#. type: #manual-toc
+#: ../src/index.adoc:16
+msgid "xref:display-link.adoc[Display Link]"
+msgstr ""
+
+#. type: #manual-toc
+#: ../src/index.adoc:16
+msgid "xref:production-orders.adoc[Production Orders]"
 msgstr ""

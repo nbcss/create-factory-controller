@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 03:13+1000\n"
+"POT-Creation-Date: 2026-07-22 08:56+1000\n"
 "PO-Revision-Date: 2026-07-21 14:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
@@ -21,19 +21,7 @@ msgstr ""
 "X-Generator: Weblate 2026.7.1\n"
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/factory-gauge.adoc:189
-#, no-wrap
-msgid "Icon"
-msgstr "图标"
-
-#. type: Table
-#: ../src/components.adoc:7 ../src/factory-gauge.adoc:189
-#, no-wrap
-msgid "Name"
-msgstr "名称"
-
-#. type: Table
-#: ../src/components.adoc:17 ../src/factory-gauge.adoc:221
+#: ../src/components.adoc:17 ../src/factory-gauge.adoc:189
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr "Create: Repackaged"
@@ -102,7 +90,8 @@ msgstr "“设置物品”界面"
 msgid ""
 "If you use the \"set item\" screen, you can choose whether to respect or "
 "ignore the item's NBT data. NBT is respected by default."
-msgstr "在“设置物品”界面中，可以选择匹配或忽略物品的 NBT 数据。默认会匹配 NBT。"
+msgstr ""
+"在“设置物品”界面中，可以选择匹配或忽略物品的 NBT 数据。默认会匹配 NBT。"
 
 #. type: #figure-set-item
 #: ../src/factory-gauge.adoc:23
@@ -205,8 +194,8 @@ msgid ""
 "❿⓫⓬ Promises:: Requests made by factory gauges awaiting their outputs, and "
 "options for limiting them. See <<promise>>."
 msgstr ""
-"❿⓫⓬ 承诺与待处理请求:: 显示正在等待产物返回的请求，与限制请求数量的配置。参"
-"见<<promise>>。"
+"❿⓫⓬ 承诺与待处理请求:: 显示正在等待产物返回的请求，与限制请求数量的配置。参见"
+"<<promise>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:68
@@ -243,14 +232,21 @@ msgstr ""
 
 #. type: #basic-production
 #: ../src/factory-gauge.adoc:78
+#, fuzzy
+#| msgid ""
+#| "This connection can be made by clicking \"add connection\" (<<figure-"
+#| "recipe-settings>> ❸), and then the gauge responsible for the ingredient. "
+#| "Such connections are shown as item icons in the ingredient list (<<figure-"
+#| "iron-smelting-recipe>> ❷), and can be removed by clicking on them."
 msgid ""
 "This connection can be made by clicking \"add connection\" (<<figure-recipe-"
 "settings>> ❸), and then the gauge responsible for the ingredient. Such "
 "connections are shown as item icons in the ingredient list (<<figure-iron-"
-"smelting-recipe>> ❷), and can be removed by clicking on them."
+"smelting-recipe>> ❷). They can be removed by holding shift and clicking on "
+"them."
 msgstr ""
-"要建立连接，前往配方设置界面中单击“新建连接”（<<figure-recipe-settings>> ❸）"
-"，再单击负责原材料的仪表。连接后的原材料会以物品图标显示在原材料列表"
+"要建立连接，前往配方设置界面中单击“新建连接”（<<figure-recipe-settings>> "
+"❸），再单击负责原材料的仪表。连接后的原材料会以物品图标显示在原材料列表"
 "（<<figure-iron-smelting-recipe>> ❷）中，单击图标即可移除。"
 
 #. type: Block title
@@ -275,8 +271,8 @@ msgid ""
 "(❻)."
 msgstr ""
 "在默认工作模式（❾）下，工厂仪表会监测其物流网络中的目标物品库存（❻）。当库存"
-"低于设定目标（❼❽）时，仪表会请求将一组原材料发送到目标地址（❺），并等待产物（"
-"❶）稍后进入物流网络库存（❻）。"
+"低于设定目标（❼❽）时，仪表会请求将一组原材料发送到目标地址（❺），并等待产物"
+"（❶）稍后进入物流网络库存（❻）。"
 
 #. type: #figure-iron-smelting-recipe
 #: ../src/factory-gauge.adoc:89
@@ -361,10 +357,16 @@ msgstr "合成 1 把铁剑"
 
 #. type: #figure-crafting-1
 #: ../src/factory-gauge.adoc:112
+#, fuzzy
+#| msgid ""
+#| "The crafting recipe may be at most 10×10 in size. However, when it is "
+#| "larger than 3×3, ❷ no longer previews the pattern, and factory gauges "
+#| "that ignore NBT data may not be used as ingredients."
 msgid ""
 "The crafting recipe may be at most 10×10 in size. However, when it is larger "
-"than 3×3, ❷ no longer previews the pattern, and factory gauges that ignore "
-"NBT data may not be used as ingredients."
+"than 3×3, ❷ no longer previews the pattern, instead hold ctrl while hovering "
+"to reveal a preview tooltip. Factory gauges that ignore NBT data may not be "
+"used as ingredients for crafting recipes larger than 3×3."
 msgstr ""
 "动力合成配方最大可为 10×10。配方大于 3×3 时，❷ 不再预览具体布局。忽略 NBT 数"
 "据的工厂仪表不能作为此类配方的原材料。"
@@ -377,10 +379,17 @@ msgstr "合成粉碎轮"
 
 #. type: #figure-crafting-1
 #: ../src/factory-gauge.adoc:117
+#, fuzzy
+#| msgid ""
+#| "The mechanical crafters must be connected using a wrench and arranged in "
+#| "a square grid between 3×3 and 10×10 in size. Smaller recipes may be sent "
+#| "to larger mechanical crafter arrangements. Hold Ctrl and scroll on the "
+#| "ingredients to adjust the crafting grid size to match the crafter "
+#| "arrangement they will be sent to."
 msgid ""
 "The mechanical crafters must be connected using a wrench and arranged in a "
 "square grid between 3×3 and 10×10 in size. Smaller recipes may be sent to "
-"larger mechanical crafter arrangements. Hold Ctrl and scroll on the "
+"larger mechanical crafter arrangements. Hold ctrl and scroll on the "
 "ingredients to adjust the crafting grid size to match the crafter "
 "arrangement they will be sent to."
 msgstr ""
@@ -435,24 +444,38 @@ msgid ""
 "craft each, which may then be unpacked onto mechanical crafters."
 msgstr ""
 "使用批量合成时，必须使用理包机。理包机会把包含多次合成原材料的大包裹重新拆分"
-"成多个小包裹，每个小包裹只包含一次合成所需的原材料，才可以解包到动力合成器上"
-"。"
+"成多个小包裹，每个小包裹只包含一次合成所需的原材料，才可以解包到动力合成器"
+"上。"
 
 #. type: #figure-crafting-batch
 #: ../src/factory-gauge.adoc:134
 msgid ""
-"Batch crafting may not be used if any of the ingredients come from a factory "
-"gauge that ignores the NBT data of its monitored item."
-msgstr "如果任一原材料来自忽略监测物品 NBT 数据的工厂仪表，则不能使用批量合成功能。"
+"If an ingredient of a batch crafting recipe comes from a factory gauge that "
+"ignores item NBT data, and the recipe requires X amount of this ingredient, "
+"the ingredient will only be sent when there has accumulated X amount of "
+"items with the same NBT data."
+msgstr ""
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:136
+#, no-wrap
+msgid "Arranging Ingredients Explicitly"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:139
+#, no-wrap
+msgid "Dynamic Request Multiplier"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:142
 #, no-wrap
 msgid "On-Demand Production"
 msgstr "按需生产"
 
 #. type: #on-demand
-#: ../src/factory-gauge.adoc:139
+#: ../src/factory-gauge.adoc:145
 msgid ""
 "By default, a factory gauge operates in \"maintain stock\" mode, which "
 "activates (requests ingredients to be sent to the destination) when the "
@@ -468,13 +491,13 @@ msgstr ""
 "用作原材料，并准备请求这项原材料。"
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:141
+#: ../src/factory-gauge.adoc:147
 #, no-wrap
 msgid "A gauge producing oak planks in \"follow demand\" mode"
 msgstr "处于按需生产模式的橡木木板仪表"
 
 #. type: #figure-follow-demand
-#: ../src/factory-gauge.adoc:145
+#: ../src/factory-gauge.adoc:151
 msgid ""
 "In this mode, the target amount (❶) cannot be modified manually. It is "
 "automatically set according to downstream demand. Specifically, it is the "
@@ -485,13 +508,13 @@ msgstr ""
 "有已启动的下游工厂仪表请求的该项原材料总数。"
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:146
+#: ../src/factory-gauge.adoc:152
 #, no-wrap
 msgid "An example setup to produce barrels from oak logs"
 msgstr "由橡木原木生产木桶的示例"
 
 #. type: #figure-follow-demand
-#: ../src/factory-gauge.adoc:150
+#: ../src/factory-gauge.adoc:156
 msgid ""
 "For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 "
 "slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. "
@@ -501,36 +524,36 @@ msgstr ""
 "砖，1 个原木可合成 4 个木板。木板与木半砖仪表都可以设为按需生产："
 
 #. type: #figure-follow-demand
-#: ../src/factory-gauge.adoc:152
+#: ../src/factory-gauge.adoc:158
 msgid "The gauge for slabs receives a demand of 2."
 msgstr "木半砖仪表收到 2 个木半砖的需求。"
 
 #. type: #figure-follow-demand
-#: ../src/factory-gauge.adoc:153
+#: ../src/factory-gauge.adoc:159
 msgid ""
 "The gauge for planks receives a demand of 9: 6 from barrels, 3 from slabs."
 msgstr "木板仪表共收到 9 个木板的需求，其中 6 个来自木桶，3 个来自木半砖。"
 
 #. type: #figure-follow-demand
-#: ../src/factory-gauge.adoc:154
+#: ../src/factory-gauge.adoc:160
 msgid ""
 "First, 3 logs are crafted into 12 planks, then 3 of which are crafted into 6 "
 "slabs."
 msgstr "首先 3 个原木会被合成为 12 个木板，其中 3 个会被合成为 6 个木半砖。"
 
 #. type: #figure-follow-demand
-#: ../src/factory-gauge.adoc:155
+#: ../src/factory-gauge.adoc:161
 msgid "After crafting 1 barrel, 3 planks and 4 slabs are left over."
 msgstr "在生产 1 个木桶后，将会剩余 3 个木板和 4 个木半砖。"
 
 #. type: Title ===
-#: ../src/factory-gauge.adoc:157
+#: ../src/factory-gauge.adoc:163
 #, no-wrap
 msgid "Ordering from Stock Keeper"
 msgstr "从仓库管理员手动下单"
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:160
+#: ../src/factory-gauge.adoc:166
 msgid ""
 "Another mode of the factory gauge, \"follow demand and order\", additionally "
 "allows the item produceable by a gauge to be manually ordered from a stock "
@@ -542,152 +565,24 @@ msgstr ""
 "模式的仪表都会显示为一个生产任务，它们带有蓝图背景。"
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:161
+#: ../src/factory-gauge.adoc:167
 #, no-wrap
 msgid "A production task of oak planks"
 msgstr "橡木木板的生产任务"
 
 #. type: #production-orders
-#: ../src/factory-gauge.adoc:165
-msgid ""
-"Sending an order containing production tasks creates a production order, "
-"causing the corresponding gauges to add the number of items in the order to "
-"their demands. When the produced items arrive in the logistic network, they "
-"are sent out again to the address specified on the order."
+#: ../src/factory-gauge.adoc:171
+msgid "See xref:production-orders.adoc[Production Orders] for details."
 msgstr ""
-"提交包含生产任务的订单将会创建生产订单，把订单中的物品数量加入对应仪表的需求"
-"。当产物进入物流网络所监测的仓储后，会再次被发往订单指定的地址。"
-
-#. type: #production-orders
-#: ../src/factory-gauge.adoc:167
-msgid ""
-"Pending production orders can be viewed in the \"production orders\" tab in "
-"the stock keeper UI. They are automatically removed when all ordered items "
-"arrive in the logistic network, or stuck if they never arrive."
-msgstr ""
-"待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品"
-"进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表中"
-"。"
-
-#. type: Block title
-#: ../src/factory-gauge.adoc:168
-#, no-wrap
-msgid "Production orders UI"
-msgstr "生产订单界面"
-
-#. type: #production-orders
-#: ../src/factory-gauge.adoc:173
-msgid "❶ Production orders tab:: Click to switch to this tab."
-msgstr "❶ 生产订单标签页:: 点击切换至此页。"
-
-#. type: #production-orders
-#: ../src/factory-gauge.adoc:176
-msgid ""
-"❷ Destination address:: The address the items are sent to after they arrive "
-"in storage."
-msgstr "❷ 目标地址:: 物品进入库存后将被发送到的地址。"
-
-#. type: #production-orders
-#: ../src/factory-gauge.adoc:179
-msgid "❸ Elapsed time:: Time elapsed since the order was created."
-msgstr "❸ 已用时间:: 自订单创建以来经过的时间。"
-
-#. type: #production-orders
-#: ../src/factory-gauge.adoc:182
-msgid "❹ Cancel button:: Click to cancel the order."
-msgstr "❹ 取消按钮:: 点击取消订单。"
-
-#. type: #production-orders
-#: ../src/factory-gauge.adoc:185
-msgid "❺ Ordered items:: Type, amount, and status of the ordered items."
-msgstr "❺ 请求物品:: 显示物品类型、数量与当前状态。"
-
-#. type: Block title
-#: ../src/factory-gauge.adoc:186
-#, no-wrap
-msgid "Statuses of ordered items"
-msgstr "订单中物品的状态"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:191
-#, no-wrap
-msgid "Description"
-msgstr "描述"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:192
-#, no-wrap
-msgid "Waiting for ingredients"
-msgstr "等待原材料"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:194
-#, no-wrap
-msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
-msgstr "负责生产的仪表没有足够原材料，或原材料尚未发出。"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:194
-#, no-wrap
-msgid "⏶"
-msgstr "⏶"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:195
-#, no-wrap
-msgid "Processing"
-msgstr "生产中"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:197
-#, no-wrap
-msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
-msgstr "仪表已经发出原材料，但产物尚未进入仓储。"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:197
-#, no-wrap
-msgid "✓"
-msgstr "✓"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:198
-#, no-wrap
-msgid "Sent"
-msgstr "已发送"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:200
-#, no-wrap
-msgid "The produced item has arrived in storage, and been dispatched to the destination address."
-msgstr "产物已进入仓储，并已发往目标地址。"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:200
-#, no-wrap
-msgid "🗙"
-msgstr "🗙"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:201
-#, no-wrap
-msgid "Invalid gauge"
-msgstr "无效仪表"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:202
-#, no-wrap
-msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
-msgstr "负责生产的仪表已被破坏，或已切换为其他工作模式。"
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:205
+#: ../src/factory-gauge.adoc:173
 #, no-wrap
 msgid "Fluid Transport"
 msgstr "流体运输"
 
 #. type: #fluid
-#: ../src/factory-gauge.adoc:208
+#: ../src/factory-gauge.adoc:176
 msgid ""
 "When you have a compatible fluid transportation mod installed, factory "
 "gauges placed in factory controllers may utilize that mod's ability to "
@@ -697,73 +592,73 @@ msgstr ""
 "流体作为原材料或产物。"
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:209
+#: ../src/factory-gauge.adoc:177
 #, no-wrap
 msgid "Compatibility of fluid transportation mods"
 msgstr "流体物流模组的兼容性"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:212
+#: ../src/factory-gauge.adoc:180
 #, no-wrap
 msgid "Mod"
 msgstr "模组"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:214
+#: ../src/factory-gauge.adoc:182
 #, no-wrap
 msgid "Compatibility"
 msgstr "兼容性"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:215
+#: ../src/factory-gauge.adoc:183
 #, no-wrap
 msgid "Create: FluidLogistic"
 msgstr "流体包裹（Create: FluidLogistic）"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:217 ../src/factory-gauge.adoc:223
+#: ../src/factory-gauge.adoc:185 ../src/factory-gauge.adoc:191
 #, no-wrap
 msgid "Yes"
 msgstr "是"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:218
+#: ../src/factory-gauge.adoc:186
 #, no-wrap
 msgid "Create: Fluid"
 msgstr "流体（Create: Fluid）"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:220
+#: ../src/factory-gauge.adoc:188
 #, no-wrap
 msgid "Yes, but may drop support in the future"
 msgstr "是，但未来可能停止维护兼容性"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:224
+#: ../src/factory-gauge.adoc:192
 #, no-wrap
 msgid "Create Factory Logistics"
 msgstr "Create Factory Logistics"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:225
+#: ../src/factory-gauge.adoc:193
 #, no-wrap
 msgid "No, will crash the game"
 msgstr "不，会导致游戏崩溃"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:228
+#: ../src/factory-gauge.adoc:196
 msgid ""
 "When using Create: Repackaged, place fluid gauges provided by this mod to "
 "monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
 "item\" screen>> by clicking the filter slot while holding a bucket of fluid "
 "or by dragging a fluid entry from JEI."
 msgstr ""
-"使用 Create: Repackaged 时，需要放置该模组提供的流体仪表来监测和生产流体。"
-"在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的桶并点击过滤槽，或"
-"直接从 JEI 拖入流体条目。"
+"使用 Create: Repackaged 时，需要放置该模组提供的流体仪表来监测和生产流体。在"
+"<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的桶并点击过滤槽，或直"
+"接从 JEI 拖入流体条目。"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:230
+#: ../src/factory-gauge.adoc:198
 msgid ""
 "When using the other mods, regular factory gauges gain the ability to "
 "monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
@@ -775,14 +670,14 @@ msgstr ""
 "从 JEI 拖入流体条目。"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:232
+#: ../src/factory-gauge.adoc:200
 msgid ""
 "Fluids do not contain NBT data, therefore when monitoring a fluid, the "
 "option to ignore NBT data disappears."
 msgstr "流体不包含 NBT 数据，因此在监测流体时，“忽略 NBT”选项会消失。"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:234
+#: ../src/factory-gauge.adoc:202
 msgid ""
 "When using a fluid as an ingredient or output, scrolling on the ingredient "
 "or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust "
@@ -794,13 +689,19 @@ msgstr ""
 "为 10 B。"
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:236
+#: ../src/factory-gauge.adoc:204
+#, no-wrap
+msgid "Request Interval"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:207
 #, no-wrap
 msgid "Promise Limits"
 msgstr "承诺与待处理请求限制"
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:239
+#: ../src/factory-gauge.adoc:210
 msgid ""
 "Each time a factory gauge requests a set of ingredients to be sent to its "
 "destination address, a promise is created (also referred to as a pending "
@@ -813,17 +714,17 @@ msgid ""
 msgstr ""
 "工厂仪表每次请求把一批原材料发往目标地址时，都会创建一项“承诺”，也称为待处理"
 "请求。每项承诺会记录预计生产但尚未进入库存的产物数量。仪表在比较库存和目标数"
-"量时，会先把承诺中记录的数量加到实际库存中。这样可以避免上一批产物尚未返回时"
-"，仪表继续过量发送原材料。"
+"量时，会先把承诺中记录的数量加到实际库存中。这样可以避免上一批产物尚未返回"
+"时，仪表继续过量发送原材料。"
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:240
+#: ../src/factory-gauge.adoc:211
 #, no-wrap
 msgid "UI elements related to promises"
 msgstr "承诺相关的界面元素"
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:245
+#: ../src/factory-gauge.adoc:216
 msgid ""
 "❶ Promised items:: Displays the total number of items recorded in promises "
 "created by all gauges in the same network producing the same item. Click to "
@@ -833,7 +734,7 @@ msgstr ""
 "总和。点击以作废全部承诺。"
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:249
+#: ../src/factory-gauge.adoc:220
 #, no-wrap
 msgid ""
 "❷ Expire time::\n"
@@ -845,7 +746,7 @@ msgstr ""
 "当配方不能稳定地产生预期产物，例如带概率的加工配方时，此设置很有用。\n"
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:253
+#: ../src/factory-gauge.adoc:224
 #, no-wrap
 msgid ""
 "❸ Pending requests::\n"
@@ -853,19 +754,17 @@ msgid ""
 "  Limiting pending requests is useful for preventing excessive packages from overloading transportation lines.\n"
 msgstr ""
 "❸ 待处理请求::\n"
-"可显示由当前仪表创建的待处理请求数量 image:symbol-gauge.png[,18,16] ，点击以"
-"切换为显示发送到同一地址的待处理请求数量 image:symbol-address.png[,18,16] 。"
-"在任一状态下，滚动可设置数量上限。达到上限后，仪表会暂停发送新请求。 +\n"
+"可显示由当前仪表创建的待处理请求数量 image:symbol-gauge.png[,18,16] ，点击以切换为显示发送到同一地址的待处理请求数量 image:symbol-address.png[,18,16] 。在任一状态下，滚动可设置数量上限。达到上限后，仪表会暂停发送新请求。 +\n"
 "限制待处理请求可防止过多包裹使运输系统过载。\n"
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:255
+#: ../src/factory-gauge.adoc:226
 #, no-wrap
 msgid "Redstone"
 msgstr "红石"
 
 #. type: #redstone
-#: ../src/factory-gauge.adoc:258
+#: ../src/factory-gauge.adoc:229
 msgid ""
 "A factory gauge can be connected to some other components, such as "
 "xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone "
@@ -880,13 +779,13 @@ msgstr ""
 "厂仪表收到红石信号后会暂停工作。"
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:259
+#: ../src/factory-gauge.adoc:230
 #, no-wrap
 msgid "A factory gauge disabled by an incoming redstone signal, and outputting a redstone signal"
 msgstr "因输入红石信号而暂停、同时又输出红石信号的仪表"
 
 #. type: #redstone
-#: ../src/factory-gauge.adoc:262
+#: ../src/factory-gauge.adoc:233
 msgid ""
 "Additionally, when a factory controller block is redstone-powered, all "
 "factory gauges inside are disabled."

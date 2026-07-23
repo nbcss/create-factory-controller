@@ -37,7 +37,7 @@ Shows the name of this factory controller. Name can be edited by clicking on it.
 Opens this help page.
 
 ❸ Network selector::
-All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components. While holding a gauge, scroll to tune the gauge to a network. <<Network Selector,More Info>>
+All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components. While holding a gauge, scroll to tune the gauge to a network. <<network-selector,More Info>>
 
 ❹ Capacity indicator::
 Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up. +
@@ -112,6 +112,9 @@ image::network-selector-selected.png[,385,174]
 With an empty cursor, scrolling with the mouse wheel selects one of the tuned networks, highlighting all components tuned to that network with a blue outline. The number of components tuned to the network also appears on the network selector icon.
 
 While holding a factory gauge item, scrolling on the network selector changes the network this item is tuned to, allowing you to quickly tune a new gauge to an existing network. Holding shift and scrolling accomplishes the same.
+
+[#notices]
+== Notices
 
 [#additional-interactions]
 == Additional Interactions

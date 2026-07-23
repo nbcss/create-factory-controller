@@ -1,0 +1,196 @@
+# Language zh-hans translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-22 09:02+1000\n"
+"PO-Revision-Date: 2026-07-22 09:02+1000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh-hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#, no-wrap
+msgid "Icon"
+msgstr "图标"
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#, no-wrap
+msgid "Name"
+msgstr "名称"
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:167 ../src/production-orders.adoc:5
+#, no-wrap
+msgid "A production task of oak planks"
+msgstr "橡木木板的生产任务"
+
+#. type: Title =
+#: ../src/production-orders.adoc:1
+#, fuzzy, no-wrap
+#| msgid "Basic Production"
+msgid "Production Orders"
+msgstr "基础生产"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:4
+#, fuzzy
+#| msgid ""
+#| "Another mode of the factory gauge, \"follow demand and order\", "
+#| "additionally allows the item produceable by a gauge to be manually "
+#| "ordered from a stock keeper tuned to the same network. In stock keeper "
+#| "UI, each gauge in this mode appears as a production task, signified by a "
+#| "blueprint background."
+msgid ""
+"Factory gauges set to the xref:factory-gauge.adoc#production-orders[\"follow "
+"demand and order\" mode] allow their products to be manually ordered from a "
+"stock keeper tuned to the same network. In stock keeper UI, each gauge in "
+"this mode appears as a production task, signified by a blueprint background."
+msgstr ""
+"另一个工作模式，“按需生产与手动请求”，除具备按需生产功能外，还允许玩家在绑定"
+"至同一网络的仓库管理员界面中手动请求生产物品。在仓库管理员界面中，每个处于此"
+"模式的仪表都会显示为一个生产任务，它们带有蓝图背景。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:9
+msgid ""
+"Click to add the production task to the order, and adjust the amount per "
+"usual. Sending an order containing production tasks creates a production "
+"order, causing the corresponding factory gauges to add the number of items "
+"in the order to their demands. When the produced items arrive in the "
+"logistic network, they are sent out again to the address specified on the "
+"order."
+msgstr ""
+
+#. type: Plain text
+#: ../src/production-orders.adoc:11
+msgid ""
+"Pending production orders can be viewed in the \"production orders\" tab in "
+"the stock keeper UI. They are automatically removed when all ordered items "
+"arrive in the logistic network, or stuck if they never arrive."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:12
+#, no-wrap
+msgid "Production orders UI"
+msgstr ""
+
+#. type: Plain text
+#: ../src/production-orders.adoc:17
+msgid "❶ Production orders tab:: Click to switch to this tab."
+msgstr ""
+
+#. type: Plain text
+#: ../src/production-orders.adoc:20
+#, fuzzy
+#| msgid ""
+#| "❺ Destination address:: The address to which the ingredients will be "
+#| "packaged and sent."
+msgid ""
+"❷ Destination address:: The address the items are sent to after they arrive "
+"in storage."
+msgstr "❺ 目标地址:: 原材料打包后需要发送到的地址。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:23
+msgid "❸ Elapsed time:: Time elapsed since the order was created."
+msgstr ""
+
+#. type: Plain text
+#: ../src/production-orders.adoc:26
+#, fuzzy
+#| msgid "❻ Confirm button:: Click to confirm settings and close the screen."
+msgid "❹ Cancel button:: Click to cancel the order."
+msgstr "❻ 确认按钮:: 保存设置并关闭界面。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:29
+msgid "❺ Ordered items:: Type, amount, and status of the ordered items."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:30
+#, no-wrap
+msgid "Statuses of ordered items"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:35
+#, no-wrap
+msgid "Description"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:36
+#, no-wrap
+msgid "Waiting for ingredients"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:38
+#, no-wrap
+msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:38
+#, no-wrap
+msgid "⏶"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:39
+#, no-wrap
+msgid "Processing"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:41
+#, no-wrap
+msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:41
+#, no-wrap
+msgid "✓"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:42
+#, no-wrap
+msgid "Sent"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:44
+#, no-wrap
+msgid "The produced item has arrived in storage, and been dispatched to the destination address."
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:44
+#, no-wrap
+msgid "🗙"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:45
+#, no-wrap
+msgid "Invalid gauge"
+msgstr ""
+
+#. type: Table
+#: ../src/production-orders.adoc:46
+#, no-wrap
+msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
+msgstr ""

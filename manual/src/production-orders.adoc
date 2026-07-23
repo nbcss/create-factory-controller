@@ -1,0 +1,46 @@
+= Production Orders
+
+Factory gauges set to the xref:factory-gauge.adoc#production-orders["follow demand and order" mode] allow their products to be manually ordered from a stock keeper tuned to the same network. In stock keeper UI, each gauge in this mode appears as a production task, signified by a blueprint background.
+
+.A production task of oak planks
+image::gauge-production-task.png[,308,111]
+
+Click to add the production task to the order, and adjust the amount per usual. Sending an order containing production tasks creates a production order, causing the corresponding factory gauges to add the number of items in the order to their demands. When the produced items arrive in the logistic network, they are sent out again to the address specified on the order.
+
+Pending production orders can be viewed in the "production orders" tab in the stock keeper UI. They are automatically removed when all ordered items arrive in the logistic network, or stuck if they never arrive.
+
+.Production orders UI
+image::gauge-production-orders-ui.png[,474,186]
+
+❶ Production orders tab::
+Click to switch to this tab.
+
+❷ Destination address::
+The address the items are sent to after they arrive in storage.
+
+❸ Elapsed time::
+Time elapsed since the order was created.
+
+❹ Cancel button::
+Click to cancel the order.
+
+❺ Ordered items::
+Type, amount, and status of the ordered items.
+
+.Statuses of ordered items
+[%header%autowidth,cols="3*"]
+|===
+| Icon | Name | Description
+
+| | Waiting for ingredients
+| The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent.
+
+| ⏶ | Processing
+| The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage.
+
+| ✓ | Sent
+| The produced item has arrived in storage, and been dispatched to the destination address.
+
+| 🗙 | Invalid gauge
+| The responsible gauge has been destroyed or switched to a mode other than "follow demand and order".
+|===
