@@ -1,0 +1,490 @@
+@use "sass:map";
+@use "sass:color";
+
+$content-width: 48rem;
+$nav-menu-width: 16rem;
+$sidebar-breakpoint: calc($content-width + $nav-menu-width * 2);
+$mobile-breakpoint: 600px;
+
+// Color schemes
+
+// Dark mode requires `prefers-color-scheme` support, which we assume has `rgb(from var(...) ...)` support. Fallbacks to preprocessor variables.
+
+$colors: (
+  text: #1a1a1a,
+  background: #ffffff,
+  link: #0066cc,
+  divider: #e0e0e0,
+  figcaption: #555555,
+  table-border: #cccccc,
+  header-text: #f2f2f2,
+  header-background: #232323,
+  menu-border: #d0d0d0,
+  menu-selected: rgba(0, 0, 0, 0.1),
+);
+
+$colors-dark: (
+  text: #f0f0f0,
+  background: #000000,
+  link: #5da7f2,
+  divider: #3f3f3f,
+  figcaption: #cccccc,
+  table-border: #505050,
+  menu-border: #3f3f3f,
+  menu-selected: rgba(240, 240, 240, 0.17),
+);
+
+:root {
+  @each $k, $v in $colors { --color-#{$k}: #{$v}; }
+  @media (prefers-color-scheme: dark) {
+    @each $k, $v in $colors-dark { --color-#{$k}: #{$v}; }
+  }
+}
+
+// Reset & base
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: map.get($colors, text);
+  color: var(--color-text);
+  background: map.get($colors, background);
+  background: var(--color-background);
+
+  font-synthesis-weight: none;
+  image-rendering: pixelated;
+}
+
+body {
+  margin: 0;
+}
+
+// Layout
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  max-width: $content-width;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+
+  @media (max-width: $mobile-breakpoint) {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  :target {
+    scroll-margin-top: 6rem;
+  }
+}
+
+header, footer {
+  background: map.get($colors, header-background);
+  background: var(--color-header-background);
+  color: map.get($colors, header-text);
+  color: var(--color-header-text);
+}
+
+.header-inner, .footer-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  max-width: $content-width;
+  margin: 0 auto;
+  padding: 0.5rem 1.5rem;
+
+  @media (max-width: $mobile-breakpoint) {
+    padding: 0.5rem 1rem;
+  }
+}
+
+// Header & nav menus
+
+header {
+  position: sticky;
+  top: 0;
+}
+
+.header-inner {
+  anchor-name: --anchor-header-inner;
+}
+
+.site-name {
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+header nav {
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li {
+    margin: 0;
+    padding: 0;
+  }
+
+  > ol {
+    display: flex;
+    gap: 0.5rem 1rem;
+    flex-wrap: wrap;
+  }
+}
+
+.nav-item {
+  anchor-scope: --anchor-button;
+
+  > button {
+    appearance: none;
+    background: transparent;
+    height: 100%;
+    border: 1px solid color.change(map.get($colors, header-text), $alpha: 0.4);
+    border-color: rgb(from var(--color-header-text) r g b / 0.4);
+    border-radius: 4px;
+    color: inherit;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+
+    anchor-name: --anchor-button;
+
+    &::after {
+      content: "⏷";
+      margin-left: 0.4rem;
+    }
+  }
+
+  &:hover, &:focus-within {
+    .nav-menu-container {
+      display: flex;
+    }
+  }
+}
+
+.nav-menu-container {
+  // Menu aligns to the left with the button by default. When anchors are supported, push the menu leftward if it goes outside of screen right edge.
+  display: none;
+  position: absolute;
+  left: anchor(--anchor-button left);
+  right: anchor(--anchor-header-inner right);
+  max-height: calc(100vh - 100%);
+  justify-content: right;
+  pointer-events: none;
+}
+
+.nav-menu {
+  flex: 0 0 auto;
+  margin: 0 auto 0 0;
+
+  list-style: none;
+  padding: 0.375rem 0;
+  width: $nav-menu-width;
+  overflow-y: auto;
+
+  background: map.get($colors, background);
+  background: var(--color-background);
+  color: map.get($colors, text);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  border: 1px solid map.get($colors, menu-border);
+  border-color: var(--color-menu-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+
+  pointer-events: auto;
+
+  li > a {
+    display: block;
+    padding: 0.35rem 1rem;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+      background: map.get($colors, menu-selected);
+      background: var(--color-menu-selected);
+      text-decoration: none;
+    }
+  }
+
+  li li > a {
+    padding-left: 1.75rem;
+  }
+}
+
+// TOC sidebars
+
+%nav-item-sidebar {
+  @media (min-width: $sidebar-breakpoint) {
+    margin-left: -1rem;
+
+    > button {
+      display: none;
+    }
+
+    .nav-menu-container {
+      display: flex;
+      top: 100%;
+      bottom: auto;
+      z-index: 0;
+    }
+
+    .nav-menu {
+      padding: 2rem 0;
+      background: initial;
+      border: initial;
+      border-radius: initial;
+      box-shadow: initial;
+      font-size: 1rem;
+    }
+  }
+}
+
+.nav-project-toc {
+  @extend %nav-item-sidebar;
+
+  @media (min-width: $sidebar-breakpoint) {
+    .nav-menu-container {
+      left: auto;
+      right: calc(50% + 24rem);
+    }
+
+    .nav-menu li > a {
+      color: map.get($colors, link);
+      color: var(--color-link);
+
+      &:hover {
+        text-decoration: underline;
+        background: unset;
+      }
+    }
+
+    .toc-menu-home {
+      display: none;
+    }
+  }
+
+  .toc-menu-title {
+    display: none;
+
+    @media (min-width: $sidebar-breakpoint) {
+      display: initial;
+      font-size: 1.25em;
+      font-weight: 700;
+    }
+  }
+}
+
+.nav-page-toc {
+  @extend %nav-item-sidebar;
+
+  @media (min-width: $sidebar-breakpoint) {
+    .nav-menu-container {
+      left: calc(50% + 24rem);
+      right: auto;
+    }
+  }
+
+  .toc-menu-title {
+    font-weight: 700;
+
+    @media (min-width: $sidebar-breakpoint) {
+      font-size: 1.25em;
+
+      &::before {
+        content: "\f03a";
+        font-family: "Font Awesome 6 Solid";
+        margin-right: 0.5em;
+      }
+    }
+  }
+}
+
+// Footer
+
+.footer-inner {
+  font-size: 0.9rem;
+}
+
+footer a {
+  color: inherit;
+  text-decoration: underline;
+
+  &:not(:hover) {
+    text-decoration-color: color.change(map.get($colors, header-text), $alpha: 0.5);
+    text-decoration-color: rgb(from var(--color-header-text) r g b / 0.5);
+  }
+}
+
+// Content
+
+h1 {
+  font-size: 1.75em;
+  margin-top: 0;
+  margin-bottom: 1em;
+  border-bottom: 2px solid map.get($colors, divider);
+  border-bottom-color: var(--color-divider);
+  padding-bottom: 0.4em;
+}
+
+h2 {
+  font-size: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid map.get($colors, divider);
+  border-bottom-color: var(--color-divider);
+  padding-bottom: 0.2em;
+}
+
+h3, h4, h5, h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.4em;
+}
+
+h3 {
+  font-size: 1.25em;
+}
+
+p {
+  margin: 0.6em 0;
+}
+
+a {
+  color: map.get($colors, link);
+  color: var(--color-link);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Figures
+
+.image-block {
+  margin: 1.25em 0;
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+    border: 1px solid map.get($colors, divider);
+    border-color: var(--color-divider);
+  }
+}
+
+figcaption {
+  font-size: 1em;
+  color: map.get($colors, figcaption);
+  color: var(--color-figcaption);
+  margin: 0.3em 0;
+}
+
+// Tables
+
+.table-block {
+  overflow-x: auto;
+  margin: 1.25em 0;
+}
+
+table {
+  border-collapse: collapse;
+
+  &.frame-all {
+    border: 1px solid map.get($colors, table-border);
+    border-color: var(--color-table-border);
+  }
+
+  &.grid-all {
+    td,
+    th {
+      border: 1px solid map.get($colors, table-border);
+      border-color: var(--color-table-border);
+      padding: 0.4em 0.6em;
+    }
+  }
+}
+
+// Admonitions
+
+.admonition-block {
+  border-left: 4px solid map.get($colors, table-border);
+  border-color: var(--color-table-border);
+  padding: 0.6em 1em;
+  margin: 1em 0;
+  background: color.change(map.get($colors, table-border), $alpha: 0.17);
+  background: rgb(from var(--color-table-border) r g b / 0.17);
+
+  @each $class, $color in (
+    tip: #4caf50,
+    note: #2196f3,
+    warining: #ff9800,
+    caution: #ff9800,
+    important: #f44336,
+  ) {
+    &.#{$class} {
+      border-color: $color;
+      background: color.change($color, $alpha: 0.17);
+
+      @media (prefers-color-scheme: dark) {
+        background: color.change($color, $alpha: 0.2);
+      }
+    }
+  }
+}
+
+.block-title {
+  font-weight: 600;
+  margin: 0 0 0.25em;
+  font-size: 1em;
+}
+
+// Lists
+
+ol, ul {
+  padding-left: 1.5em;
+}
+
+dl {
+  margin: 0.75em 0;
+}
+
+dt {
+  font-weight: 600;
+  margin-top: 0.75em;
+}
+
+dd {
+  margin-left: 1em;
+}
+
+.action-list > ::marker {
+  content: "\f061  ";
+  font-family: "Font Awesome 6 Solid";
+}
+
+// Font Awesome
+
+@font-face {
+  font-family: "Font Awesome 6 Solid";
+  src: url("fonts/fa-solid-900.woff2");
+}
+
+.fa-solid {
+  font-family: "Font Awesome 6 Solid";
+  font-style: normal;
+}

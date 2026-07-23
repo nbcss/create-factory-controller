@@ -9,8 +9,9 @@ Directory structure:
 
 * `src/`
 ** `\*.adoc`: Source documents, translated and built to `build/$lang/*.html`. Written in English.
-** `style.css`, `images/`: Static assets, copied to `build/`.
 ** `_layout.erb`: HTML template for all documents.
+** `style.scss`: Stylesheet source, compiled to `build/style.css`.
+** `images/`: Static assets, copied to `build/`.
 
 * `l10n/`
 ** `po4a.cfg`: po4a config

@@ -4,6 +4,7 @@ require 'yaml'
 require 'asciidoctor'
 require 'asciidoctor-html5s'
 require 'nokogiri'
+require 'sass-embedded'
 require 'font-awesome-sass'
 require_relative 'lib/replacements'
 require_relative 'lib/util'
@@ -153,17 +154,16 @@ end
 
 
 # Define assets to be copied to `build`
-assets = {
-  'build/style.css' => 'src/style.css',
+desc 'Copy static assets'
+task :assets
+
+{
   'build/images' => 'src/images',
   'build/fonts/fa-solit-900.woff2' => "#{FontAwesome::Sass.fonts_path}/font-awesome/fa-solid-900.woff2",
 }
-
-desc 'Copy static assets'
-task :assets => assets.keys
-
-assets.each do |t, s|
-  file t => s do |task|
+.each do |dest, src|
+  task :assets => dest
+  file dest => src do |task|
     verbose(false) { mkdir_p File.dirname(task.name) }
     if File.directory? task.prereqs[0]
       cp_lr task.prereqs[0], File.dirname(task.name), remove_destination: true
@@ -171,4 +171,15 @@ assets.each do |t, s|
       cp task.prereqs[0], File.dirname(task.name)
     end
   end
+end
+
+# Compile SCSS
+task :assets => 'build/style.css'
+file 'build/style.css' => 'src/style.scss' do |task|
+  verbose(false) { mkdir_p 'build' }
+  dest, src = task.name, task.prereqs[0]
+  puts "sass #{src} > #{dest}" if verbose
+  result = Sass.compile(src, source_map: true, source_map_include_sources: true)
+  File.write dest, result.css + "\n/*# sourceMappingURL=#{File.basename dest}.map */"
+  File.write "#{dest}.map", result.source_map
 end
