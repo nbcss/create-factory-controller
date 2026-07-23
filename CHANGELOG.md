@@ -1,5 +1,8 @@
 ## 1.1.1
 
+Changes:
+- Added recipe output tooltip for production order.
+
 Localization:
 - Added French translation, thanks to @totof-prod
 

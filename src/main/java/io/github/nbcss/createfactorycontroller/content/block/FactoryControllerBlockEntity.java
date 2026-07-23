@@ -297,7 +297,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<OrderableGaugeRegistry.Entry> entries = new ArrayList<>();
         for (VirtualComponentBehaviour c : components.values())
             if (c instanceof VirtualGaugeBehaviour g && g.gaugeId != null && isOrderable(g))
-                entries.add(new OrderableGaugeRegistry.Entry(g.networkId, g.gaugeId, g.filter.copy(),
+                entries.add(new OrderableGaugeRegistry.Entry(g.networkId, g.gaugeId,
+                        g.filter.copyWithCount(Math.max(1, g.recipeOutput) * g.effectiveBatch()),
                     gaugeIngredients(g), g.recipeAddress));
         OrderableGaugeRegistry.heartbeat(level.dimension(), getBlockPos(), entries, now);
     }

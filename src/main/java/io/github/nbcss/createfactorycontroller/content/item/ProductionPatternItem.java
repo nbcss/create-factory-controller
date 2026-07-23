@@ -82,6 +82,16 @@ public class ProductionPatternItem extends Item {
         List<ItemStack> ingredients = target.ingredients();
         if (!ingredients.isEmpty()) {
             tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("createfactorycontroller.gui.production_output_header")
+                    .withColor(0x528FDE));
+            {
+                ItemStack output = target.display();
+                String name = FluidCompat.filterName(output).getString();
+                String amount = FluidCompat.isFluidFilter(output)
+                        ? ThresholdUnit.formatFluidAmount(output.getCount())
+                        : String.valueOf(output.getCount());
+                tooltip.add(Component.literal("- " + name + " x" + amount).withStyle(ChatFormatting.GRAY));
+            }
             tooltip.add(Component.translatable("createfactorycontroller.gui.production_ingredients_header")
                     .withColor(0x528FDE));
             for (ItemStack ingredient : ingredients) {
