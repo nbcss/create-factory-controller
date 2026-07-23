@@ -116,6 +116,7 @@
   "createfactorycontroller.gui.request_multiplier": "Multiplicateur de demande maximum x%1$s/%2$s",
   "createfactorycontroller.gui.request_multiplier.tip_1": "Combiner plusieurs lots d'ingrédients",
   "createfactorycontroller.gui.request_multiplier.tip_2": "en une seule demande si le stock le permet",
+  "createfactorycontroller.gui.production_output_header": "Recipe output:",
   "createfactorycontroller.gui.production_ingredients_header": "Ingrédients :",
   "createfactorycontroller.gui.production_address_header": "À l'adresse :",
   "createfactorycontroller.gui.production_orders": "Ordres de Production",
