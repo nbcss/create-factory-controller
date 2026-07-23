@@ -27,7 +27,7 @@ A redstone link has 2 modes of operation:
 Send:: Sends the powered state of its incoming redstone connections to other redstone links on the same channel.
 Receive:: Receives from other redstone links on the same channel. If any of them is powered, it powers its outgoing redstone connections.
 
-Redstone links are distinguished by channels, which consists of 2 item types. Each channel carries a redstone signal independently of the others. Examples of distinct channels are:
+Redstone links are distinguished by channels, which consist of 2 item types. Each channel carries a redstone signal independently of the others. Examples of distinct channels are:
 
 - (Oak Plank, Cobblestone)
 - (Oak Plank, Air)

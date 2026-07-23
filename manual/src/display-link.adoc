@@ -1,0 +1,8 @@
+= Display Link
+
+Display links can be attached to a factory controller block to display information about this factory controller. See the in-game ponder for the usage of display links.
+
+.Display boards displaying information about a factory controller
+image::display-link-text.png[,480,145]
+
+Each line of the display represents the status of a factory gauge inside the factory controller. Only factory gauges configured to xref:factory-gauge.adoc#basic-production[produce] an item are included.
