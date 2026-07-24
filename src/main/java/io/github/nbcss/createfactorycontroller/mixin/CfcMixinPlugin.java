@@ -8,26 +8,12 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Lets this mod's mixin config apply with Deployer and Extra Gauges as soft dependencies:
- * <ul>
- *   <li>{@link LogisticsGenericManagerMixin} targets a Deployer class
- *       ({@code net.liukrast.deployer...LogisticsGenericManager}); applying it without Deployer present would error,
- *       so it is skipped in that case.</li>
- *   <li>{@link PackageRepackageHelperMixin} re-implements the Re-Packager fix that Extra Gauges already ships, so it
- *       is skipped when Extra Gauges ({@code extra_gauges}) is installed to avoid double-patching the same calls.</li>
- * </ul>
- * Every other mixin targets Create/vanilla and always applies.
- *
- * <p>Detection uses {@link LoadingModList} rather than {@code ModList}: mixin configs are processed during early
- * loading, before {@code ModList} is built, but after mod files have been discovered.</p>
- */
+
 public class CfcMixinPlugin implements IMixinConfigPlugin {
 
     private static final String DEPLOYER_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.LogisticsGenericManagerMixin";
-    /** Redirects Deployer's generic-promise codec; targets methods Deployer mixes into RequestPromiseQueue, so it only
-     *  applies when Deployer is present. */
+    /** Redirects Deployer's generic-promise codec */
     private static final String GENERIC_PROMISE_CODEC_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.GenericPromiseCodecMixin";
     private static final String REPACKAGE_MIXIN =

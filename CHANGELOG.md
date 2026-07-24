@@ -23,7 +23,7 @@ Features:
 - Added tooltip warning and controller indicator for unloaded stock links.
 
 Changes:
-- Maximum batch crafting multiplier is 64 now, regardless recipe output count.
+- Maximum crafting batch size is 64 now, regardless recipe output count.
 - Gauge ingredient slot need to use Shift-Click to remove now.
 
 Optimization:

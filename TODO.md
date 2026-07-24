@@ -28,7 +28,6 @@
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
-- [TODO] Alt mode button
 - [TODO] Guide GUI
 - [TODO] Set max item data length limit per gauge in configuration; increase component limit.
 - [TODO] Connection tab in recipe / redstone link setting screen
