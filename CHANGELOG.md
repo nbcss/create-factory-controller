@@ -5,6 +5,7 @@ Features:
 
 Changes:
 - Added recipe output tooltip for production order.
+- Allow to reduce to 2x2 or 1x1 grid in gauge crafting mode (if recipe can fit).
 
 Localization:
 - Added French translation, thanks to @totof-prod

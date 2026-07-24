@@ -576,8 +576,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * bounding square and the configured maximum ({@link ServerConfig#maxCraftGridSize()}).
      */
     void adjustCraftDimension(int dir) {
-        int minDim = minCraftDim();
-        int next = Mth.clamp(effectiveCraftDimension() + dir, minDim, maxCraftDim(minDim));
+        int next = Mth.clamp(effectiveCraftDimension() + dir, minCraftDim(), maxCraftDim(defaultCraftDim()));
         if (next != craftDimension) {
             craftDimension = next;
             craftingIngredients = buildSquareArrangement(craftDimension);
@@ -585,10 +584,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
     }
 
-    /** Upper bound for the crafter-grid size: the server-configured maximum (synced to the client), but never
-     *  below a recipe's own minimum bounding square. */
-    private static int maxCraftDim(int minDim) {
-        return Math.max(minDim, ServerConfig.maxCraftGridSize());
+    /** Upper bound for the crafter-grid size */
+    private static int maxCraftDim(int defaultDim) {
+        return Math.max(defaultDim, ServerConfig.maxCraftGridSize());
     }
 
     /** One drawn cell of the aggregated crafting view: an ingredient and how many sit in this grid slot. */
@@ -645,18 +643,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return availableCraftingRecipe instanceof ShapedRecipe s && (s.getWidth() > 3 || s.getHeight() > 3);
     }
 
-    /** Minimum square crafter grid for the recipe: its bounding square, but never below 3×3 — Create's
-     *  packaged crafting unpacks into a 3×3-and-up crafter array, so a smaller recipe is laid top-left of a
-     *  3×3 grid rather than a too-small one a standard crafter can't satisfy. */
+    /** Smallest square crafter grid the recipe can be fit */
     private int minCraftDim() {
-        return Math.max(3, Math.max(craftingPatternWidth(), craftingPatternHeight()));
+        return Math.max(1, Math.max(craftingPatternWidth(), craftingPatternHeight()));
     }
 
-    /** The square grid size a recipe lays out into: the stored value, floored at its minimum bounding square
-     *  and capped at the configured maximum. Valid even before crafting is toggled on (defaults to min). */
+    /** 3x3, unless larger craft */
+    private int defaultCraftDim() {
+        return Math.max(3, minCraftDim());
+    }
+
+    /** The square grid size a recipe could fit */
     int effectiveCraftDimension() {
-        int minDim = minCraftDim();
-        return Mth.clamp(craftDimension, minDim, maxCraftDim(minDim));   // 0 (unset) → minDim
+        int dim = craftDimension <= 0 ? defaultCraftDim() : craftDimension;   // 0 = unset
+        return Mth.clamp(dim, minCraftDim(), maxCraftDim(defaultCraftDim()));
     }
 
     /** Inserts a gold "Ignore Data" line directly below the header line of a slot tooltip when the relevant
@@ -791,18 +791,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      */
     void applyCraftingResolution() {
         if (availableCraftingRecipe == null) {
-            if (workMode == GaugeWorkMode.CRAFTING) workMode = GaugeWorkMode.REGULAR;   // don't clobber CUSTOM
+            if (workMode == GaugeWorkMode.CRAFTING) workMode = GaugeWorkMode.REGULAR;
             craftingIngredients = new ArrayList<>();
             craftDimension = 0;
             return;
         }
         if (workMode != GaugeWorkMode.CRAFTING) return;
         lockOutputToRecipe();
-        craftDimension = effectiveCraftDimension();   // 0 (unset) → minDim; forced to minDim with ignore-data
+        craftDimension = effectiveCraftDimension();
         craftingIngredients = buildSquareArrangement(craftDimension);
         if (!craftingFitsPackage()) {
             workMode = GaugeWorkMode.REGULAR;
-            availableCraftingRecipe = null;   // hides the crafting toggle; falls back to plain ingredient request
+            availableCraftingRecipe = null;
             craftingIngredients = new ArrayList<>();
             craftDimension = 0;
             return;
@@ -834,14 +834,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private List<BigItemStack> buildSquareArrangement(int dim) {
         List<BigItemStack> out = new ArrayList<>(dim * dim);
         int w = craftingPatternWidth(), h = craftingPatternHeight();
-        var ings = availableCraftingRecipe.getIngredients();
-        int colOff = craftingIsLarge() ? 0 : (3 - w) / 2;
-        int rowOff = craftingIsLarge() ? 0 : (3 - h) / 2;
+        assert availableCraftingRecipe != null;
+        var ingredients = availableCraftingRecipe.getIngredients();
+        int block = Math.min(3, dim);
+        int colOff = craftingIsLarge() ? 0 : (block - w) / 2;
+        int rowOff = craftingIsLarge() ? 0 : (block - h) / 2;
         for (int r = 0; r < dim; r++)
             for (int c = 0; c < dim; c++) {
                 int rr = r - rowOff, cc = c - colOff;
-                ItemStack s = (rr >= 0 && rr < h && cc >= 0 && cc < w && rr * w + cc < ings.size())
-                    ? resolveCraftCell(ings.get(rr * w + cc)) : ItemStack.EMPTY;
+                ItemStack s = (rr >= 0 && rr < h && cc >= 0 && cc < w && rr * w + cc < ingredients.size())
+                    ? resolveCraftCell(ingredients.get(rr * w + cc)) : ItemStack.EMPTY;
                 out.add(new BigItemStack(s, 1));
             }
         return out;

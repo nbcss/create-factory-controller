@@ -85,12 +85,6 @@ class CraftingEditor extends GaugeWorkModeEditor {
             if (hovering) {
                 if (Screen.hasControlDown())
                     s.patternHovered = true;
-                else if (dim > 3)
-                    tooltip = List.of(
-                            CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                            Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
                 else
                     tooltip = List.of(
                             CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
