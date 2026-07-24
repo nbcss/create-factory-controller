@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
@@ -45,12 +46,13 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     private static final ResourceLocation INDICATOR =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/factory_gauge/indicator");
 
-    // Indicator bulb colours (Create's factory_panel light models): green normally, red when the gauge
-    // is misconfigured (missing address) or redstone-powered. Brightness tracks the bulb glow, never
-    // fully dark so an understocked gauge still reads as a dim ("dark green") light.
     private static final int BULB_GREEN = 0x9EFF7F;
     private static final int BULB_RED = 0xFF5555;
     private static final float BULB_MIN_BRIGHTNESS = 0.35f;
+
+    private static final int LABEL_INSET = 1;
+    private static final float LABEL_SCALE = 0.5f;
+    private static final float LABEL_MIN_SCALE = 0.25f;
 
     public VirtualComponentPosition position() {
         return behaviour.position();
@@ -59,8 +61,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     // ── Render ───────────────────────────────────────────────────────────────
 
     /**
-     * Back layer: the gauge's {@code back} sprite. Rendered before connections so the arrows
-     * (whose heads tuck into the cell) sit above the back but below the front.
+     * Back layer: the gauge's {@code back} sprite. Rendered before connections.
      */
     @Override
     public void renderBack(GuiGraphics gfx) {
@@ -70,8 +71,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     }
 
     /**
-     * Front layer: the gauge's {@code front} sprite plus the status dot and selection outline.
-     * Rendered after connections so the front frame covers the arrowheads.
+     * Front layer: the gauge's {@code front} sprite plus the bulb and selection outline.
+     * Rendered after connections.
      */
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
@@ -101,10 +102,6 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         }
     }
 
-    /**
-     * Count overlay — shown for every gauge in "always show label" mode, otherwise only for the hovered one. Drawn in the
-     * top-most pass (after the hover/selection target marks) so the reticle never covers the number.
-     */
     @Override
     public void renderOverlay(GuiGraphics gfx, boolean showCount) {
         Component label = showCount ? behaviour.getCountLabel() : Component.empty();
@@ -113,10 +110,13 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         int y0 = behaviour.position().y() * CELL;
         Font font = Minecraft.getInstance().font;
         int w = font.width(label);
+        float scale = ClientConfig.dynamicLabelScaling()
+                ? Mth.clamp((CELL - LABEL_INSET) / (float) (w + 1), LABEL_MIN_SCALE, LABEL_SCALE)
+                : LABEL_SCALE;
 
         gfx.pose().pushPose();
-        gfx.pose().translate(x0 + CELL - 1, y0 + CELL - 1, 200);
-        gfx.pose().scale(0.5f, 0.5f, 1);
+        gfx.pose().translate(x0 + CELL - LABEL_INSET, y0 + CELL - LABEL_INSET, 200);
+        gfx.pose().scale(scale, scale, 1);
         // Full 8-direction outline, like Create's in-world value-box labels (not a drop shadow).
         Matrix4f matrix = gfx.pose().last().pose();
         font.drawInBatch8xOutline(label.getVisualOrderText(), -w, -font.lineHeight,

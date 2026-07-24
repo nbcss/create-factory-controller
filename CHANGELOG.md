@@ -1,5 +1,8 @@
 ## 1.1.1
 
+Features:
+- Dynamic scale down count label of gauges when text is too wide (configurable).
+
 Changes:
 - Added recipe output tooltip for production order.
 
@@ -9,6 +12,7 @@ Localization:
 Bugfixes:
 - Fixed compatibilities issue with older version of fluid transportation mods.
 - Fixed item rendering brightness was incorrect in certain cases.
+- Fixed a small render mistake of logical operator in logical tube GUI.
 
 ## 1.1.0
 

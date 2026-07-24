@@ -55,7 +55,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     private static final int CELL = 16;
     private static final int COLS_PER_SIDE = 5;
-    private static final int GRID_COLS = COLS_PER_SIDE * 2 + 1;   // [5 inputs][tube][5 outputs]
+    private static final int GRID_COLS = COLS_PER_SIDE * 2 + 1;
     private static final int TUBE_COL = COLS_PER_SIDE, MID_ROW = 1;
     private static final int MAX_PER_SIDE = COLS_PER_SIDE * 2;    // 5 cols × 2 rows
 
@@ -86,7 +86,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - PANEL_H) / 2;
 
-        menu.repositionSlots(-2000, -2000, false);   // no inventory on this screen — keep the shared slots off-screen
+        menu.repositionSlots(-2000, -2000, false);
 
         relocateButton = new TooltipIconButton(panelX + 8, panelY + 79, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> { controller.beginRelocateMode(tubePos); Minecraft.getInstance().setScreen(controller); });
@@ -98,8 +98,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         addConnectionButton.setToolTip(CreateLang.translate("gui.factory_panel.connect_input").component());
         addWidget(addConnectionButton);
 
-        // Mode button group (AND/OR/NOR/NAND), to the LEFT of the confirm button. Each blits its mode sprite; the
-        // live mode glows green. Selecting commits immediately (the output then follows one tick later via preTick).
         LogicalTubeBehaviour.Mode[] modes = LogicalTubeBehaviour.Mode.values();
         int groupX = panelX + 160 - modes.length * 18 - 4;
         for (int i = 0; i < modes.length; i++) {
@@ -138,8 +136,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         modeButtons.forEach((m, b) -> b.green = m == current);
     }
 
-    /** Mode-button tooltip: name + hold-shift hint, with the description appended while Shift is held (matches
-     *  SetItemScreen's data-toggle tooltips). */
     private List<Component> modeButtonTooltip(LogicalTubeBehaviour.Mode m) {
         boolean shift = hasShiftDown();
         List<Component> tip = new ArrayList<>();
@@ -152,7 +148,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         return tip;
     }
 
-    // ── Layout (local 11×3 cell grid centred in the panel) ────────────────────────
+    // ── Layout ────────────────────────
 
     private int gridX() { return panelX - 4 + (PANEL_W - GRID_COLS * CELL) / 2; }
     private int gridY() { return panelY + 20; }
@@ -165,7 +161,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     private static int outputCol(int i) { return (TUBE_COL + 1) + (i % COLS_PER_SIDE); }
     private static int rowOf(int i) { return i < COLS_PER_SIDE ? 0 : 2; }
 
-    // ── Tube state (live off the menu) ────────────────────────────────────────────
+    // ── Tube state ────────────────────────────────────────────
 
     private LogicalTubeBehaviour tube() {
         return menu.componentAt(tubePos) instanceof LogicalTubeBehaviour t ? t : null;
@@ -202,7 +198,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         renderConnections(gfx, inputs, outputs);    // then wires (above backs, below fronts)
         renderIconFronts(gfx, inputs, outputs, mouseX, mouseY);   // fronts cover the arrow ends
 
-        // Logic gate at center
+        RenderSystem.enableBlend();
         gfx.blitSprite(
                 LOGIC_GATE_ICON_PREFIX.withSuffix(currentMode().name().toLowerCase()),
                 cellScreenX(TUBE_COL), cellScreenY(MID_ROW), 16 ,16);
@@ -226,13 +222,11 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         List<Wire> wires = new ArrayList<>();
         for (int i = 0; i < Math.min(MAX_PER_SIDE, inputs.size()); i++) {
             int c = inputCol(i), r = rowOf(i);
-            // input flows component → tube: V (component col into the band) then H (band to tube); arrow at the tube.
             wires.add(new Wire(List.of(new Vector2i(c, r), new Vector2i(c, MID_ROW), new Vector2i(TUBE_COL, MID_ROW)),
                     inputs.get(i).getConnectionColor(menu), compareConnection(inputs.get(i))));
         }
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++) {
             int c = outputCol(i), r = rowOf(i);
-            // output flows tube → component: H (tube along the band) then V (up/down to the component); arrow at it.
             wires.add(new Wire(List.of(new Vector2i(TUBE_COL, MID_ROW), new Vector2i(c, MID_ROW), new Vector2i(c, r)),
                     outputs.get(i).getConnectionColor(menu), compareConnection(outputs.get(i))));
         }
@@ -244,7 +238,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         gfx.pose().popPose();
     }
 
-    /** Render order INACTIVE(0) → UNPOWERED(1) → POWERED(2). */
+    /** Render order */
     private static int compareConnection(Connection c) {
         if (c instanceof RedstoneConnection rc)
             return switch (rc.state()) { case INACTIVE -> 0; case UNPOWERED -> 1; case POWERED -> 2; };
@@ -287,7 +281,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     }
 
     private static void highlight(GuiGraphics gfx, int x, int y) {
-        // Above the slot's item/icon (rendered at z≈150 by renderItem), so the hover cover sits on top of it.
         gfx.pose().pushPose();
         gfx.pose().translate(0, 0, 300);
         gfx.fill(x, y, x + CELL, y + CELL, 0x80FFFFFF);
@@ -377,9 +370,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         Connection c = slotConnectionAt(mouseX, mouseY);
         if (c != null) {
             if (hasShiftDown())
-                PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos, c.from, c.to));   // shift = disconnect
+                PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos, c.from, c.to));
             else
-                PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, c.from, c.to));  // click = reverse (server validates)
+                PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, c.from, c.to));
             playClickSound();
             return true;
         }
@@ -392,7 +385,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                 .forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
     }
 
-    // ── Overlay plumbing (mirror ConfigureRedstoneLinkScreen) ─────────────────────
+    // ── Overlay plumbing ─────────────────────
 
     @Override public void onPanelSync() { controller.onPanelSync(); }
 

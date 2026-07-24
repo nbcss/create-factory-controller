@@ -10,6 +10,7 @@ public final class ClientConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<String> CONTROLLER_BACKGROUND;
     public static final ModConfigSpec.BooleanValue ALWAYS_SHOW_LABEL;
+    public static final ModConfigSpec.BooleanValue DYNAMIC_LABEL_SCALING;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
     public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
@@ -25,6 +26,10 @@ public final class ClientConfig {
                 .comment("Show the count label on every gauge in the controller interface, instead of only the hovered gauge.")
                 .translation("createfactorycontroller.config.always_show_label")
                 .define("alwaysShowLabel", true);
+        DYNAMIC_LABEL_SCALING = builder
+                .comment("Shrink a gauge's count label when it is too wide for the gauge.")
+                .translation("createfactorycontroller.config.dynamic_label_scaling")
+                .define("dynamicLabelScaling", true);
         CHECK_INGREDIENTS_ON_SEND = builder
                 .comment("Show the ingredient-availability tooltip when hovering the Stock Keeper's Send button over",
                         "an order containing Production Patterns. Must also be enabled in the server config.")
@@ -52,6 +57,10 @@ public final class ClientConfig {
 
     public static boolean alwaysShowLabel() {
         return ALWAYS_SHOW_LABEL.get();
+    }
+
+    public static boolean dynamicLabelScaling() {
+        return DYNAMIC_LABEL_SCALING.get();
     }
 
     public static boolean checkIngredientsOnSend() {

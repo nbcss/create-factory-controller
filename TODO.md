@@ -25,6 +25,9 @@
 - [TODO] Integer Connection & Arithmetic Component
 - [TODO] Projection Mode
 - [TODO] Controller disabled (redstone powered) indicator
+- [TODO] Custom arrow bend mode
+- [TODO] Color wire by limit blocked state
+- [TODO] Allow 2x2 and 1x1 crafting grid
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
@@ -37,9 +40,7 @@
 - [TODO] Show Active Promise Timer
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
-- [TBC] Custom arrow bend mode
 - [TBC] No promise request
-- [TBC] Quick Request Mode
 - [TBC] Redstone Frequency from clipboard
 - [TBC] Gauge with recipe filter
 - [TBC] JEI to create gauge
