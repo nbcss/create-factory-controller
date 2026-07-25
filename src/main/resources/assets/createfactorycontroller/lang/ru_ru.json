@@ -183,6 +183,8 @@
   "createfactorycontroller.config.controller_background.tooltip": "Путь к текстуре фона экрана контроллера. Файл текстуры должен находиться по пути 'createfactorycontroller/textures/gui/controller_background/' и иметь разрешение 16 пикселей.",
   "createfactorycontroller.config.always_show_label": "Всегда показывать метку",
   "createfactorycontroller.config.always_show_label.tooltip": "Показывать метку количества на каждом фабричном контроллере в оверлее контроллера, а не только при наведении курсора.",
+  "createfactorycontroller.config.dynamic_label_scaling": "Dynamic gauge count label scaling",
+  "createfactorycontroller.config.dynamic_label_scaling.tooltip": "Shrink a gauge's count label when it is too wide for the gauge.",
   "createfactorycontroller.config.max_components": "Ёмкость контроллера",
   "createfactorycontroller.config.max_components.tooltip": "Максимальное количество фабричных контроллеров, которое может содержать один контроллер фабрики. Более высокие значения увеличивают объём сохраняемых данных контроллера и размер пакета синхронизации GUI.",
   "createfactorycontroller.config.max_craft_grid": "Макс. размер сетки крафта",
