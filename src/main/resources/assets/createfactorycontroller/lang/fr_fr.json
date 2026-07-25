@@ -183,6 +183,8 @@
   "createfactorycontroller.config.controller_background.tooltip": "Chemin de la texture d'arrière-plan de l'écran du Contrôleur. Le fichier de texture doit se trouver dans le dossier 'createfactorycontroller/textures/gui/controller_background/', en résolution 16 pixels.",
   "createfactorycontroller.config.always_show_label": "Toujours Afficher l'Étiquette",
   "createfactorycontroller.config.always_show_label.tooltip": "Affiche l'étiquette de quantité sur chaque jauge dans l'interface du contrôleur, au lieu de seulement la jauge survolée.",
+  "createfactorycontroller.config.dynamic_label_scaling": "Dynamic gauge count label scaling",
+  "createfactorycontroller.config.dynamic_label_scaling.tooltip": "Shrink a gauge's count label when it is too wide for the gauge.",
   "createfactorycontroller.config.max_components": "Capacité du Contrôleur",
   "createfactorycontroller.config.max_components.tooltip": "Nombre maximum de composants qu'un seul Contrôleur d'Usine peut contenir. Des valeurs plus élevées augmentent les données sauvegardées du contrôleur et la taille du paquet de synchronisation de l'interface.",
   "createfactorycontroller.config.max_craft_grid": "Taille Maximale de la Grille de Fabrication",
