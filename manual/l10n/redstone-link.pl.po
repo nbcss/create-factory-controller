@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-21 03:07+1000\n"
+"POT-Creation-Date: 2026-07-26 07:22+1000\n"
 "PO-Revision-Date: 2026-07-18 00:38+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -18,7 +18,7 @@ msgstr ""
 "|| n%100>=20) ? 1 : 2);\n"
 
 #. type: Title ==
-#: ../src/electron-tube.adoc:28 ../src/redstone-link.adoc:38
+#: ../src/electron-tube.adoc:31 ../src/redstone-link.adoc:38
 #, no-wrap
 msgid "Configuration"
 msgstr ""
@@ -121,9 +121,9 @@ msgstr ""
 #. type: horizontal
 #: ../src/redstone-link.adoc:31
 msgid ""
-"Redstone links are distinguished by channels, which consists of 2 item "
-"types. Each channel carries a redstone signal independently of the others. "
-"Examples of distinct channels are:"
+"Redstone links are distinguished by channels, which consist of 2 item types. "
+"Each channel carries a redstone signal independently of the others. Examples "
+"of distinct channels are:"
 msgstr ""
 
 #. type: horizontal

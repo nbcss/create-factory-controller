@@ -1,0 +1,212 @@
+# Language zh-hans translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"PO-Revision-Date: 2026-07-26 07:22+1000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh-hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#, no-wrap
+msgid "Icon"
+msgstr "图标"
+
+#. type: Table
+#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#, no-wrap
+msgid "Name"
+msgstr "名称"
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:195 ../src/production-orders.adoc:5
+#, no-wrap
+msgid "A production task of oak planks"
+msgstr "橡木木板的生产任务"
+
+#. type: Title =
+#: ../src/production-orders.adoc:1
+#, fuzzy, no-wrap
+#| msgid "Production orders UI"
+msgid "Production Orders"
+msgstr "生产订单界面"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:4
+#, fuzzy
+#| msgid ""
+#| "Another mode of the factory gauge, \"follow demand and order\", "
+#| "additionally allows the item produceable by a gauge to be manually "
+#| "ordered from a stock keeper tuned to the same network. In stock keeper "
+#| "UI, each gauge in this mode appears as a production task, signified by a "
+#| "blueprint background."
+msgid ""
+"Factory gauges set to the xref:factory-gauge.adoc#production-orders[\"follow "
+"demand and order\" mode] allow their products to be manually ordered from a "
+"stock keeper tuned to the same network. In the stock keeper UI, each gauge "
+"in this mode appears as a [#term-production-task]_production task_, "
+"signified by a blueprint background."
+msgstr ""
+"另一个工作模式，“按需生产与手动请求”，除具备按需生产功能外，还允许玩家在绑定"
+"至同一网络的仓库管理员界面中手动请求生产物品。在仓库管理员界面中，每个处于此"
+"模式的仪表都会显示为一个生产任务，它们带有蓝图背景。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:9
+#, fuzzy
+#| msgid ""
+#| "Sending an order containing production tasks creates a production order, "
+#| "causing the corresponding gauges to add the number of items in the order "
+#| "to their demands. When the produced items arrive in the logistic network, "
+#| "they are sent out again to the address specified on the order."
+msgid ""
+"Click to add the production task to the order, and adjust the amount per "
+"usual. Sending an order containing production tasks creates a [#term-"
+"production-order]_production order_, causing the corresponding factory "
+"gauges to add the number of items in the order to their xref:factory-"
+"gauge.adoc#term-demand[demands]. When the produced items arrive in the "
+"logistic network, they are sent out again to the address specified on the "
+"order."
+msgstr ""
+"提交包含生产任务的订单将会创建生产订单，把订单中的物品数量加入对应仪表的需"
+"求。当产物进入物流网络所监测的仓储后，会再次被发往订单指定的地址。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:11
+#, fuzzy
+#| msgid ""
+#| "Pending production orders can be viewed in the \"production orders\" tab "
+#| "in the stock keeper UI. They are automatically removed when all ordered "
+#| "items arrive in the logistic network, or stuck if they never arrive."
+msgid ""
+"Pending production orders can be viewed in the \"production orders\" tab in "
+"the stock keeper UI. They are automatically removed when all ordered items "
+"arrive in the logistic network. Otherwise, they remain stuck if the items "
+"never arrive."
+msgstr ""
+"待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品"
+"进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表"
+"中。"
+
+#. type: Block title
+#: ../src/production-orders.adoc:12
+#, no-wrap
+msgid "Production orders UI"
+msgstr "生产订单界面"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:17
+msgid "❶ Production orders tab:: Click to switch to this tab."
+msgstr "❶ 生产订单标签页:: 点击切换至此页。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:20
+msgid ""
+"❷ Destination address:: The address the items are sent to after they arrive "
+"in storage."
+msgstr "❷ 目标地址:: 物品进入库存后将被发送到的地址。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:23
+msgid "❸ Elapsed time:: Time elapsed since the order was created."
+msgstr "❸ 已用时间:: 自订单创建以来经过的时间。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:26
+msgid "❹ Cancel button:: Click to cancel the order."
+msgstr "❹ 取消按钮:: 点击取消订单。"
+
+#. type: Plain text
+#: ../src/production-orders.adoc:29
+msgid "❺ Ordered items:: Type, amount, and status of the ordered items."
+msgstr "❺ 请求物品:: 显示物品类型、数量与当前状态。"
+
+#. type: Block title
+#: ../src/production-orders.adoc:30
+#, no-wrap
+msgid "Statuses of ordered items"
+msgstr "订单中物品的状态"
+
+#. type: Table
+#: ../src/production-orders.adoc:35
+#, no-wrap
+msgid "Description"
+msgstr "描述"
+
+#. type: Table
+#: ../src/production-orders.adoc:36
+#, no-wrap
+msgid "Waiting for ingredients"
+msgstr "等待原材料"
+
+#. type: Table
+#: ../src/production-orders.adoc:38
+#, no-wrap
+msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
+msgstr "负责生产的仪表没有足够原材料，或原材料尚未发出。"
+
+#. type: Table
+#: ../src/production-orders.adoc:38
+#, fuzzy, no-wrap
+#| msgid "image:redstone-link-receive-powered.png[,64,64]"
+msgid "image:production-order-processing.png[,14,14]"
+msgstr "image:redstone-link-receive-powered.png[,64,64]"
+
+#. type: Table
+#: ../src/production-orders.adoc:39
+#, no-wrap
+msgid "Processing"
+msgstr "生产中"
+
+#. type: Table
+#: ../src/production-orders.adoc:41
+#, no-wrap
+msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
+msgstr "仪表已经发出原材料，但产物尚未进入仓储。"
+
+#. type: Table
+#: ../src/production-orders.adoc:41
+#, fuzzy, no-wrap
+#| msgid "image:redstone-link-send-powered.png[,64,64]"
+msgid "image:production-order-sent.png[,14,14]"
+msgstr "image:redstone-link-send-powered.png[,64,64]"
+
+#. type: Table
+#: ../src/production-orders.adoc:42
+#, no-wrap
+msgid "Sent"
+msgstr "已发送"
+
+#. type: Table
+#: ../src/production-orders.adoc:44
+#, no-wrap
+msgid "The produced item has arrived in storage, and been dispatched to the destination address."
+msgstr "产物已进入仓储，并已发往目标地址。"
+
+#. type: Table
+#: ../src/production-orders.adoc:44
+#, fuzzy, no-wrap
+#| msgid "image:redstone-link-receive-powered.png[,64,64]"
+msgid "image:production-order-invalid.png[,14,14]"
+msgstr "image:redstone-link-receive-powered.png[,64,64]"
+
+#. type: Table
+#: ../src/production-orders.adoc:45
+#, no-wrap
+msgid "Invalid gauge"
+msgstr "无效仪表"
+
+#. type: Table
+#: ../src/production-orders.adoc:46
+#, no-wrap
+msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
+msgstr "负责生产的仪表已被破坏，或已切换为其他工作模式。"

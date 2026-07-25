@@ -50,3 +50,5 @@ docker run --rm -v ..:/work ghcr.io/nbcss/create-factory-controller/manual-build
 == Writing Source Documents
 
 Update translation files after making changes: `bundle exec rake po4a:update`
+
+Before pushing translation file changes to main, make sure Weblate is merged.
