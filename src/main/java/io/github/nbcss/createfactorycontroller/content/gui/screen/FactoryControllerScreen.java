@@ -16,6 +16,9 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintLibraryScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintPlaceScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintSaveScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;

@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui.screen;
+package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
@@ -7,6 +7,9 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.ActionPromptWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.BlueprintPlacePacket;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -73,6 +76,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     private final FactoryControllerScreen controller;
     private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
     private final List<EntryWidget> entryWidgets = new ArrayList<>();
+    private final ActionPromptWidget actionPrompt = new ActionPromptWidget();
     private final Map<Item, Integer> inventoryCounts = new HashMap<>();
     private List<BlueprintEntry> blueprints = List.of();
 
@@ -268,6 +272,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
+        actionPrompt.render(gfx, font, panelX + PANEL_W / 2, panelY + panelH / 3 * 2);
         if (insideViewport(mouseX, mouseY)) {
             for (EntryWidget widget : entryWidgets)
                 if (widget.renderTooltip(gfx, mouseX, mouseY)) return;
@@ -466,7 +471,9 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             byte[] payload;
             try {
                 payload = BlueprintStorage.payload(BlueprintStorage.blueprintPath(blueprint.name()));
-            } catch (IOException | RuntimeException ignored) {
+            } catch (IOException | RuntimeException exception) {
+                actionPrompt.show(BlueprintErrors.describe(
+                        "createfactorycontroller.gui.blueprint.load_failed", exception));
                 return;
             }
             controller.beginBlueprintPlacement(new BlueprintPlacement(blueprint.name(), info, payload));
@@ -474,7 +481,15 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         }
 
         private void edit() {
-            Minecraft.getInstance().setScreen(new BlueprintEditScreen(controller, blueprint.name()));
+            BlueprintStorage.Info loaded;
+            try {
+                loaded = BlueprintStorage.read(BlueprintStorage.blueprintPath(blueprint.name()));
+            } catch (IOException | RuntimeException exception) {
+                actionPrompt.show(BlueprintErrors.describe(
+                        "createfactorycontroller.gui.blueprint.load_failed", exception));
+                return;
+            }
+            Minecraft.getInstance().setScreen(new BlueprintEditScreen(controller, blueprint.name(), loaded));
         }
 
         private void bind(BlueprintEntry blueprint) {

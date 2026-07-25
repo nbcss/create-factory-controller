@@ -1,9 +1,9 @@
-package io.github.nbcss.createfactorycontroller.content.gui.screen;
+package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import com.simibubi.create.foundation.gui.AllIcons;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import net.createmod.catnip.gui.element.ScreenElement;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -15,17 +15,13 @@ import java.util.List;
 public class BlueprintEditScreen extends BlueprintFormScreen {
     private final Path file;
     private final String originalName;
-    private BlueprintStorage.Info info = BlueprintStorage.Info.EMPTY;
+    private final BlueprintStorage.Info info;
 
-    public BlueprintEditScreen(FactoryControllerScreen controller, String blueprintName) {
+    public BlueprintEditScreen(FactoryControllerScreen controller, String blueprintName, BlueprintStorage.Info info) {
         super(controller, Component.translatable("createfactorycontroller.gui.blueprint.edit_title"));
         this.originalName = blueprintName;
         this.file = BlueprintStorage.blueprintPath(blueprintName);
-        try {
-            this.info = BlueprintStorage.read(file);
-        } catch (IOException | RuntimeException exception) {
-            showError(failure("createfactorycontroller.gui.blueprint.load_failed", exception));
-        }
+        this.info = info;
     }
 
     @Override
@@ -75,13 +71,7 @@ public class BlueprintEditScreen extends BlueprintFormScreen {
             BlueprintStorage.edit(file, blueprintName(), blueprintNote());
             Minecraft.getInstance().setScreen(previousScreen());
         } catch (IOException | RuntimeException exception) {
-            showError(failure("createfactorycontroller.gui.blueprint.save_failed", exception));
+            showError(BlueprintErrors.describe("createfactorycontroller.gui.blueprint.save_failed", exception));
         }
-    }
-
-    private static Component failure(String key, Exception exception) {
-        String reason = exception.getMessage() == null
-                ? exception.getClass().getSimpleName() : exception.getMessage();
-        return Component.translatable(key, reason).withStyle(ChatFormatting.RED);
     }
 }

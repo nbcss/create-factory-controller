@@ -1,8 +1,9 @@
-package io.github.nbcss.createfactorycontroller.content.gui.screen;
+package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import net.createmod.catnip.gui.element.ScreenElement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;

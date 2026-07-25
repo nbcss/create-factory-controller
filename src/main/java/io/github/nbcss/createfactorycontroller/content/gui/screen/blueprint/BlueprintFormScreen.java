@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui.screen;
+package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
@@ -6,6 +6,8 @@ import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -251,7 +253,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         noteBox.setValue(oldNote);
         noteBox.setValueListener(value -> relayout());
 
-        // Read-only screens still render both fields; leaving them unregistered is what makes them inert.
         if (editable()) {
             addWidget(nameBox);
             addWidget(noteBox);
