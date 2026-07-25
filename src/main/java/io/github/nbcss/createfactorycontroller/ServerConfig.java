@@ -21,7 +21,7 @@ public final class ServerConfig {
                 .comment("Maximum number of components a single Factory Controller may hold.",
                         "Higher values increase the controller's saved data and its GUI sync packet size.")
                 .translation("createfactorycontroller.config.max_components")
-                .defineInRange("maxComponents", 256, 1, 1024);
+                .defineInRange("maxComponents", 512, 1, 1024);
         MAX_CRAFT_GRID_SIZE = builder
                 .comment("Largest square mechanical-crafter grid a recipe may be laid out into in the recipe screen")
                 .translation("createfactorycontroller.config.max_craft_grid")
