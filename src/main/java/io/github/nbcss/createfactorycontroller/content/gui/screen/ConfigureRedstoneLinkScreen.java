@@ -5,6 +5,7 @@ import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
@@ -34,6 +35,7 @@ import java.util.List;
  * Full-configuration overlay for a Redstone Link component.
  */
 @OnlyIn(Dist.CLIENT)
+@IPNIgnore
 public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
 

@@ -5,6 +5,7 @@ import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.item.TooltipHelper;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -39,6 +40,7 @@ import java.util.List;
  * Set-item configuration screen for a virtual gauge.
  */
 @OnlyIn(Dist.CLIENT)
+@IPNIgnore
 public class SetItemScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
 
     private static final ResourceLocation PLAYER_INVENTORY_TEX =

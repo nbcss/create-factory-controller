@@ -15,6 +15,7 @@ import com.simibubi.create.content.processing.burner.BlazeBurnerRenderer;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveProductionOrderPacket;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
@@ -56,6 +57,7 @@ import java.util.List;
 /**
  * For the Production Orders page (sub-page of stock keeper GUI).
  */
+@IPNIgnore
 public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKeeperRequestMenu> {
 
     private static final ResourceLocation TEX =

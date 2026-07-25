@@ -18,6 +18,7 @@ Bugfixes:
 
 Compatibility:
 - Added compat to new version of Create: FluidLogistics
+- Hide Inventory Profiles Next buttons from Factory Controller screens.
 
 ## 1.1.0
 

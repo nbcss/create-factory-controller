@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.utility.CreateLang;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -34,6 +35,7 @@ import java.util.UUID;
  * for editing a network's settings
  */
 @OnlyIn(Dist.CLIENT)
+@IPNIgnore
 public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
 

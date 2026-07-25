@@ -7,6 +7,7 @@ import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
@@ -31,6 +32,7 @@ import java.util.List;
  * Client-only overlay for picking the controller's board background texture.
  */
 @OnlyIn(Dist.CLIENT)
+@IPNIgnore
 public class ControllerSettingScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> {
 
     private static final ResourceLocation PANEL_TEX =

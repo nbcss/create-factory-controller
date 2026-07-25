@@ -48,6 +48,16 @@ repositories {
         name = "BlameJared (JEI)"
         url = "https://maven.blamejared.com"
     }
+    maven {
+        name = "IPN Releases"
+        url = "https://maven.ipn-mod.org/releases"
+        mavenContent {
+            releasesOnly()
+        }
+        content {
+            includeGroup("org.anti_ad.mc")
+        }
+    }
 }
 
 base {
@@ -192,6 +202,10 @@ dependencies {
     // JEI (optional): compile against the API only; run the full mod in dev for testing.
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
     localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
+
+    // Inventory Profiles Next (optional): annotation API only. IPN reads @IPNIgnore reflectively when installed;
+    // keeping the dependency compile-only avoids bundling or requiring IPN at runtime.
+    compileOnly("org.anti_ad.mc:InventoryProfilesNext-neoforge-1.21.1:${ipn_version}") { transitive = false }
 
     // Fluid-logistics addons (optional/soft): CreateFluidLogistic (modid "fluidlogistics") and CreateFluid
     // (modid "fluid"), consumed from local jars in lib/ (neither is on a maven). We COMPILE against both so both

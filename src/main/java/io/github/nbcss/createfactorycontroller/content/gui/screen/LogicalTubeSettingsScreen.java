@@ -5,6 +5,7 @@ import com.simibubi.create.AllItems;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.item.TooltipHelper;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -42,6 +43,7 @@ import java.util.List;
  * Full-config overlay for a Logical Tube.
  */
 @OnlyIn(Dist.CLIENT)
+@IPNIgnore
 public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
 

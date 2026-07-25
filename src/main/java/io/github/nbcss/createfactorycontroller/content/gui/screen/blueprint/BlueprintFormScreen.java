@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
@@ -38,6 +39,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+@IPNIgnore
 public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
     private static final ResourceLocation FRAME = resource("blueprint/frame");

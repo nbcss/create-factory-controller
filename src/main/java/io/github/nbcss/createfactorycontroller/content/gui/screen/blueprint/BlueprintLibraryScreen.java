@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -45,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /** Displays the reusable component blueprints available to the controller. */
+@IPNIgnore
 public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
     private static final ResourceLocation FRAME = resource("blueprint/frame");
