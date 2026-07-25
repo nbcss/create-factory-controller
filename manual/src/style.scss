@@ -16,19 +16,22 @@ $colors: (
   link: #0066cc,
   divider: #e0e0e0,
   figcaption: #555555,
+  term-underline: #979797,
   table-border: #cccccc,
   header-text: #f2f2f2,
   header-background: #232323,
   menu-border: #d0d0d0,
   menu-selected: rgba(0, 0, 0, 0.1),
+  highlight: rgba(238, 226, 54, 0.5),
 );
 
 $colors-dark: (
   text: #f0f0f0,
-  background: #000000,
+  background: #0c0c0c,
   link: #5da7f2,
   divider: #3f3f3f,
-  figcaption: #cccccc,
+  figcaption: #c2c2c2,
+  term-underline: #888888,
   table-border: #505050,
   menu-border: #3f3f3f,
   menu-selected: rgba(240, 240, 240, 0.17),
@@ -372,6 +375,16 @@ a {
   }
 }
 
+a[href*="#term-"] {
+  color: inherit;
+  text-decoration: underline;
+
+  &:not(:hover) {
+    text-decoration: underline map.get($colors, term-underline) dashed;
+    text-decoration-color: var(--color-term-underline);
+  }
+}
+
 // Figures
 
 .image-block {
@@ -475,6 +488,13 @@ dd {
 .action-list > ::marker {
   content: "\f061  ";
   font-family: "Font Awesome 6 Solid";
+}
+
+// Fragment target
+
+main :target {
+  background: map.get($colors, highlight);
+  background: var(--color-highlight);
 }
 
 // Font Awesome
