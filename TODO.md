@@ -17,8 +17,11 @@
 - [DONE] Blueprint Save/Load
 - [DONE] Production Order Status Notification
 
-# 1.2.0
+# 1.1.1
 - [DONE] Allow 2x2 and 1x1 crafting grid
+- [TODO] Compat with stock keeper from different mods
+
+# 1.2.0
 - [TODO] Component Search
 - [TODO] Production Order Error Notification
 - [TODO] Selector Gauge
@@ -28,7 +31,6 @@
 - [TODO] Controller disabled (redstone powered) indicator
 - [TODO] Custom arrow bend mode
 - [TODO] Color wire by limit blocked state
-- [TODO] Compat with stock keeper from different mods
 
 # Roadmap
 - [TODO] Custom Keybinding Preset

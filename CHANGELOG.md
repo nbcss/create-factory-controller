@@ -15,6 +15,9 @@ Bugfixes:
 - Fixed item rendering brightness was incorrect in certain cases.
 - Fixed a small render mistake of logical operator in logical tube GUI.
 
+Compatibility:
+- Added compat to new version of Create: FluidLogistics
+
 ## 1.1.0
 
 Features:

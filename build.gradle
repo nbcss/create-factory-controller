@@ -63,11 +63,23 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 // the two fluid-FILTER addons (compileOnly) so both FluidFilterProviders build regardless; repackaged has no
 // compat code yet, so it's runtime-only (for exploration/testing).
 //   -PfluidRuntime=none      (default) → neither (the base runClient stays addon-free)
-//   -PfluidRuntime=cfl                 → CreateFluidLogistic
+//   -PfluidRuntime=cfl                 → CreateFluidLogistic (newest fluidlogistics jar in lib/)
+//   -PfluidRuntime=cfl-legacy          → CreateFluidLogistic (oldest jar; tests the pre-1.2.5 reflection fallback)
 //   -PfluidRuntime=createfluid         → CreateFluid
 //   -PfluidRuntime=repackaged          → Create: Repackaged (+ its required compat_manager from maven)
 // The IntelliJ ".run/" folder ships ready-made buttons for the CFL, CreateFluid and Repackaged variants.
-def fluidLogisticsJar = fileTree(dir: "lib", include: ["fluidlogistics-*.jar"])
+//
+// CreateFluidLogistic ships TWO API generations (1.2.5 refactored fluids into a "PackageResource" system and removed
+// setFluidVirtual), and lib/ may hold both jars at once. We COMPILE against the NEWEST one; CflFluidProvider adapts to
+// the legacy API by reflection, so a single build runs on either. Pick newest/oldest by a numeric version sort so the
+// two-jar case is unambiguous (a bare fluidlogistics-*.jar fileTree would otherwise put both on the classpath).
+def modVersionKey = { java.io.File f ->
+    def m = (f.name =~ /(\d+(?:\.\d+)+)/)
+    (m ? m[0][1] : "0").tokenize('.').collect { String.format('%05d', it as int) }.join('.')
+}
+def fluidLogisticsJars = fileTree(dir: "lib", include: ["fluidlogistics-*.jar"]).files.sort { modVersionKey(it) }
+def fluidLogisticsJar = fluidLogisticsJars.isEmpty() ? files() : files(fluidLogisticsJars.last())        // newest → compile main + `cfl`
+def fluidLogisticsLegacyJar = fluidLogisticsJars.size() < 2 ? files() : files(fluidLogisticsJars.first()) // oldest → legacyCompat source set + `cfl-legacy`
 def createFluidJar = fileTree(dir: "lib", include: ["fluid-*.jar"])
 def repackagedJar = fileTree(dir: "lib", include: ["repackaged-*.jar"])
 def fluidRuntime = (project.findProperty('fluidRuntime') ?: 'none').toString().toLowerCase()
@@ -192,6 +204,8 @@ dependencies {
     compileOnly createFluidJar
     if (fluidRuntime == 'cfl') {
         localRuntime fluidLogisticsJar
+    } else if (fluidRuntime == 'cfl-legacy') {
+        localRuntime fluidLogisticsLegacyJar
     } else if (fluidRuntime == 'createfluid') {
         localRuntime createFluidJar
     } else if (fluidRuntime == 'repackaged') {
@@ -209,6 +223,37 @@ tasks.named('compileJava') {
     if (fluidLogisticsJar.isEmpty()) exclude '**/compat/fluids/CflFluidProvider.java'
     if (createFluidJar.isEmpty()) exclude '**/compat/fluids/CreateFluidProvider.java'
 }
+
+// `legacyCompat` source set: providers compiled against an OLDER version of an optional dependency than `main` uses,
+// for back-compat with mods that made breaking API changes. main.output supplies the base classes/interfaces they
+// extend; each provider's own old jar is added as a `legacyCompatCompileOnly` entry. Deps go through the source set's
+// OWN configurations (not an imperative `compileClasspath =`, which IntelliJ's Gradle model ignores → red errors) so
+// the IDE resolves them, and the corresponding *modern* jar is never on this classpath so no version-shadowing is
+// needed. Compiled classes are bundled into the mod jar + dev runtime; FluidCompat loads each by name only when the
+// old version is detected at runtime, so its removed-API references are never linked against a newer jar.
+//
+// Currently holds only CflLegacyFluidProvider (pre-1.2.5 CreateFluidLogistic, whose setFluidVirtual filter the 1.2.5
+// refactor removed). To add another legacy provider: drop it in src/legacyCompat/java, add its old jar as
+// `legacyCompatCompileOnly`, and add a matching `exclude` below so a jar-less checkout (e.g. CI) skips just that file.
+sourceSets {
+    legacyCompat {
+        java { srcDir 'src/legacyCompat/java' }
+    }
+}
+// Minecraft + NeoForge on the source set, via MDG's own API (keeps IntelliJ's classpath model correct).
+neoForge.addModdingDependenciesTo(sourceSets.legacyCompat)
+dependencies {
+    legacyCompatCompileOnly "com.simibubi.create:create-1.21.1:${create_version}"  // Create + Registrate (AllItems/ItemEntry)
+    legacyCompatCompileOnly sourceSets.main.output                                 // base providers/interfaces (e.g. CflFluidProvider)
+    legacyCompatCompileOnly fluidLogisticsLegacyJar                                // pre-1.2.5 CFL (setFluidVirtual); empty ⇒ harmless
+    // Legacy classes on the dev runtime (they sit unused unless the old version is detected).
+    localRuntime files(sourceSets.legacyCompat.output)
+}
+tasks.named('compileLegacyCompatJava') {
+    // On a jar-less checkout the matching old jar is absent, so its API can't resolve — drop just that provider.
+    if (fluidLogisticsLegacyJar.isEmpty()) exclude '**/compat/fluids/CflLegacyFluidProvider.java'
+}
+tasks.named('jar') { from sourceSets.legacyCompat.output }
 
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.

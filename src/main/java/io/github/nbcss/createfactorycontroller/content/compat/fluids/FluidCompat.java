@@ -10,6 +10,8 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -24,8 +26,11 @@ public final class FluidCompat {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final String CFL_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CflFluidProvider";
+    private static final String CFL_LEGACY_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CflLegacyFluidProvider";
     private static final String CREATEFLUID_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CreateFluidProvider";
     private static final String REPACKAGED_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.RepackagedFluidProvider";
+
+    private static final ArtifactVersion CFL_PACKAGE_RESOURCE_VERSION = new DefaultArtifactVersion("1.2.5");
 
     private record Addon(String modid, @Nullable String filterItem, String providerClass) {}
 
@@ -61,9 +66,23 @@ public final class FluidCompat {
                     + "fluid filters are disabled. Update it to use fluid gauges.", addon.modid(), addon.filterItem());
                 continue;
             }
-            addProvider(PROVIDERS, addon.providerClass());
+            addProvider(PROVIDERS, providerClassFor(addon));
         }
         return PROVIDERS;
+    }
+
+    private static String providerClassFor(Addon addon) {
+        if (CFL_PROVIDER.equals(addon.providerClass()) && isLegacyCFL()) {
+            return CFL_LEGACY_PROVIDER;
+        }
+        return addon.providerClass();
+    }
+
+    /** Whether the installed CFL predates the 1.2.5 "PackageResource" refactor (still has {@code setFluidVirtual}). */
+    private static boolean isLegacyCFL() {
+        return ModList.get().getModContainerById("fluidlogistics")
+            .map(c -> c.getModInfo().getVersion().compareTo(CFL_PACKAGE_RESOURCE_VERSION) < 0)
+            .orElse(false); // unknown → assume current
     }
 
     private static boolean hasFilterItem(Addon addon) {
