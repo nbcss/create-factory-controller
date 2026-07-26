@@ -10,7 +10,9 @@ msgstr ""
 "POT-Creation-Date: 2026-07-26 07:22+1000\n"
 "PO-Revision-Date: 2026-07-25 22:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
-"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/production-orders/zh_Hans/>\n"
+"Language-Team: Chinese (Simplified Han script) <https://"
+"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
+"production-orders/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -50,7 +52,11 @@ msgid ""
 "stock keeper tuned to the same network. In the stock keeper UI, each gauge "
 "in this mode appears as a [#term-production-task]_production task_, "
 "signified by a blueprint background."
-msgstr "被设置为xref:factory-gauge.adoc#production-orders[“按需生产与手动请求”模式]的工厂仪表使玩家能够从连接到同一网络的仓库管理员处手动订购其产品。在仓库管理员界面中，每个处于此模式的仪表都会显示为一个[#term-production-task]__生产任务__，以蓝图背景标识。"
+msgstr ""
+"被设置为xref:factory-gauge.adoc#production-orders[“按需生产与手动请求”模式]的"
+"工厂仪表使玩家能够从连接到同一网络的仓库管理员处手动订购其产品。在仓库管理员"
+"界面中，每个处于此模式的仪表都会显示为一个[#term-production-task]__生产任务"
+"__，以蓝图背景标识。"
 
 #. type: Plain text
 #: ../src/production-orders.adoc:9
@@ -62,7 +68,11 @@ msgid ""
 "gauge.adoc#term-demand[demands]. When the produced items arrive in the "
 "logistic network, they are sent out again to the address specified on the "
 "order."
-msgstr "点击以将此生产任务加入订单，然后与往常一样调整其数量。提交包含生产任务的订单将会创建一个[#term-production-order]__生产订单__，把订单中的物品数量加入对应工厂仪表的xref:factory-gauge.adoc#term-demand[需求]。当产物进入物流网络所监测的仓储后，会再次被发往订单指定的地址。"
+msgstr ""
+"点击以将此生产任务加入订单，然后与往常一样调整其数量。提交包含生产任务的订单"
+"将会创建一个[#term-production-order]__生产订单__，把订单中的物品数量加入对应"
+"工厂仪表的xref:factory-gauge.adoc#term-demand[需求]。当产物进入物流网络所监测"
+"的仓储后，会再次被发往订单指定的地址。"
 
 #. type: Plain text
 #: ../src/production-orders.adoc:11
@@ -71,7 +81,10 @@ msgid ""
 "the stock keeper UI. They are automatically removed when all ordered items "
 "arrive in the logistic network. Otherwise, they remain stuck if the items "
 "never arrive."
-msgstr "待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表中。"
+msgstr ""
+"待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品"
+"进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表"
+"中。"
 
 #. type: Block title
 #: ../src/production-orders.adoc:12

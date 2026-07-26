@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"POT-Creation-Date: 2026-07-27 04:14+1000\n"
 "PO-Revision-Date: 2026-07-26 11:29+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
@@ -154,7 +154,8 @@ msgstr "❷ 原材料:: 生产上述产物所需的物品类型与数量。"
 msgid ""
 "❸ Custom arrangement button:: Click to arrange ingredients in a specific "
 "order. See <<ingredient-arrange>>."
-msgstr "❸ 自定义布局按钮:: 点击为原材料指定特定顺序。参见<<ingredient-arrange>>。"
+msgstr ""
+"❸ 自定义布局按钮:: 点击为原材料指定特定顺序。参见<<ingredient-arrange>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:47
@@ -176,15 +177,16 @@ msgid ""
 "❻ Request interval:: Interval between each request, and option to change it. "
 "See <<request-interval>>."
 msgstr ""
-"❻ 请求间隔:: 每次请求间的间隔时间，以及修改它的设置。参见<<request-interval>>"
-"。"
+"❻ 请求间隔:: 每次请求间的间隔时间，以及修改它的设置。参见<<request-"
+"interval>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:56
 msgid ""
 "❼ Request multiplier:: Option to automatically send multiple sets of "
 "ingredients in one request. See <<request-multiplier>>."
-msgstr "❼ 请求倍率:: 使一次请求中包含多份原材料的选项。参见<<request-multiplier>>。"
+msgstr ""
+"❼ 请求倍率:: 使一次请求中包含多份原材料的选项。参见<<request-multiplier>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:59
@@ -225,15 +227,16 @@ msgid ""
 "⓭⓮⓯ Promises:: Requests made by factory gauges awaiting their outputs, and "
 "options for limiting them. See <<promise>>."
 msgstr ""
-"⓭⓮⓯ 承诺与待处理请求:: 显示正在等待产物返回的请求，与限制请求数量的配置。参"
-"见<<promise>>。"
+"⓭⓮⓯ 承诺与待处理请求:: 显示正在等待产物返回的请求，与限制请求数量的配置。参见"
+"<<promise>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:77
 msgid ""
 "⓰ Reset button:: Click to clear all configurations of this gauge, including "
 "the <<term-monitored-item,monitored item>>."
-msgstr "⓰ 重置按钮:: 清除该仪表的全部配置，包括<<term-monitored-item,被监测物品>>。"
+msgstr ""
+"⓰ 重置按钮:: 清除该仪表的全部配置，包括<<term-monitored-item,被监测物品>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:80
@@ -260,9 +263,9 @@ msgid ""
 "gauge_."
 msgstr ""
 "除了监测库存外，工厂仪表最基础的用途是表示一条物品生产配方。例如使用 1 个粗铁"
-"生产 1 个铁锭。产物类型与<<term-monitored-item,被监测物品>>等同。为指定原材料"
-"，需要将该仪表连接到其他正在监测物品的工厂仪表，后者被称为此[#term-consumer-"
-"gauge]__消费端仪表__的[#term-ingredient-gauge]__材料仪表__。"
+"生产 1 个铁锭。产物类型与<<term-monitored-item,被监测物品>>等同。为指定原材"
+"料，需要将该仪表连接到其他正在监测物品的工厂仪表，后者被称为此[#term-"
+"consumer-gauge]__消费端仪表__的[#term-ingredient-gauge]__材料仪表__。"
 
 #. type: #basic-production
 #: ../src/factory-gauge.adoc:87
@@ -304,10 +307,19 @@ msgstr ""
 
 #. type: #figure-iron-smelting-recipe
 #: ../src/factory-gauge.adoc:98
+#, fuzzy
+#| msgid ""
+#| "The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and "
+#| "their amounts sent per request (❶), as well as the type and number of "
+#| "output items expected (❷). The number of each ingredient may be adjusted "
+#| "by scrolling on ❷, and can be more than 1 stack, but the total number of "
+#| "all ingredients is limited to 9 stacks. The number of output items can "
+#| "also be adjusted by scrolling on ❶, limited to 9 stacks or 64 items, "
+#| "whichever is more."
 msgid ""
 "The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and "
-"their amounts sent per request (❶), as well as the type and number of output "
-"items expected (❷). The number of each ingredient may be adjusted by "
+"their amounts sent per request (❷), as well as the type and number of output "
+"items expected (❶). The number of each ingredient may be adjusted by "
 "scrolling on ❷, and can be more than 1 stack, but the total number of all "
 "ingredients is limited to 9 stacks. The number of output items can also be "
 "adjusted by scrolling on ❶, limited to 9 stacks or 64 items, whichever is "
@@ -452,9 +464,9 @@ msgid ""
 "adjusted individually."
 msgstr ""
 "工厂仪表可以被配置一个材料与产品数量是合成配方倍数的<<term-recipe,配方>>。启"
-"用动力合成后，在材料或产物槽（<<figure-crafting-batch>> ❶❷）上滚动可调"
-"整[#term-batch-size]__批次尺寸__，即该配方包含的可执行的合成次数。原材料（❷）"
-"与产物（❶）数量会自动计算，不能逐项调整。"
+"用动力合成后，在材料或产物槽（<<figure-crafting-batch>> ❶❷）上滚动可调整"
+"[#term-batch-size]__批次尺寸__，即该配方包含的可执行的合成次数。原材料（❷）与"
+"产物（❶）数量会自动计算，不能逐项调整。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:137
@@ -472,8 +484,8 @@ msgid ""
 "crafters."
 msgstr ""
 "使用批量合成时，必须使用理包机。当理包机收到一次<<term-request,请求>>中产生的"
-"所有包裹时，其内容会被拆分为多个小包裹，每个小包裹只包含一次合成所需的原材料"
-"，在此之后才可以解包到动力合成器上。"
+"所有包裹时，其内容会被拆分为多个小包裹，每个小包裹只包含一次合成所需的原材"
+"料，在此之后才可以解包到动力合成器上。"
 
 #. type: #figure-crafting-batch
 #: ../src/factory-gauge.adoc:143
@@ -499,9 +511,9 @@ msgid ""
 "packages. This is allowed because the repackager outputs only packages "
 "containing ingredients to craft one time, not the entire recipe."
 msgstr ""
-"使用批量合成时，配方中所有材料的总和可以超过 9 组，此时材料将被拆分进多个包裹"
-"。之所以允许这样做，是因为理包机只会输出包含一次制作所需材料的包裹，而非整个"
-"配方的包裹。"
+"使用批量合成时，配方中所有材料的总和可以超过 9 组，此时材料将被拆分进多个包"
+"裹。之所以允许这样做，是因为理包机只会输出包含一次制作所需材料的包裹，而非整"
+"个配方的包裹。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:150
@@ -616,11 +628,11 @@ msgid ""
 "demand, that is, when any of its <<term-consumer-gauge,consumer gauges>> is "
 "active."
 msgstr ""
-"工厂仪表默认为 image:btn-maintain-stock.png[18,18] “维持库存”模式，在此模式中"
-"，当<<term-storage-amount,库存>>低于设置的目标数量时，仪表则会[#term-"
+"工厂仪表默认为 image:btn-maintain-stock.png[18,18] “维持库存”模式，在此模式"
+"中，当<<term-storage-amount,库存>>低于设置的目标数量时，仪表则会[#term-"
 "active]__启动__（开始发送<<term-request,请求>>）。点击 <<figure-follow-"
-"demand>> ❷ 可将工作模式切换为 image:btn-follow-demand.png[,18,18] “按需生产”"
-"，此时仪表只会在存在下游需求时启动，也就是指该仪表的任何一个<<term-"
+"demand>> ❷ 可将工作模式切换为 image:btn-follow-demand.png[,18,18] “按需生"
+"产”，此时仪表只会在存在下游需求时启动，也就是指该仪表的任何一个<<term-"
 "ingredient-gauge,消费端仪表>>被启动时。"
 
 #. type: Block title
@@ -726,8 +738,8 @@ msgid ""
 "(<<figure-multiplier>> ❷). Configuring the request multiplier (❶) allows "
 "this gauge to automatically pack more ingredients per request as needed."
 msgstr ""
-"通常情况下，工厂仪表每次<<term-request,请求>>所发送的材料数量是固定的，即"
-"其<<term-recipe,配方>>中所定义的数量（<<figure-multiplier>> ❷）。配置请求倍率"
+"通常情况下，工厂仪表每次<<term-request,请求>>所发送的材料数量是固定的，即其"
+"<<term-recipe,配方>>中所定义的数量（<<figure-multiplier>> ❷）。配置请求倍率"
 "（❶）可以让该仪表根据需要，自动增加每次请求的材料数量。"
 
 #. type: Block title
@@ -742,8 +754,8 @@ msgid ""
 "Scroll on ❶ to adjust its value. Left-click to set to the maximum allowed "
 "value, right-click to reset back to ×1."
 msgstr ""
-"滚动 ❶ 以调整其数值。点击鼠标左键以设置为允许的最大值，点击鼠标右键重置为 ×1 "
-"。"
+"滚动 ❶ 以调整其数值。点击鼠标左键以设置为允许的最大值，点击鼠标右键重置为 "
+"×1 。"
 
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:212
@@ -760,7 +772,8 @@ msgstr ""
 msgid ""
 "more products than ❸ are needed for the <<term-storage-amount,storage "
 "amount>> to reach the target amount; and"
-msgstr "需要超过 ❸ 的数量的产品，才能使<<term-storage-amount,库存>>达到目标数量；并且"
+msgstr ""
+"需要超过 ❸ 的数量的产品，才能使<<term-storage-amount,库存>>达到目标数量；并且"
 
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:215
@@ -854,9 +867,7 @@ msgstr "×8"
 #: ../src/factory-gauge.adoc:238
 #, no-wrap
 msgid "Output exceeding <<term-batch-size,batch size>> × output items in crafting recipe (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)"
-msgstr ""
-"产品数量超过<<term-batch-size,批次尺寸>> × 每次合成的产量（使用<<batch-"
-"crafting,批量合成>>时，材料可以超过 9 组）"
+msgstr "产品数量超过<<term-batch-size,批次尺寸>> × 每次合成的产量（使用<<batch-crafting,批量合成>>时，材料可以超过 9 组）"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:240
@@ -885,7 +896,8 @@ msgstr "材料溢出至其他槽位（在使用<<ingredient-arrange,自定义布
 msgid ""
 "When the recipe is modified, the maximum allowed request multiplier may "
 "decrease. The request multiplier automatically adjusts in response."
-msgstr "当配方被修改时，允许的最大请求倍率可能会减少，此时请求倍率会自动相应调整。"
+msgstr ""
+"当配方被修改时，允许的最大请求倍率可能会减少，此时请求倍率会自动相应调整。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:247
@@ -955,11 +967,11 @@ msgid ""
 "Doing so stops the factory gauge from excessively sending ingredients before "
 "the outputs of previous requests arrive."
 msgstr ""
-"工厂仪表每次发送<<term-request,请求>>时，都会创建一项[#term-promise]__“承诺"
-"”__，也称为[#term-pending-request]__待处理请求__。每项承诺会记录预计生产但尚"
-"未进入库存的产物数量。仪表在比较<<term-storage-amount,库存>>和目标数量时，会"
-"先把承诺中记录的数量加到实际库存中。这样可以避免上一批产物尚未返回时，仪表继"
-"续过量发送原材料。"
+"工厂仪表每次发送<<term-request,请求>>时，都会创建一项[#term-promise]__“承"
+"诺”__，也称为[#term-pending-request]__待处理请求__。每项承诺会记录预计生产但"
+"尚未进入库存的产物数量。仪表在比较<<term-storage-amount,库存>>和目标数量时，"
+"会先把承诺中记录的数量加到实际库存中。这样可以避免上一批产物尚未返回时，仪表"
+"继续过量发送原材料。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:266
@@ -984,10 +996,8 @@ msgid ""
 "❷ Expire time:: Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default.\n"
 "This option is useful when the <<term-recipe,recipe>> does not reliably produce the expected output, such as with recipes with probabilities."
 msgstr ""
-"❷ 过期时间:: 滚动可设置承诺创建后多久过期，可选 1 至 30 分钟，默认永不过期"
-"。\n"
-"当<<term-recipe,配方>>不能稳定地产生预期产物，例如带概率的加工配方时，此设置"
-"很有用。"
+"❷ 过期时间:: 滚动可设置承诺创建后多久过期，可选 1 至 30 分钟，默认永不过期。\n"
+"当<<term-recipe,配方>>不能稳定地产生预期产物，例如带概率的加工配方时，此设置很有用。"
 
 #. type: #promise
 #: ../src/factory-gauge.adoc:279
@@ -996,10 +1006,7 @@ msgid ""
 "❸ Pending requests:: Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests.\n"
 "Limiting pending requests is useful for preventing excessive packages from overloading transportation lines."
 msgstr ""
-"❸ 待处理请求:: 可显示由当前仪表创建的待处理请求数量 image:symbol-"
-"gauge.png[,18,16] ，点击以切换为显示发送到同一地址的待处理请求数量 "
-"image:symbol-address.png[,18,16] 。在任一状态下，滚动可设置数量上限。达到上限"
-"后，仪表会暂停发送新请求。\n"
+"❸ 待处理请求:: 可显示由当前仪表创建的待处理请求数量 image:symbol-gauge.png[,18,16] ，点击以切换为显示发送到同一地址的待处理请求数量 image:symbol-address.png[,18,16] 。在任一状态下，滚动可设置数量上限。达到上限后，仪表会暂停发送新请求。\n"
 "限制待处理请求可防止过多包裹使运输系统过载。"
 
 #. type: Title ==
@@ -1164,14 +1171,22 @@ msgid ""
 "are counted towards the <<term-storage-amount,storage amount>>, regardless "
 "of their NBT data."
 msgstr ""
-"在“设置物品”界面中可以配置工厂仪表，使其忽略<<term-monitored-item,被监测物"
-"品>>的 NBT 数据。忽略后，所有与被监测物品类型相同的物品都会计入<<term-"
-"storage-amount,库存>>，而不管它们的 NBT 数据如何。"
+"在“设置物品”界面中可以配置工厂仪表，使其忽略<<term-monitored-item,被监测物品"
+">>的 NBT 数据。忽略后，所有与被监测物品类型相同的物品都会计入<<term-storage-"
+"amount,库存>>，而不管它们的 NBT 数据如何。"
 
 #. type: #ignore-data
 #: ../src/factory-gauge.adoc:327
+#, fuzzy
+#| msgid ""
+#| "Items with different NBT data do not stack; therefore, when an <<term-"
+#| "ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge "
+#| "may receive the ingredient in more stacks than what appears in the <<term-"
+#| "recipe,recipe>>. If the total number of items in a <<term-"
+#| "request,request>> exceeds 9 stacks, the items are split into multiple "
+#| "packages."
 msgid ""
-"Items with different NBT data do not stack; therefore, when an <<term-"
+"Items with different NBT data do not stack. Therefore, when an <<term-"
 "ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge may "
 "receive the ingredient in more stacks than what appears in the <<term-"
 "recipe,recipe>>. If the total number of items in a <<term-request,request>> "
