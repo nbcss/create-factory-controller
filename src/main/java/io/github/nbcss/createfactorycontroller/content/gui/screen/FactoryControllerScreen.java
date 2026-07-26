@@ -162,7 +162,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_save");
     private static final ResourceLocation BP_SAVE_BTN_HOVER_SPRITE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_save_hover");
-    private static final String HELP_URL = "https://github.com/nbcss/create-factory-controller/wiki/Dashboard";
     @Nullable private GraphicButton settingsButton = null;
     @Nullable private BlueprintButton blueprintButton = null;
     @Nullable private HelpButton helpButton = null;
@@ -299,7 +298,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 })
                 .addGraphic(GraphicButton.DISPLAY_NORMAL, SETTINGS_BTN_SPRITE)
                 .addGraphic(GraphicButton.DISPLAY_HOVER, SETTINGS_BTN_HOVER_SPRITE)
-                .withTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
+                .addTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
 
         if (blueprintButton != null) removeWidget(blueprintButton);
@@ -320,8 +319,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (helpButton != null) removeWidget(helpButton);
         helpButton = new HelpButton(leftPos + imageWidth - HelpButton.WIDTH - 5, topPos + 3,
-                HelpButton.ColorPalette.BRASS, HELP_URL);
-        helpButton.withTooltip(buildHelpTooltip());
+                HelpButton.ColorPalette.BRASS, "dashboard.html");
+        buildHelpTooltip().forEach(helpButton::addTooltip);
         addWidget(helpButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
@@ -344,6 +343,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private List<Component> buildHelpTooltip() {
         List<Component> tooltip = new ArrayList<>();
+        tooltip.add(Component.empty());
         tooltip.add(Component.translatable("createfactorycontroller.gui.help.allowed_components")
                 .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x528FDE))));
         for (VirtualComponentBehaviour.Type type : ComponentRegistry.types()) {
@@ -354,8 +354,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         .append(item.getHoverName().copy().withColor(type.color())));
             }
         }
-        tooltip.add(Component.empty());
-        tooltip.add(Component.translatable("createfactorycontroller.gui.help.open_wiki").withStyle(ChatFormatting.GRAY));
         return tooltip;
     }
 
@@ -550,14 +548,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.capacity"), mouseX, mouseY);
             else if (inBounds(zoomLabelBounds, mouseX, mouseY))
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.zoom"), mouseX, mouseY);
-            else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY)
-                    && settingsButton.getTooltipText() != null)
+            else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
             else if (blueprintButton != null && blueprintButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, blueprintButton.tooltip(), mouseX, mouseY);
-            else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY)
-                    && helpButton.getTooltipText() != null)
-                graphics.renderTooltip(font, helpButton.getTooltipText(), mouseX, mouseY);
+            else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY))
+                graphics.renderTooltip(font, helpButton.getTooltipText(font, HelpButton.TOOLTIP_WIDTH), mouseX, mouseY);
         }
     }
 

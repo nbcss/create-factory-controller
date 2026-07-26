@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -16,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * A button with custom graphics: Each graphic layer a sprite or a solid color, drawn on normal state or hover.
@@ -36,26 +38,34 @@ public class GraphicButton extends AbstractWidget {
 
     private final ArrayList<GraphicLayer> graphicLayers = new ArrayList<>();
     private final Supplier<Boolean> onClick;
-    @Nullable private List<FormattedCharSequence> tooltip;
+    @Nullable private List<Component> tooltip;
 
     public GraphicButton(int x, int y, int width, int height, Supplier<Boolean> onClick) {
         super(x, y, width, height, Component.empty());
         this.onClick = onClick;
     }
 
-    public GraphicButton withTooltip(@Nullable Component tooltip) {
-        this.tooltip = tooltip == null ? null : List.of(tooltip.getVisualOrderText());
+    public GraphicButton addTooltip(@Nullable Component tooltip) {
+        if (tooltip != null) {
+            if (this.tooltip == null) {
+                this.tooltip = new ArrayList<>();
+            }
+            this.tooltip.add(tooltip);
+        }
         return this;
     }
 
-    public GraphicButton withTooltip(@Nullable List<Component> tooltip) {
-        this.tooltip = tooltip == null ? null : tooltip.stream().map(Component::getVisualOrderText).toList();
-        return this;
-    }
-
-    @Nullable
     public List<FormattedCharSequence> getTooltipText() {
-        return tooltip;
+        if (tooltip == null) return List.of();
+        return tooltip.stream().map(Component::getVisualOrderText).toList();
+    }
+
+    public List<FormattedCharSequence> getTooltipText(Font font, int maxWidth) {
+        if (tooltip == null) return List.of();
+        return tooltip.stream().flatMap(line -> {
+            var lines = font.split(line, maxWidth);
+            return lines.isEmpty() ? Stream.of(FormattedCharSequence.EMPTY) : lines.stream();
+        }).toList();
     }
 
     public GraphicButton addGraphic(int displayedState, ResourceLocation resource, int color, int x, int y, int w, int h) {

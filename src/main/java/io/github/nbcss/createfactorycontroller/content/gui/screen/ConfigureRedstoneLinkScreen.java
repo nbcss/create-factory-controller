@@ -11,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
@@ -67,6 +68,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
 
     private int panelX, panelY, invBgX, invBgY;
     private TooltipIconButton relocateButton, addConnectionButton, modeButton, confirmButton;
+    private HelpButton helpButton;
 
     public ConfigureRedstoneLinkScreen(FactoryControllerScreen controller, VirtualComponentPosition linkPos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -126,6 +128,10 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         confirmButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));
         confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirmButton);
+
+        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
+                HelpButton.ColorPalette.ANDESITE, "redstone-link.html");
+        addWidget(helpButton);
     }
 
     private List<Component> modeButtonTooltip() {
@@ -181,6 +187,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
                 modeButton, relocateButton, addConnectionButton, confirmButton);
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     @Override
@@ -208,6 +215,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         addConnectionButton.render(gfx, mouseX, mouseY, partialTick);
         modeButton.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
     }
 
     private static void highlight(GuiGraphics gfx, int x, int y) {

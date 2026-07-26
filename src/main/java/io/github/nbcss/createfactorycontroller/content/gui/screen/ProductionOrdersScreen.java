@@ -18,6 +18,7 @@ import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveProductionOrderPacket;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.RequestProductionOrdersPacket;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderView;
@@ -84,6 +85,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
 
     /** Green gutter button that returns to the Stock Keeper; only present (and only built) when Deployer is absent. */
     private TooltipIconButton backButton;
+    private HelpButton helpButton;
 
     private WeakReference<LivingEntity> stockKeeper = new WeakReference<>(null);
     private WeakReference<BlazeBurnerBlockEntity> blaze = new WeakReference<>(null);
@@ -128,6 +130,9 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             backButton.setToolTip(Component.translatable("createfactorycontroller.gui.production_orders"));
             addWidget(backButton);
         }
+        helpButton = new HelpButton(leftPos + WINDOW_W - HelpButton.WIDTH - 13, topPos + 3,
+                HelpButton.ColorPalette.STOCK_KEEPER, "production-orders.html");
+        addWidget(helpButton);
     }
 
     /** Locates the stock keeper entity */
@@ -399,6 +404,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             ProductionOrdersStrip.render(host, gfx, mouseX, mouseY, partialTicks);
         else if (backButton != null)
             backButton.render(gfx, mouseX, mouseY, partialTicks);
+        helpButton.render(gfx, mouseX, mouseY, partialTicks);
 
         if (mouseY >= viewTop() && mouseY < viewBottom())
             for (SlotTip tip : slotTips)
@@ -407,6 +413,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
                     return;
                 }
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, backButton);
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     /** Per-task tooltip */

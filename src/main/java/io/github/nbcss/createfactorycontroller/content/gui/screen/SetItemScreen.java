@@ -11,6 +11,7 @@ import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
@@ -62,6 +63,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
      *  vs ignore the filter item's NBT/data. Hidden entirely for a fluid filter. */
     private TooltipIconButton respectDataButton;
     private TooltipIconButton ignoreDataButton;
+    private HelpButton helpButton;
     /** Whether the gauge should monitor/consume the filter item ignoring its NBT/components. */
     private boolean ignoreData;
     // Tooltip text reused verbatim from Create's FilterScreen (same lang keys).
@@ -135,6 +137,10 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         ignoreDataButton.withCallback(() -> { ignoreData = true; updateIgnoreDataButtons(); });
         ignoreDataButton.withDeferredTooltip(() -> dataButtonTooltip(ignoreDataName, ignoreDataDesc));
         addWidget(ignoreDataButton);
+
+        helpButton = new HelpButton(panelX + blockW - HelpButton.WIDTH - 20, panelY + 3,
+                HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html");
+        addWidget(helpButton);
         updateIgnoreDataButtons();
 
         extraAreas = List.of(new Rect2i(panelX + bg.getWidth(),
@@ -197,6 +203,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         } else renderTooltip(gfx, mouseX, mouseY);
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
                 confirm, relocateButton, respectDataButton, ignoreDataButton);
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     @Override
@@ -212,6 +219,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         respectDataButton.render(gfx, mouseX, mouseY, partialTick);
         ignoreDataButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
 
         renderFilter(gfx, mouseX, mouseY);
 

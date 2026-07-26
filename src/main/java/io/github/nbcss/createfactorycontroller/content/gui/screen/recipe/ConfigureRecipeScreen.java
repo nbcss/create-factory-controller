@@ -35,6 +35,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
@@ -182,6 +183,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     @Nullable private TooltipIconButton disconnectLinkButton;
     /** Cycles the gauge's {@link RequestMode}; its icon reflects the current mode. */
     @Nullable private TooltipIconButton requestModeButton;
+    private HelpButton helpButton;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualComponentPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -310,6 +312,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     .withStyle(ChatFormatting.WHITE));
             addWidget(disconnectLinkButton);
         }
+
+        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
+                HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html#recipe-settings");
+        addWidget(helpButton);
 
         GaugeInfoClient.clear();   // drop any stale count; the next tick polls fresh
         promiseInfoPollCooldown = 0;
@@ -974,6 +980,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
                 confirmButton, deleteButton, craftingButton, customButton, newInputButton, relocateButton,
                 requestModeButton, disconnectLinkButton);
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     private int craftingPatternWidth() {
@@ -1164,6 +1171,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
         deleteButton.render(gfx, mouseX, mouseY, partialTick);
 
         if (craftingButton != null) craftingButton.render(gfx, mouseX, mouseY, partialTick);

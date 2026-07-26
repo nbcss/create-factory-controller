@@ -14,6 +14,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureLogicalTubePacket;
@@ -66,6 +67,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     private int panelX, panelY;
     private TooltipIconButton relocateButton, addConnectionButton, confirmButton;
+    private HelpButton helpButton;
     /** One toggle button per {@link LogicalTubeBehaviour.Mode}, ordered as the enum; the live mode glows green. */
     private final java.util.EnumMap<LogicalTubeBehaviour.Mode, TooltipIconButton> modeButtons =
             new java.util.EnumMap<>(LogicalTubeBehaviour.Mode.class);
@@ -119,6 +121,10 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         confirmButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));
         confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
         addWidget(confirmButton);
+
+        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
+                HelpButton.ColorPalette.ROSE, "electron-tube.html");
+        addWidget(helpButton);
     }
 
     private static ScreenElement modeButtonIcon(LogicalTubeBehaviour.Mode mode) {
@@ -216,6 +222,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         refreshModeButtons();   // track the live mode (synced back asynchronously)
         modeButtons.values().forEach(b -> b.render(gfx, mouseX, mouseY, partialTick));
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
     }
 
     /** Draws every wire in the middle band, ordered INACTIVE → UNPOWERED → POWERED so powered wires sit on top. */
@@ -341,6 +348,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         if (TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, modeButtons.values())) return;
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
                 relocateButton, addConnectionButton, confirmButton);
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     // ── Interaction ───────────────────────────────────────────────────────────────
