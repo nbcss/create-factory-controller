@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-26 07:22+1000\n"
-"PO-Revision-Date: 2026-07-20 18:12+0000\n"
+"PO-Revision-Date: 2026-07-25 22:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
 "weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
@@ -139,12 +139,6 @@ msgstr "❷ 帮助按钮:: 打开此帮助页面。"
 
 #. type: TIP
 #: ../src/dashboard.adoc:41
-#, fuzzy
-#| msgid ""
-#| "❸ Network selector:: All networks tuned to by components placed in this "
-#| "controller are listed here. Scroll to select a network to highlight its "
-#| "components. While holding a gauge, scroll to tune the gauge to a network. "
-#| "<<Network Selector,More Info>>"
 msgid ""
 "❸ Network selector:: All networks tuned to by components placed in this "
 "controller are listed here. Scroll to select a network to highlight its "
@@ -152,7 +146,7 @@ msgid ""
 "<<network-selector,More Info>>"
 msgstr ""
 "❸ 网络选择器:: 列出控制台内组件已经绑定的全部网络。滚动可选择网络并高亮其中的"
-"组件，也可为手中的工厂仪表设定网络。<<Network Selector,详情>>"
+"组件，也可为手中的工厂仪表设定网络。<<network-selector,详情>>"
 
 #. type: TIP
 #: ../src/dashboard.adoc:45
@@ -244,12 +238,6 @@ msgstr "按住 Shift 并单击组件可将其从控制台中移除，物品会�
 
 #. type: #components
 #: ../src/dashboard.adoc:76
-#, fuzzy
-#| msgid ""
-#| "Either left- or right-clicking a component opens its configuration "
-#| "screen. To move a component, open its screen and click the image:btn-"
-#| "relocate.png[,18,18] \"relocate\" button, then click on a new location "
-#| "for the component."
 msgid ""
 "Either left- or right-clicking a component opens its configuration screen. "
 "To move a component, open its screen and click the image:btn-"
@@ -258,7 +246,8 @@ msgid ""
 "then click a new location."
 msgstr ""
 "左键或右键单击组件都会打开其配置界面。若要移动组件，先打开配置界面并点击 "
-"image:btn-relocate.png[,18,18]“移动组件”按钮，再点击新的位置。"
+"image:btn-relocate.png[,18,18]“移动组件”按钮，再点击新的位置。你也可以在悬浮"
+"于组件上时按 Q 键，然后点击新的位置。"
 
 #. type: #components
 #: ../src/dashboard.adoc:78
@@ -303,12 +292,6 @@ msgstr "组件之间可以建立连接，参见特定组件的文档以了解连
 
 #. type: #connections
 #: ../src/dashboard.adoc:90
-#, fuzzy
-#| msgid ""
-#| "To connect component A to B, click on B to open its UI, click on the "
-#| "image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
-#| "click A. Some components may only act as the source or sink of a "
-#| "connection, in which case a valid direction is automatically chosen."
 msgid ""
 "To connect component A to B, click on B to open its UI, click on the "
 "image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
@@ -317,8 +300,9 @@ msgid ""
 "a valid direction is automatically chosen."
 msgstr ""
 "若要将组件 A 连接至组件 B，请打开 B 的配置界面，单击 image:btn-add-"
-"connection.png[,18,18]“新建连接”按钮，再单击 A。部分组件只能作为连接的输入端"
-"或输出端；此时系统会自动选择有效方向。"
+"connection.png[,18,18]“新建连接”按钮，再单击 A。你也可以在悬浮于 B 上时按 C "
+"键，然后点击 A 。部分组件只能作为连接的输入端或输出端；此时系统会自动选择有效"
+"方向。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:92
@@ -340,12 +324,6 @@ msgstr "选择重叠的连接"
 
 #. type: #connections
 #: ../src/dashboard.adoc:97
-#, fuzzy
-#| msgid ""
-#| "Connections automatically choose paths between their 2 ends. To customize "
-#| "this path, select from 4 path modes by hovering over a connection and "
-#| "pressing R. The bend modes of all connections on one component can be "
-#| "changed by pressing R on the component."
 msgid ""
 "Connections automatically choose paths between their 2 ends. To customize "
 "this path, select from 4 path modes by hovering over a connection and "
@@ -353,9 +331,10 @@ msgid ""
 "the connection selected. The path modes of all connections on one component "
 "can be changed by pressing R on the component."
 msgstr ""
-"连接线会自动规划两端之间的路径。如需改变路径形状，将鼠标悬停在连接线上并按 "
-"R，可在四种箭头路径模式之间切换。在组件上按 R，则会同时改变连接到该组件的所有"
-"连接线的路径样式。"
+"连接线会自动规划两端之间的路径。如需改变路径形状，将鼠标悬停在连接线上并按 R"
+"，可在四种箭头路径模式之间切换。切换一个连接的路径模式后，保持鼠标指针不动将"
+"保持连接的选中状态。在组件上按 R，则会同时改变连接到该组件的所有连接线的路径"
+"样式。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:98
@@ -451,17 +430,15 @@ msgstr "概要"
 
 #. type: Table
 #: ../src/dashboard.adoc:127
-#, fuzzy, no-wrap
-#| msgid "Remove component"
+#, no-wrap
 msgid "Move component"
-msgstr "移除组件"
+msgstr "移动组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:129
-#, fuzzy, no-wrap
-#| msgid "F on component"
+#, no-wrap
 msgid "Q on component"
-msgstr "在组件上按 F"
+msgstr "在组件上按 Q"
 
 #. type: Table
 #: ../src/dashboard.adoc:130
@@ -519,17 +496,15 @@ msgstr "Shift + 单击任意选中的组件"
 
 #. type: Table
 #: ../src/dashboard.adoc:144
-#, fuzzy, no-wrap
-#| msgid "Remove connection"
+#, no-wrap
 msgid "Create connection"
-msgstr "移除连接"
+msgstr "创建连接"
 
 #. type: Table
 #: ../src/dashboard.adoc:146
-#, fuzzy, no-wrap
-#| msgid "F on component"
+#, no-wrap
 msgid "C on component"
-msgstr "在组件上按 F"
+msgstr "在组件上按 C"
 
 #. type: Table
 #: ../src/dashboard.adoc:147
@@ -601,7 +576,7 @@ msgstr "Alt"
 #: ../src/dashboard.adoc:166
 #, no-wrap
 msgid "Notices"
-msgstr ""
+msgstr "告示"
 
 #. type: #notices
 #: ../src/dashboard.adoc:169
@@ -613,9 +588,13 @@ msgid ""
 "Hovering the notice displays a tooltip detailing the locations of the "
 "unloaded stock links they were last known at."
 msgstr ""
+"如果一个xref:factory-gauge.adoc[工厂仪表]所处的网络中包含未被加载的区块中的仓"
+"储链接站，此仪表将停止工作，并在其标签上显示“?”。当工厂控制台中的任何仪表发生"
+"这种情况时，其界面的左上角将会显示一条告示。鼠标悬停于告示上时会显示提示框，"
+"详细说明这些未被加载的仓储链接站最后所处的位置。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:170
 #, no-wrap
 msgid "Notice about unloaded stock links"
-msgstr ""
+msgstr "关于未被加载的仓储链接站的告示"

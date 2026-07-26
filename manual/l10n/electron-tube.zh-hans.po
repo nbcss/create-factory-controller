@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-26 07:22+1000\n"
-"PO-Revision-Date: 2026-07-20 19:06+0000\n"
+"PO-Revision-Date: 2026-07-25 22:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
 "weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
@@ -44,10 +44,11 @@ msgstr "四种模式下的逻辑管，包括未充能和已充能的"
 
 #. type: Block title
 #: ../src/electron-tube.adoc:8
-#, fuzzy, no-wrap
-#| msgid "A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputs to a xref:redstone-link.adoc[redstone link]"
+#, no-wrap
 msgid "A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputting to a xref:redstone-link.adoc[redstone link]"
-msgstr "从xref:factory-gauge.adoc[工厂仪表]接收输入并向xref:redstone-link.adoc[无线红石信号终端]输出的逻辑或组件"
+msgstr ""
+"从xref:factory-gauge.adoc[工厂仪表]接收输入并向xref:redstone-link.adoc[无线红"
+"石信号终端]输出的逻辑或组件"
 
 #. type: Title ==
 #: ../src/electron-tube.adoc:12
@@ -57,11 +58,6 @@ msgstr "逻辑运算符"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:15
-#, fuzzy
-#| msgid ""
-#| "Each logical tube may be connected with 0 or more redstone inputs, and "
-#| "outputs a redstone signal according the rules of a logical operator, "
-#| "determined by its mode."
 msgid ""
 "Each logical tube may be connected with 0 or more redstone inputs, and "
 "outputs a redstone signal according to the rules of a logical operator, "

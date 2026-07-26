@@ -3,17 +3,20 @@
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # Automatically generated, 2026.
 #
+# FiveYellowMice <me@fiveyellowmice.com>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-26 07:22+1000\n"
-"PO-Revision-Date: 2026-07-26 07:22+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-07-25 22:49+0000\n"
+"Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/production-orders/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.7.1\n"
 
 #. type: Table
 #: ../src/components.adoc:7 ../src/production-orders.adoc:33
@@ -35,39 +38,22 @@ msgstr "橡木木板的生产任务"
 
 #. type: Title =
 #: ../src/production-orders.adoc:1
-#, fuzzy, no-wrap
-#| msgid "Production orders UI"
+#, no-wrap
 msgid "Production Orders"
-msgstr "生产订单界面"
+msgstr "生产订单"
 
 #. type: Plain text
 #: ../src/production-orders.adoc:4
-#, fuzzy
-#| msgid ""
-#| "Another mode of the factory gauge, \"follow demand and order\", "
-#| "additionally allows the item produceable by a gauge to be manually "
-#| "ordered from a stock keeper tuned to the same network. In stock keeper "
-#| "UI, each gauge in this mode appears as a production task, signified by a "
-#| "blueprint background."
 msgid ""
 "Factory gauges set to the xref:factory-gauge.adoc#production-orders[\"follow "
 "demand and order\" mode] allow their products to be manually ordered from a "
 "stock keeper tuned to the same network. In the stock keeper UI, each gauge "
 "in this mode appears as a [#term-production-task]_production task_, "
 "signified by a blueprint background."
-msgstr ""
-"另一个工作模式，“按需生产与手动请求”，除具备按需生产功能外，还允许玩家在绑定"
-"至同一网络的仓库管理员界面中手动请求生产物品。在仓库管理员界面中，每个处于此"
-"模式的仪表都会显示为一个生产任务，它们带有蓝图背景。"
+msgstr "被设置为xref:factory-gauge.adoc#production-orders[“按需生产与手动请求”模式]的工厂仪表使玩家能够从连接到同一网络的仓库管理员处手动订购其产品。在仓库管理员界面中，每个处于此模式的仪表都会显示为一个[#term-production-task]__生产任务__，以蓝图背景标识。"
 
 #. type: Plain text
 #: ../src/production-orders.adoc:9
-#, fuzzy
-#| msgid ""
-#| "Sending an order containing production tasks creates a production order, "
-#| "causing the corresponding gauges to add the number of items in the order "
-#| "to their demands. When the produced items arrive in the logistic network, "
-#| "they are sent out again to the address specified on the order."
 msgid ""
 "Click to add the production task to the order, and adjust the amount per "
 "usual. Sending an order containing production tasks creates a [#term-"
@@ -76,26 +62,16 @@ msgid ""
 "gauge.adoc#term-demand[demands]. When the produced items arrive in the "
 "logistic network, they are sent out again to the address specified on the "
 "order."
-msgstr ""
-"提交包含生产任务的订单将会创建生产订单，把订单中的物品数量加入对应仪表的需"
-"求。当产物进入物流网络所监测的仓储后，会再次被发往订单指定的地址。"
+msgstr "点击以将此生产任务加入订单，然后与往常一样调整其数量。提交包含生产任务的订单将会创建一个[#term-production-order]__生产订单__，把订单中的物品数量加入对应工厂仪表的xref:factory-gauge.adoc#term-demand[需求]。当产物进入物流网络所监测的仓储后，会再次被发往订单指定的地址。"
 
 #. type: Plain text
 #: ../src/production-orders.adoc:11
-#, fuzzy
-#| msgid ""
-#| "Pending production orders can be viewed in the \"production orders\" tab "
-#| "in the stock keeper UI. They are automatically removed when all ordered "
-#| "items arrive in the logistic network, or stuck if they never arrive."
 msgid ""
 "Pending production orders can be viewed in the \"production orders\" tab in "
 "the stock keeper UI. They are automatically removed when all ordered items "
 "arrive in the logistic network. Otherwise, they remain stuck if the items "
 "never arrive."
-msgstr ""
-"待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品"
-"进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表"
-"中。"
+msgstr "待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表中。"
 
 #. type: Block title
 #: ../src/production-orders.adoc:12
@@ -156,10 +132,9 @@ msgstr "负责生产的仪表没有足够原材料，或原材料尚未发出。
 
 #. type: Table
 #: ../src/production-orders.adoc:38
-#, fuzzy, no-wrap
-#| msgid "image:redstone-link-receive-powered.png[,64,64]"
+#, no-wrap
 msgid "image:production-order-processing.png[,14,14]"
-msgstr "image:redstone-link-receive-powered.png[,64,64]"
+msgstr "image:production-order-processing.png[,14,14]"
 
 #. type: Table
 #: ../src/production-orders.adoc:39
@@ -175,10 +150,9 @@ msgstr "仪表已经发出原材料，但产物尚未进入仓储。"
 
 #. type: Table
 #: ../src/production-orders.adoc:41
-#, fuzzy, no-wrap
-#| msgid "image:redstone-link-send-powered.png[,64,64]"
+#, no-wrap
 msgid "image:production-order-sent.png[,14,14]"
-msgstr "image:redstone-link-send-powered.png[,64,64]"
+msgstr "image:production-order-sent.png[,14,14]"
 
 #. type: Table
 #: ../src/production-orders.adoc:42
@@ -194,10 +168,9 @@ msgstr "产物已进入仓储，并已发往目标地址。"
 
 #. type: Table
 #: ../src/production-orders.adoc:44
-#, fuzzy, no-wrap
-#| msgid "image:redstone-link-receive-powered.png[,64,64]"
+#, no-wrap
 msgid "image:production-order-invalid.png[,14,14]"
-msgstr "image:redstone-link-receive-powered.png[,64,64]"
+msgstr "image:production-order-invalid.png[,14,14]"
 
 #. type: Table
 #: ../src/production-orders.adoc:45
