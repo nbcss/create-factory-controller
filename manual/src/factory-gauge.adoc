@@ -94,7 +94,7 @@ image::gauge-iron-smelting-recipe.svg[,384,368]
 
 In its default mode (⓬), a factory gauge repeatedly checks whether its <<term-storage-amount,storage amount>> (❾) is less than the configured target amount (❿⓫). If so, it makes a [#term-request]_request_ for a set of ingredients (❷) to be sent from the networks of the ingredient gauges to the destination address (❽), expecting the output (❶) to later arrive in storage (❾).
 
-The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❶), as well as the type and number of output items expected (❷). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 9 stacks or 64 items, whichever is more.
+The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❷), as well as the type and number of output items expected (❶). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 9 stacks or 64 items, whichever is more.
 
 .Examples
 [%autowidth,cols="2*"]
@@ -323,6 +323,6 @@ When using a fluid as an ingredient or output, scrolling on the ingredient or ou
 
 A factory gauge may be configured in the <<figure-set-item,"set item" screen>> to ignore the NBT data of its <<term-monitored-item,monitored item>>. When it is ignored, all items of the same type as the monitored item are counted towards the <<term-storage-amount,storage amount>>, regardless of their NBT data.
 
-Items with different NBT data do not stack; therefore, when an <<term-ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge may receive the ingredient in more stacks than what appears in the <<term-recipe,recipe>>. If the total number of items in a <<term-request,request>> exceeds 9 stacks, the items are split into multiple packages.
+Items with different NBT data do not stack. Therefore, when an <<term-ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge may receive the ingredient in more stacks than what appears in the <<term-recipe,recipe>>. If the total number of items in a <<term-request,request>> exceeds 9 stacks, the items are split into multiple packages.
 
 If either <<crafting,mechanical crafting>> or <<arrange-ingredient,custom arrangement>> is enabled, the behaviour is different. Each item stack defined in the recipe must consist of items with identical NBT data. For a unique set of NBT data possessed by N items in storage, items with this set of NBT data are only sent if N is sufficient to fill one ingredient stack.
