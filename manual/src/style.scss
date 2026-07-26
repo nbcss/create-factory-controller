@@ -59,8 +59,8 @@ html {
   background: map.get($colors, background);
   background: var(--color-background);
 
-  font-synthesis-weight: none;
-  image-rendering: pixelated;
+  font-synthesis-weight: none; // dont't smear circled digits
+  image-rendering: pixelated; // images are mostly pixel art
 }
 
 body {
@@ -382,6 +382,10 @@ a[href*="#term-"] {
   &:not(:hover) {
     text-decoration: underline map.get($colors, term-underline) dashed;
     text-decoration-color: var(--color-term-underline);
+  }
+
+  [lang|=zh] &, [lang|=ja] &, [lang|=ko] & {
+    text-underline-position: under;
   }
 }
 
