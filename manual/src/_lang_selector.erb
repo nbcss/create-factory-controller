@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <link rel="stylesheet" href="<%= h attach_cache_id 'style.css' %>">
+  </head>
+  <body>
+    <ul>
+      <% languages.each do |lang| %>
+      <li><a lang="<%= lang %>" href="<%= lang %>/"><%= lang_name lang %></a></li>
+      <% end %>
+    </ul>
+  </body>
+</html>

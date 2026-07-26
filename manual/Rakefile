@@ -26,9 +26,9 @@ desc "Build HTML for all languages"
 task :build
 
 LANGS.each do |lang|
-  task :build => :"build_#{lang}"
+  task :build => :"build_#{lang.gsub '-', '_'}"
   desc "Build HTML of language #{lang}"
-  task :"build_#{lang}" => %i(assets po4a:translate) do
+  task :"build_#{lang.gsub '-', '_'}" => %i(assets po4a:translate) do
     build_lang(lang)
   end
 end
@@ -134,6 +134,20 @@ def build_lang(lang)
 
     File.write output_path, html
   end
+end
+
+# Task to build a language selector page
+task :build => :'build_lang_selector'
+task :'build_lang_selector' do
+  output_path = 'build/index.html'
+  verbose(false) { mkdir_p 'build' }
+  puts "Generate #{output_path}"
+  template = ERB.new File.read 'src/_lang_selector.erb'
+  html = template.result LayoutContext.new(
+    languages: LANGS,
+    output_path: output_path,
+  ).binding
+  File.write output_path, html
 end
 
 # Context object to provide variables and methods to the ERB template
