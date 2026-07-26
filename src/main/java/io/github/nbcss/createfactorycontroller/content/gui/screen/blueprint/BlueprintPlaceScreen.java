@@ -27,6 +27,7 @@ import org.joml.Matrix4f;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 public class BlueprintPlaceScreen extends BlueprintFormScreen {
@@ -110,7 +111,7 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
     }
 
     private List<UUID> options() {
-        return BlueprintPlacement.networkOptions(menu, Minecraft.getInstance().player);
+        return placement.networkOptions(menu, Minecraft.getInstance().player);
     }
 
     private boolean isNewNetwork(UUID network) {
@@ -221,7 +222,8 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
     @Override
     protected void confirm() {
         PacketDistributor.sendToServer(new BlueprintPlacePacket(menu.controllerPos, anchor,
-                placement.payload(), placement.assignments()));
+                placement.payload(), placement.assignments(),
+                Optional.ofNullable(placement.boxMin()), Optional.ofNullable(placement.boxMax())));
         controller.abortBlueprintPlacement();
         Minecraft.getInstance().setScreen(controller);
     }

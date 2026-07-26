@@ -11,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
+import io.github.nbcss.createfactorycontroller.content.blueprint.SchematicImport;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
@@ -440,7 +441,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      * dangling wires and half-charged materials, so any failure aborts the whole operation.</p>
      */
     public void placeBlueprint(byte[] payload, VirtualComponentPosition anchor,
-                               List<UUID> assignments, ServerPlayer player) {
+                               List<UUID> assignments, @Nullable BlockPos boxMin, @Nullable BlockPos boxMax,
+                               ServerPlayer player) {
         if (level == null || level.isClientSide()) return;
 
         CompoundTag root;
@@ -466,6 +468,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // network
         Set<UUID> bindable = new LinkedHashSet<>(networks);
         bindable.addAll(inventoryNetworks(player));
+        if (boxMin != null && boxMax != null)
+            bindable.addAll(SchematicImport.selectionNetworks(level, boxMin, boxMax));
 
         Set<VirtualComponentPosition> targets = new LinkedHashSet<>();
         Map<ResourceLocation, Integer> needed = new LinkedHashMap<>();

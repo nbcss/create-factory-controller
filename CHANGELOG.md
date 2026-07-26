@@ -2,6 +2,7 @@
 
 Features:
 - Dynamic scale down count label of gauges when text is too wide (configurable).
+- Allow to use Schematic and Quill to import gauges in world to controller.
 
 Changes:
 - Added recipe output tooltip for production order.
@@ -19,6 +20,7 @@ Bugfixes:
 Compatibility:
 - Added compat to new version of Create: FluidLogistics
 - Hide Inventory Profiles Next buttons from Factory Controller screens.
+- [TODO] Compat with stock keeper from different mods
 
 ## 1.1.0
 

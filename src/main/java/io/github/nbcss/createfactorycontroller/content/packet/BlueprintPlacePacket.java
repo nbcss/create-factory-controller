@@ -15,16 +15,20 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Places a stored blueprint on a controller board. Blueprints live in the client's game directory, so the
  * gzipped file travels with the request; {@code networks} binds each network placeholder (in order) to a
- * real network. Everything here is untrusted — {@link FactoryControllerBlockEntity#placeBlueprint} validates
- * the payload, the destination cells, the materials and the network bindings before it commits.
+ * real network. {@code boxMin}/{@code boxMax} are present only for a Schematic paste — the source selection
+ * box, which the server re-scans to authorize the pasted gauges' networks. Everything here is untrusted —
+ * {@link FactoryControllerBlockEntity#placeBlueprint} validates the payload, the destination cells, the
+ * materials and the network bindings before it commits.
  */
 public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor, byte[] blueprint,
-                                   List<UUID> networks) implements CustomPacketPayload {
+                                   List<UUID> networks, Optional<BlockPos> boxMin,
+                                   Optional<BlockPos> boxMax) implements CustomPacketPayload {
 
     /** Serverbound custom payloads cap at 32767 bytes; leave room for the rest of the record. */
     public static final int MAX_PAYLOAD_BYTES = 30000;
@@ -47,6 +51,8 @@ public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor
             POS_CODEC, BlueprintPlacePacket::anchor,
             ByteBufCodecs.byteArray(MAX_PAYLOAD_BYTES), BlueprintPlacePacket::blueprint,
             UUIDUtil.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_NETWORK_SLOTS)), BlueprintPlacePacket::networks,
+            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), BlueprintPlacePacket::boxMin,
+            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), BlueprintPlacePacket::boxMax,
             BlueprintPlacePacket::new
         );
 
@@ -60,7 +66,8 @@ public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor
             if (!(player.containerMenu instanceof FactoryControllerMenu menu)
                     || !menu.controllerPos.equals(packet.pos())) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.placeBlueprint(packet.blueprint(), packet.anchor(), packet.networks(), player);
+            be.placeBlueprint(packet.blueprint(), packet.anchor(), packet.networks(),
+                    packet.boxMin().orElse(null), packet.boxMax().orElse(null), player);
         });
     }
 }

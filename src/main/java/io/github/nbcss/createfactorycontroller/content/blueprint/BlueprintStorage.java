@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.blueprint;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
@@ -16,6 +16,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -42,10 +43,8 @@ public final class BlueprintStorage {
 
     public record Material(ResourceLocation item, int count) {}
 
-    /** One component of a stored blueprint, positioned in blueprint-local coordinates. */
     public record Placement(ResourceLocation item, VirtualComponentPosition pos) {}
 
-    /** Stored connection in blueprint-local coordinates */
     public record Wire(String type, VirtualComponentPosition from, VirtualComponentPosition to, int arrowBendMode) {
         public int color() {
             Connection.Type resolved = Connection.Type.get(type);
@@ -55,26 +54,26 @@ public final class BlueprintStorage {
 
     private static final int UNKNOWN_WIRE_COLOR = 0x888898;
 
-    /** Everything the blueprint screens display about a stored blueprint. */
     public record Info(String note, List<Material> materials, int networkCount, int width, int height,
                        List<Placement> placements, List<Wire> connections) {
         public static final Info EMPTY = new Info("", List.of(), 0, 0, 0, List.of(), List.of());
     }
 
-    /** Aggregates the component items in stable first-appearance order for the save-screen preview. */
-    public static List<Material> materials(FactoryControllerMenu menu,
+    public static List<Material> materials(ComponentHolder holder,
                                            Iterable<VirtualComponentPosition> positions) {
         Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
         for (VirtualComponentPosition pos : positions) {
-            VirtualComponentBehaviour component = menu.componentAt(pos);
+            VirtualComponentBehaviour component = holder.componentAt(pos);
             if (component != null) counts.merge(component.getItemId(), 1, Integer::sum);
         }
         return counts.entrySet().stream().map(e -> new Material(e.getKey(), e.getValue())).toList();
     }
 
-    /** Reads everything the blueprint screens need: note, materials, placeholder count, size and layout. */
     public static Info read(Path blueprint) throws IOException {
-        CompoundTag root = NbtIo.readCompressed(blueprint, NbtAccounter.unlimitedHeap());
+        return read(NbtIo.readCompressed(blueprint, NbtAccounter.unlimitedHeap()));
+    }
+
+    public static Info read(CompoundTag root) {
         ListTag components = root.getList("Components", Tag.TAG_COMPOUND);
         Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
         Set<Integer> networks = new LinkedHashSet<>();
@@ -106,26 +105,36 @@ public final class BlueprintStorage {
                 root.getInt("Width"), root.getInt("Height"), List.copyOf(placements), List.copyOf(wires));
     }
 
-    /** The stored file verbatim — already gzipped NBT, shipped to the server to place the blueprint. */
     public static byte[] payload(Path blueprint) throws IOException {
         return Files.readAllBytes(blueprint);
     }
 
-    /** Returns distinct logistics networks in stable component-selection order. */
-    public static List<UUID> networks(FactoryControllerMenu menu,
+    public static byte[] compress(CompoundTag root) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        NbtIo.writeCompressed(root, out);
+        return out.toByteArray();
+    }
+
+    public record Paste(byte[] payload, Info info) {}
+
+    public static Paste buildPaste(ComponentHolder holder, List<VirtualComponentPosition> positions,
+                                   List<UUID> orderedNetworks, String note,
+                                   HolderLookup.Provider registries) throws IOException {
+        CompoundTag root = build(holder, positions, orderedNetworks, note, registries);
+        return new Paste(compress(root), read(root));
+    }
+
+    public static List<UUID> networks(ComponentHolder holder,
                                       Iterable<VirtualComponentPosition> positions) {
         Set<UUID> result = new LinkedHashSet<>();
         for (VirtualComponentPosition pos : positions) {
-            if (menu.componentAt(pos) instanceof VirtualGaugeBehaviour gauge)
+            if (holder.componentAt(pos) instanceof VirtualGaugeBehaviour gauge)
                 result.add(gauge.networkId);
         }
         return new ArrayList<>(result);
     }
 
-    /**
-     * Writes one compressed, versioned Minecraft NBT blueprint.
-     */
-    public static Path save(FactoryControllerMenu menu,
+    public static Path save(ComponentHolder holder,
                             Iterable<VirtualComponentPosition> selectedPositions,
                             List<UUID> orderedNetworks,
                             String name,
@@ -133,19 +142,15 @@ public final class BlueprintStorage {
                             HolderLookup.Provider registries) throws IOException {
         List<VirtualComponentPosition> positions = new ArrayList<>();
         for (VirtualComponentPosition pos : selectedPositions)
-            if (menu.componentAt(pos) != null) positions.add(pos);
+            if (holder.componentAt(pos) != null) positions.add(pos);
         if (positions.isEmpty()) throw new IOException("No components selected");
 
         if (!isValidBlueprintName(name)) throw new IOException("Invalid blueprint file name");
 
-        return writeThroughTemporary(build(menu, positions, orderedNetworks, note, registries),
+        return writeThroughTemporary(build(holder, positions, orderedNetworks, note, registries),
                 blueprintPath(name));
     }
 
-    /**
-     * Rewrites a stored blueprint's note, renaming its file when the name changed. Everything else
-     * the blueprint holds - components, connections and network placeholders - is carried over as-is.
-     */
     public static Path edit(Path source, String name, String note) throws IOException {
         if (!isValidBlueprintName(name)) throw new IOException("Invalid blueprint file name");
         CompoundTag root = NbtIo.readCompressed(source, NbtAccounter.unlimitedHeap());
@@ -158,7 +163,6 @@ public final class BlueprintStorage {
         return target;
     }
 
-    /** Writes to a sibling temporary file first so a failed write cannot truncate the target. */
     private static Path writeThroughTemporary(CompoundTag root, Path target) throws IOException {
         Path directory = blueprintDirectory();
         Files.createDirectories(directory);
@@ -179,7 +183,6 @@ public final class BlueprintStorage {
         }
     }
 
-    /** True when both paths lead to one file, including names differing only in case on Windows. */
     public static boolean sameBlueprintFile(Path a, Path b) {
         if (a.equals(b)) return true;
         try {
@@ -193,7 +196,7 @@ public final class BlueprintStorage {
         return note.length() > MAX_NOTE_LENGTH ? note.substring(0, MAX_NOTE_LENGTH) : note;
     }
 
-    static CompoundTag build(FactoryControllerMenu menu,
+    static CompoundTag build(ComponentHolder holder,
                              List<VirtualComponentPosition> positions,
                              List<UUID> orderedNetworks,
                              String note,
@@ -206,7 +209,7 @@ public final class BlueprintStorage {
 
         Set<UUID> usedNetworks = new LinkedHashSet<>();
         for (VirtualComponentPosition pos : positions)
-            if (menu.componentAt(pos) instanceof VirtualGaugeBehaviour gauge) usedNetworks.add(gauge.networkId);
+            if (holder.componentAt(pos) instanceof VirtualGaugeBehaviour gauge) usedNetworks.add(gauge.networkId);
         Map<UUID, Integer> placeholders = new LinkedHashMap<>();
         for (UUID network : orderedNetworks)
             if (usedNetworks.contains(network) && !placeholders.containsKey(network))
@@ -223,7 +226,7 @@ public final class BlueprintStorage {
 
         ListTag components = new ListTag();
         for (VirtualComponentPosition pos : positions) {
-            VirtualComponentBehaviour component = menu.componentAt(pos);
+            VirtualComponentBehaviour component = holder.componentAt(pos);
             if (component == null) continue;
             CompoundTag tag = component.toNBT(registries, VirtualComponentBehaviour.NbtProfile.EXPORT);
             offsetPosition(tag.getCompound("Pos"), minX, minY);
@@ -241,7 +244,7 @@ public final class BlueprintStorage {
         ListTag connections = new ListTag();
         Set<String> seenEdges = new LinkedHashSet<>();
         for (VirtualComponentPosition pos : positions) {
-            VirtualComponentBehaviour component = menu.componentAt(pos);
+            VirtualComponentBehaviour component = holder.componentAt(pos);
             if (component == null) continue;
             for (Connection connection : component.outgoingConnections()) {
                 if (!selected.contains(connection.from) || !selected.contains(connection.to)) continue;
@@ -291,11 +294,6 @@ public final class BlueprintStorage {
     private static final Pattern NAME_INVALID_REGEX = Pattern.compile("[/\\p{Cntrl}]|^[\\s.]|[\\s.]$");
     private static final Pattern NAME_INVALID_REGEX_WIN = Pattern.compile("(?i)[<>:\"/\\\\|?*]|^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|$)");
 
-    /** Client-local filename validation:
-     * - No control characters or path separator
-     * - Not start or end with whitespace or dot
-     * - Valid name on Windows
-     **/
     public static boolean isValidBlueprintName(String name) {
         if (name == null || name.isEmpty()) return false;
         if (NAME_INVALID_REGEX.matcher(name).find()) return false;

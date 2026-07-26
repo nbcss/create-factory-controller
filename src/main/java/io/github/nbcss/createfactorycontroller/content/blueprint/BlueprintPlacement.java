@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.blueprint;
 
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
+import net.minecraft.core.BlockPos;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
@@ -21,25 +22,42 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * A blueprint placement in progress, client-side. Carries the parsed layout used for the cursor ghost and
- * the feasibility checks, plus the raw file bytes handed to the server once the player confirms.
- *
- * <p>Every check here is advisory — the server re-validates all of it in
- * {@link FactoryControllerBlockEntity#placeBlueprint}.</p>
+ * A blueprint placement in progress, client-side.
  */
 public class BlueprintPlacement {
     private final String name;
     private final BlueprintStorage.Info info;
     private final byte[] payload;
-    /** Placeholder index (0-based) to the network it will be placed on; {@code null} while unassigned. */
     private final UUID[] assignments;
+    private final List<UUID> presetNetworks;
+    @Nullable private final BlockPos boxMin;
+    @Nullable private final BlockPos boxMax;
 
     public BlueprintPlacement(String name, BlueprintStorage.Info info, byte[] payload) {
+        this(name, info, payload, List.of(), null, null);
+    }
+
+    private BlueprintPlacement(String name, BlueprintStorage.Info info, byte[] payload,
+                               List<UUID> presetNetworks, @Nullable BlockPos boxMin, @Nullable BlockPos boxMax) {
         this.name = name;
         this.info = info;
         this.payload = payload;
         this.assignments = new UUID[info.networkCount()];
+        this.presetNetworks = List.copyOf(presetNetworks);
+        this.boxMin = boxMin;
+        this.boxMax = boxMax;
+        for (int i = 0; i < assignments.length && i < this.presetNetworks.size(); i++)
+            assignments[i] = this.presetNetworks.get(i);
     }
+
+    public static BlueprintPlacement schematic(String name, BlueprintStorage.Info info, byte[] payload,
+                                               List<UUID> networks, BlockPos boxMin, BlockPos boxMax) {
+        return new BlueprintPlacement(name, info, payload, networks, boxMin, boxMax);
+    }
+
+    @Nullable public BlockPos boxMin() { return boxMin; }
+
+    @Nullable public BlockPos boxMax() { return boxMax; }
 
     public String name() {
         return name;
@@ -72,7 +90,6 @@ public class BlueprintPlacement {
         return true;
     }
 
-    /** The assignment list in placeholder order, as sent to the server. */
     public List<UUID> assignments() {
         List<UUID> list = new ArrayList<>(assignments.length);
         for (UUID assignment : assignments) list.add(assignment);
@@ -81,11 +98,9 @@ public class BlueprintPlacement {
 
     // ── Feasibility ───────────────────────────────────────────────────────────
 
-    /** Compact-font tints of a material count, shared by the library and placement previews. */
     public static final int MATERIAL_HELD_COLOR = 0xFFD7FFA8;
     public static final int MATERIAL_MISSING_COLOR = 0xFFFCA4A4;
 
-    /** Creative players place freely, mirroring the item consumption skip in {@code attachComponent}. */
     public boolean hasMaterials(Player player) {
         if (player.isCreative()) return true;
         Map<Item, Integer> held = inventoryCounts(player);
@@ -121,22 +136,16 @@ public class BlueprintPlacement {
         return cellFor(placement.pos(), anchor);
     }
 
-    /** A blueprint-local cell in board coordinates for the given anchor. */
     public static VirtualComponentPosition cellFor(VirtualComponentPosition local,
                                                    VirtualComponentPosition anchor) {
         return new VirtualComponentPosition(anchor.x() + local.x(), anchor.y() + local.y());
     }
 
-    /**
-     * The anchor (top-left cell) that centres the blueprint under {@code cursor}. Odd spans centre exactly;
-     * even spans bias toward the top-left, so the cursor always sits on a cell the blueprint occupies.
-     */
     public VirtualComponentPosition anchorFor(VirtualComponentPosition cursor) {
         return new VirtualComponentPosition(cursor.x() - (info.width() - 1) / 2,
                 cursor.y() - (info.height() - 1) / 2);
     }
 
-    /** Item totals keyed by item, so stacks differing only in components still count toward a material. */
     public static Map<Item, Integer> inventoryCounts(Player player) {
         Map<Item, Integer> counts = new HashMap<>();
         Inventory inventory = player.getInventory();
@@ -147,14 +156,10 @@ public class BlueprintPlacement {
         return counts;
     }
 
-    /**
-     * Networks a placeholder may be bound to: the controller's own, then any further network found on a
-     * tuned component item in the player's inventory. Binding one of the trailing entries makes the
-     * controller learn that network, which is what the green "+" marks.
-     */
-    public static List<UUID> networkOptions(FactoryControllerMenu menu, Player player) {
+    public List<UUID> networkOptions(FactoryControllerMenu menu, Player player) {
         Set<UUID> options = new LinkedHashSet<>(menu.knownNetworks);
         options.addAll(inventoryNetworks(player));
+        options.addAll(presetNetworks);
         return List.copyOf(options);
     }
 
