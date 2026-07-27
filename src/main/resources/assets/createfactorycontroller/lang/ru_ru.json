@@ -29,7 +29,7 @@
   "createfactorycontroller.gui.logical_tube.input_connections": "Входы: %1$s",
   "createfactorycontroller.gui.logical_tube.output_connections": "Выходы: %1$s",
   "createfactorycontroller.gui.help.allowed_components": "Разрешённые предметы:",
-  "createfactorycontroller.gui.help.open_wiki": "Нажмите, чтобы открыть онлайн документы",
+  "createfactorycontroller.gui.help.open_wiki": "Open online documentation",
   "createfactorycontroller.gui.capacity": "Ёмкость",
   "createfactorycontroller.gui.zoom": "Масштаб",
   "createfactorycontroller.gui.in_stock": "В наличии: %1$s",
