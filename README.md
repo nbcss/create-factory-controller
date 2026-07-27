@@ -12,7 +12,7 @@ Additionally, using a factory controller allows you to:
 - Quickly tune a new factory gauge to a network already tuned to by existing gauges. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#network-selector)
 - Change specific connection's arrow bending path.
 - Select and move multiple gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#components)
-- Save your components settings in blueprint.
+- Save your components setups in blueprint system.
 - See the item count labels of all gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#additional-interactions)
 - Disable all factory gauges in the controller with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
 - Display information with a display link.
@@ -25,7 +25,7 @@ Factory gauges placed in factory controllers also receive a number of functional
   - Allow up to 64 crafting outputs in single request. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
   - Crafting grid sizes up to 10×10 (configurable). [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
 - Optionally ignore monitored item NBT data. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#recipe-settings)
-- Customize which item should be push to which target inventory slot.
+- Custom Arrangement Mode: define which item push to which target inventory slot (for sequence assembly or vanilla Crafter).
 - Allow to condense multiple set of ingredients into one request if stock allows.
 - Customize request interval of specific gauge.
 - Produce only when there is demand, minimize intermediate items in storage. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#on-demand)
@@ -41,7 +41,7 @@ You can also place these in factory controllers:
 
 This mod does **not**:
 
-- Manage an existing wall of factory gauges, or help you migrating from it.
+- Manage an existing wall of factory gauges. However, you *CAN* import existing gauge wall to controller using Schematic selection tool.
 
 ## Mod Compatibility
 
@@ -51,7 +51,8 @@ The currently supported mods are:
 
 - Create: FluidLogistic: Supports set fluids in factory gauge.
 - Create: Fluid: Supports set fluids in factory gauge, but we may stop future compatibility support.
-- Create: Repackaged: Supports fluid gauges in controller.
+- Create: Repackaged: Supports Fluid Gauge in controller.
+- Use any portable stock keeper GUI from other mods (Such as Create: Mobile Packages and Create Phantom) to order production item.
 
 ## Dependencies
 
@@ -77,6 +78,7 @@ Translations:
 
 - Russian: Makisk
 - Polish: Makisk
+- Franch: totof-prod
 
 <details>
   <summary>Sound assets</summary>
