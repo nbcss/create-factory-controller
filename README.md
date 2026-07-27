@@ -5,35 +5,35 @@
 [Discord](https://discord.gg/yv77dsgeVx) |
 [Manual](https://nbcss.github.io/create-factory-controller/manual/en/)
 
-Having a large wall of factory gauges can get unwieldy. This addon introduces the "factory controller", where you can place factory gauges (and [more](#other-components)) in a virtual dashboard, condensing the wall of gauges into a single block.
+Having a large wall of factory gauges can get unwieldy. This addon introduces the "factory controller", where you can place factory gauges (and more) in a virtual dashboard, condensing the wall of gauges into a single block.
 
 Additionally, using a factory controller allows you to:
 
 - Quickly tune a new factory gauge to a network already tuned to by existing gauges. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#network-selector)
-- Change specific connection's arrow bending path.
 - Select and move multiple gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#components)
-- Save your components setups in blueprint system.
-- See the item count labels of all gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#additional-interactions)
+- Save your setups in blueprints.
+- See the item count labels of all gauges at once.
 - Disable all factory gauges in the controller with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
-- Display information with a display link.
+- Change individual connection's arrow bending path. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#connections)
+- Display information with a display link. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/display-link.html)
+- Import existing gauge walls into a factory controller.
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
 
-- Allow more than 1 stack of same-type ingredients.
+- More than 1 stack of the same ingredient.
 - Up to 9 stacks of expected outputs.
 - Mechanical crafting:
-  - Allow up to 64 crafting outputs in single request. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
-  - Crafting grid sizes up to 10×10 (configurable). [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
-- Optionally ignore monitored item NBT data. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#recipe-settings)
-- Custom Arrangement Mode: define which item push to which target inventory slot (for sequence assembly or vanilla Crafter).
-- Allow to condense multiple set of ingredients into one request if stock allows.
-- Customize request interval of specific gauge.
+  - Crafting grid sizes up to 10×10. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
+  - Request ingredients in batches of up to 64. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
+- Optionally ignore item NBT data. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#ignore-data)
+- Custom-arrange ingredients into arbitrary patterns (for sequence assembly or vanilla crafter). [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#ingredient-arrange)
 - Produce only when there is demand, minimize intermediate items in storage. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#on-demand)
-- Produce according to manually placed orders from a Stock Keeper. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#production-orders)
+- Produce according to manually placed orders from a stock keeper. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#production-orders)
+- Requests multiple sets of ingredients at once if stock allows. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#request-multiplier)
+- Customize request interval of individual gauges. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#request-interval)
 - Limit promises created by the gauge. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
 - Limit promises by shared destination address. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#promise)
 
-<a id="other-components"></a>
 You can also place these in factory controllers:
 
 - Redstone Link [🕮](https://nbcss.github.io/create-factory-controller/manual/en/redstone-link.html)
@@ -41,18 +41,18 @@ You can also place these in factory controllers:
 
 This mod does **not**:
 
-- Manage an existing wall of factory gauges. However, you *CAN* import existing gauge wall to controller using Schematic selection tool.
+- Manage an external wall of factory gauges.
 
 ## Mod Compatibility
 
-This mod replicates the logic of the vanilla factory gauge system. It is unlikely to conflict with other mods that modifies vanilla gauge behaviour, but it also cannot receive their enhancements, unless explicit support was made.
+This mod replicates the logic of the vanilla factory gauge system. It is unlikely to conflict with other mods that modifies vanilla gauge behaviour, but it cannot also receive their enhancements, unless explicit support was made.
 
 The currently supported mods are:
 
-- Create: FluidLogistic: Supports set fluids in factory gauge.
-- Create: Fluid: Supports set fluids in factory gauge, but we may stop future compatibility support.
-- Create: Repackaged: Supports Fluid Gauge in controller.
-- Use any portable stock keeper GUI from other mods (Such as Create: Mobile Packages and Create Phantom) to order production item.
+- Create: FluidLogistic: Transport fluids with factory gauges.
+- Create: Fluid: Transport fluids with factory gauges. (may drop compatibility in the future)
+- Create: Repackaged: Use fluid gauges in controller.
+- Mods providing portable stock keeper GUIs: Place production orders. (e.g Create: Mobile Packages and Create Phantom)
 
 ## Dependencies
 
