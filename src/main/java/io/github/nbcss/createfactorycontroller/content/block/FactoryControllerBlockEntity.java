@@ -61,6 +61,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 
@@ -430,15 +431,20 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Blueprint placement ────────────────────────────────────────────────
 
-    /** Cap on the decompressed blueprint NBT — the payload arrives gzipped from an untrusted client. */
-    private static final long MAX_BLUEPRINT_NBT_BYTES = 2 * 1024 * 1024;
+    /**
+     * Upper bound on a decompressed controller board
+     */
+    private static final long MAX_BOARD_NBT_BYTES = 16L * 1024 * 1024;
+
+    /** Reads a gzip-compressed board tag with our board-sized accounter quota ({@link #MAX_BOARD_NBT_BYTES}). */
+    private static CompoundTag readCompressedBoard(byte[] compressed) throws IOException {
+        return NbtIo.readCompressed(new ByteArrayInputStream(compressed),
+                NbtAccounter.create(MAX_BOARD_NBT_BYTES));
+    }
 
     /**
      * Materialises a client-held blueprint at {@code anchor}. {@code assignments} binds each network
      * placeholder (1-based in the file, 0-based here) to a real network.
-     *
-     * <p>Everything is validated before anything is committed: a partially placed blueprint would leave
-     * dangling wires and half-charged materials, so any failure aborts the whole operation.</p>
      */
     public void placeBlueprint(byte[] payload, VirtualComponentPosition anchor,
                                List<UUID> assignments, @Nullable BlockPos boxMin, @Nullable BlockPos boxMax,
@@ -447,8 +453,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         CompoundTag root;
         try {
-            root = NbtIo.readCompressed(new ByteArrayInputStream(payload),
-                    NbtAccounter.create(MAX_BLUEPRINT_NBT_BYTES));
+            root = readCompressedBoard(payload);
         } catch (IOException | RuntimeException ignored) {
             playDenySound();
             return;
@@ -1271,6 +1276,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Restores a board from {@link #writeSetup} onto a freshly placed controller (server side). */
     public void applySetup(CompoundTag tag, HolderLookup.Provider registries) {
         if (level == null || level.isClientSide()) return;
+        tag = unwrapSetup(tag);
         tag = ControllerDataFixer.fixControllerBE(tag);
 
         customName = tag.getString("CustomName");
@@ -1321,7 +1327,31 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Stamps the controller's setup onto {@code stack} (if any) — used when it's dropped on break. */
     public void writeSetupToItem(ItemStack stack) {
         if (level == null || !hasSetup()) return;
-        stack.set(CreateFactoryController.CONTROLLER_SETUP.get(), writeSetup(level.registryAccess()));
+        stack.set(CreateFactoryController.CONTROLLER_SETUP.get(),
+                wrapSetup(writeSetup(level.registryAccess())));
+    }
+
+    private CompoundTag wrapSetup(CompoundTag board) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            NbtIo.writeCompressed(board, out);
+            CompoundTag wrapper = new CompoundTag();
+            wrapper.putByteArray("Blob", out.toByteArray());
+            wrapper.putInt("Count", components.size());
+            return wrapper;
+        } catch (IOException e) {
+            return board;
+        }
+    }
+
+    private static CompoundTag unwrapSetup(CompoundTag payload) {
+        // for legacy
+        if (!payload.contains("Blob", Tag.TAG_BYTE_ARRAY)) return payload;
+        try {
+            return readCompressedBoard(payload.getByteArray("Blob"));
+        } catch (IOException | RuntimeException ignored) {
+            return new CompoundTag();
+        }
     }
 
     @Override

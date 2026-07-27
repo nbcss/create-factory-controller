@@ -9,6 +9,9 @@ Changes:
 - Allow to reduce to 2x2 or 1x1 grid in gauge crafting mode (if recipe can fit).
 - Increase default controller component limit config to 512.
 
+Optimization:
+- Compress item & blueprint data to allow higher component limit.
+
 Localization:
 - Added French translation, thanks to @totof-prod
 

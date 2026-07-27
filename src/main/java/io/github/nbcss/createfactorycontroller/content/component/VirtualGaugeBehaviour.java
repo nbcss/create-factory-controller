@@ -1349,26 +1349,31 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         tag.putString("Item", getItemId().toString());
         tag.putUUID("Network", networkId);
 
-        tag.put("Filter", filter.saveOptional(registries));
-        tag.putBoolean("IgnoreData", ignoreData);
-        tag.putInt("Count", count);
+        if (!filter.isEmpty()) tag.put("Filter", filter.saveOptional(registries));
+        if (ignoreData) tag.putBoolean("IgnoreData", true);
+        if (count != 0) tag.putInt("Count", count);
         tag.putString("Unit", unit.name());
-        tag.putString("RequestMode", requestMode.name());
+        if (requestMode != RequestMode.NORMAL) tag.putString("RequestMode", requestMode.name());
 
-        tag.putString("RecipeAddress", recipeAddress);
+        if (!recipeAddress.isEmpty()) tag.putString("RecipeAddress", recipeAddress);
         tag.putInt("RecipeOutput", recipeOutput);
-        tag.putInt("CraftBatch", craftBatch);
-        tag.putInt("MaxRequestMultiplier", maxRequestMultiplier);
-        tag.putInt("CraftDimension", craftDimension);
+        if (craftBatch != 1) tag.putInt("CraftBatch", craftBatch);
+        if (maxRequestMultiplier != 1) tag.putInt("MaxRequestMultiplier", maxRequestMultiplier);
+        if (craftDimension != 0) tag.putInt("CraftDimension", craftDimension);
         tag.putInt("PromiseClearingInterval", promiseClearingInterval);
-        tag.putInt("PromiseLimit", promiseLimit);
-        tag.putBoolean("PromiseLimitByAddress", promiseLimitByAddress);
-        if (customRequestTimer > 0) tag.putInt("CustomRequestTimer", customRequestTimer);   // omit when unspecified
-        tag.putString("Mode", mode.name());
-        tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
-        ListTag slotList = new ListTag();
-        for (RecipeSlot slot : recipeSlots) slotList.add(slot.toNBT());
-        tag.put("RecipeSlots", slotList);
+        if (promiseLimit != 0) tag.putInt("PromiseLimit", promiseLimit);
+        if (promiseLimitByAddress) tag.putBoolean("PromiseLimitByAddress", true);
+        if (customRequestTimer > 0) tag.putInt("CustomRequestTimer", customRequestTimer);
+        // On read an absent Mode is derived from the arrangement (empty → REGULAR, else CRAFTING)
+        if (!(mode == GaugeWorkMode.REGULAR && activeCraftingArrangement.isEmpty()))
+            tag.putString("Mode", mode.name());
+        if (!activeCraftingArrangement.isEmpty())
+            tag.put("CraftingArrangement", writeStacks(activeCraftingArrangement, registries));
+        if (!recipeSlots.isEmpty()) {
+            ListTag slotList = new ListTag();
+            for (RecipeSlot slot : recipeSlots) slotList.add(slot.toNBT());
+            tag.put("RecipeSlots", slotList);
+        }
 
         if (profile.includesRuntime()) {
             tag.putBoolean("Satisfied", satisfied);

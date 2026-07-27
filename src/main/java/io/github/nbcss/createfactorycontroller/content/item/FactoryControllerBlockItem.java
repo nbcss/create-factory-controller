@@ -35,8 +35,9 @@ public class FactoryControllerBlockItem extends BlockItem {
     public void appendHoverText(@NotNull ItemStack stack, @NotNull TooltipContext context,
                                 @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
-        if (isConfigured(stack))
+        if (isConfigured(stack)) {
             tooltip.add(Component.translatable("createfactorycontroller.tooltip.configured_controller")
                 .withStyle(ChatFormatting.GOLD));
+        }
     }
 }
