@@ -29,7 +29,7 @@
   "createfactorycontroller.gui.logical_tube.input_connections": "Wejścia: %1$s",
   "createfactorycontroller.gui.logical_tube.output_connections": "Wyjścia: %1$s",
   "createfactorycontroller.gui.help.allowed_components": "Dozwolone przedmioty:",
-  "createfactorycontroller.gui.help.open_wiki": "Kliknij, aby otworzyć dokumenty online",
+  "createfactorycontroller.gui.help.open_wiki": "Open online documentation",
   "createfactorycontroller.gui.capacity": "Pojemność",
   "createfactorycontroller.gui.zoom": "Przybliżenie",
   "createfactorycontroller.gui.in_stock": "W magazynie: %1$s",
