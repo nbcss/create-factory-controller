@@ -9,9 +9,10 @@ import net.neoforged.fml.ModList;
  *
  * <p>Deployer is a soft dependency: every reference to its classes is reached only through a branch guarded by
  * {@link #isLoaded()} (or, for the order-dispatch mixin, skipped by {@code CfcMixinPlugin}), so the JVM never resolves
- * a Deployer class when it's absent. When Deployer is present the Production Orders page is a keeper tab; when it's
- * absent the page is reached via an in-GUI button on the Stock Keeper and order registration falls back to Create's
- * vanilla {@code broadcastPackageRequest} (see {@code StockTickerBlockEntityMixin}).</p>
+ * a Deployer class when it's absent. When Deployer is present the Production Orders page is a keeper tab and its
+ * generic dispatch is intercepted by {@code LogisticsGenericManagerMixin}; when it's absent the page is reached via an
+ * in-GUI button on the Stock Keeper and order dispatch is intercepted at Create's static broadcast by
+ * {@code LogisticsManagerMixin}.</p>
  */
 public final class DeployerCompat {
 

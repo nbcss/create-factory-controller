@@ -5,6 +5,7 @@ import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBeha
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
+import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager.InterceptResult;
 import net.liukrast.deployer.lib.logistics.packager.StockInventoryType;
 import net.liukrast.deployer.lib.logistics.packagerLink.LogisticsGenericManager;
 import net.liukrast.deployer.lib.logistics.stockTicker.GenericOrderContained;
@@ -28,16 +29,16 @@ public abstract class LogisticsGenericManagerMixin {
         boolean hasPattern = false;
         for (BigItemStack b : defaultOrder.orderedStacks().stacks())
             if (ProductionPatternItem.isPattern(b.stack)) { hasPattern = true; break; }
-        if (!hasPattern) return;   // no blueprints → normal Deployer dispatch
+        if (!hasPattern) return;
 
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return;
+        if (server == null || !server.isSameThread()) return;
 
-        // Returns false when the blueprints couldn't be resolved to live gauges → let the original dispatch run
-        if (!ProductionOrderManager.interceptProductionOrder(server, freqId, type, defaultOrder, address)) return;
+        InterceptResult result = ProductionOrderManager.interceptProductionOrder(server, freqId, type, defaultOrder, address);
+        if (result == InterceptResult.NOT_A_PRODUCTION_ORDER) return;
 
-        if (!requests.isEmpty())
+        if (result == InterceptResult.HANDLED && !requests.isEmpty())
             LogisticsGenericManager.broadcastAllPackageRequest(PackageOrderWithCrafts.empty(), freqId, type, requests, address);
-        cir.setReturnValue(true);
+        cir.setReturnValue(result == InterceptResult.HANDLED);
     }
 }

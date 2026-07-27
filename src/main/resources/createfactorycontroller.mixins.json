@@ -5,15 +5,16 @@
   "plugin": "io.github.nbcss.createfactorycontroller.mixin.CfcMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "GenericLogisticsManagerMixin",
     "GenericPromiseCodecMixin",
     "InventorySummaryMixin",
-    "LogisticalStockRequestPacketMixin",
     "LogisticsGenericManagerMixin",
+    "LogisticsManagerMixin",
     "PackageRepackageHelperMixin",
     "PackagerBlockEntityMixin",
     "RequestPromiseQueueMixin",
-    "StockTickerBlockEntityMixin",
-    "StockTickerInteractionHandlerMixin"
+    "SendPackageMixin",
+    "TunablePortableTickerSendOrderMixin"
   ],
   "client": [
     "StockKeeperRequestScreenMixin"

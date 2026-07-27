@@ -45,6 +45,10 @@ repositories {
         url = "https://maven.liukrast.net"
     }
     maven {
+        name = "zznty (Create Factory Abstractions)"
+        url = "https://dl.zznty.ru/maven"
+    }
+    maven {
         name = "BlameJared (JEI)"
         url = "https://maven.blamejared.com"
     }
@@ -198,6 +202,12 @@ dependencies {
     if (withDeployer) {
         localRuntime("net.liukrast:deployer-1.21.1:${deployer_version}") { transitive = false }
     }
+
+    // Create Factory Abstractions (soft dependency — Create: Mobile Packages' generic order/stock layer). Compile-only
+    // so GenericLogisticsManagerMixin builds; runtime-gated by CfcMixinPlugin on mod id "create_factory_abstractions".
+    // No localRuntime: it comes JiJ'd inside Create: Mobile Packages when that mod is on the dev runtime.
+    // transitive = false for the same reason as Deployer (avoids its create:slim / curse.maven graph).
+    compileOnly("ru.zznty:create_factory_abstractions-1.21.1:${create_factory_abstractions_version}") { transitive = false }
 
     // JEI (optional): compile against the API only; run the full mod in dev for testing.
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"

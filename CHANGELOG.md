@@ -18,9 +18,9 @@ Bugfixes:
 - Fixed a small render mistake of logical operator in logical tube GUI.
 
 Compatibility:
-- Added compat to new version of Create: FluidLogistics
-- Hide Inventory Profiles Next buttons from Factory Controller screens.
-- [TODO] Compat with stock keeper from different mods
+- Added compatibility to new version of Create: FluidLogistics
+- Added basic compatibility with Stock Keeper from other mods to allow production order
+- Hide Inventory Profiles Next buttons from Factory Controller screens
 
 ## 1.1.0
 

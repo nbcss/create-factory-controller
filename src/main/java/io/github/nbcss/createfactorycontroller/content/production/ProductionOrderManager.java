@@ -98,15 +98,14 @@ public class ProductionOrderManager extends SavedData {
         setDirty();
     }
 
-    /** Registers {@code player} to be toasted about the order they're placing on ({@code network}, {@code address});
-     *  claimed by the next {@link #interceptProductionOrder} for that key, else it expires. */
+    /** Registers {@code player} to be toasted notification */
     public void subscribe(UUID network, String address, UUID player, long now) {
         PendingSub p = pendingSubs.computeIfAbsent(new OrderKey(network, address), k -> new PendingSub());
         p.players.add(player);
         p.expiry = now + PENDING_SUB_TTL_TICKS;
     }
 
-    /** Takes (and clears) the pending subscribers for ({@code network}, {@code address}); empty if none registered. */
+    /** Takes (and clears) the pending subscribers for ({@code network}, {@code address}) */
     private java.util.Set<UUID> consumePendingSubscribers(UUID network, String address) {
         PendingSub p = pendingSubs.remove(new OrderKey(network, address));
         return p == null ? new java.util.LinkedHashSet<>() : p.players;
@@ -144,10 +143,8 @@ public class ProductionOrderManager extends SavedData {
         return out;
     }
 
-    /** Marks every active task targeting {@code patternId} on {@code network} as {@link Task.State#INVALID_PATTERN}
-     *  — used when a gauge is removed or stops being orderable. Such a task no longer creates demand, but the
-     *  manager still ships it (→ SENT) if the network happens to have enough stock; otherwise it keeps the order
-     *  open until the player removes it. */
+    /** Marks every active task targeting {@code patternId} on {@code network} as {@link Task.State#INVALID_PATTERN}.
+     *  For when a gauge is removed or stops being orderable. */
     public void invalidateTasksFor(MinecraftServer server, UUID network, UUID patternId) {
         boolean changed = false;
         List<ProductionOrder> affected = new ArrayList<>();
@@ -171,8 +168,7 @@ public class ProductionOrderManager extends SavedData {
     }
 
     /**
-     * Player-initiated cancel of a whole order (the entry's cancel button): the order is dropped immediately,
-     * bypassing the {@link #LINGER_TICKS} grace. Its tasks vanish with it, so their demand stops.
+     * Player-initiated cancel
      */
     public void removeOrder(int orderId) {
         boolean removed = orders.remove(orderId) != null;
@@ -190,57 +186,66 @@ public class ProductionOrderManager extends SavedData {
 
     // ── Order interception (item 5) ──────────────────────────────────────────
 
+    /** Outcome of {@link #interceptProductionOrder} */
+    public enum InterceptResult {
+        /** No blueprint in the order */
+        NOT_A_PRODUCTION_ORDER,
+        /** Blueprints present and a {@link ProductionOrder} was created */
+        HANDLED,
+        /** Blueprints present but at least one was invalid/stale */
+        REJECTED
+    }
+
     /**
-     * If {@code order} contains any Promise Blueprints, registers a {@link ProductionOrder} (one request per blueprint
-     * type), ships the real in-stock items immediately under a shared {@code orderId}, and returns true so the
-     * caller treats the order as fully handled. Returns false when there were no blueprints (caller proceeds with
-     * Create's normal dispatch). The single seam used by both the vanilla and Deployer keeper order paths.
+     * If {@code order} contains any Production Blueprints, registers a {@link ProductionOrder}
      */
-    public static boolean interceptProductionOrder(MinecraftServer server, UUID network, RequestType type,
-                                                   PackageOrderWithCrafts order, String address) {
+    public static InterceptResult interceptProductionOrder(MinecraftServer server, UUID network, RequestType type,
+                                                           PackageOrderWithCrafts order, String address) {
         List<BigItemStack> inStock = new ArrayList<>();
         List<BigItemStack> patterns = new ArrayList<>();
         for (BigItemStack b : order.orderedStacks().stacks()) {
             if (ProductionPatternItem.isPattern(b.stack)) patterns.add(b);
             else inStock.add(b);
         }
-        if (patterns.isEmpty()) return false;
+        if (patterns.isEmpty()) return InterceptResult.NOT_A_PRODUCTION_ORDER;
+
+        long now = server.overworld().getGameTime();
+        for (BigItemStack b : patterns) {
+            ProductionTarget t = ProductionPatternItem.getTarget(b.stack);
+            if (t == null || b.count <= 0) return InterceptResult.REJECTED;
+            if (OrderableGaugeRegistry.locate(t.network(), t.patternId(), now) == null) return InterceptResult.REJECTED;
+        }
 
         ProductionOrderManager mgr = get(server);
         int orderId = mgr.freshOrderId();
-        // Pattern (produced) tasks first, then the in-stock real items as already-DONE tasks for display.
         List<Task> produced = new ArrayList<>();
-        int linkIndex = inStock.isEmpty() ? 0 : 1;   // link 0 reserved for the instant in-stock package
+        int linkIndex = inStock.isEmpty() ? 0 : 1;
         for (BigItemStack b : patterns) {
             ProductionTarget t = ProductionPatternItem.getTarget(b.stack);
-            if (t == null || b.count <= 0) continue;
-            // A fluid pattern is ordered in buckets (B), not millibuckets — the keeper count the player scrolls is a
-            // bucket count. Store the task in mB (the unit all stock/dispatch/demand below speak) by ×1000.
+            // A fluid pattern is ordered in buckets (B), which is 1000mb
             int amount = FluidCompat.isFluidFilter(t.display()) ? b.count * 1000 : b.count;
             produced.add(new Task(t.network(), t.patternId(),
                 t.display().copy(), amount, address, orderId, linkIndex++, false));
         }
-        if (produced.isEmpty()) return false;   // patterns present but none resolvable → let normal dispatch run
-                                                 // (inStock items still ship; the dead patterns just produce nothing)
         produced.get(produced.size() - 1).finalLink = true;
 
         List<Task> tasks = new ArrayList<>(produced);
-        // In-stock items: bundled into the order as immediately-DONE display tasks (link 0, shipped below).
+
         for (BigItemStack b : inStock)
             if (b.count > 0)
                 tasks.add(Task.completed(network, b.stack.copy(), b.count, address, orderId, 0, false));
 
-        // Claim any players who registered for a toast on this (network, address) — see RegisterOrderNotificationPacket.
-        mgr.addOrder(new ProductionOrder(orderId, network, address, server.overworld().getGameTime(),
-            mgr.consumePendingSubscribers(network, address), tasks));
+        // Subscribers to toast on completion
+        java.util.Set<UUID> subscribers = mgr.consumePendingSubscribers(network, address);
+        ServerPlayer orderer = OrderNotificationCapture.get();
+        if (orderer != null) subscribers.add(orderer.getUUID());
+        mgr.addOrder(new ProductionOrder(orderId, network, address, now, subscribers, tasks));
 
         if (!inStock.isEmpty()) {
-            // Instant in-stock items = link 0 of the order, NOT the final link, so the Re-Packager holds them and
-            // waits for the promise links (1..N, last marked final) before merging into one package.
             PackageOrderWithCrafts realOrder = new PackageOrderWithCrafts(new PackageOrder(inStock), order.orderedCrafts());
             dispatchWithOrderId(network, type, realOrder, address, orderId, 0, false);
         }
-        return true;
+        return InterceptResult.HANDLED;
     }
 
     // ── Notifications (subscribed players only, online only) ────────────────────
@@ -310,9 +315,7 @@ public class ProductionOrderManager extends SavedData {
 
         for (ProductionOrder order : orders.values()) {
             for (Task req : order.tasks()) {
-                if (req.state == Task.State.SENT) continue;   // already shipped — nothing more to do
-                // Active tasks create demand (elsewhere) and ship from network stock; INVALID_PATTERN tasks no
-                // longer demand anything but are still monitored here and ship (→ SENT) if enough stock exists.
+                if (req.state == Task.State.SENT) continue;
 
                 if (req.timer > 0) {
                     req.timer--;
@@ -321,7 +324,7 @@ public class ProductionOrderManager extends SavedData {
                 req.timer = DISPATCH_INTERVAL_TICKS;
 
                 int stock = networkStockOf(req.network, req.item);
-                if (stock < req.amount) continue;   // not produced yet — keep demanding + monitoring
+                if (stock < req.amount) continue;
 
                 if (dispatch(req)) {
                     req.state = Task.State.SENT;
@@ -332,10 +335,10 @@ public class ProductionOrderManager extends SavedData {
             if (order.isComplete()) {
                 boolean firstComplete = !completedAt.containsKey(order.orderId());
                 long since = completedAt.computeIfAbsent(order.orderId(), id -> now);
-                if (firstComplete) notifyOrderComplete(server, order);   // fire once, when it finishes producing
+                if (firstComplete) notifyOrderComplete(server, order);
                 if (now - since >= LINGER_TICKS) completed.add(order.orderId());
             } else if (completedAt.remove(order.orderId()) != null) {
-                dirty = true;   // re-opened (e.g. a task added) — cancel any pending linger
+                dirty = true;
             }
         }
 
@@ -343,8 +346,7 @@ public class ProductionOrderManager extends SavedData {
         if (dirty || !completed.isEmpty()) setDirty();
     }
 
-    /** Total amount of {@code stack} currently promised on {@code network} (shared across all gauges producing it).
-     *  Read-only: {@code -1} expiry means no promises are removed. */
+    /** Total amount of {@code stack} currently promised on {@code network} */
     private static int networkPromisedOf(UUID network, ItemStack stack) {
         if (stack.isEmpty()) return 0;
         if (FluidCompat.isFluidFilter(stack))
@@ -377,10 +379,6 @@ public class ProductionOrderManager extends SavedData {
      * and the given {@code linkIndex}; only the last-arriving link sets {@code finalLink}. Create's repackager
      * (`PackageRepackageHelper.isOrderComplete`) walks links 0..final and won't release the order until <em>every</em>
      * link is present — so a non-final instant package waits in the repackager for the later promise packages.
-     *
-     * <p>Link indices MUST be contiguous from 0 across the whole order (instant = 0, promises = 1..N), or the
-     * repackager would wait forever on a gap. Within this single dispatch Create's own fragment/`isFinal` numbering
-     * is preserved (one synchronous dispatch is always internally complete).</p>
      */
     public static boolean dispatchWithOrderId(UUID network,
                                               RequestType type,

@@ -13,14 +13,22 @@ public class CfcMixinPlugin implements IMixinConfigPlugin {
 
     private static final String DEPLOYER_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.LogisticsGenericManagerMixin";
-    /** Redirects Deployer's generic-promise codec */
     private static final String GENERIC_PROMISE_CODEC_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.GenericPromiseCodecMixin";
     private static final String REPACKAGE_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.PackageRepackageHelperMixin";
+    private static final String CFA_MIXIN =
+        "io.github.nbcss.createfactorycontroller.mixin.GenericLogisticsManagerMixin";
+    private static final String PHANTOM_NOTIFY_MIXIN =
+        "io.github.nbcss.createfactorycontroller.mixin.TunablePortableTickerSendOrderMixin";
+    private static final String CMP_NOTIFY_MIXIN =
+        "io.github.nbcss.createfactorycontroller.mixin.SendPackageMixin";
 
     private static final boolean DEPLOYER_PRESENT = isModPresent("deployer");
     private static final boolean EXTRA_GAUGES_PRESENT = isModPresent("extra_gauges");
+    private static final boolean CFA_PRESENT = isModPresent("create_factory_abstractions");
+    private static final boolean CREATEPHANTOM_PRESENT = isModPresent("createphantom");
+    private static final boolean CMP_PRESENT = isModPresent("create_mobile_packages");
 
     private static boolean isModPresent(String modId) {
         try {
@@ -35,6 +43,9 @@ public class CfcMixinPlugin implements IMixinConfigPlugin {
         if (DEPLOYER_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
         if (GENERIC_PROMISE_CODEC_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
         if (REPACKAGE_MIXIN.equals(mixinClassName)) return !EXTRA_GAUGES_PRESENT;
+        if (CFA_MIXIN.equals(mixinClassName)) return CFA_PRESENT;
+        if (PHANTOM_NOTIFY_MIXIN.equals(mixinClassName)) return CREATEPHANTOM_PRESENT;
+        if (CMP_NOTIFY_MIXIN.equals(mixinClassName)) return CMP_PRESENT;
         return true;
     }
 
