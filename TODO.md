@@ -19,7 +19,7 @@
 
 # 1.1.1
 - [DONE] Allow 2x2 and 1x1 crafting grid
-- [TODO] Compat with stock keeper from different mods
+- [DONE] Compat with stock keeper from different mods
 
 # 1.2.0
 - [TODO] Component Search
