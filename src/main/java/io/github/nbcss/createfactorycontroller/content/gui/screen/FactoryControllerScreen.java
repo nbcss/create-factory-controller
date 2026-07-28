@@ -173,6 +173,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
     private static final int CONTROLLER_MODEL_SCALE = 4;
 
+    private static final ResourceLocation BACKGROUND_TEXTURE_PATH = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/controller_background/");
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
     private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
@@ -385,11 +386,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         setTimedPrompt(message.withStyle(ChatFormatting.WHITE), 3000);
     }
 
-    private ResourceLocation getBackgroundTexture() {
-        return ResourceLocation.fromNamespaceAndPath("createfactorycontroller",
-                "textures/gui/controller_background/" + ClientConfig.getControllerBackground() + ".png");
-    }
-
     private void retuneCarried(boolean clear, @Nullable UUID network) {
         ItemStack carried = menu.getCarried();
         if (!ComponentRegistry.containsNetworkItem(carried)) return;
@@ -461,12 +457,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {}
     }
 
-    private void toggleInventory() {
-        inventoryExpanded = !inventoryExpanded;
-        menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
-        rebuildExpandButton();
-    }
-
     private void rebuildExpandButton() {
         if (expandButton != null) removeWidget(expandButton);
 
@@ -477,7 +467,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         ResourceLocation icon = inventoryExpanded ? EXPAND_BTN_COLLAPSE_SPRITE : EXPAND_BTN_EXPAND_SPRITE;
         expandButton = new GraphicButton(expandButtonX, expandButtonY, EXPAND_BTN_SIZE, EXPAND_BTN_SIZE,
                 () -> {
-                    toggleInventory();
+                    inventoryExpanded = !inventoryExpanded;
+                    menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
+                    rebuildExpandButton();
                     return true;
                 })
                 .addGraphic(GraphicButton.DISPLAY_BOTH, EXPAND_BTN_BASE_SPRITE)
@@ -658,7 +650,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
         int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
         int bgEndY   = Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-        TiledSpriteRenderer.create(getBackgroundTexture(), 0, 0,
+        TiledSpriteRenderer.create(BACKGROUND_TEXTURE_PATH.withSuffix(ClientConfig.getControllerBackground() + ".png"), 0, 0,
                         new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
