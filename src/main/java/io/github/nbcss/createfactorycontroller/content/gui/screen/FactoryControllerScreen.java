@@ -1,5 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -112,14 +114,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private double viewY = 0;
     private int zoomLevel = 0;
 
+
     /** Session-only (never serialized) per-controller camera memory: reopening a controller restores its last
      *  pan/zoom. Keyed by dimension + block position (see {@link #viewKey()}); cleared on disconnect / restart. */
-    private record ViewState(double x, double y, int zoom) {}
-    private static final Map<String, ViewState> VIEW_CACHE = new HashMap<>();
+    private record ViewCacheEntry(double x, double y, int zoom) {}
+    private static final Cache<String, ViewCacheEntry> VIEW_CACHE = CacheBuilder.newBuilder()
+            .maximumSize(64).concurrencyLevel(1).build();
 
     /** Drops all cached camera views — called on disconnect so a different world/server starts clean. */
     public static void clearViewCache() {
-        VIEW_CACHE.clear();
+        VIEW_CACHE.invalidateAll();
     }
 
     /** Session-cache key: dimension id + controller position (e.g. {@code minecraft:overworld@10, 64, -20}). */
@@ -258,7 +262,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public FactoryControllerScreen(FactoryControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         // Restore this controller's last-session pan/zoom (clampView in init() re-fits it to the window).
-        ViewState saved = VIEW_CACHE.get(viewKey());
+        ViewCacheEntry saved = VIEW_CACHE.getIfPresent(viewKey());
         if (saved != null) { viewX = saved.x(); viewY = saved.y(); zoomLevel = saved.zoom(); }
         // Play controller UI open SFX when the screen is constructed.
         Minecraft.getInstance().getSoundManager().play(
@@ -1601,7 +1605,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         viewX = clampAxis(viewX, halfViewW);
         viewY = clampAxis(viewY, halfViewH);
         // Remember this controller's camera for the session so reopening it restores the same view.
-        VIEW_CACHE.put(viewKey(), new ViewState(viewX, viewY, zoomLevel));
+        VIEW_CACHE.put(viewKey(), new ViewCacheEntry(viewX, viewY, zoomLevel));
     }
 
     private static double clampAxis(double view, double halfView) {
