@@ -8,7 +8,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -39,7 +39,7 @@ class RegularEditor extends GaugeWorkModeEditor {
             int ix = cellX(i), iy = cellY(i);
             boolean fluidIng = s.isFluidConn(slot.connectionIndex());
             ItemStack stack = s.ingredientOf(s.inputConnections.get(slot.connectionIndex()));
-            FluidGuiRender.filterIcon(gfx, stack, ix, iy);
+            ResourceIconRenderer.render(gfx, stack, ix, iy);
             if (!stack.isEmpty()) {
                 s.drawItemCount(gfx, stack, ix, iy, fluidIng
                         ? ConfigureRecipeScreen.formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));

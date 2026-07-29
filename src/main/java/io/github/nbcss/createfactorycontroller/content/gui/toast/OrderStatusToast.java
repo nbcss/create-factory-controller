@@ -4,7 +4,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket.RequestedItem;
-import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import net.minecraft.client.Minecraft;
@@ -84,7 +84,7 @@ public class OrderStatusToast implements Toast {
             int itemX = 4 + i * 17;
             int itemY = 16;
             boolean fluid = FluidCompat.isFluidFilter(item);
-            if (fluid) FluidGuiRender.filterIcon(gfx, item, itemX, itemY);
+            if (fluid) ResourceIconRenderer.render(gfx, item, itemX, itemY);
             else gfx.renderFakeItem(item, itemX, itemY);
             String amount = fluid ? SpriteNumbersRender.abbreviate(requested.amount() / 1000) + "b"
                                   : SpriteNumbersRender.abbreviate(requested.amount());

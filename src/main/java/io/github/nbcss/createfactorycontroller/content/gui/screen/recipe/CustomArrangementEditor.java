@@ -8,7 +8,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat
 import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -155,7 +155,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (slot.isEmpty()) return;
         ItemStack stack = s.ingredientOf(slot.source());
         if (stack.isEmpty()) return;
-        FluidGuiRender.filterIcon(gfx, stack, ix, iy);
+        ResourceIconRenderer.render(gfx, stack, ix, iy);
         // scale = 1 unless the multiplier bar is hovered, then each cell previews its scaled count.
         s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, slot.count() * scale));
     }

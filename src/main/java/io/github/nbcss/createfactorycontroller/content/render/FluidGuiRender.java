@@ -3,12 +3,10 @@ package io.github.nbcss.createfactorycontroller.content.render;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import net.createmod.catnip.platform.NeoForgeCatnipServices;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -20,13 +18,6 @@ import net.neoforged.neoforge.fluids.FluidStack;
 public final class FluidGuiRender {
 
     private FluidGuiRender() {}
-
-    /** Slot icon for a filter stack: a fluid filter draws the fluid; anything else its normal item model. */
-    public static void filterIcon(GuiGraphics gfx, ItemStack stack, int x, int y) {
-        FluidStack fluid = FluidCompat.getFilterFluid(stack);
-        if (fluid.isEmpty()) gfx.renderItem(stack, x, y);
-        else icon(gfx, fluid, x, y, 16);
-    }
 
     /**
      * A flat, front-facing fluid icon filling a {@code size}px square at {@code (x, y)} — a thin slab so the fluid's

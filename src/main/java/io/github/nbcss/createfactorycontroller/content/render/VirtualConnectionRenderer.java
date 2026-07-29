@@ -1,30 +1,25 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
-import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.createmod.catnip.animation.AnimationTickHolder;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FastColor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Draws connection arrows between virtual components on the canvas, reusing Create's own
  * factory-panel connection sprite ({@code create:block/factory_panel_connections}).
- *
- * <p>Connections follow the 2D grid like Create's panels: each connection is an axis-aligned
- * path — a single straight segment when the two cells share a row/column, otherwise an L-path
- * through one corner (corner side chosen by {@link Connection#arrowBendMode}). The
- * texture is a pre-oriented atlas: it contains a separate line + arrow strip for each of the four
- * grid directions, so we blit the matching strip directly (no rotation). The arrowhead points
- * into the {@code from} (source) gauge.</p>
  */
 @OnlyIn(Dist.CLIENT)
 public final class VirtualConnectionRenderer {
@@ -36,10 +31,23 @@ public final class VirtualConnectionRenderer {
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections.png");
     private static final ResourceLocation TEX_ANIMATED =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections_animated.png");
+    private static final RenderType RENDER_TYPE_STATIC = createRenderType(TEX_STATIC);
+    private static final RenderType RENDER_TYPE_ANIMATED = createRenderType(TEX_ANIMATED);
 
     private static final int FRAME_SIZE = 16; // pixels
     private static final float FRAME_TIME = 2f; // ticks per frame
     private static final int N_FRAMES = 8;
+
+    private static RenderType createRenderType(ResourceLocation texture) {
+        return RenderType.create("create_factory_controller_connection",
+                DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE,
+                RenderType.CompositeState.builder()
+                        .setShaderState(RenderStateShard.POSITION_TEX_SHADER)
+                        .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
+                        .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                        .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                        .createCompositeState(false));
+    }
 
     private enum Direction { UP, DOWN, LEFT, RIGHT }
 
@@ -71,69 +79,25 @@ public final class VirtualConnectionRenderer {
         }
     }
 
-    /** Whether the cell-bounding rectangle of the two connection ends overlaps the visible canvas rectangle. */
-    public static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b,
-                                      int minX, int minY, int maxX, int maxY) {
-        int x0 = Math.min(a.x(), b.x()) * CELL;
-        int y0 = Math.min(a.y(), b.y()) * CELL;
-        int x1 = (Math.max(a.x(), b.x()) + 1) * CELL;
-        int y1 = (Math.max(a.y(), b.y()) + 1) * CELL;
-        return x0 < maxX && x1 > minX && y0 < maxY && y1 > minY;
-    }
+    /** Draws a connection {@code path} (cell waypoints) in {@code color} (0xAARRGGBB or 0xRRGGBB).
+     * Translate the pose so cell {@code (0,0)} sits at the desired screen origin. */
+    public static void drawPath(GuiGraphics gfx, List<Vector2i> path, int color, boolean animated) {
+        int alpha = FastColor.ARGB32.alpha(color);
+        gfx.setColor(FastColor.ARGB32.red(color) / 255f,
+                FastColor.ARGB32.green(color) / 255f,
+                FastColor.ARGB32.blue(color) / 255f,
+                alpha == 0 ? 1f : alpha / 255f);
 
-    /**
-     * Resolves the cell-space path for {@code conn}, or {@code null} if the endpoints are identical.
-     * Auto bend (-1) tries the four modes in canonical order and picks the first clear path.
-     */
-    @Nullable
-    public static List<Vector2i> resolvePath(Connection conn, Set<VirtualComponentPosition> occupied) {
-        return resolvePath(conn.from, conn.to, conn.arrowBendMode, occupied);
-    }
+        drawPathSegments(gfx.bufferSource(), gfx.pose(), path, animated);
+        gfx.bufferSource().endBatch(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
 
-    /** As {@link #resolvePath(Connection, Set)} but from raw endpoints + bend mode — used to preview a not-yet-created
-     *  wire while in connection mode. {@code arrowBendMode} {@code -1} auto-picks the first clear bend. */
-    @Nullable
-    public static List<Vector2i> resolvePath(VirtualComponentPosition from, VirtualComponentPosition to,
-                                             int arrowBendMode, Set<VirtualComponentPosition> occupied) {
-        if (from.equals(to)) return null;
-
-        assert Minecraft.getInstance().level != null;
-
-        int mode;
-        if (arrowBendMode < 0) {
-            boolean swap = from.x() > to.x() || (from.x() == to.x() && from.y() > to.y());
-            VirtualComponentPosition pa = swap ? to : from, pb = swap ? from : to;
-            int m = 0;
-            for (int k = 0; k < 4; k++) {
-                if (pathClear(buildCellPath(pa, pb, k), occupied, pa, pb)) { m = k; break; }
-            }
-            mode = !swap ? m : (m == 0 ? 1 : m == 1 ? 0 : m);
-        } else {
-            mode = arrowBendMode % 4;
-        }
-        return new ArrayList<>(buildCellPath(from, to, mode));
-    }
-
-    /** Draws a static connection {@code path} (cell waypoints) in {@code color} (0xRRGGBB) — for the Logical Tube
-     *  settings grids. Translate the pose so cell {@code (0,0)} sits at the desired screen origin. */
-    public static void drawGuiPath(GuiGraphics gfx, List<Vector2i> path, int color) {
-        drawGuiPath(gfx, path, color, 1f);
-    }
-
-    /** As {@link #drawGuiPath(GuiGraphics, List, int)} but with an {@code alpha} (0..1) — used to pulse the
-     *  connection-mode wire preview. Blend is forced on so a translucent tint actually shows. */
-    public static void drawGuiPath(GuiGraphics gfx, List<Vector2i> path, int color, float alpha) {
-        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
-        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, alpha);
-        drawPathSegments(gfx, path, false);
         gfx.setColor(1f, 1f, 1f, 1f);
-        com.mojang.blaze3d.systems.RenderSystem.disableBlend();
     }
 
-    /** Walks a cell-space polyline and blits the arrow strip per segment (head at the last point, tail at the first).
+    /** Walks a cell-space polyline and draws the arrow strip per segment (head at the last point, tail at the first).
      *  The caller sets the colour via {@code gfx.setColor} first; cells are {@link #CELL} px, so translate the pose to
      *  position the path. */
-    public static void drawPathSegments(GuiGraphics gfx, List<Vector2i> path, boolean animated) {
+    private static void drawPathSegments(MultiBufferSource bufferSource, PoseStack pose, List<Vector2i> path, boolean animated) {
         // Walk every line of the path and blit.
         for (int i = 0; i < path.size() - 1; i++) {
             Vector2i a = path.get(i), b = path.get(i + 1);
@@ -169,7 +133,7 @@ public final class VirtualConnectionRenderer {
                         case LEFT  -> Subtexture.LINE_LEFT_0;
                         case RIGHT -> Subtexture.LINE_RIGHT_0;
                     };
-                    drawSegment(gfx, st0, animated, cell.x, cell.y);
+                    drawSegment(bufferSource, pose, st0, animated, cell.x, cell.y);
                 }
                 // Latter half of the cell in the current direction
                 if (j != length) {
@@ -185,7 +149,7 @@ public final class VirtualConnectionRenderer {
                         case LEFT  -> Subtexture.LINE_LEFT_1;
                         case RIGHT -> Subtexture.LINE_RIGHT_1;
                     };
-                    drawSegment(gfx, st1, animated, cell.x, cell.y);
+                    drawSegment(bufferSource, pose, st1, animated, cell.x, cell.y);
                 }
             }
         }
@@ -196,67 +160,24 @@ public final class VirtualConnectionRenderer {
      * @param x Cell x coordinate.
      * @param y Cell y coordinate.
      */
-    private static void drawSegment(GuiGraphics gfx, Subtexture st, boolean animated, int x, int y) {
+    private static void drawSegment(MultiBufferSource bufferSource, PoseStack pose, Subtexture st, boolean animated, int x, int y) {
         int frame = !animated ? 0 :
                 (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME + st.t) % N_FRAMES;
-        gfx.blit(
-                animated ? TEX_ANIMATED : TEX_STATIC,
-                x * CELL + CELL/2 - st.ox, y * CELL + CELL/2 - st.oy,
-                st.u, st.v + frame * FRAME_SIZE, st.w, st.h,
-                FRAME_SIZE, FRAME_SIZE * (animated ? N_FRAMES : 1));
-    }
+        int x0 = x * CELL + CELL / 2 - st.ox;
+        int y0 = y * CELL + CELL / 2 - st.oy;
+        int x1 = x0 + st.w;
+        int y1 = y0 + st.h;
+        int textureHeight = FRAME_SIZE * (animated ? N_FRAMES : 1);
+        float u0 = st.u / (float) FRAME_SIZE;
+        float v0 = (st.v + frame * FRAME_SIZE) / (float) textureHeight;
+        float u1 = (st.u + st.w) / (float) FRAME_SIZE;
+        float v1 = (st.v + frame * FRAME_SIZE + st.h) / (float) textureHeight;
 
-    /**
-     * Grid-following cell waypoints from source to target for a bend mode (Create's order):
-     * <ul><li>0 — V→H (vertical-first L)</li>
-     *     <li>1 — H→V (horizontal-first L)</li>
-     *     <li>2 — H→V→H staircase (falls back to H→V if it can't fit)</li>
-     *     <li>3 — V→H→V staircase (falls back to V→H if it can't fit)</li></ul>
-     * A staircase needs a cell strictly between source and target on its stepping axis ({@code |d|>=2}).
-     */
-    private static List<Vector2i> buildCellPath(VirtualComponentPosition from, VirtualComponentPosition to, int mode) {
-        int fx = from.x(), fy = from.y(), tx = to.x(), ty = to.y();
-        if (fx == tx || fy == ty)                                   // aligned → straight run
-            return List.of(new Vector2i(fx, fy), new Vector2i(tx, ty));
-
-        int dx = tx - fx, dy = ty - fy;
-        return switch (mode) {
-            case 1 ->                                                 // H→V
-                    List.of(new Vector2i(fx, fy), new Vector2i(tx, fy), new Vector2i(tx, ty));
-            case 2 -> {
-                if (Math.abs(dx) >= 2) {
-                    int mx = fx + dx / 2;                           // bend column (a cell centre)
-                    yield List.of(new Vector2i(fx, fy), new Vector2i(mx, fy), new Vector2i(mx, ty), new Vector2i(tx, ty));
-                }
-                yield List.of(new Vector2i(fx, fy), new Vector2i(tx, fy), new Vector2i(tx, ty));
-            }
-            case 3 -> {
-                if (Math.abs(dy) >= 2) {
-                    int my = fy + dy / 2;                           // bend row (a cell centre)
-                    yield List.of(new Vector2i(fx, fy), new Vector2i(fx, my), new Vector2i(tx, my), new Vector2i(tx, ty));
-                }
-                yield List.of(new Vector2i(fx, fy), new Vector2i(fx, ty), new Vector2i(tx, ty));
-            }
-            default ->                                                // 0: V→H
-                    List.of(new Vector2i(fx, fy), new Vector2i(fx, ty), new Vector2i(tx, ty));
-        };
-    }
-
-    /** True if the cell-space polyline passes through no occupied cell other than its endpoints. */
-    private static boolean pathClear(List<Vector2i> path, Set<VirtualComponentPosition> occupied,
-                                     VirtualComponentPosition from, VirtualComponentPosition to) {
-        for (int i = 0; i < path.size() - 1; i++) {
-            Vector2i a = path.get(i), b = path.get(i + 1);
-            int stepX = Integer.signum(b.x - a.x), stepY = Integer.signum(b.y - a.y);
-            Vector2i c = new Vector2i(a);
-            while (true) {
-                VirtualComponentPosition p = new VirtualComponentPosition(c.x, c.y);
-                if (!p.equals(from) && !p.equals(to) && occupied.contains(p)) return false;
-                if (c.x == b.x && c.y == b.y) break;
-                c.x += stepX; c.y += stepY;
-            }
-        }
-        return true;
+        VertexConsumer buffer = bufferSource.getBuffer(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
+        buffer.addVertex(pose.last(), x0, y0, 0).setUv(u0, v0);
+        buffer.addVertex(pose.last(), x0, y1, 0).setUv(u0, v1);
+        buffer.addVertex(pose.last(), x1, y1, 0).setUv(u1, v1);
+        buffer.addVertex(pose.last(), x1, y0, 0).setUv(u1, v0);
     }
 
 }

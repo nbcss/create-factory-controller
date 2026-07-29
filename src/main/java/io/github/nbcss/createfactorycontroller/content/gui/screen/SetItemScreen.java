@@ -5,6 +5,7 @@ import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.item.TooltipHelper;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.lang.FontHelper;
@@ -229,9 +230,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     private void renderFilter(GuiGraphics gfx, int mouseX, int mouseY) {
-        FluidStack fluid = FluidCompat.getFilterFluid(filter);
-        if (!fluid.isEmpty()) FluidGuiRender.icon(gfx, fluid, filterX(), filterY(), FILTER_SLOT_SIZE);
-        else gfx.renderItem(filter, filterX(), filterY());
+        ResourceIconRenderer.render(gfx, filter, filterX(), filterY());
         if (overFilter(mouseX, mouseY))
             gfx.fill(filterX(), filterY(), filterX() + FILTER_SLOT_SIZE, filterY() + FILTER_SLOT_SIZE, 0x80FFFFFF);
     }

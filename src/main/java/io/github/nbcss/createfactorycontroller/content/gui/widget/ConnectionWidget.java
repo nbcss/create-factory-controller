@@ -147,19 +147,6 @@ public class ConnectionWidget {
 
     /** Draws this connection in its normal (non-hovered) state. */
     public void render(GuiGraphics gfx, ComponentHolder holder) {
-        renderWithColor(gfx, holder);
-    }
-
-    /**
-     * Draws the white highlight strip behind the hovered connection. The {@link #stripRects} are disjoint, so each
-     * pixel is painted exactly once — no brighter seams at turn points even at the 80% highlight alpha.
-     */
-    public void renderHighlight(GuiGraphics gfx) {
-        for (int[] r : stripRects)
-            gfx.fill(r[0], r[1], r[2], r[3], HIGHLIGHT_COLOR);
-    }
-
-    private void renderWithColor(GuiGraphics gfx, ComponentHolder holder) {
         int color = connection.getConnectionColor(holder);
         long animationTick = connection.getAnimationTick(holder);
         boolean animated = animationTick >= 0;
@@ -172,8 +159,15 @@ public class ConnectionWidget {
                 color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
             }
         }
-        gfx.setColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
-        VirtualConnectionRenderer.drawPathSegments(gfx, path, animated);
-        gfx.setColor(1f, 1f, 1f, 1f);
+        VirtualConnectionRenderer.drawPath(gfx, path, color, animated);
+    }
+
+    /**
+     * Draws the white highlight strip behind the hovered connection. The {@link #stripRects} are disjoint, so each
+     * pixel is painted exactly once — no brighter seams at turn points even at the 80% highlight alpha.
+     */
+    public void renderHighlight(GuiGraphics gfx) {
+        for (int[] r : stripRects)
+            gfx.fill(r[0], r[1], r[2], r[3], HIGHLIGHT_COLOR);
     }
 }

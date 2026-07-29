@@ -14,6 +14,7 @@ import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.createmod.catnip.gui.element.ScreenElement;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -1062,7 +1063,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int producedCount = editor().producedCount();
             int shownOutput = producedCount * previewScale(mouseX, mouseY);
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
-            FluidGuiRender.filterIcon(gfx, g.filter, ox, oy);
+            ResourceIconRenderer.render(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(shownOutput) : String.valueOf(shownOutput));
             if (in(mouseX, mouseY, ox, oy, 16, 16)) {
                 Component scrollLine = CreateLang.translate("gui.factory_panel.expected_output_tip_2")
@@ -1332,7 +1333,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // stock level
         if (behaviour != null && !behaviour.filter.isEmpty()) {
             int fx = panelX + FILTER_X, fy = panelY + THRESH_TOP;
-            FluidGuiRender.filterIcon(gfx, behaviour.filter, fx, fy);
+            ResourceIconRenderer.render(gfx, behaviour.filter, fx, fy);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
             SpriteNumbersRender.drawCount(gfx, FluidCompat.isFluidFilter(behaviour.filter)

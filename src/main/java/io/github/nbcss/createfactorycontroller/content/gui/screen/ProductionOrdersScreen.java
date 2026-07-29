@@ -25,7 +25,7 @@ import io.github.nbcss.createfactorycontroller.content.production.ProductionOrde
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrdersClient;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrder.Task;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
-import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import net.minecraft.ChatFormatting;
 import net.createmod.catnip.animation.AnimationTickHolder;
@@ -284,7 +284,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             ProductionOrderView.RequestView r = reqs.get(i);
             ItemStack stack = r.display();
             boolean fluid = FluidCompat.isFluidFilter(stack);
-            if (fluid) FluidGuiRender.filterIcon(gfx, stack, sx + 1, sy + 1);
+            if (fluid) ResourceIconRenderer.render(gfx, stack, sx + 1, sy + 1);
             else gfx.renderItem(stack, sx + 1, sy + 1);
             if (sy + 1 >= viewTop() && sy + 1 < viewBottom())
                 slotTips.add(new SlotTip(sx + 1, sy + 1, sx + 17, sy + 17, r));

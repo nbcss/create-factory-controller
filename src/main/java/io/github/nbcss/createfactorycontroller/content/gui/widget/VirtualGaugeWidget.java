@@ -12,7 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControl
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
-import io.github.nbcss.createfactorycontroller.content.render.FluidGuiRender;
+import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.client.Minecraft;
@@ -21,6 +21,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -65,9 +66,11 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      */
     @Override
     public void renderBack(GuiGraphics gfx) {
+        Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
         gfx.blitSprite(behaviour.getTexture().withSuffix("/back"), x0, y0, CELL, CELL);
+        Minecraft.getInstance().getProfiler().pop();
     }
 
     /**
@@ -76,6 +79,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      */
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
+        Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
+
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
@@ -85,7 +90,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             gfx.pose().pushPose();
             gfx.pose().translate(x0 + 4.0, y0 + 4.0, 0);   // 4-px inset centres the half-size icon
             gfx.pose().scale(0.5f, 0.5f, 0.5f);            // uniform so item lighting stays correct
-            FluidGuiRender.filterIcon(gfx, behaviour.filter, 0, 0);
+            ResourceIconRenderer.render(gfx, behaviour.filter, 0, 0);
             gfx.pose().popPose();
         }
 
@@ -100,12 +105,20 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
             gfx.setColor(1f, 1f, 1f, 1f);
         }
+
+        Minecraft.getInstance().getProfiler().pop();
     }
 
     @Override
     public void renderOverlay(GuiGraphics gfx, boolean showCount) {
+        Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
+
         Component label = showCount ? behaviour.getCountLabel() : Component.empty();
-        if (label.getString().isEmpty()) return;
+        if (label.getString().isEmpty()) {
+            Minecraft.getInstance().getProfiler().pop();
+            return;
+        }
+
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
         Font font = Minecraft.getInstance().font;
@@ -122,8 +135,9 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         font.drawInBatch8xOutline(label.getVisualOrderText(), -w, -font.lineHeight,
                 0xFFFFFFFF, 0x000000,
                 matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
-        gfx.flush();
         gfx.pose().popPose();
+
+        Minecraft.getInstance().getProfiler().pop();
     }
 
     // ── Tooltip ──────────────────────────────────────────────────────────────

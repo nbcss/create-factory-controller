@@ -207,6 +207,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private int lastMouseX, lastMouseY;
 
     private final Map<VirtualComponentPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
+    private final List<VirtualComponentWidget> visibleComponents = new ArrayList<>();
 
     private final Map<VirtualComponentPosition, LerpedFloat> bulbs = new HashMap<>();
     private final Map<VirtualComponentPosition, Long> bulbSeenRequest = new HashMap<>();
@@ -521,10 +522,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        Minecraft.getInstance().getProfiler().push("FactoryControllerScreen");
+
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         lastMouseX = mouseX;   // remembered so keyPressed (no mouse coords) can anchor the arrow-mode lock
         lastMouseY = mouseY;
+
         super.render(graphics, mouseX, mouseY, partialTick);
+
         VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
         // No hover tooltips while a selection drag (rubber-band rectangle or batch relocate) is in progress.
         boolean selectionDragging = rubberBanding || batchRelocating;
@@ -551,6 +556,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, helpButton.getTooltipText(font, HelpButton.TOOLTIP_WIDTH), mouseX, mouseY);
         }
+
+        Minecraft.getInstance().getProfiler().pop();
     }
 
     /** True if {@code (mx, my)} lies within a cached {x0, y0, x1, y1} label box (null box ⇒ false). */
@@ -622,14 +629,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      * selector — but <b>not</b> the player inventory. Needs to be called by overlay to display controller background.
      */
     public void renderBoard(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick, boolean inOverlay) {
+        var profiler = Minecraft.getInstance().getProfiler();
+        profiler.push("FactoryController_renderBoard");
+
         int x0 = leftPos + CANVAS_SIDE_PADDING;
         int y0 = topPos + CANVAS_TOP_PADDING;
         int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
         int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
         int centerX = (x0 + x1) / 2;
         int centerY = (y0 + y1) / 2;
-
-        graphics.enableScissor(x0, y0, x1, y1);
 
         // Visible canvas-world pixel bounds
         int minX = (int) Math.floor(viewX + (x0 - centerX) / getZoomFactor());
@@ -639,7 +647,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
+        profiler.push("canvas");
+
         // Canvas-world → screen pose (translate to centre, scale by zoom, translate by the pan).
+        graphics.enableScissor(x0, y0, x1, y1);
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, centerY, 0);
         graphics.pose().scale((float) getZoomFactor(), (float) getZoomFactor(), (float) getZoomFactor());
@@ -654,12 +665,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
-        // Cull components and connections that fall outside the visible canvas rectangle
-        for (VirtualComponentWidget component : componentWidgets.values())
-            if (isCellVisible(component.position(), minX, minY, maxX, maxY))
-                component.renderBack(graphics);
-
+        profiler.push("cull");
+        updateVisibleComponents(minX, minY, maxX, maxY);
         List<ConnectionWidget> connWidgets = buildConnectionWidgets(minX, minY, maxX, maxY);
+
+        profiler.popPush("back");
+        // Cull components and connections that fall outside the visible canvas rectangle
+        for (VirtualComponentWidget component : visibleComponents)
+            component.renderBack(graphics);
+
+        profiler.popPush("connection");
         // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
         double worldMouseX = viewX + (mouseX - centerX) / getZoomFactor();
         double worldMouseY = viewY + (mouseY - centerY) / getZoomFactor();
@@ -686,24 +701,34 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             hoveredConn.render(graphics, menu);
         }
 
-        boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
-        for (VirtualComponentWidget component : componentWidgets.values())
-            if (isCellVisible(component.position(), minX, minY, maxX, maxY))
-                component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
+        profiler.popPush("front");
+        for (VirtualComponentWidget component : visibleComponents)
+            component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
 
+        profiler.pop();
         renderSelectedNetworkMask(graphics);
         // The blueprint ghost owns the cursor cell while placing; the normal hover reticle would fight it.
         if (hoveredConn == null && pendingPlacement == null) renderHoverTarget(graphics);
         renderSelectionTargets(graphics);
+
+        profiler.push("ghost");
         renderPlacementGhost(graphics);
 
+        profiler.popPush("label");
         // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
-        for (VirtualComponentWidget component : componentWidgets.values())
-            if (isCellVisible(component.position(), minX, minY, maxX, maxY))
-                component.renderOverlay(graphics, alwaysShowLabel || component.position().equals(hoveredPosition));
+        boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
+        for (VirtualComponentWidget component : visibleComponents)
+            component.renderOverlay(graphics, alwaysShowLabel || component.position().equals(hoveredPosition));
 
+        profiler.pop();
         graphics.pose().popPose();
         graphics.disableScissor();
+
+        profiler.popPush("frame");
+
+        // Reset depth for gauge filter icons
+        graphics.flush();
+        RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
         // Frame
         RenderSystem.enableBlend();
@@ -733,10 +758,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                             RENAME_BUTTON_SIZE, RENAME_BUTTON_SIZE);
             }
         }
-
-        // Reset depth for gauge filter icons
-        graphics.flush();
-        RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
         indicatorColumn.render(graphics, mouseX, mouseY, partialTick);
@@ -789,9 +810,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             graphics.disableScissor();
         }
 
+        profiler.pop();
+
         if (inOverlay) {
             graphics.fill(x0, y0, x1, y1, 0xB0101010);
         }
+
+        profiler.pop();
     }
 
     /**
@@ -881,12 +906,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (result != null) {
                 if (result.ok()) {
                     assert result.source() != null;
-                    List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(
+                    List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(
                             result.source(), result.sink(), previewArrowMode, occupiedCells());
                     if (path != null) {
                         float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
                         float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);   // 1.0 at phase 0, 0.6 at half
-                        VirtualConnectionRenderer.drawGuiPath(graphics, path, result.type().color(), alpha);
+                        int color = Math.round(alpha * 255) << 24 | (result.type().color() & 0xFFFFFF);
+                        VirtualConnectionRenderer.drawPath(graphics, path, color, false);
                     }
                 }
                 renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
@@ -940,12 +966,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.setColor(1f, 1f, 1f, 1f);
     }
 
-    private static boolean isCellVisible(VirtualComponentPosition cell, int minX, int minY, int maxX, int maxY) {
-        int x0 = cell.x() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE;
-        int y0 = cell.y() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE;
-        int x1 = (cell.x() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-        int y1 = (cell.y() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-        return x0 < maxX && x1 > minX && y0 < maxY && y1 > minY;
+    private void updateVisibleComponents(int minX, int minY, int maxX, int maxY) {
+        visibleComponents.clear();
+        for (VirtualComponentWidget component : componentWidgets.values()) {
+            VirtualComponentPosition cell = component.position();
+            int x0 = cell.x() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE;
+            int y0 = cell.y() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE;
+            int x1 = (cell.x() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+            int y1 = (cell.y() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+            if (x0 < maxX && x1 > minX && y0 < maxY && y1 > minY) visibleComponents.add(component);
+        }
     }
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
@@ -1142,9 +1172,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
-    /** Translucency of the previewed blueprint wires, matching {@link #renderGhostAt}'s component ghosts. */
-    private static final float GHOST_WIRE_ALPHA = 0.5f;
-
     private void renderPlacementWires(GuiGraphics graphics, VirtualComponentPosition anchor) {
         assert pendingPlacement != null;
         List<BlueprintStorage.Wire> wires = pendingPlacement.info().connections();
@@ -1155,11 +1182,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             occupied.add(BlueprintPlacement.cellFor(placement, anchor));
 
         for (BlueprintStorage.Wire wire : wires) {
-            List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(
+            List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(
                     BlueprintPlacement.cellFor(wire.from(), anchor),
                     BlueprintPlacement.cellFor(wire.to(), anchor),
                     wire.arrowBendMode(), occupied);
-            if (path != null) VirtualConnectionRenderer.drawGuiPath(graphics, path, wire.color(), GHOST_WIRE_ALPHA);
+            if (path != null)
+                VirtualConnectionRenderer.drawPath(
+                        graphics, path, (0x80 << 24) | (wire.color() & 0xFFFFFF), false);
         }
     }
 
@@ -1840,8 +1869,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         List<ConnectionWidget> result = new ArrayList<>();
         for (VirtualComponentWidget sink : componentWidgets.values()) {
             for (var conn : sink.behaviour().targetedBy().values()) {
-                if (!VirtualConnectionRenderer.spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
-                List<org.joml.Vector2i> path = VirtualConnectionRenderer.resolvePath(conn, occupied);
+                if (!ConnectionPathResolver.spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
+                List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(conn, occupied);
                 if (path != null) result.add(new ConnectionWidget(conn, path));
             }
         }
