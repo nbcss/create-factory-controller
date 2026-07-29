@@ -1,15 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
 import net.neoforged.api.distmarker.Dist;
@@ -26,6 +20,9 @@ import java.util.List;
 public class VirtualConnectionRenderer {
 
     private static final int CELL = 16;
+    private static final int FRAME_SIZE = 16; // pixels
+    private static final float FRAME_TIME = 2f; // ticks per frame
+    private static final int N_FRAMES = 8;
 
     // Create's connection sprite (16×16).
     private static final ResourceLocation TEX_STATIC =
@@ -33,25 +30,8 @@ public class VirtualConnectionRenderer {
     private static final ResourceLocation TEX_ANIMATED =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections_animated.png");
 
-    private static final RenderStateShard.ShaderStateShard POSITION_TEX_COLOR_SHADER =
-            new RenderStateShard.ShaderStateShard(GameRenderer::getPositionTexColorShader);
-    private static final RenderType RENDER_TYPE_STATIC = createRenderType(TEX_STATIC);
-    private static final RenderType RENDER_TYPE_ANIMATED = createRenderType(TEX_ANIMATED);
-
-    private static final int FRAME_SIZE = 16; // pixels
-    private static final float FRAME_TIME = 2f; // ticks per frame
-    private static final int N_FRAMES = 8;
-
-    private static RenderType createRenderType(ResourceLocation texture) {
-        return RenderType.create("create_factory_controller_connection",
-                DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE,
-                RenderType.CompositeState.builder()
-                        .setShaderState(POSITION_TEX_COLOR_SHADER)
-                        .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
-                        .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
-                        .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
-                        .createCompositeState(false));
-    }
+    private static final DeferredBlitter BLITTER_STATIC = DeferredBlitter.forTexture(TEX_STATIC, FRAME_SIZE, FRAME_SIZE);
+    private static final DeferredBlitter BLITTER_ANIMATED = DeferredBlitter.forTexture(TEX_ANIMATED, FRAME_SIZE, FRAME_SIZE * N_FRAMES);
 
     private enum Direction { UP, DOWN, LEFT, RIGHT }
 
@@ -86,11 +66,13 @@ public class VirtualConnectionRenderer {
     private final List<Vector2i> path;
     private final int color;
     private final boolean animated;
+    private final DeferredBlitter blitter;
 
     protected VirtualConnectionRenderer(List<Vector2i> path, int color, boolean animated) {
         this.path = path;
         this.color = FastColor.ARGB32.alpha(color) == 0 ? FastColor.ARGB32.opaque(color) : color;
         this.animated = animated;
+        this.blitter = animated ? BLITTER_ANIMATED : BLITTER_STATIC;
     }
 
     public static VirtualConnectionRenderer create(List<Vector2i> path, int color, boolean animated) {
@@ -100,11 +82,13 @@ public class VirtualConnectionRenderer {
     /** Draws the connection path in its configured color. Immediate. */
     public void drawPath(GuiGraphics gfx) {
         drawPath(gfx.bufferSource(), gfx.pose());
-        gfx.bufferSource().endBatch(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
+        blitter.endBatch(gfx.bufferSource());
     }
 
     /** Draws the connection path in its configured color. Deferred. */
     public void drawPath(MultiBufferSource bufferSource, PoseStack pose) {
+        blitter.setColorARGB(color);
+
         // Walk every line of the path and blit.
         for (int i = 0; i < path.size() - 1; i++) {
             Vector2i a = path.get(i), b = path.get(i + 1);
@@ -170,21 +154,9 @@ public class VirtualConnectionRenderer {
     private void drawSegment(MultiBufferSource bufferSource, PoseStack pose, Subtexture st, int x, int y) {
         int frame = !animated ? 0 :
                 (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME + st.t) % N_FRAMES;
-        int x0 = x * CELL + CELL / 2 - st.ox;
-        int y0 = y * CELL + CELL / 2 - st.oy;
-        int x1 = x0 + st.w;
-        int y1 = y0 + st.h;
-        int textureHeight = FRAME_SIZE * (animated ? N_FRAMES : 1);
-        float u0 = st.u / (float) FRAME_SIZE;
-        float v0 = (st.v + frame * FRAME_SIZE) / (float) textureHeight;
-        float u1 = (st.u + st.w) / (float) FRAME_SIZE;
-        float v1 = (st.v + frame * FRAME_SIZE + st.h) / (float) textureHeight;
-
-        VertexConsumer buffer = bufferSource.getBuffer(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
-        buffer.addVertex(pose.last(), x0, y0, 0).setColor(color).setUv(u0, v0);
-        buffer.addVertex(pose.last(), x0, y1, 0).setColor(color).setUv(u0, v1);
-        buffer.addVertex(pose.last(), x1, y1, 0).setColor(color).setUv(u1, v1);
-        buffer.addVertex(pose.last(), x1, y0, 0).setColor(color).setUv(u1, v0);
+        blitter.blit(bufferSource, pose,
+                x * CELL + CELL / 2 - st.ox, y * CELL + CELL / 2 - st.oy,
+                st.w, st.h, st.u, st.v + frame * FRAME_SIZE);
     }
 
 }
