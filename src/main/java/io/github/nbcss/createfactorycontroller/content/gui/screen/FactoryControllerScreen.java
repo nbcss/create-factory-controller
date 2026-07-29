@@ -22,6 +22,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintLibraryScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintPlaceScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintSaveScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.CollapsiblePlayerInventory;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
@@ -55,9 +56,7 @@ import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorag
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -133,23 +132,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return dim + "@" + menu.controllerPos.toShortString();
     }
 
-    // Inventory panel state — all in menu-relative coords (relative to leftPos/topPos).
-    private static final int INV_BOTTOM_MARGIN = 28;
-    private static final int HOTBAR_H = 18;
-    private static final int MAIN_INV_H = 54;
-    private static final int INV_GAP = 4;
-    private static final int SLOT_ROW_W = 162;
-    private static final int EXPAND_BTN_SIZE = 9;
-    private static final ResourceLocation EXPAND_BTN_BASE_SPRITE =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tiny_button/base_general");
-    private static final ResourceLocation EXPAND_BTN_EXPAND_SPRITE =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tiny_button/expand");
-    private static final ResourceLocation EXPAND_BTN_COLLAPSE_SPRITE =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tiny_button/collapse");
-    private int invOriginX;
-    private int invHotbarY;
-    private boolean inventoryExpanded = false;
-    @Nullable private GraphicButton expandButton = null;
+    @Nullable private CollapsiblePlayerInventory playerInventory = null;
 
     // Settings button (top-right of the board); opens the client-side background-picker overlay.
     private static final int SETTINGS_BTN_W = 23;
@@ -167,7 +150,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation BP_SAVE_BTN_HOVER_SPRITE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/tool_bar/bp_save_hover");
     @Nullable private GraphicButton settingsButton = null;
-    @Nullable private BlueprintButton blueprintButton = null;
+    @Nullable private GraphicButton blueprintLoadButton = null;
+    @Nullable private GraphicButton blueprintSaveButton = null;
     @Nullable private HelpButton helpButton = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
@@ -185,13 +169,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int CAPACITY_ICON_SIZE = 8;
     private static final ResourceLocation ZOOM_ICON = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/zoom_icon");
     private static final int ZOOM_ICON_SIZE = 10;
-    private static final ResourceLocation PLAYER_INVENTORY_TEX = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
-    private static final int INV_TEX_W         = 176;
-    private static final int INV_TEX_H         = 108;
-    private static final int INV_TEX_SLOT_LEFT = 8;
-    private static final int INV_TEX_TITLE_H   = 18;
-    private static final int INV_TEX_HOTBAR_Y  = 76;
-
     // Interaction state
     @Nullable private VirtualComponentPosition hoveredPosition = null;
     @Nullable private ConnectionWidget hoveredConn = null;
@@ -289,11 +266,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         rebuildGaugeWidgets();
 
-        invHotbarY = scaledH - INV_BOTTOM_MARGIN - HOTBAR_H - topPos;
-        invOriginX = (imageWidth - SLOT_ROW_W) / 2 + 1;
-        menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
-
-        rebuildExpandButton();
+        if (playerInventory == null)
+            playerInventory = new CollapsiblePlayerInventory(menu, font, playerInventoryTitle);
+        playerInventory.layout(leftPos, topPos, imageWidth, scaledH);
+        addWidget(playerInventory);
 
         if (settingsButton != null) removeWidget(settingsButton);
         settingsButton = new GraphicButton(settingsButtonX(), settingsButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
@@ -307,9 +283,28 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .addTooltip(Component.translatable("createfactorycontroller.gui.controller_settings"));
         addWidget(settingsButton);
 
-        if (blueprintButton != null) removeWidget(blueprintButton);
-        blueprintButton = new BlueprintButton(settingsButtonX(), blueprintButtonY());
-        addWidget(blueprintButton);
+        if (blueprintLoadButton != null) removeWidget(blueprintLoadButton);
+        blueprintLoadButton = new GraphicButton(settingsButtonX(), blueprintButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
+                () -> {
+                    Minecraft.getInstance().setScreen(new BlueprintLibraryScreen(this));
+                    return true;
+                })
+                .addGraphic(GraphicButton.DISPLAY_NORMAL, BP_OPEN_BTN_SPRITE)
+                .addGraphic(GraphicButton.DISPLAY_HOVER, BP_OPEN_BTN_HOVER_SPRITE)
+                .addTooltip(Component.translatable("createfactorycontroller.gui.blueprint.load_blueprint"));
+        addWidget(blueprintLoadButton);
+
+        if (blueprintSaveButton != null) removeWidget(blueprintSaveButton);
+        blueprintSaveButton = new GraphicButton(settingsButtonX(), blueprintButtonY(), SETTINGS_BTN_W, SETTINGS_BTN_H,
+                () -> {
+                    Minecraft.getInstance().setScreen(new BlueprintSaveScreen(this, new LinkedHashSet<>(selected)));
+                    return true;
+                })
+                .addGraphic(GraphicButton.DISPLAY_NORMAL, BP_SAVE_BTN_SPRITE)
+                .addGraphic(GraphicButton.DISPLAY_HOVER, BP_SAVE_BTN_HOVER_SPRITE)
+                .addTooltip(Component.translatable("createfactorycontroller.gui.blueprint.save_blueprint"));
+        addWidget(blueprintSaveButton);
+        updateBlueprintButtonVisibility();
 
         // Rebuild the rename field at the new layout, preserving any in-progress edit across resize.
         String currentName = nameBox != null ? nameBox.getValue() : menu.controllerName;
@@ -415,70 +410,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return settingsButtonY() + SETTINGS_BTN_H;
     }
 
-    /** One toolbar widget whose visuals, tooltip and click action follow the current selection state. */
-    private class BlueprintButton extends AbstractWidget {
-        BlueprintButton(int x, int y) {
-            super(x, y, SETTINGS_BTN_W, SETTINGS_BTN_H, Component.empty());
-        }
-
-        private boolean saveMode() {
-            return !selected.isEmpty();
-        }
-
-        private Component tooltip() {
-            return Component.translatable(saveMode()
-                    ? "createfactorycontroller.gui.blueprint.save_blueprint"
-                    : "createfactorycontroller.gui.blueprint.load_blueprint");
-        }
-
-        @Override
-        protected void renderWidget(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            boolean save = saveMode();
-            ResourceLocation sprite = save
-                    ? (isHovered() ? BP_SAVE_BTN_HOVER_SPRITE : BP_SAVE_BTN_SPRITE)
-                    : (isHovered() ? BP_OPEN_BTN_HOVER_SPRITE : BP_OPEN_BTN_SPRITE);
-            RenderSystem.enableBlend();
-            graphics.blitSprite(sprite, getX(), getY(), getWidth(), getHeight());
-        }
-
-        @Override
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (!isValidClickButton(button) || !clicked(mouseX, mouseY)) return false;
-            playDownSound(Minecraft.getInstance().getSoundManager());
-            if (saveMode()) {
-                Minecraft.getInstance().setScreen(
-                        new BlueprintSaveScreen(FactoryControllerScreen.this, new LinkedHashSet<>(selected)));
-            } else {
-                Minecraft.getInstance().setScreen(new BlueprintLibraryScreen(FactoryControllerScreen.this));
-            }
-            return true;
-        }
-
-        @Override
-        protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {}
-    }
-
-    private void rebuildExpandButton() {
-        if (expandButton != null) removeWidget(expandButton);
-
-        int expandButtonX = leftPos + invOriginX + SLOT_ROW_W - 10;
-        int topOfInv = invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0);
-        int expandButtonY = topPos + topOfInv - EXPAND_BTN_SIZE - 3;
-
-        ResourceLocation icon = inventoryExpanded ? EXPAND_BTN_COLLAPSE_SPRITE : EXPAND_BTN_EXPAND_SPRITE;
-        expandButton = new GraphicButton(expandButtonX, expandButtonY, EXPAND_BTN_SIZE, EXPAND_BTN_SIZE,
-                () -> {
-                    inventoryExpanded = !inventoryExpanded;
-                    menu.repositionSlots(invOriginX, invHotbarY, inventoryExpanded);
-                    rebuildExpandButton();
-                    return true;
-                })
-                .addGraphic(GraphicButton.DISPLAY_BOTH, EXPAND_BTN_BASE_SPRITE)
-                .addGraphic(GraphicButton.DISPLAY_HOVER, 0x44FFFFFF, 1, 1, 7, 7)
-                .addGraphic(GraphicButton.DISPLAY_NORMAL, icon, 0x555555, 2, 2, 5, 5)
-                .addGraphic(GraphicButton.DISPLAY_HOVER, icon, 0xFFFFFF, 2, 2, 5, 5);
-        // Event-only: rendered manually in renderBg at the inventory panel's elevated z.
-        addWidget(expandButton);
+    private void updateBlueprintButtonVisibility() {
+        if (blueprintLoadButton != null) blueprintLoadButton.visible = selected.isEmpty();
+        if (blueprintSaveButton != null) blueprintSaveButton.visible = !selected.isEmpty();
     }
 
     // ── Indicator bulb animation ─────────────────────────────────────────────
@@ -527,6 +461,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         lastMouseX = mouseX;   // remembered so keyPressed (no mouse coords) can anchor the arrow-mode lock
         lastMouseY = mouseY;
+        updateBlueprintButtonVisibility();
 
         super.render(graphics, mouseX, mouseY, partialTick);
 
@@ -553,8 +488,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.zoom"), mouseX, mouseY);
             else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
-            else if (blueprintButton != null && blueprintButton.isMouseOver(mouseX, mouseY))
-                graphics.renderTooltip(font, blueprintButton.tooltip(), mouseX, mouseY);
+            else if (blueprintLoadButton != null && blueprintLoadButton.isMouseOver(mouseX, mouseY))
+                graphics.renderTooltip(font, blueprintLoadButton.getTooltipText(), mouseX, mouseY);
+            else if (blueprintSaveButton != null && blueprintSaveButton.isMouseOver(mouseX, mouseY))
+                graphics.renderTooltip(font, blueprintSaveButton.getTooltipText(), mouseX, mouseY);
             else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, helpButton.getTooltipText(font, HelpButton.TOOLTIP_WIDTH), mouseX, mouseY);
         }
@@ -576,8 +513,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         // Inventory panel + its expand button, lifted above canvas gauge icons.
         RenderSystem.disableDepthTest();
-        renderInventoryBackground(graphics);
-        if (expandButton != null) expandButton.render(graphics, mouseX, mouseY, partialTick);
+        if (playerInventory != null) playerInventory.render(graphics, mouseX, mouseY, partialTick);
 
         Component persistentPrompt = selectionStatusPrompt();
         if (persistentPrompt == null) persistentPrompt = persistentActionPrompt;
@@ -595,7 +531,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         if (persistentPrompt != null || (temporaryPrompt != null && temporaryAlpha > 4)) {
-            int invTop = topPos + invHotbarY - (inventoryExpanded ? INV_GAP + MAIN_INV_H : 0) - INV_TEX_TITLE_H;
+            int invTop;
+            invTop = playerInventory != null ? playerInventory.getY() : height;
             // 8-direction outline (like the gauge count labels) so the prompt reads over any canvas content;
             // each prompt keeps its own colour, with the transient fade folded into its alpha.
             graphics.pose().pushPose();
@@ -784,8 +721,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 zoomTextX + font.width(zoomStr) - labelX, font.lineHeight);
 
         if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
-        if (blueprintButton != null)
-            blueprintButton.render(graphics, mouseX, mouseY, partialTick);
+        if (blueprintLoadButton != null) blueprintLoadButton.render(graphics, mouseX, mouseY, partialTick);
+        if (blueprintSaveButton != null) blueprintSaveButton.render(graphics, mouseX, mouseY, partialTick);
 
         if (helpButton != null && !inOverlay) helpButton.render(graphics, mouseX, mouseY, partialTick);
 
@@ -847,24 +784,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         for (int i = 0; i < count; i++)
             if (Connection.sameConnection(hoverHits.get(i).connection, selectedConnection)) { sel = i; break; }
         return hoveredConn.getTooltip(count, sel, connArrowLocked);
-    }
-
-    /** Caller is responsible for any z-translation (see renderBg). */
-    private void renderInventoryBackground(GuiGraphics gfx) {
-        int texX    = leftPos + invOriginX - INV_TEX_SLOT_LEFT;
-        int hotbarY = topPos + invHotbarY;
-
-        if (inventoryExpanded) {
-            int texY = hotbarY - INV_TEX_HOTBAR_Y;
-            gfx.blit(PLAYER_INVENTORY_TEX, texX, texY, 0, 0, INV_TEX_W, INV_TEX_H);
-            gfx.drawString(font, playerInventoryTitle, texX + 8, texY + 6, 0x404040, false);
-        } else {
-            int headerY      = hotbarY - INV_TEX_TITLE_H;
-            int hotbarStripH = INV_TEX_H - INV_TEX_HOTBAR_Y;
-            gfx.blit(PLAYER_INVENTORY_TEX, texX, headerY, 0, 0,                INV_TEX_W, INV_TEX_TITLE_H);
-            gfx.blit(PLAYER_INVENTORY_TEX, texX, hotbarY, 0, INV_TEX_HOTBAR_Y, INV_TEX_W, hotbarStripH);
-            gfx.drawString(font, playerInventoryTitle, texX + 8, headerY + 6, 0x404040, false);
-        }
     }
 
     // Reticle tints.
@@ -1698,11 +1617,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private boolean isInCanvasArea(double x, double y) {
         if (!canvasArea().contains((int) x, (int) y, Rect2i.Boundary.HALF_OPEN)) return false;
 
-        int invLeft = leftPos + invOriginX - INV_TEX_SLOT_LEFT;
-        int invTop  = topPos  + invHotbarY - (inventoryExpanded ? INV_TEX_HOTBAR_Y : INV_TEX_TITLE_H);
-        int invBot  = topPos  + invHotbarY + INV_TEX_H - INV_TEX_HOTBAR_Y - 7;
-        if (Rect2i.fromXYWH(invLeft, invTop, INV_TEX_W, invBot - invTop)
-                .contains((int) x, (int) y, Rect2i.Boundary.HALF_OPEN)) return false;
+        if (playerInventory != null && playerInventory.blocksCanvas(x, y)) return false;
 
         if (networkSelector.isMouseOver(x, y)) return false;
         if (indicatorColumn.isMouseOver(x, y)) return false;
