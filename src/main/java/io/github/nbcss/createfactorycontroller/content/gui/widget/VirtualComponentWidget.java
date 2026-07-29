@@ -23,23 +23,27 @@ public interface VirtualComponentWidget {
 
     VirtualComponentBehaviour behaviour();
 
-    /** Back layer, drawn before the connection arrows. The Logical Tube settings screen reuses this (and
-     *  {@link #renderFront}) for its slots via a pose translation — see {@code LogicalTubeSettingsScreen#atSlot}. */
+    /** Back layer, drawn before the connection arrows. Implementations may enqueue deferred rendering, so callers
+     *  must flush after rendering the layer. The Logical Tube settings screen reuses this (and {@link #renderFront})
+     *  for its slots via a pose translation — see {@code LogicalTubeSettingsScreen#atSlot}. */
     void renderBack(GuiGraphics gfx);
 
-    /** Front layer (over the arrows). {@code glow} is the indicator chase value. */
+    /** Front layer (over the arrows). {@code glow} is the indicator chase value. Implementations may enqueue deferred
+     *  rendering, so callers must flush after rendering the layer. */
     void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow);
 
     /** Blank placement/relocate preview (back + bare front frame, no configured content). Drawn translucent by the
      *  screen's ghost render; the caller sets the alpha. Defaults to back + front; a component whose front carries
-     *  state-dependent content (e.g. the logical tube's mode icon) overrides to omit it. */
+     *  state-dependent content (e.g. the logical tube's mode icon) overrides to omit it. Implementations may enqueue
+     *  deferred rendering, so callers must flush after rendering the layer. */
     default void renderGhost(GuiGraphics gfx) {
         renderBack(gfx);
         renderFront(gfx, -10000, -10000, 0f);   // off-screen mouse (no hover highlight), no bulb glow
     }
 
     /** Top-most overlay (the gauge's count label), drawn AFTER the hover/selection target marks so those never cover
-     *  it. {@code showCount} gates the label (full-overlay mode, or this is the hovered cell). Default: nothing. */
+     *  it. {@code showCount} gates the label (full-overlay mode, or this is the hovered cell). Implementations may
+     *  enqueue deferred rendering, so callers must flush after rendering the layer. Default: nothing. */
     default void renderOverlay(GuiGraphics gfx, boolean showCount) {}
 
     /** Hover tooltip. When {@code selected}, the "Click to configure" hint is replaced with "Drag to relocate". */

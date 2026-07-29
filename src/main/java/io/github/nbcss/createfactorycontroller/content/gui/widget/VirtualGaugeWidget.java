@@ -1,6 +1,5 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -12,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControl
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.render.DeferredBlitter;
 import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.MutableComponent;
@@ -21,7 +21,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -69,7 +69,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
-        gfx.blitSprite(behaviour.getTexture().withSuffix("/back"), x0, y0, CELL, CELL);
+        DeferredBlitter.forSprite(behaviour.getTexture().withSuffix("/back"))
+                .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         Minecraft.getInstance().getProfiler().pop();
     }
 
@@ -84,7 +85,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
 
-        gfx.blitSprite(behaviour.getFrontTexture(), x0, y0, CELL, CELL);
+        DeferredBlitter.forSprite(behaviour.getFrontTexture())
+                .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
 
         if (!behaviour.filter.isEmpty()) {
             gfx.pose().pushPose();
@@ -99,11 +101,12 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
             boolean invalid = behaviour.isMissingAddress() || behaviour.isRedstonePaused();
             int base = invalid ? BULB_RED : BULB_GREEN;
             float b = BULB_MIN_BRIGHTNESS + (1f - BULB_MIN_BRIGHTNESS) * Mth.clamp(glow, 0f, 1f);
-            RenderSystem.enableBlend();
-            gfx.setColor(((base >> 16) & 0xFF) / 255f * b, ((base >> 8) & 0xFF) / 255f * b,
-                    (base & 0xFF) / 255f * b, 0.9f);
-            gfx.blitSprite(INDICATOR, x0, y0, CELL, CELL);
-            gfx.setColor(1f, 1f, 1f, 1f);
+            int color = FastColor.ARGB32.colorFromFloat(0.9f,
+                    ((base >> 16) & 0xFF) / 255f * b,
+                    ((base >> 8) & 0xFF) / 255f * b,
+                    (base & 0xFF) / 255f * b);
+            DeferredBlitter.forSprite(INDICATOR).setColorARGB(color)
+                    .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         }
 
         Minecraft.getInstance().getProfiler().pop();

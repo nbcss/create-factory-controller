@@ -605,6 +605,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Cull components and connections that fall outside the visible canvas rectangle
         for (VirtualComponentWidget component : visibleComponents)
             component.renderBack(graphics);
+        graphics.flush();
 
         profiler.popPush("connection");
         // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
@@ -637,6 +638,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.popPush("front");
         for (VirtualComponentWidget component : visibleComponents)
             component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
+        graphics.flush();
 
         profiler.pop();
         renderSelectedNetworkMask(graphics);
@@ -652,6 +654,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
         for (VirtualComponentWidget component : visibleComponents)
             component.renderOverlay(graphics, alwaysShowLabel || component.position().equals(hoveredPosition));
+        graphics.flush();
 
         profiler.pop();
         graphics.pose().popPose();
@@ -877,9 +880,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentBehaviour ghost = ComponentRegistry.createFromItem(null, pos, item, null);
         VirtualComponentWidget widget = ghost == null ? null : ComponentWidgetRegistry.create(ghost);
         if (widget == null) return;
-        RenderSystem.enableBlend();   // the gauge widget doesn't enable blend itself, so the alpha below would be ignored
+        RenderSystem.enableBlend();
         graphics.setColor(1f, 1f, 1f, 0.5f);
         widget.renderGhost(graphics);
+        // Deferred component blits must draw while the ghost alpha is still active.
+        graphics.flush();
         graphics.setColor(1f, 1f, 1f, 1f);
     }
 
@@ -969,6 +974,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 if (valid) renderGhostAt(graphics, to, moving.getItem());   // ghost under the target...
                 renderTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);   // ...reticle on top
             }
+            graphics.flush();
         }
     }
 
@@ -1086,6 +1092,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (valid) renderGhostAt(graphics, cell, BuiltInRegistries.ITEM.get(placement.item()));
             renderTargetAboveGhost(graphics, cell, valid ? TARGET_WHITE : TARGET_RED);
         }
+        graphics.flush();
     }
 
     private void renderPlacementWires(GuiGraphics graphics, VirtualComponentPosition anchor) {
