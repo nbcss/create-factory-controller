@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
@@ -21,13 +22,13 @@ public final class ConnectionPathResolver {
     private ConnectionPathResolver() {}
 
     /** Whether the cell-bounding rectangle of the two connection ends overlaps the visible canvas rectangle. */
-    public static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b,
-                                      int minX, int minY, int maxX, int maxY) {
-        int x0 = Math.min(a.x(), b.x()) * CELL;
-        int y0 = Math.min(a.y(), b.y()) * CELL;
-        int x1 = (Math.max(a.x(), b.x()) + 1) * CELL;
-        int y1 = (Math.max(a.y(), b.y()) + 1) * CELL;
-        return x0 < maxX && x1 > minX && y0 < maxY && y1 > minY;
+    public static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b, Rect2i visibleArea) {
+        return Rect2i.fromBounds(
+                Math.min(a.x(), b.x()) * CELL,
+                Math.min(a.y(), b.y()) * CELL,
+                (Math.max(a.x(), b.x()) + 1) * CELL,
+                (Math.max(a.y(), b.y()) + 1) * CELL
+        ).intersects(visibleArea, Rect2i.Boundary.EXCLUSIVE);
     }
 
     /**

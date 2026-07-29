@@ -29,6 +29,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.IndicatorColum
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
+import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleConnectionArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
@@ -59,7 +60,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
@@ -254,9 +254,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private NetworkSelectorWidget networkSelector;
     private IndicatorColumnWidget indicatorColumn;
 
-    private int @Nullable [] capacityLabelBounds = null;
-    private int @Nullable [] zoomLabelBounds = null;
-    private int @Nullable [] nameAreaBounds = null;
+    @Nullable private Rect2i capacityLabelBounds = null;
+    @Nullable private Rect2i zoomLabelBounds = null;
+    @Nullable private Rect2i nameAreaBounds = null;
 
     private static final int NAME_COLOR = 0x582424;
     @Nullable private EditBox nameBox;
@@ -545,9 +545,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
             else if (indicatorColumn.isMouseOver(mouseX, mouseY))
                 graphics.renderComponentTooltip(font, indicatorColumn.getTooltipLines(mouseX, mouseY), mouseX, mouseY);
-            else if (inBounds(capacityLabelBounds, mouseX, mouseY))
+            else if (capacityLabelBounds != null
+                    && capacityLabelBounds.contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN))
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.capacity"), mouseX, mouseY);
-            else if (inBounds(zoomLabelBounds, mouseX, mouseY))
+            else if (zoomLabelBounds != null
+                    && zoomLabelBounds.contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN))
                 graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.zoom"), mouseX, mouseY);
             else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
@@ -558,11 +560,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         Minecraft.getInstance().getProfiler().pop();
-    }
-
-    /** True if {@code (mx, my)} lies within a cached {x0, y0, x1, y1} label box (null box ⇒ false). */
-    private static boolean inBounds(int @Nullable [] b, double mx, double my) {
-        return b != null && mx >= b[0] && mx < b[2] && my >= b[1] && my < b[3];
     }
 
     @Override
@@ -632,25 +629,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         var profiler = Minecraft.getInstance().getProfiler();
         profiler.push("FactoryController_renderBoard");
 
-        int x0 = leftPos + CANVAS_SIDE_PADDING;
-        int y0 = topPos + CANVAS_TOP_PADDING;
-        int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
-        int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
-        int centerX = (x0 + x1) / 2;
-        int centerY = (y0 + y1) / 2;
+        Rect2i canvas = canvasArea();
+        int centerX = (canvas.minX() + canvas.maxX()) / 2;
+        int centerY = (canvas.minY() + canvas.maxY()) / 2;
 
         // Visible canvas-world pixel bounds
-        int minX = (int) Math.floor(viewX + (x0 - centerX) / getZoomFactor());
-        int minY = (int) Math.floor(viewY + (y0 - centerY) / getZoomFactor());
-        int maxX = (int) Math.ceil(viewX + (x1 - centerX) / getZoomFactor());
-        int maxY = (int) Math.ceil(viewY + (y1 - centerY) / getZoomFactor());
+        int minX = (int) Math.floor(viewX + (canvas.minX() - centerX) / getZoomFactor());
+        int minY = (int) Math.floor(viewY + (canvas.minY() - centerY) / getZoomFactor());
+        int maxX = (int) Math.ceil(viewX + (canvas.maxX() - centerX) / getZoomFactor());
+        int maxY = (int) Math.ceil(viewY + (canvas.maxY() - centerY) / getZoomFactor());
+        Rect2i visibleArea = Rect2i.fromBounds(minX, minY, maxX, maxY);
 
         hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
 
         profiler.push("canvas");
 
         // Canvas-world → screen pose (translate to centre, scale by zoom, translate by the pan).
-        graphics.enableScissor(x0, y0, x1, y1);
+        graphics.enableScissor(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY());
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, centerY, 0);
         graphics.pose().scale((float) getZoomFactor(), (float) getZoomFactor(), (float) getZoomFactor());
@@ -666,8 +661,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
 
         profiler.push("cull");
-        updateVisibleComponents(minX, minY, maxX, maxY);
-        List<ConnectionWidget> connWidgets = buildConnectionWidgets(minX, minY, maxX, maxY);
+        updateVisibleComponents(visibleArea);
+        List<ConnectionWidget> connWidgets = buildConnectionWidgets(visibleArea);
 
         profiler.popPush("back");
         // Cull components and connections that fall outside the visible canvas rectangle
@@ -745,7 +740,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int x = leftPos + imageWidth / 2 - (textW + 10) / 2;
             nameBox.setX(x);
             nameBox.setWidth(Math.max(textW + (nameBox.isFocused() ? 6 : 0), 1));
-            nameAreaBounds = new int[]{x, topPos, x + textW + 5 + RENAME_BUTTON_SIZE, topPos + 14};
+            nameAreaBounds = Rect2i.fromXYWH(x, topPos, textW + 5 + RENAME_BUTTON_SIZE, 14);
             nameBox.render(graphics, mouseX, mouseY, partialTick);
             if (!nameBox.isFocused()) {
                 if (blank)
@@ -774,7 +769,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.blitSprite(CAPACITY_ICON, labelX, row0Y + (font.lineHeight - CAPACITY_ICON_SIZE) / 2,
                 CAPACITY_ICON_SIZE, CAPACITY_ICON_SIZE);
         graphics.drawString(font, capacityStr, capTextX, row0Y, capacityColor, true);
-        capacityLabelBounds = new int[]{labelX, row0Y, capTextX + font.width(capacityStr), row0Y + font.lineHeight};
+        capacityLabelBounds = Rect2i.fromXYWH(labelX, row0Y,
+                capTextX + font.width(capacityStr) - labelX, font.lineHeight);
 
         double zoom = getZoomFactor() / 2.0;
         String zoomStr = String.format(java.util.Locale.ROOT, "%.2f", zoom);
@@ -784,7 +780,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.blitSprite(ZOOM_ICON, labelX, row1Y + (font.lineHeight - ZOOM_ICON_SIZE) / 2,
                 ZOOM_ICON_SIZE, ZOOM_ICON_SIZE);
         graphics.drawString(font, zoomStr, zoomTextX, row1Y, 0xFFE2E2E2, true);
-        zoomLabelBounds = new int[]{labelX, row1Y, zoomTextX + font.width(zoomStr), row1Y + font.lineHeight};
+        zoomLabelBounds = Rect2i.fromXYWH(labelX, row1Y,
+                zoomTextX + font.width(zoomStr) - labelX, font.lineHeight);
 
         if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
         if (blueprintButton != null)
@@ -801,7 +798,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int ry0 = (int) Math.min(rubberStartY, rubberCurY);
             int rx1 = (int) Math.max(rubberStartX, rubberCurX);
             int ry1 = (int) Math.max(rubberStartY, rubberCurY);
-            graphics.enableScissor(x0, y0, x1, y1);
+            graphics.enableScissor(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY());
             graphics.fill(rx0, ry0, rx1, ry1, 0x3333CC33);          // body
             graphics.fill(rx0, ry0, rx1, ry0 + 1, 0xAA33CC33);      // top border
             graphics.fill(rx0, ry1 - 1, rx1, ry1, 0xAA33CC33);      // bottom
@@ -813,7 +810,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.pop();
 
         if (inOverlay) {
-            graphics.fill(x0, y0, x1, y1, 0xB0101010);
+            graphics.fill(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY(), 0xB0101010);
         }
 
         profiler.pop();
@@ -966,15 +963,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.setColor(1f, 1f, 1f, 1f);
     }
 
-    private void updateVisibleComponents(int minX, int minY, int maxX, int maxY) {
+    private void updateVisibleComponents(Rect2i visibleArea) {
         visibleComponents.clear();
         for (VirtualComponentWidget component : componentWidgets.values()) {
             VirtualComponentPosition cell = component.position();
-            int x0 = cell.x() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE;
-            int y0 = cell.y() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE;
-            int x1 = (cell.x() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-            int y1 = (cell.y() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-            if (x0 < maxX && x1 > minX && y0 < maxY && y1 > minY) visibleComponents.add(component);
+            if (Rect2i.fromBounds(
+                    cell.x() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE,
+                    cell.y() * CANVAS_COMPONENT_SIZE - CANVAS_COMPONENT_SIZE,
+                    (cell.x() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE,
+                    (cell.y() + 1) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE
+            ).intersects(visibleArea, Rect2i.Boundary.EXCLUSIVE)) visibleComponents.add(component);
         }
     }
 
@@ -1008,11 +1006,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** The canvas cell a screen position falls into (computes the board centre itself). */
     private VirtualComponentPosition cellAt(double posX, double posY) {
-        int x0 = leftPos + CANVAS_SIDE_PADDING;
-        int y0 = topPos + CANVAS_TOP_PADDING;
-        int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
-        int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
-        return at(posX, posY, (x0 + x1) / 2, (y0 + y1) / 2);
+        Rect2i canvas = canvasArea();
+        return at(posX, posY,
+                canvas.minX() + canvas.w() / 2,
+                canvas.minY() + canvas.h() / 2);
     }
 
     /** Whether a batch relocate by the current delta would put {@code to} on a valid cell (in-board and not onto a
@@ -1022,15 +1019,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return !FactoryControllerBlockEntity.isOutBoard(to) && !occupiedByOther;
     }
 
-    /** The inclusive {minX, minY, maxX, maxY} cell box spanned by the current rubber-band rectangle. */
-    private int[] rubberCellBox() {
+    /** The inclusive cell box spanned by the current rubber-band rectangle. */
+    private Rect2i rubberCellBox() {
         VirtualComponentPosition a = cellAt(rubberStartX, rubberStartY);
         VirtualComponentPosition b = cellAt(rubberCurX, rubberCurY);
-        return new int[]{Math.min(a.x(), b.x()), Math.min(a.y(), b.y()), Math.max(a.x(), b.x()), Math.max(a.y(), b.y())};
-    }
-
-    private static boolean inBox(int[] box, VirtualComponentPosition p) {
-        return p.x() >= box[0] && p.x() <= box[2] && p.y() >= box[1] && p.y() <= box[3];
+        int minX = Math.min(a.x(), b.x());
+        int minY = Math.min(a.y(), b.y());
+        return Rect2i.fromBounds(minX, minY, Math.max(a.x(), b.x()), Math.max(a.y(), b.y()));
     }
 
     /** Green mark on selected components; white/red ghosts during a batch drag; and a live green preview of every
@@ -1040,9 +1035,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             for (VirtualComponentPosition p : selected)
                 if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
         if (rubberBanding && rubberMoved) {   // live preview: components the drag would select show the mark too
-            int[] box = rubberCellBox();
+            Rect2i box = rubberCellBox();
             for (VirtualComponentPosition p : componentWidgets.keySet())
-                if (inBox(box, p)) renderTarget(graphics, p, TARGET_GREEN);
+                if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE))
+                    renderTarget(graphics, p, TARGET_GREEN);
         }
         if (batchRelocating && (batchDx != 0 || batchDy != 0)) {
             for (VirtualComponentPosition p : selected) {
@@ -1058,9 +1054,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Adds every component whose cell lies within the rubber-band rectangle to the selection. */
     private void selectInRect() {
-        int[] box = rubberCellBox();
+        Rect2i box = rubberCellBox();
         for (VirtualComponentPosition p : componentWidgets.keySet())
-            if (inBox(box, p)) selected.add(p);
+            if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE)) selected.add(p);
     }
 
     @Nullable
@@ -1074,9 +1070,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private int effectiveSelectedCount() {
         if (!rubberBanding || !rubberMoved) return selected.size();
         Set<VirtualComponentPosition> result = rubberCtrl ? new LinkedHashSet<>(selected) : new LinkedHashSet<>();
-        int[] box = rubberCellBox();
+        Rect2i box = rubberCellBox();
         for (VirtualComponentPosition p : componentWidgets.keySet())
-            if (inBox(box, p)) result.add(p);
+            if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE)) result.add(p);
         return result.size();
     }
 
@@ -1317,7 +1313,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         if (nameBox != null) {
-            boolean inNameBar = inBounds(nameAreaBounds, mouseX, mouseY);
+            boolean inNameBar = nameAreaBounds != null && nameAreaBounds.contains(
+                    (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN);
             if (!nameBox.isFocused() && inNameBar) {
                 nameBox.setFocused(true);
                 nameBox.setCursorPosition(nameBox.getValue().length());
@@ -1340,12 +1337,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (indicatorColumn.isMouseOver(mouseX, mouseY)) return true;
 
         if (isInCanvasArea(mouseX, mouseY)) {
-            int x0 = leftPos + CANVAS_SIDE_PADDING;
-            int y0 = topPos + CANVAS_TOP_PADDING;
-            int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
-            int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
-            int centerX = (x0 + x1) / 2;
-            int centerY = (y0 + y1) / 2;
+            Rect2i canvas = canvasArea();
+            int centerX = canvas.minX() + canvas.w() / 2;
+            int centerY = canvas.minY() + canvas.h() / 2;
             VirtualComponentPosition clicked = at(mouseX, mouseY, centerX, centerY);
             ItemStack carried = menu.getCarried();
             VirtualComponentWidget widget = componentWidgetAt(clicked);
@@ -1517,12 +1511,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (networkSelector.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
 
         if (isInCanvasArea(mouseX, mouseY)) {
-            int x0 = leftPos + CANVAS_SIDE_PADDING;
-            int y0 = topPos + CANVAS_TOP_PADDING;
-            int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
-            int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
-            int centerX = (x0 + x1) / 2;
-            int centerY = (y0 + y1) / 2;
+            Rect2i canvas = canvasArea();
+            int centerX = canvas.minX() + canvas.w() / 2;
+            int centerY = canvas.minY() + canvas.h() / 2;
 
             if (hasShiftDown()) {
                 // A scroll releases the arrow-mode lock; reconcile then resolves the tooltip to the hovered wire.
@@ -1647,7 +1638,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** A board gauge offered as a JEI ghost drop target: its on-screen cell rect + which ingredient kinds its filter
      *  resolver accepts. */
-    public record GhostGaugeTarget(Rect2i area, VirtualComponentPosition pos, boolean acceptsItems, boolean acceptsFluids) {}
+    public record GhostGaugeTarget(net.minecraft.client.renderer.Rect2i area, VirtualComponentPosition pos,
+                                   boolean acceptsItems, boolean acceptsFluids) {}
 
     /** The ghost drop hitbox is the central {@value #GHOST_TARGET_SIZE}×{@value #GHOST_TARGET_SIZE} of the gauge (the
      *  gauge body), not the whole {@link #CANVAS_COMPONENT_SIZE} cell — so a drop only registers over the gauge itself. */
@@ -1655,16 +1647,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Screen rect of the gauge's central drop area, inverting {@link #at}: {@code screen = (world − view)·zoom + center},
      *  where the world span is the middle {@link #GHOST_TARGET_SIZE} of the cell. */
-    private Rect2i cellScreenRect(VirtualComponentPosition pos) {
-        int x0 = leftPos + CANVAS_SIDE_PADDING, y0 = topPos + CANVAS_TOP_PADDING;
-        int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING, y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
-        int centerX = (x0 + x1) / 2, centerY = (y0 + y1) / 2;
+    private net.minecraft.client.renderer.Rect2i cellScreenRect(VirtualComponentPosition pos) {
+        Rect2i canvas = canvasArea();
+        int centerX = canvas.minX() + canvas.w() / 2;
+        int centerY = canvas.minY() + canvas.h() / 2;
         double zoom = getZoomFactor();
         double margin = (CANVAS_COMPONENT_SIZE - GHOST_TARGET_SIZE) / 2.0;   // centre the 8×8 area in the 16 cell
         int sx = (int) Math.round((pos.x() * (double) CANVAS_COMPONENT_SIZE + margin - viewX) * zoom) + centerX;
         int sy = (int) Math.round((pos.y() * (double) CANVAS_COMPONENT_SIZE + margin - viewY) * zoom) + centerY;
         int size = (int) Math.ceil(GHOST_TARGET_SIZE * zoom);
-        return new Rect2i(sx, sy, size, size);
+        return new net.minecraft.client.renderer.Rect2i(sx, sy, size, size);
     }
 
     /** Every empty, on-screen gauge, as a JEI drop target. Only empty gauges (setting a filter), and only those whose
@@ -1673,8 +1665,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         List<GhostGaugeTarget> out = new ArrayList<>();
         for (VirtualComponentWidget w : componentWidgets.values()) {
             if (!(w.behaviour() instanceof VirtualGaugeBehaviour g) || !g.filter.isEmpty()) continue;
-            Rect2i area = cellScreenRect(w.position());
-            if (!isInCanvasArea(area.getX() + area.getWidth() / 2.0, area.getY() + area.getHeight() / 2.0)) continue;
+            net.minecraft.client.renderer.Rect2i area = cellScreenRect(w.position());
+            if (!isInCanvasArea(area.getX() + area.getWidth() / 2.0,
+                    area.getY() + area.getHeight() / 2.0)) continue;
             GaugeFilterResolver r = g.filterResolver();
             out.add(new GhostGaugeTarget(area, w.position(), r.acceptsItemDrop(), r.acceptsFluidDrop()));
         }
@@ -1696,17 +1689,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (!stack.isEmpty()) setGaugeFilterFromJei(pos, stack);
     }
 
+    private Rect2i canvasArea() {
+        return Rect2i.fromXYWH(leftPos + CANVAS_SIDE_PADDING, topPos + CANVAS_TOP_PADDING,
+                imageWidth - 2 * CANVAS_SIDE_PADDING,
+                imageHeight - CANVAS_TOP_PADDING - CANVAS_BOTTOM_PADDING);
+    }
+
     private boolean isInCanvasArea(double x, double y) {
-        int x0 = leftPos + CANVAS_SIDE_PADDING;
-        int y0 = topPos + CANVAS_TOP_PADDING;
-        int x1 = leftPos + imageWidth - CANVAS_SIDE_PADDING;
-        int y1 = topPos + imageHeight - CANVAS_BOTTOM_PADDING;
-        if (x < x0 || x >= x1 || y < y0 || y >= y1) return false;
+        if (!canvasArea().contains((int) x, (int) y, Rect2i.Boundary.HALF_OPEN)) return false;
 
         int invLeft = leftPos + invOriginX - INV_TEX_SLOT_LEFT;
         int invTop  = topPos  + invHotbarY - (inventoryExpanded ? INV_TEX_HOTBAR_Y : INV_TEX_TITLE_H);
         int invBot  = topPos  + invHotbarY + INV_TEX_H - INV_TEX_HOTBAR_Y - 7;
-        if (x >= invLeft && x < invLeft + INV_TEX_W && y >= invTop && y < invBot) return false;
+        if (Rect2i.fromXYWH(invLeft, invTop, INV_TEX_W, invBot - invTop)
+                .contains((int) x, (int) y, Rect2i.Boundary.HALF_OPEN)) return false;
 
         if (networkSelector.isMouseOver(x, y)) return false;
         if (indicatorColumn.isMouseOver(x, y)) return false;
@@ -1732,8 +1728,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** JEI exclusion zone covering the cosmetic controller model in the bottom-left corner. */
     @Override
-    public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(leftPos - 74, topPos + imageHeight - 80, 74, 80));
+    public List<net.minecraft.client.renderer.Rect2i> getExtraAreas() {
+        return List.of(new net.minecraft.client.renderer.Rect2i(leftPos - 74, topPos + imageHeight - 80, 74, 80));
     }
 
     @Override
@@ -1863,13 +1859,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return occupied;
     }
 
-    private List<ConnectionWidget> buildConnectionWidgets(int minX, int minY, int maxX, int maxY) {
+    private List<ConnectionWidget> buildConnectionWidgets(Rect2i visibleArea) {
         Set<VirtualComponentPosition> occupied = occupiedCells();
 
         List<ConnectionWidget> result = new ArrayList<>();
         for (VirtualComponentWidget sink : componentWidgets.values()) {
             for (var conn : sink.behaviour().targetedBy().values()) {
-                if (!ConnectionPathResolver.spanVisible(conn.from, conn.to, minX, minY, maxX, maxY)) continue;
+                if (!ConnectionPathResolver.spanVisible(conn.from, conn.to, visibleArea)) continue;
                 List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(conn, occupied);
                 if (path != null) result.add(new ConnectionWidget(conn, path));
             }
