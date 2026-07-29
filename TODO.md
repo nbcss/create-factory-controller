@@ -31,6 +31,7 @@
 - [TODO] Controller disabled (redstone powered) indicator
 - [TODO] Custom arrow bend mode
 - [TODO] Color wire by limit blocked state
+- [TODO] Allow production order as ingredient for JEI crafting
 
 # Roadmap
 - [TODO] Custom Keybinding Preset

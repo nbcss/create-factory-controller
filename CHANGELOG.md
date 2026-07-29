@@ -1,3 +1,10 @@
+## 1.1.2
+
+Bugfixes:
+- Fixed gauges may not save ingredient amount change if source gauge relocated.
+- Fixed gauge timer animation is not properly rendered with some animation lib mods installed.
+- Fixed controller GUI may not open in forge-1.20 if data is too large.
+
 ## 1.1.1
 
 Features:

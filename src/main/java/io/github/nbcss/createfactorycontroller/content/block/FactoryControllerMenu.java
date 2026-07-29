@@ -8,7 +8,6 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
-import io.github.nbcss.createfactorycontroller.content.network.NetworkSettingsStore;
 import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -28,13 +27,9 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     public final List<VirtualComponentBehaviour> components = new ArrayList<>();
     /** Position → component index for O(1) lookup; mirrors {@link #components}. */
     private final Map<VirtualComponentPosition, VirtualComponentBehaviour> componentsByPosition = new HashMap<>();
-    /** Client-side connection store the menu's components are views into (the server's components use the controller's
-     *  graph instead). Populated from the synced per-component wires (see the client constructor). */
+    /** Client-side connections. */
     private final ConnectionGraph connectionGraph = new ConnectionGraph();
     public final List<UUID> knownNetworks = new ArrayList<>();
-    /** Client mirror of every known network's shared settings (synced); one entry per {@link #knownNetworks}
-     *  entry, though its customized fields may be empty. Read via {@link #networkSettings(UUID)}, which never
-     *  returns null. */
     public final Map<UUID, NetworkSettings> networkSettings = new HashMap<>();
     /** Runtime-only unloaded-link cache */
     public List<MissingLinkStatus> missingLinkStatuses = List.of();
@@ -43,7 +38,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     public boolean controllerPowered = false;
     public final BlockPos controllerPos;
 
-    // ── Client-side sync tokens (mirrors of FactoryControllerBlockEntity#syncEpoch/syncRevision) ──
+    // ── Client-side sync tokens ──
     /** BE-instance token; a delta from a different BE load can never match it. */
     public int syncEpoch;
     /** Revision this menu's state reflects. A delta applies only when its base equals this. */
@@ -197,8 +192,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     public void addComponent(VirtualComponentBehaviour component) {
         components.add(component);
         componentsByPosition.put(component.position(), component);
-        component.setHolder(this);
-        component.setGraph(connectionGraph);
+        // Server menus index the BE's live objects only for menu bookkeeping
+        if (blockEntity == null) {
+            component.setHolder(this);
+            component.setGraph(connectionGraph);
+        }
     }
 
     /** Replaces all components (used on the full sync), rebuilding the position index. */
@@ -320,27 +318,13 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     /** Called by NeoForge when the server opens this menu for a player. */
     public static void writeExtraData(FactoryControllerBlockEntity be, RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(be.getBlockPos());
-        // Sync tokens: the deltas that follow this open build on exactly this revision. The end-of-tick
-        // flush may re-send state this snapshot already contains (base = this revision) — upserts are
-        // idempotent state carriers, so the double-apply is harmless.
         buf.writeVarInt(be.syncEpoch());
         buf.writeVarInt(be.syncRevision());
 
-        buf.writeVarInt(be.components.size());
-        for (VirtualComponentBehaviour b : be.components.values())
-            ComponentRegistry.writeComponent(buf, b);
-
-        List<Connection> connections = be.connectionGraph().connections();
-        buf.writeVarInt(connections.size());
-        for (Connection conn : connections) conn.writeClient(buf);
-
-        NetworkSettingsStore settingsStore = NetworkSettingsStore.get(be.getLevel());
-        buf.writeVarInt(be.networks.size());
-        for (UUID id : be.networks) {
-            NetworkSettings settings = settingsStore != null ? settingsStore.get(id) : NetworkSettings.defaultFor(id);
-            NetworkSettings.STREAM_CODEC.encode(buf, settings);
-        }
-        MissingLinkStatus.writeList(buf, be.missingLinkStatuses());
+        buf.writeVarInt(0);
+        buf.writeVarInt(0);
+        buf.writeVarInt(0);
+        MissingLinkStatus.writeList(buf, List.of());
 
         buf.writeUtf(be.customName);
         buf.writeBoolean(be.isRedstonePowered());

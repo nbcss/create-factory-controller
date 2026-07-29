@@ -91,8 +91,10 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
                                                         @NotNull Player player,
                                                         @NotNull BlockHitResult hit) {
         if (!level.isClientSide() && player instanceof ServerPlayer sp) {
-            withBlockEntityDo(level, pos, be ->
-                sp.openMenu(be, buf -> FactoryControllerMenu.writeExtraData(be, buf)));
+            withBlockEntityDo(level, pos, be -> {
+                sp.openMenu(be, buf -> FactoryControllerMenu.writeExtraData(be, buf));
+                be.syncEverything();
+            });
         }
         return InteractionResult.SUCCESS;
     }
