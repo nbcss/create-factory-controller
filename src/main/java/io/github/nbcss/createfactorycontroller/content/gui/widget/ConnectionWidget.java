@@ -162,7 +162,7 @@ public class ConnectionWidget {
                 color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
             }
         }
-        VirtualConnectionRenderer.drawPath(gfx, path, color, animated);
+        VirtualConnectionRenderer.create(path, color, animated).drawPath(gfx.bufferSource(), gfx.pose());
     }
 
     /**

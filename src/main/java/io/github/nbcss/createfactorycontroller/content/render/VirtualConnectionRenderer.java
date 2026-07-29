@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
@@ -22,7 +23,7 @@ import java.util.List;
  * factory-panel connection sprite ({@code create:block/factory_panel_connections}).
  */
 @OnlyIn(Dist.CLIENT)
-public final class VirtualConnectionRenderer {
+public class VirtualConnectionRenderer {
 
     private static final int CELL = 16;
 
@@ -31,6 +32,9 @@ public final class VirtualConnectionRenderer {
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections.png");
     private static final ResourceLocation TEX_ANIMATED =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections_animated.png");
+
+    private static final RenderStateShard.ShaderStateShard POSITION_TEX_COLOR_SHADER =
+            new RenderStateShard.ShaderStateShard(GameRenderer::getPositionTexColorShader);
     private static final RenderType RENDER_TYPE_STATIC = createRenderType(TEX_STATIC);
     private static final RenderType RENDER_TYPE_ANIMATED = createRenderType(TEX_ANIMATED);
 
@@ -40,9 +44,9 @@ public final class VirtualConnectionRenderer {
 
     private static RenderType createRenderType(ResourceLocation texture) {
         return RenderType.create("create_factory_controller_connection",
-                DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE,
+                DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE,
                 RenderType.CompositeState.builder()
-                        .setShaderState(RenderStateShard.POSITION_TEX_SHADER)
+                        .setShaderState(POSITION_TEX_COLOR_SHADER)
                         .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
                         .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                         .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
@@ -79,25 +83,28 @@ public final class VirtualConnectionRenderer {
         }
     }
 
-    /** Draws a connection {@code path} (cell waypoints) in {@code color} (0xAARRGGBB or 0xRRGGBB).
-     * Translate the pose so cell {@code (0,0)} sits at the desired screen origin. */
-    public static void drawPath(GuiGraphics gfx, List<Vector2i> path, int color, boolean animated) {
-        int alpha = FastColor.ARGB32.alpha(color);
-        gfx.setColor(FastColor.ARGB32.red(color) / 255f,
-                FastColor.ARGB32.green(color) / 255f,
-                FastColor.ARGB32.blue(color) / 255f,
-                alpha == 0 ? 1f : alpha / 255f);
+    private final List<Vector2i> path;
+    private final int color;
+    private final boolean animated;
 
-        drawPathSegments(gfx.bufferSource(), gfx.pose(), path, animated);
-        gfx.bufferSource().endBatch(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
-
-        gfx.setColor(1f, 1f, 1f, 1f);
+    protected VirtualConnectionRenderer(List<Vector2i> path, int color, boolean animated) {
+        this.path = path;
+        this.color = FastColor.ARGB32.alpha(color) == 0 ? FastColor.ARGB32.opaque(color) : color;
+        this.animated = animated;
     }
 
-    /** Walks a cell-space polyline and draws the arrow strip per segment (head at the last point, tail at the first).
-     *  The caller sets the colour via {@code gfx.setColor} first; cells are {@link #CELL} px, so translate the pose to
-     *  position the path. */
-    private static void drawPathSegments(MultiBufferSource bufferSource, PoseStack pose, List<Vector2i> path, boolean animated) {
+    public static VirtualConnectionRenderer create(List<Vector2i> path, int color, boolean animated) {
+        return new VirtualConnectionRenderer(path, color, animated);
+    }
+
+    /** Draws the connection path in its configured color. Immediate. */
+    public void drawPath(GuiGraphics gfx) {
+        drawPath(gfx.bufferSource(), gfx.pose());
+        gfx.bufferSource().endBatch(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
+    }
+
+    /** Draws the connection path in its configured color. Deferred. */
+    public void drawPath(MultiBufferSource bufferSource, PoseStack pose) {
         // Walk every line of the path and blit.
         for (int i = 0; i < path.size() - 1; i++) {
             Vector2i a = path.get(i), b = path.get(i + 1);
@@ -133,7 +140,7 @@ public final class VirtualConnectionRenderer {
                         case LEFT  -> Subtexture.LINE_LEFT_0;
                         case RIGHT -> Subtexture.LINE_RIGHT_0;
                     };
-                    drawSegment(bufferSource, pose, st0, animated, cell.x, cell.y);
+                    drawSegment(bufferSource, pose, st0, cell.x, cell.y);
                 }
                 // Latter half of the cell in the current direction
                 if (j != length) {
@@ -149,7 +156,7 @@ public final class VirtualConnectionRenderer {
                         case LEFT  -> Subtexture.LINE_LEFT_1;
                         case RIGHT -> Subtexture.LINE_RIGHT_1;
                     };
-                    drawSegment(bufferSource, pose, st1, animated, cell.x, cell.y);
+                    drawSegment(bufferSource, pose, st1, cell.x, cell.y);
                 }
             }
         }
@@ -160,7 +167,7 @@ public final class VirtualConnectionRenderer {
      * @param x Cell x coordinate.
      * @param y Cell y coordinate.
      */
-    private static void drawSegment(MultiBufferSource bufferSource, PoseStack pose, Subtexture st, boolean animated, int x, int y) {
+    private void drawSegment(MultiBufferSource bufferSource, PoseStack pose, Subtexture st, int x, int y) {
         int frame = !animated ? 0 :
                 (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME + st.t) % N_FRAMES;
         int x0 = x * CELL + CELL / 2 - st.ox;
@@ -174,10 +181,10 @@ public final class VirtualConnectionRenderer {
         float v1 = (st.v + frame * FRAME_SIZE + st.h) / (float) textureHeight;
 
         VertexConsumer buffer = bufferSource.getBuffer(animated ? RENDER_TYPE_ANIMATED : RENDER_TYPE_STATIC);
-        buffer.addVertex(pose.last(), x0, y0, 0).setUv(u0, v0);
-        buffer.addVertex(pose.last(), x0, y1, 0).setUv(u0, v1);
-        buffer.addVertex(pose.last(), x1, y1, 0).setUv(u1, v1);
-        buffer.addVertex(pose.last(), x1, y0, 0).setUv(u1, v0);
+        buffer.addVertex(pose.last(), x0, y0, 0).setColor(color).setUv(u0, v0);
+        buffer.addVertex(pose.last(), x0, y1, 0).setColor(color).setUv(u0, v1);
+        buffer.addVertex(pose.last(), x1, y1, 0).setColor(color).setUv(u1, v1);
+        buffer.addVertex(pose.last(), x1, y0, 0).setColor(color).setUv(u1, v0);
     }
 
 }

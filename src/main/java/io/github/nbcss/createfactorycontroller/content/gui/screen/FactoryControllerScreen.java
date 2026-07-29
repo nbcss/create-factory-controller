@@ -625,13 +625,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 if (w.hitTest(worldMouseX, worldMouseY)) hoverHits.add(w);
             }
         }
+
         hoveredConn = reconcileConnectionSelection(connWidgets);
-        for (ConnectionWidget w : connWidgets)
-            if (w != hoveredConn) w.render(graphics, menu);
-        if (hoveredConn != null) {
-            hoveredConn.renderHighlight(graphics);
-            hoveredConn.render(graphics, menu);
+        for (ConnectionWidget widget : connWidgets) {
+            if (widget == hoveredConn)
+                widget.renderHighlight(graphics);
+            widget.render(graphics, menu);
         }
+        graphics.flush();
 
         profiler.popPush("front");
         for (VirtualComponentWidget component : visibleComponents)
@@ -828,7 +829,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
                         float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);   // 1.0 at phase 0, 0.6 at half
                         int color = Math.round(alpha * 255) << 24 | (result.type().color() & 0xFFFFFF);
-                        VirtualConnectionRenderer.drawPath(graphics, path, color, false);
+                        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics);
                     }
                 }
                 renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
@@ -1102,8 +1103,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     BlueprintPlacement.cellFor(wire.to(), anchor),
                     wire.arrowBendMode(), occupied);
             if (path != null)
-                VirtualConnectionRenderer.drawPath(
-                        graphics, path, (0x80 << 24) | (wire.color() & 0xFFFFFF), false);
+                VirtualConnectionRenderer.create(
+                        path, (0x80 << 24) | (wire.color() & 0xFFFFFF), false).drawPath(graphics);
         }
     }
 
