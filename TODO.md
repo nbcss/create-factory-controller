@@ -26,12 +26,16 @@
 - [TODO] Production Order Error Notification
 - [TODO] Selector Gauge
 - [TODO] Paper as component
-- [TODO] Integer Connection & Arithmetic Component
+- [TODO] Number Connection & Arithmetic Component
 - [TODO] Projection Mode
 - [TODO] Controller disabled (redstone powered) indicator
 - [TODO] Custom arrow bend mode
 - [TODO] Color wire by limit blocked state
 - [TODO] Allow production order as ingredient for JEI crafting
+- [TODO] Allow minimum stock amount in Passive mode gauge
+- [TODO] Scale background
+- [TODO] Custom background tile (from block)
+- [TODO] Highlight upstream and downstream gauges when hover over a gauge
 
 # Roadmap
 - [TODO] Custom Keybinding Preset
@@ -44,6 +48,11 @@
 - [TODO] Show Active Promise Timer
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
+- [TODO] Improve BP System: Layout preview
+- [TODO] Improve BP System: More info for ghost components
+- [TODO] Improve BP System: Selection tool button relocate
+- [TODO] Improve BP System: Blueprint tooltip includes more info
+- [TODO] Improve BP System: Handle missing component from compat
 - [TBC] No promise request
 - [TBC] Redstone Frequency from clipboard
 - [TBC] Gauge with recipe filter

@@ -19,6 +19,7 @@ import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRende
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
+import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -47,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 
 /** Displays the reusable component blueprints available to the controller. */
 @IPNIgnore
@@ -88,8 +88,9 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
     private TooltipIconButton openFolderButton;
     private TooltipIconButton closeButton;
-    private TooltipIconButton importButton;
     private SchematicImport.Scan importScan;
+    private int importIconX;
+    private int importIconY;
     private int panelX;
     private int panelY;
     private int panelH;
@@ -132,12 +133,6 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         closeButton.setToolTip(Component.translatable("createfactorycontroller.gui.blueprint.close_library"));
         addWidget(closeButton);
 
-        importButton = new TooltipIconButton(0, 0, AllIcons.I_SCHEMATIC);
-        importButton.withCallback(this::importFromSchematic);
-        importButton.withDeferredTooltip(this::importTooltip);
-        importButton.active = importScan.ready();
-        addWidget(importButton);
-
         relayout();
     }
 
@@ -157,8 +152,8 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         openFolderButton.setY(panelY + panelH - 24);
         closeButton.setX(panelX + PANEL_W - 25);
         closeButton.setY(panelY + panelH - 24);
-        importButton.setX(panelX + 7);
-        importButton.setY(panelY + panelH - 24);
+        importIconX = panelX + 7;
+        importIconY = panelY + panelH - 24;
         updateEntryWidgets(renderedScroll);
     }
 
@@ -228,7 +223,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                     coords(board.boxMin), coords(board.boxMax)).getString();
             BlueprintStorage.Paste paste = BlueprintStorage.buildPaste(board, board.positions, board.networks,
                     note, Minecraft.getInstance().level.registryAccess());
-            return new SchematicEntry(paste, board.networks, board.boxMin, board.boxMax);
+            return new SchematicEntry(paste, board);
         } catch (IOException | RuntimeException ignored) {
             return null;
         }
@@ -313,9 +308,19 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         Minecraft.getInstance().setScreen(controller);
     }
 
-    private void importFromSchematic() {
-        if (importScan.ready())
-            Minecraft.getInstance().setScreen(new BlueprintImportScreen(controller, importScan.board()));
+    private boolean overImportIcon(double x, double y) {
+        return x >= importIconX && x < importIconX + 16 && y >= importIconY && y < importIconY + 16;
+    }
+
+    /** A small green tick badge at the icon's bottom-right, shown when the selection is importable. */
+    private void renderReadyTick(GuiGraphics gfx, int x, int y) {
+        gfx.pose().pushPose();
+        gfx.pose().translate(x + 7, y + 7, 300);
+        gfx.pose().scale(0.65f, 0.65f, 1f);
+        gfx.setColor(0.35f, 1f, 0.35f, 1f);
+        AllIcons.I_CONFIRM.render(gfx, 0, 0);
+        gfx.setColor(1f, 1f, 1f, 1f);
+        gfx.pose().popPose();
     }
 
     /** The import button's tooltip: a description plus a green/red checklist of the import requirements. */
@@ -352,7 +357,9 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             for (EntryWidget widget : entryWidgets)
                 if (widget.renderTooltip(gfx, mouseX, mouseY)) return;
         }
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, openFolderButton, closeButton, importButton);
+        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, openFolderButton, closeButton);
+        if (overImportIcon(mouseX, mouseY))
+            gfx.renderComponentTooltip(font, importTooltip(), mouseX, mouseY);
     }
 
     @Override
@@ -372,7 +379,14 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         renderScrollbar(gfx, renderedScroll, mouseX, mouseY);
         openFolderButton.render(gfx, mouseX, mouseY, partialTick);
         closeButton.render(gfx, mouseX, mouseY, partialTick);
-        importButton.render(gfx, mouseX, mouseY, partialTick);
+        AllIcons.I_SCHEMATIC.render(gfx, importIconX, importIconY);
+        if (importScan.ready()) {
+            gfx.pose().pushPose();
+            gfx.pose().translate(importIconX + 10, importIconY + 10, 300);
+            gfx.pose().scale(0.65f, 0.65f, 1f);
+            gfx.drawString(font, "✔", 0, 0, 0x33FF33);
+            gfx.pose().popPose();
+        }
     }
 
     private void renderContent(GuiGraphics gfx, int mouseX, int mouseY, float partialTick, float currentScroll) {
@@ -521,8 +535,9 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                         : List.of(Component.translatable("createfactorycontroller.gui.blueprint.place"),
                                 blocked.copy().withStyle(ChatFormatting.RED));
             });
-            this.editButton = createButton(EDIT_ICON,
-                    Component.translatable("createfactorycontroller.gui.blueprint.edit"), this::edit);
+            this.editButton = new TooltipIconButton(0, 0, (gfx, x, y) -> entry.secondaryIcon().render(gfx, x, y));
+            this.editButton.withCallback(this::edit);
+            this.editButton.withDeferredTooltip(() -> List.of(entry.secondaryTooltip()));
         }
 
         @Nullable
@@ -701,7 +716,13 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         BlueprintStorage.Info info();
         default boolean oversized() { return false; }
         default boolean editable() { return true; }
+        /** Icon + tooltip of the secondary button — Edit for a file, Save for the schematic paste. */
+        default ScreenElement secondaryIcon() { return (gfx, x, y) -> gfx.blitSprite(EDIT_ICON, x, y, 16, 16); }
+        default Component secondaryTooltip() {
+            return Component.translatable("createfactorycontroller.gui.blueprint.edit");
+        }
         void place();
+        /** Runs the secondary action — open the editor (file) or the import/save screen (schematic paste). */
         void edit();
     }
 
@@ -771,16 +792,11 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
     private class SchematicEntry implements LibraryEntry {
         private final BlueprintStorage.Paste paste;
-        private final List<UUID> networks;
-        private final BlockPos boxMin;
-        private final BlockPos boxMax;
+        private final SchematicImport.ImportedBoard board;
 
-        private SchematicEntry(BlueprintStorage.Paste paste, List<UUID> networks,
-                               BlockPos boxMin, BlockPos boxMax) {
+        private SchematicEntry(BlueprintStorage.Paste paste, SchematicImport.ImportedBoard board) {
             this.paste = paste;
-            this.networks = networks;
-            this.boxMin = boxMin;
-            this.boxMax = boxMax;
+            this.board = board;
         }
 
         @Override
@@ -791,7 +807,12 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         @Override public int nameColor() { return 0xFFAA00; }   // gold
         @Override public ItemStack icon() { return AllItems.SCHEMATIC_AND_QUILL.asStack(); }
         @Override public BlueprintStorage.Info info() { return paste.info(); }
-        @Override public boolean editable() { return false; }
+        @Override public ScreenElement secondaryIcon() { return AllIcons.I_CONFIG_SAVE; }
+
+        @Override
+        public Component secondaryTooltip() {
+            return Component.translatable("createfactorycontroller.gui.blueprint.save");
+        }
 
         @Override
         public boolean oversized() {
@@ -801,11 +822,14 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         @Override
         public void place() {
             controller.beginBlueprintPlacement(BlueprintPlacement.schematic(
-                    name(), paste.info(), paste.payload(), networks, boxMin, boxMax));
+                    name(), paste.info(), paste.payload(), board.networks, board.boxMin, board.boxMax));
             Minecraft.getInstance().setScreen(controller);
         }
 
+        /** "Save": open the import save screen (name / note / materials) — the old import button's action. */
         @Override
-        public void edit() {}
+        public void edit() {
+            Minecraft.getInstance().setScreen(new BlueprintImportScreen(controller, board));
+        }
     }
 }

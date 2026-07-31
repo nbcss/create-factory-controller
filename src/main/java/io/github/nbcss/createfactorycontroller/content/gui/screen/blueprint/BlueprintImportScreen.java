@@ -1,12 +1,15 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
+import com.simibubi.create.foundation.gui.AllIcons;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.blueprint.SchematicImport;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
+import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
@@ -72,6 +75,22 @@ public class BlueprintImportScreen extends BlueprintFormScreen {
         }
         renderNetworkSlotBackground(gfx, x, y, 0xFF8B8B8B);
         gfx.renderItem(settings.icon(), x + 1, y + 1);
+    }
+
+    @Override
+    protected ScreenElement discardIcon() {
+        return AllIcons.I_MTD_CLOSE;
+    }
+
+    @Override
+    protected Component discardTooltip() {
+        return Component.translatable("createfactorycontroller.gui.blueprint.cancel");
+    }
+
+    /** Cancel returns to the library it was opened from, not the controller board. */
+    @Override
+    protected Screen previousScreen() {
+        return new BlueprintLibraryScreen(controller);
     }
 
     @Override

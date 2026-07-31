@@ -2,6 +2,7 @@
 
 Changes:
 - Removed component limit in blueprint selection.
+- Improve blueprint import UX.
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
