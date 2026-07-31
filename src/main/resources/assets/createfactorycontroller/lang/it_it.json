@@ -151,7 +151,7 @@
   "createfactorycontroller.gui.blueprint.library_title": "Blueprint Library",
   "createfactorycontroller.gui.blueprint.open_folder": "Open library folder",
   "createfactorycontroller.gui.blueprint.close_library": "Close",
-  "createfactorycontroller.gui.blueprint.import": "Create from Schematic And Quill",
+  "createfactorycontroller.gui.blueprint.import": "Creating from Schematic And Quill",
   "createfactorycontroller.gui.blueprint.schematic_entry": "Schematics Blueprint",
   "createfactorycontroller.gui.blueprint.schematic_note": "Pos 1: %s\nPos 2: %s",
   "createfactorycontroller.gui.blueprint.import_title": "Import from Schematic",
