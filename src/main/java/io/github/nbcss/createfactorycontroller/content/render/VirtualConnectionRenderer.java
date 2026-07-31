@@ -30,8 +30,8 @@ public class VirtualConnectionRenderer {
     private static final ResourceLocation TEX_ANIMATED =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections_animated.png");
 
-    private static final DeferredBlitter BLITTER_STATIC = DeferredBlitter.forTexture(TEX_STATIC, FRAME_SIZE, FRAME_SIZE);
-    private static final DeferredBlitter BLITTER_ANIMATED = DeferredBlitter.forTexture(TEX_ANIMATED, FRAME_SIZE, FRAME_SIZE * N_FRAMES);
+    private static final BatchedBlitter BLITTER_STATIC = BatchedBlitter.forTexture(TEX_STATIC, FRAME_SIZE, FRAME_SIZE);
+    private static final BatchedBlitter BLITTER_ANIMATED = BatchedBlitter.forTexture(TEX_ANIMATED, FRAME_SIZE, FRAME_SIZE * N_FRAMES);
 
     private enum Direction { UP, DOWN, LEFT, RIGHT }
 
@@ -66,7 +66,7 @@ public class VirtualConnectionRenderer {
     private final List<Vector2i> path;
     private final int color;
     private final boolean animated;
-    private final DeferredBlitter blitter;
+    private final BatchedBlitter blitter;
 
     protected VirtualConnectionRenderer(List<Vector2i> path, int color, boolean animated) {
         this.path = path;
@@ -85,7 +85,7 @@ public class VirtualConnectionRenderer {
         blitter.endBatch(gfx.bufferSource());
     }
 
-    /** Draws the connection path in its configured color. Deferred. */
+    /** Draws the connection path in its configured color. Batched. */
     public void drawPath(MultiBufferSource bufferSource, PoseStack pose) {
         blitter.setColorARGB(color);
 

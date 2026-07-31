@@ -6,7 +6,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.LogicalTubeSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
-import io.github.nbcss.createfactorycontroller.content.render.DeferredBlitter;
+import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -41,19 +41,19 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
     @Override
     public void renderBack(GuiGraphics gfx) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
-        DeferredBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
     }
 
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         boolean powered = behaviour.isPowered();   // current value state
-        DeferredBlitter.forSprite(sprite(powered ? "front_on" : "front_off"))
+        BatchedBlitter.forSprite(sprite(powered ? "front_on" : "front_off"))
                 .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
 
         LogicalTubeBehaviour.Mode mode = behaviour.getMode();
         // Mode symbol: 16×16 sprite drawn at half size (8×8), centred, tinted by the value state.
-        DeferredBlitter.forSprite(sprite(mode.name().toLowerCase()))
+        BatchedBlitter.forSprite(sprite(mode.name().toLowerCase()))
                 .blit(gfx.bufferSource(), gfx.pose(), x0 + CELL / 4, y0 + CELL / 4, CELL / 2, CELL / 2);
     }
 
@@ -61,8 +61,8 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
     @Override
     public void renderGhost(GuiGraphics gfx) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
-        DeferredBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        DeferredBlitter.forSprite(sprite("front_off")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        BatchedBlitter.forSprite(sprite("front_off")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
     }
 
     @Override

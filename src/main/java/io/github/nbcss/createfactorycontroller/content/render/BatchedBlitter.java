@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutionException;
 
 /** Queues colored, textured quads in a texture-specific render batch. */
 @OnlyIn(Dist.CLIENT)
-public class DeferredBlitter {
+public class BatchedBlitter {
 
     private static final RenderStateShard.ShaderStateShard POSITION_TEX_COLOR_SHADER =
             new RenderStateShard.ShaderStateShard(GameRenderer::getPositionTexColorShader);
@@ -49,12 +49,12 @@ public class DeferredBlitter {
     private int color = 0xFFFFFFFF;
     private int blitOffset;
 
-    protected DeferredBlitter(ResourceLocation texture, int textureWidth, int textureHeight) {
+    protected BatchedBlitter(ResourceLocation texture, int textureWidth, int textureHeight) {
         this(texture, textureWidth, textureHeight, 0, 0, 1, 1);
     }
 
-    protected DeferredBlitter(ResourceLocation texture, int textureWidth, int textureHeight,
-                              float u0, float v0, float u1, float v1) {
+    protected BatchedBlitter(ResourceLocation texture, int textureWidth, int textureHeight,
+                             float u0, float v0, float u1, float v1) {
         try {
             renderType = RENDER_TYPES.get(texture, () -> createRenderType(texture));
         } catch (ExecutionException e) {
@@ -68,31 +68,31 @@ public class DeferredBlitter {
         this.initialV1 = v1;
     }
 
-    public static DeferredBlitter forTexture(ResourceLocation texture, int textureWidth, int textureHeight) {
-        return new DeferredBlitter(texture, textureWidth, textureHeight);
+    public static BatchedBlitter forTexture(ResourceLocation texture, int textureWidth, int textureHeight) {
+        return new BatchedBlitter(texture, textureWidth, textureHeight);
     }
 
-    public static DeferredBlitter forSprite(ResourceLocation sprite) {
+    public static BatchedBlitter forSprite(ResourceLocation sprite) {
         GuiSpriteManager spriteManager = Minecraft.getInstance().getGuiSprites();
         var atlasSprite = spriteManager.getSprite(sprite);
         int uWidth = atlasSprite.contents().width();
         int vHeight = atlasSprite.contents().height();
         int textureWidth = Math.round(uWidth / (atlasSprite.getU1() - atlasSprite.getU0()));
         int textureHeight = Math.round(vHeight / (atlasSprite.getV1() - atlasSprite.getV0()));
-        return new DeferredBlitter(atlasSprite.atlasLocation(), textureWidth, textureHeight,
+        return new BatchedBlitter(atlasSprite.atlasLocation(), textureWidth, textureHeight,
                 atlasSprite.getU0(), atlasSprite.getV0(), atlasSprite.getU1(), atlasSprite.getV1());
     }
 
-    public DeferredBlitter setColorRGB(int color) {
+    public BatchedBlitter setColorRGB(int color) {
         return setColorARGB(color & (0xFF << 24));
     }
 
-    public DeferredBlitter setColorARGB(int color) {
+    public BatchedBlitter setColorARGB(int color) {
         this.color = color;
         return this;
     }
 
-    public DeferredBlitter setBlitOffset(int blitOffset) {
+    public BatchedBlitter setBlitOffset(int blitOffset) {
         this.blitOffset = blitOffset;
         return this;
     }

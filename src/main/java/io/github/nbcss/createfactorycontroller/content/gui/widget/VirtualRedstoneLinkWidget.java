@@ -9,7 +9,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedst
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
-import io.github.nbcss.createfactorycontroller.content.render.DeferredBlitter;
+import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -46,22 +46,22 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     @Override
     public void renderBack(GuiGraphics gfx) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
-        DeferredBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         if (behaviour.powered)
-            DeferredBlitter.forSprite(sprite("back_power"))
+            BatchedBlitter.forSprite(sprite("back_power"))
                     .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
     }
 
     @Override
     public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
-        DeferredBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         if (behaviour.powered)
-            DeferredBlitter.forSprite(sprite("front_power"))
+            BatchedBlitter.forSprite(sprite("front_power"))
                     .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         String path = (behaviour.receive ? "receiver_" : "transmitter_") +
                 (behaviour.powered ? "on" : "off");
-        DeferredBlitter.forSprite(sprite(path)).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        BatchedBlitter.forSprite(sprite(path)).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
 
         // The two type frequency icons (half-size): Red top-left, Blue bottom-right.
         renderFreqIcon(gfx, behaviour.redFreq, x0 + 6, y0 + 3);
