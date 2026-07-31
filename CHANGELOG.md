@@ -1,5 +1,8 @@
 ## 1.1.2
 
+Changes:
+- Removed component limit in blueprint selection.
+
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
 - Fixed gauge timer animation is not properly rendered with some animation lib mods installed.

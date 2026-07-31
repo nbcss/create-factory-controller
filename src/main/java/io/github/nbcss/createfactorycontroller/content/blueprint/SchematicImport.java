@@ -98,10 +98,6 @@ public final class SchematicImport {
     public record Requirements(boolean twoPositions, boolean planar, boolean withinSize,
                                boolean hasComponent, boolean uniformFacing) {
         static final Requirements NONE = new Requirements(false, false, false, false, false);
-
-        public boolean allMet() {
-            return twoPositions && planar && withinSize && hasComponent && uniformFacing;
-        }
     }
 
     /** Either a ready board or, when not, which requirements are unmet — drives the button and its tooltip. */
@@ -125,10 +121,6 @@ public final class SchematicImport {
         if (!withinSize || !allLoaded(level, box))
             return Scan.notReady(new Requirements(true, planar, withinSize, false, false));
 
-        // Pass 1 — a gauge that faces a thin (span-1) axis is a candidate for the board plane, and every candidate
-        // must share one FACE+FACING. Otherwise the selection mixes boards — e.g. when both X and Y are thin, wall
-        // gauges facing X and floor gauges facing Y are all candidates and must not be silently split. A gauge
-        // facing a non-thin axis (a wall merely crossing a flat slab) can't lie in the plane, so it is ignored.
         EnumSet<Axis> thin = thinAxes(box);
         BlockState gaugeRef = null;
         boolean facingConflict = false;
@@ -199,8 +191,6 @@ public final class SchematicImport {
         // A registered gauge can still be unsupported (buildGauge → null), so re-check something was actually built.
         if (components.isEmpty())
             return Scan.notReady(new Requirements(true, true, true, false, true));
-        if (components.size() > FactoryControllerBlockEntity.maxComponents())
-            return Scan.notReady(new Requirements(true, true, false, true, true));
 
         // Wire connections into a transient graph, dropping any whose endpoint wasn't imported.
         ConnectionGraph graph = new ConnectionGraph();
