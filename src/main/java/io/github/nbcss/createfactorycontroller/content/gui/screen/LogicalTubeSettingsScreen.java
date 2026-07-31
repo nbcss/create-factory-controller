@@ -266,8 +266,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             backAt(gfx, params, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)));
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
             backAt(gfx, params, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)));
-        gfx.flush();
-        componentRenderingHelper.flushBuffers();
+        componentRenderingHelper.flushBuffers(gfx);
     }
 
     private void renderIconFronts(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
@@ -276,8 +275,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             frontAt(gfx, params, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
             frontAt(gfx, params, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
-        gfx.flush();
-        componentRenderingHelper.flushBuffers();
+        componentRenderingHelper.flushBuffers(gfx);
     }
 
     private void backAt(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,

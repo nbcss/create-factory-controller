@@ -12,7 +12,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
-import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
@@ -133,7 +132,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
             gfx.pose().pushPose();
             gfx.pose().translate(x0 + 4.0, y0 + 4.0, 0);   // 4-px inset centres the half-size icon
             gfx.pose().scale(0.5f, 0.5f, 0.5f);            // uniform so item lighting stays correct
-            ResourceIconRenderer.render(gfx, behaviour.filter, 0, 0);
+            params.addBatchRenderedItem(behaviour.filter, 0, 0);
             gfx.pose().popPose();
         }
 

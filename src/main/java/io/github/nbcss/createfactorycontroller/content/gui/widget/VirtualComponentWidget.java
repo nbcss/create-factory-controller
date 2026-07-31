@@ -5,7 +5,6 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -35,9 +34,8 @@ import java.util.List;
  * It may write into {@code params.graphics().bufferSource()}, and assume that the calling screen
  * calls {@link GuiGraphics#flush()} after rendering all the components for each layer.</p>
  *
- * <p>Additionally, item and fluid icons can be batch-rendered with the provided
- * {@code params.bufferSourceForFlatItems()} and {@code params.bufferSourceFor3DItems()}.
- * These buffers are also flushed after rendering all components for each layer, with the correct lighting setup.</p>
+ * <p>Additionally, item and fluid icons can be batch-rendered with {@code params.addBatchRendereredItem}.
+ * The queued icons are rendered after all components in the layer, with the correct lighting setup.</p>
  */
 @OnlyIn(Dist.CLIENT)
 public interface VirtualComponentWidget {
@@ -92,11 +90,7 @@ public interface VirtualComponentWidget {
         /** Whether the mouse is hovering over this componen. */
         @Pure boolean mouseOver();
 
-        /** Write to this buffer to batch-render flat item/fluid icons. */
-        @Pure
-        MultiBufferSource bufferSourceForFlatItems();
-        /** Write to this buffer to batch-render 3D item icons. */
-        @Pure
-        MultiBufferSource bufferSourceFor3DItems();
+        /** Queues an item or fluid icon to be rendered in batch. */
+        void addBatchRenderedItem(ItemStack stack, int x, int y);
     }
 }

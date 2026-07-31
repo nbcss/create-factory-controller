@@ -583,8 +583,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Cull components and connections that fall outside the visible canvas rectangle
         for (VirtualComponentWidget component : visibleComponents)
             component.renderBack(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
-        graphics.flush();
-        componentRenderingHelper.flushBuffers();
+        componentRenderingHelper.flushBuffers(graphics);
 
         profiler.popPush("connection");
         // A cursor move releases the arrow-mode lock (so the pinned wire goes back to normal hover resolution).
@@ -614,8 +613,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.popPush("front");
         for (VirtualComponentWidget component : visibleComponents)
             component.renderFront(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
-        graphics.flush();
-        componentRenderingHelper.flushBuffers();
+        componentRenderingHelper.flushBuffers(graphics);
 
         profiler.pop();
         renderSelectedNetworkMask(graphics);
@@ -630,8 +628,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
         for (VirtualComponentWidget component : visibleComponents)
             component.renderOverlay(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
-        graphics.flush();
-        componentRenderingHelper.flushBuffers();
+        componentRenderingHelper.flushBuffers(graphics);
 
         profiler.pop();
         graphics.pose().popPose();
@@ -861,8 +858,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.setColor(1f, 1f, 1f, 0.5f);
         widget.renderGhost(componentRenderingHelper.params(graphics, new Vector2d(Double.NaN, Double.NaN), false));
         // Batched component blits must draw while the ghost alpha is still active.
-        graphics.flush();
-        componentRenderingHelper.flushBuffers();
+        componentRenderingHelper.flushBuffers(graphics);
         graphics.setColor(1f, 1f, 1f, 1f);
     }
 

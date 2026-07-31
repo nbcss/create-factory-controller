@@ -1,38 +1,34 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
-import com.mojang.blaze3d.platform.Lighting;
-import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.item.ItemStack;
 import org.joml.Vector2d;
 
 public class ComponentRenderingHelper {
-
-    public MultiBufferSource.BufferSource bufferSourceForFlatItems =
-            MultiBufferSource.immediate(new ByteBufferBuilder(786432));
-    public MultiBufferSource.BufferSource bufferSourceFor3DItems =
-            MultiBufferSource.immediate(new ByteBufferBuilder(786432));
 
     /** Parameters passed to {@link VirtualComponentWidget} rendering methods. */
     public record RenderingParameters(
             GuiGraphics graphics,
             Vector2d mousePosition,
             boolean mouseOver,
-            MultiBufferSource bufferSourceForFlatItems,
-            MultiBufferSource bufferSourceFor3DItems
+            ResourceIconRenderer.Batch batchRenderedItems
+
     ) implements VirtualComponentWidget.RenderingParameters {
+
+        @Override
+        public void addBatchRenderedItem(ItemStack stack, int x, int y) {
+            batchRenderedItems.add(graphics.pose(), stack, x, y);
+        }
+
     }
 
     public RenderingParameters params(GuiGraphics graphics, Vector2d mousePosition, boolean mouseOver) {
-        return new RenderingParameters(graphics, mousePosition, mouseOver, bufferSourceForFlatItems, bufferSourceFor3DItems);
+        return new RenderingParameters(graphics, mousePosition, mouseOver, ResourceIconRenderer.BATCH);
     }
 
-    public void flushBuffers() {
-        Lighting.setupForFlatItems();
-        bufferSourceForFlatItems.endBatch();
-        Lighting.setupFor3DItems();
-        bufferSourceFor3DItems.endBatch();
+    public void flushBuffers(GuiGraphics graphics) {
+        graphics.flush();
+        ResourceIconRenderer.BATCH.flush(graphics);
     }
-
 }
