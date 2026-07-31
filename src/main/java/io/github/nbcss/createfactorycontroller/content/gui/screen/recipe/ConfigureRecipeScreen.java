@@ -343,7 +343,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     protected void containerTick() {
         super.containerTick();
         addressBox.tick();
-        controller.tickBulbs();
+        controller.tickComponentWidgets();
         // Poll the gauge's live in-flight promise counts every 10 ticks for the promise-limit box
         if (--promiseInfoPollCooldown <= 0) {
             promiseInfoPollCooldown = 10;

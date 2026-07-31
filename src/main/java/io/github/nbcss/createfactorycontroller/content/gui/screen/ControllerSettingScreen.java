@@ -128,7 +128,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();   // keep the background board's indicator bulbs animating
+        controller.tickComponentWidgets();
     }
 
     // ── Selection ─────────────────────────────────────────────────────────────

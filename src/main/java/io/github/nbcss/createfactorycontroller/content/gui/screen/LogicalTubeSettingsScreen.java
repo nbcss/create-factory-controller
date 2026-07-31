@@ -5,6 +5,7 @@ import com.simibubi.create.AllItems;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.item.TooltipHelper;
+import io.github.nbcss.createfactorycontroller.content.render.ComponentRenderingHelper;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
@@ -34,6 +35,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Vector2d;
 import org.joml.Vector2i;
 
 import java.util.ArrayList;
@@ -64,6 +66,8 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition tubePos;
+
+    private final ComponentRenderingHelper componentRenderingHelper = new ComponentRenderingHelper();
 
     private int panelX, panelY;
     private TooltipIconButton relocateButton, addConnectionButton, confirmButton;
@@ -202,9 +206,11 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
 
         List<Connection> inputs = inputs(), outputs = outputs();
-        renderIconBacks(gfx, inputs, outputs);      // backs first
+        ComponentRenderingHelper.RenderingParameters renderingParameters =
+                componentRenderingHelper.params(gfx, new Vector2d(Double.NaN, Double.NaN), false);
+        renderIconBacks(gfx, renderingParameters, inputs, outputs);      // backs first
         renderConnections(gfx, inputs, outputs);    // then wires (above backs, below fronts)
-        renderIconFronts(gfx, inputs, outputs, mouseX, mouseY);   // fronts cover the arrow ends
+        renderIconFronts(gfx, renderingParameters, inputs, outputs, mouseX, mouseY);   // fronts cover the arrow ends
 
         RenderSystem.enableBlend();
         gfx.blitSprite(
@@ -254,30 +260,36 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         return 0;
     }
 
-    private void renderIconBacks(GuiGraphics gfx, List<Connection> inputs, List<Connection> outputs) {
+    private void renderIconBacks(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
+                                 List<Connection> inputs, List<Connection> outputs) {
         for (int i = 0; i < Math.min(MAX_PER_SIDE, inputs.size()); i++)
-            backAt(gfx, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)));
+            backAt(gfx, params, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)));
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            backAt(gfx, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)));
+            backAt(gfx, params, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)));
         gfx.flush();
+        componentRenderingHelper.flushBuffers();
     }
 
-    private void renderIconFronts(GuiGraphics gfx, List<Connection> inputs, List<Connection> outputs, int mouseX, int mouseY) {
+    private void renderIconFronts(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
+                                  List<Connection> inputs, List<Connection> outputs, int mouseX, int mouseY) {
         for (int i = 0; i < Math.min(MAX_PER_SIDE, inputs.size()); i++)
-            frontAt(gfx, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
+            frontAt(gfx, params, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            frontAt(gfx, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
+            frontAt(gfx, params, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
         gfx.flush();
+        componentRenderingHelper.flushBuffers();
     }
 
-    private void backAt(GuiGraphics gfx, VirtualComponentPosition pos, int x, int y) {
+    private void backAt(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
+                        VirtualComponentPosition pos, int x, int y) {
         VirtualComponentWidget w = controller.componentWidgetAt(pos);
-        if (w != null) atSlot(gfx, w, x, y, () -> w.renderBack(gfx));
+        if (w != null) atSlot(gfx, w, x, y, () -> w.renderBack(params));
     }
 
-    private void frontAt(GuiGraphics gfx, VirtualComponentPosition pos, int x, int y, int mouseX, int mouseY) {
+    private void frontAt(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
+                         VirtualComponentPosition pos, int x, int y, int mouseX, int mouseY) {
         VirtualComponentWidget w = controller.componentWidgetAt(pos);
-        if (w != null) atSlot(gfx, w, x, y, () -> w.renderFront(gfx, -10000, -10000, 1f));   // off-screen mouse, static glow
+        if (w != null) atSlot(gfx, w, x, y, () -> w.renderFront(params));
         if (in(mouseX, mouseY, x, y)) highlight(gfx, x, y);
     }
 
@@ -404,7 +416,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();
+        controller.tickComponentWidgets();
     }
 
     @Override

@@ -184,7 +184,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();
+        controller.tickComponentWidgets();
     }
 
     // ── Render ───────────────────────────────────────────────────────────────

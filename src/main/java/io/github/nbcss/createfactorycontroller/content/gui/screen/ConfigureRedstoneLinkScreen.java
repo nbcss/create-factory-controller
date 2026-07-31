@@ -162,7 +162,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();
+        controller.tickComponentWidgets();
     }
 
     @Override

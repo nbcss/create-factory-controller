@@ -9,6 +9,7 @@ import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import io.github.nbcss.createfactorycontroller.content.render.ComponentRenderingHelper;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
@@ -37,8 +38,6 @@ import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationMode
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
-import net.createmod.catnip.animation.LerpedFloat;
-import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
@@ -73,10 +72,10 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
+import org.joml.Vector2d;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -183,11 +182,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // Last cursor position seen by render(), so keyPressed (which has no mouse coords) can capture the lock anchor.
     private int lastMouseX, lastMouseY;
 
+    private final ComponentRenderingHelper componentRenderingHelper = new ComponentRenderingHelper();
+
     private final Map<VirtualComponentPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
     private final List<VirtualComponentWidget> visibleComponents = new ArrayList<>();
-
-    private final Map<VirtualComponentPosition, LerpedFloat> bulbs = new HashMap<>();
-    private final Map<VirtualComponentPosition, Long> bulbSeenRequest = new HashMap<>();
 
     // Board action mode (e.g. connecting).
     @Nullable private VirtualComponentPosition pendingConnectionTarget = null;
@@ -415,41 +413,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (blueprintSaveButton != null) blueprintSaveButton.visible = !selected.isEmpty();
     }
 
-    // ── Indicator bulb animation ─────────────────────────────────────────────
-
     @Override
     protected void containerTick() {
         super.containerTick();
         if (nameBox != null && !nameBox.isFocused())
             collapseNameSelection();
-        tickBulbs();
+        tickComponentWidgets();
     }
 
-    public void tickBulbs() {
-        for (VirtualComponentWidget w : componentWidgets.values()) {
-            if (!(w.behaviour() instanceof VirtualGaugeBehaviour g)) continue;
-            VirtualComponentPosition pos = g.position();
-            boolean firstSeen = !bulbSeenRequest.containsKey(pos);
-            float steady = g.satisfied || g.redstonePowered ? 1 : 0;
-            LerpedFloat bulb = bulbs.computeIfAbsent(pos,
-                    p -> LerpedFloat.linear().startWithValue(steady).chase(0, 0.175, Chaser.EXP));
-            if (firstSeen) {
-                bulbSeenRequest.put(pos, g.lastRequestTick);
-            } else if (g.lastRequestTick > bulbSeenRequest.get(pos)) {
-                bulb.setValue(1);
-                bulbSeenRequest.put(pos, g.lastRequestTick);
-            }
-            bulb.updateChaseTarget(steady);
-            bulb.tickChaser();
-        }
-        bulbs.keySet().removeIf(p -> !componentWidgets.containsKey(p));
-        bulbSeenRequest.keySet().removeIf(p -> !componentWidgets.containsKey(p));
-    }
-
-    /** Current interpolated bulb glow [0,1] for the gauge at {@code pos} (0 if none). */
-    private float bulbGlow(VirtualComponentPosition pos, float partialTick) {
-        LerpedFloat bulb = bulbs.get(pos);
-        return bulb == null ? 0f : bulb.getValue(partialTick);
+    public void tickComponentWidgets() {
+        componentWidgets.values().forEach(VirtualComponentWidget::tick);
     }
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -588,6 +561,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.pose().scale((float) getZoomFactor(), (float) getZoomFactor(), (float) getZoomFactor());
         graphics.pose().translate((float) -viewX, (float) -viewY, 0);
 
+        // Cursor in canvas-world coords (so widgets can hit-test sub-regions).
+        Vector2d worldMouse = new Vector2d(
+                viewX + (mouseX - centerX) / getZoomFactor(),
+                viewY + (mouseY - centerY) / getZoomFactor());
+
         // Background — one tile per component cell, snapped to cell boundaries (world-locked).
         int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
         int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
@@ -604,13 +582,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.popPush("back");
         // Cull components and connections that fall outside the visible canvas rectangle
         for (VirtualComponentWidget component : visibleComponents)
-            component.renderBack(graphics);
+            component.renderBack(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
         graphics.flush();
+        componentRenderingHelper.flushBuffers();
 
         profiler.popPush("connection");
-        // Cursor in canvas-world coords (so a widget can hit-test sub-regions); off-board when hover is suppressed.
-        double worldMouseX = viewX + (mouseX - centerX) / getZoomFactor();
-        double worldMouseY = viewY + (mouseY - centerY) / getZoomFactor();
         // A cursor move releases the arrow-mode lock (so the pinned wire goes back to normal hover resolution).
         if (connArrowLocked && (mouseX != lockMouseX || mouseY != lockMouseY)) connArrowLocked = false;
 
@@ -623,7 +599,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             for (ConnectionWidget w : connWidgets) {
                 if (overComponent && !hoveredPosition.equals(w.connection.from)
                                   && !hoveredPosition.equals(w.connection.to)) continue;
-                if (w.hitTest(worldMouseX, worldMouseY)) hoverHits.add(w);
+                if (w.hitTest(worldMouse.x, worldMouse.y)) hoverHits.add(w);
             }
         }
 
@@ -637,8 +613,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         profiler.popPush("front");
         for (VirtualComponentWidget component : visibleComponents)
-            component.renderFront(graphics, worldMouseX, worldMouseY, bulbGlow(component.position(), partialTick));
+            component.renderFront(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
         graphics.flush();
+        componentRenderingHelper.flushBuffers();
 
         profiler.pop();
         renderSelectedNetworkMask(graphics);
@@ -649,12 +626,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.push("ghost");
         renderPlacementGhost(graphics);
 
-        profiler.popPush("label");
+        profiler.popPush("overlay");
         // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
-        boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
         for (VirtualComponentWidget component : visibleComponents)
-            component.renderOverlay(graphics, alwaysShowLabel || component.position().equals(hoveredPosition));
+            component.renderOverlay(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
         graphics.flush();
+        componentRenderingHelper.flushBuffers();
 
         profiler.pop();
         graphics.pose().popPose();
@@ -882,9 +859,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (widget == null) return;
         RenderSystem.enableBlend();
         graphics.setColor(1f, 1f, 1f, 0.5f);
-        widget.renderGhost(graphics);
-        // Deferred component blits must draw while the ghost alpha is still active.
+        widget.renderGhost(componentRenderingHelper.params(graphics, new Vector2d(Double.NaN, Double.NaN), false));
+        // Batched component blits must draw while the ghost alpha is still active.
         graphics.flush();
+        componentRenderingHelper.flushBuffers();
         graphics.setColor(1f, 1f, 1f, 1f);
     }
 
@@ -1796,11 +1774,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return result;
     }
 
-    /** Rebuilds the position→widget index from the synced component list (one widget per component, via the registry). */
+    /** Rebuilds the position→widget index from the synced component list, preserving widget-owned client state. */
     private void rebuildGaugeWidgets() {
+        Map<VirtualComponentPosition, VirtualComponentWidget> previousWidgets = new LinkedHashMap<>(componentWidgets);
         componentWidgets.clear();
         for (VirtualComponentBehaviour b : menu.components) {
-            VirtualComponentWidget widget = ComponentWidgetRegistry.create(b);
+            VirtualComponentWidget widget = ComponentWidgetRegistry.create(b, previousWidgets.get(b.position()));
             if (widget != null) componentWidgets.put(b.position(), widget);
         }
         if (pendingMoveDestinations != null) {

@@ -13,6 +13,9 @@ import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
+import net.createmod.catnip.animation.AnimationTickHolder;
+import net.createmod.catnip.animation.LerpedFloat;
+import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.client.Minecraft;
@@ -37,7 +40,7 @@ import java.util.List;
  *
  */
 @OnlyIn(Dist.CLIENT)
-public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements VirtualComponentWidget {
+public final class VirtualGaugeWidget implements VirtualComponentWidget {
 
     private static final int CELL = 16;
 
@@ -55,6 +58,42 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     private static final float LABEL_SCALE = 0.5f;
     private static final float LABEL_MIN_SCALE = 0.25f;
 
+    private final VirtualGaugeBehaviour behaviour;
+    private final LerpedFloat bulb;
+    private long lastRequestTick;
+
+    public VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) {
+        this.behaviour = behaviour;
+        float steady = steadyGlow();
+        this.bulb = LerpedFloat.linear().startWithValue(steady).chase(steady, 0.175, Chaser.EXP);
+        this.lastRequestTick = behaviour.lastRequestTick;
+    }
+
+    VirtualGaugeWidget(VirtualGaugeBehaviour behaviour, VirtualGaugeWidget previous) {
+        this.behaviour = behaviour;
+        this.bulb = previous.bulb;
+        this.lastRequestTick = previous.lastRequestTick;
+    }
+
+    @Override
+    public VirtualGaugeBehaviour behaviour() {
+        return behaviour;
+    }
+
+    @Override
+    public void tick() {
+        if (behaviour.lastRequestTick > lastRequestTick) {
+            bulb.setValue(1);
+            lastRequestTick = behaviour.lastRequestTick;
+        }
+        bulb.updateChaseTarget(steadyGlow());
+        bulb.tickChaser();
+    }
+
+    private float steadyGlow() {
+        return behaviour.satisfied || behaviour.redstonePowered ? 1 : 0;
+    }
+
     public VirtualComponentPosition position() {
         return behaviour.position();
     }
@@ -65,7 +104,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      * Back layer: the gauge's {@code back} sprite. Rendered before connections.
      */
     @Override
-    public void renderBack(GuiGraphics gfx) {
+    public void renderBack(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
         int x0 = behaviour.position().x() * CELL;
         int y0 = behaviour.position().y() * CELL;
@@ -79,7 +119,8 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
      * Rendered after connections.
      */
     @Override
-    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
+    public void renderFront(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
 
         int x0 = behaviour.position().x() * CELL;
@@ -100,6 +141,7 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
         if (behaviour.isActive()) {
             boolean invalid = behaviour.isMissingAddress() || behaviour.isRedstonePaused();
             int base = invalid ? BULB_RED : BULB_GREEN;
+            float glow = bulb.getValue(AnimationTickHolder.getPartialTicks());
             float b = BULB_MIN_BRIGHTNESS + (1f - BULB_MIN_BRIGHTNESS) * Mth.clamp(glow, 0f, 1f);
             int color = FastColor.ARGB32.colorFromFloat(0.9f,
                     ((base >> 16) & 0xFF) / 255f * b,
@@ -113,10 +155,12 @@ public record VirtualGaugeWidget(VirtualGaugeBehaviour behaviour) implements Vir
     }
 
     @Override
-    public void renderOverlay(GuiGraphics gfx, boolean showCount) {
+    public void renderOverlay(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
 
-        Component label = showCount ? behaviour.getCountLabel() : Component.empty();
+        Component label = ClientConfig.alwaysShowLabel() || params.mouseOver() ?
+                behaviour.getCountLabel() : Component.empty();
         if (label.getString().isEmpty()) {
             Minecraft.getInstance().getProfiler().pop();
             return;

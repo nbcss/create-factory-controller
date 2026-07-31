@@ -389,7 +389,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();
+        controller.tickComponentWidgets();
         scroll.tickChaser();
         float clamped = Mth.clamp(scroll.getChaseTarget(), 0, (float) maxScroll());
         if (clamped != scroll.getChaseTarget()) scroll.chase(clamped, 0.5, Chaser.EXP);

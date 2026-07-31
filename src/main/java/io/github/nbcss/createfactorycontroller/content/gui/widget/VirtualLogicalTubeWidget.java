@@ -39,13 +39,15 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
     }
 
     @Override
-    public void renderBack(GuiGraphics gfx) {
+    public void renderBack(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
     }
 
     @Override
-    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
+    public void renderFront(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         boolean powered = behaviour.isPowered();   // current value state
         BatchedBlitter.forSprite(sprite(powered ? "front_on" : "front_off"))
@@ -59,7 +61,8 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
 
     /** Ghost = back + bare front frame only; the mode icon is configured state, so it's omitted from the preview. */
     @Override
-    public void renderGhost(GuiGraphics gfx) {
+    public void renderGhost(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         BatchedBlitter.forSprite(sprite("front_off")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);

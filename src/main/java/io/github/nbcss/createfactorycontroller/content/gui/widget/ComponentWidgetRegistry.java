@@ -44,4 +44,13 @@ public final class ComponentWidgetRegistry {
         }
         return null;
     }
+
+    /** Recreates a widget for refreshed behaviour, transferring type-specific client state where possible. */
+    @Nullable
+    public static VirtualComponentWidget create(VirtualComponentBehaviour behaviour,
+                                                @Nullable VirtualComponentWidget previous) {
+        if (behaviour instanceof VirtualGaugeBehaviour gauge && previous instanceof VirtualGaugeWidget oldGauge)
+            return new VirtualGaugeWidget(gauge, oldGauge);
+        return create(behaviour);
+    }
 }

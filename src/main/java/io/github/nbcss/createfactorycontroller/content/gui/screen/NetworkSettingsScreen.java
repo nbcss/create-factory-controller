@@ -137,7 +137,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     protected void containerTick() {
         super.containerTick();
-        controller.tickBulbs();
+        controller.tickComponentWidgets();
     }
 
     @Override

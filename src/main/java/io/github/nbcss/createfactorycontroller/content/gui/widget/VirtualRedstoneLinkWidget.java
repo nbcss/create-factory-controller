@@ -44,7 +44,8 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     }
 
     @Override
-    public void renderBack(GuiGraphics gfx) {
+    public void renderBack(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         if (behaviour.powered)
@@ -53,7 +54,8 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     }
 
     @Override
-    public void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow) {
+    public void renderFront(RenderingParameters params) {
+        GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         if (behaviour.powered)
@@ -69,8 +71,8 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
 
         // While holding an item, cover the hovered half (top = Red, bottom = Blue) to show which type a click sets.
         ItemStack cursor = Minecraft.getInstance().player.containerMenu.getCarried();
-        if (!cursor.isEmpty() && mouseX >= x0 && mouseX < x0 + CELL && mouseY >= y0 && mouseY < y0 + CELL) {
-            boolean top = mouseY < y0 + CELL / 2.0;
+        if (!cursor.isEmpty() && params.mouseOver()) {
+            boolean top = params.mousePosition().y < y0 + CELL / 2.0;
             int hy = top ? y0 : y0 + CELL / 2;
             gfx.fill(x0, hy, x0 + CELL, hy + CELL / 2, top ? 0x80FF5555 : 0x805599FF);
         }

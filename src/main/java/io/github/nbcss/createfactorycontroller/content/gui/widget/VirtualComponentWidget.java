@@ -5,16 +5,39 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import org.checkerframework.dataflow.qual.Pure;
+import org.joml.Vector2d;
 
 import java.util.List;
 
 /**
- * A component drawn on the controller canvas (gauge, redstone link, …). The screen keeps one per occupied cell and
- * dispatches rendering, hover tooltips, and clicks through this interface so it stays component-type agnostic.
+ * A widget corresponding to a component drawn on the controller canvas (gauge, redstone link, …).
+ * Handles rendering, click and removal interactions.
+ *
+ * <h2>Rendering</h2>
+ *
+ * <p>Components are rendered in several layers:</p>
+ * <ul>
+ * <li>Back: behind connections</li>
+ * <li>Front: in front of connections</li>
+ * <li>Overlay: in front of target boxes</li>
+ * </ul>
+ *
+ * <p>The {@code render*} methods are called by the screen during rendering. An implementation may perform rendering
+ * to the screen using the vanilla {@link GuiGraphics} {@code params.graphics()} or other methods.</p>
+ *
+ * <p>An implementation may improve performance with batch rendering.
+ * It may write into {@code params.graphics().bufferSource()}, and assume that the calling screen
+ * calls {@link GuiGraphics#flush()} after rendering all the components for each layer.</p>
+ *
+ * <p>Additionally, item and fluid icons can be batch-rendered with the provided
+ * {@code params.bufferSourceForFlatItems()} and {@code params.bufferSourceFor3DItems()}.
+ * These buffers are also flushed after rendering all components for each layer, with the correct lighting setup.</p>
  */
 @OnlyIn(Dist.CLIENT)
 public interface VirtualComponentWidget {
@@ -23,28 +46,31 @@ public interface VirtualComponentWidget {
 
     VirtualComponentBehaviour behaviour();
 
-    /** Back layer, drawn before the connection arrows. Implementations may enqueue deferred rendering, so callers
+    /** Advances widget animation state. */
+    default void tick() {}
+
+    /** Back layer, drawn before the connection arrows. Implementations may enqueue batched blits, so callers
      *  must flush after rendering the layer. The Logical Tube settings screen reuses this (and {@link #renderFront})
      *  for its slots via a pose translation — see {@code LogicalTubeSettingsScreen#atSlot}. */
-    void renderBack(GuiGraphics gfx);
+    void renderBack(RenderingParameters params);
 
-    /** Front layer (over the arrows). {@code glow} is the indicator chase value. Implementations may enqueue deferred
-     *  rendering, so callers must flush after rendering the layer. */
-    void renderFront(GuiGraphics gfx, double mouseX, double mouseY, float glow);
+    /** Front layer (over the arrows). Implementations may enqueue batched blits, so callers must flush after rendering
+     *  the layer. */
+    void renderFront(RenderingParameters params);
 
     /** Blank placement/relocate preview (back + bare front frame, no configured content). Drawn translucent by the
      *  screen's ghost render; the caller sets the alpha. Defaults to back + front; a component whose front carries
      *  state-dependent content (e.g. the logical tube's mode icon) overrides to omit it. Implementations may enqueue
-     *  deferred rendering, so callers must flush after rendering the layer. */
-    default void renderGhost(GuiGraphics gfx) {
-        renderBack(gfx);
-        renderFront(gfx, -10000, -10000, 0f);   // off-screen mouse (no hover highlight), no bulb glow
+     *  batched blits, so callers must flush after rendering the layer. */
+    default void renderGhost(RenderingParameters params) {
+        renderBack(params);
+        renderFront(params);
     }
 
     /** Top-most overlay (the gauge's count label), drawn AFTER the hover/selection target marks so those never cover
-     *  it. {@code showCount} gates the label (full-overlay mode, or this is the hovered cell). Implementations may
-     *  enqueue deferred rendering, so callers must flush after rendering the layer. Default: nothing. */
-    default void renderOverlay(GuiGraphics gfx, boolean showCount) {}
+     *  it. Implementations may
+     *  enqueue batched blits, so callers must flush after rendering the layer. */
+    default void renderOverlay(RenderingParameters params) {}
 
     /** Hover tooltip. When {@code selected}, the "Click to configure" hint is replaced with "Drag to relocate". */
     List<Component> getTooltip(FactoryControllerMenu menu, boolean selected);
@@ -55,4 +81,22 @@ public interface VirtualComponentWidget {
 
     /** Shift-click: remove this component from the board. */
     void remove(FactoryControllerScreen screen);
+
+    /** Parameters passed to the rendering methods. */
+    interface RenderingParameters {
+        /** Vanilla {@link GuiGraphics}. */
+        @Pure GuiGraphics graphics();
+
+        /** Mouse XY in pixels. NaN if irrelevant or unknown. */
+        @Pure Vector2d mousePosition();
+        /** Whether the mouse is hovering over this componen. */
+        @Pure boolean mouseOver();
+
+        /** Write to this buffer to batch-render flat item/fluid icons. */
+        @Pure
+        MultiBufferSource bufferSourceForFlatItems();
+        /** Write to this buffer to batch-render 3D item icons. */
+        @Pure
+        MultiBufferSource bufferSourceFor3DItems();
+    }
 }
