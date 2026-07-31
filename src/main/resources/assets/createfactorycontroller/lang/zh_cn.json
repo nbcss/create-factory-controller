@@ -151,7 +151,7 @@
   "createfactorycontroller.gui.blueprint.library_title": "蓝图库",
   "createfactorycontroller.gui.blueprint.open_folder": "打开蓝图库文件夹",
   "createfactorycontroller.gui.blueprint.close_library": "关闭",
-  "createfactorycontroller.gui.blueprint.import": "使用蓝图与笔来创建",
+  "createfactorycontroller.gui.blueprint.import": "Creating from Schematic And Quill",
   "createfactorycontroller.gui.blueprint.schematic_entry": "结构蓝图",
   "createfactorycontroller.gui.blueprint.schematic_note": "坐标 1: %s\n坐标 2: %s",
   "createfactorycontroller.gui.blueprint.import_title": "从结构选区内导入",
