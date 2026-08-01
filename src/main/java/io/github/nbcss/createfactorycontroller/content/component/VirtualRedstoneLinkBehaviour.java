@@ -102,12 +102,12 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override
     public void writeClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
-        buf.writeBoolean(powered);
+        buf.writeVarInt(strength);
     }
 
     @Override
     public void readClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
-        powered = buf.readBoolean();
+        strength = buf.readVarInt();
     }
 
     public static final ResourceLocation TEXTURE =
@@ -120,13 +120,14 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     public ItemStack redFreq = ItemStack.EMPTY;
     public ItemStack blueFreq = ItemStack.EMPTY;
 
-    /** Computed each tick: SEND → driven by connected gauges; RECEIVE → driven by the network. Synced for overlays. */
-    public boolean powered = false;
-    /** Last power pushed to us by the redstone network (RECEIVE mode). Server-only. */
-    private int receivedStrength = 0;
+    /** Current signal level (0–15) */
+    public int strength = 0;
     /** True once registered on Create's link network (server), so (un)registration is idempotent. */
     private boolean registered = false;
     private int lastTransmitted = -1;
+
+    /** On/off view of {@link #strength} — the boolean the redstone gate/output and overlays care about today. */
+    public boolean isPowered() { return strength > 0; }
 
     public VirtualRedstoneLinkBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position,
                                         Item item) {
@@ -188,17 +189,12 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // ── Power computation ──────────────────────────────────────────────────────
 
     /**
-     * Recomputes overall power, then pushes any transmit change onto the network. SEND power is event-driven:
-     * connected source components push their state into their {@link RedstoneConnection}, and the connection notifies
-     * this redstone component as the sink. RECEIVE is updated live in {@link #setReceivedStrength}. The gauge↔link
-     * wires live in the controller's central graph, read here via {@code graph().incoming/outgoingConnections}.
+     * Pushes any change in our transmit strength onto the network. SEND power is event-driven: connected source
+     * components push their state into their {@link RedstoneConnection}, and the connection notifies this redstone
+     * component as the sink. RECEIVE is updated live in {@link #setReceivedStrength}. The gauge↔link wires live in the
+     * controller's central graph, read here via {@code graph().incoming/outgoingConnections}.
      */
     public void updatePower() {
-        // The network handler self-pushes power only to real LinkBehaviours, never to our virtual link, so a RECEIVE
-        // link must pull its own current power (covers joining an already-steady transmitter / registration ordering).
-        // A SEND link's power is event-driven by its wired gauges (see onInputChanged); here it only re-notifies the
-        // network of its transmit strength.
-        if (receive) setReceived(pullNetworkPower());
         int transmit = getTransmittedStrength();
         if (transmit != lastTransmitted) {
             lastTransmitted = transmit;
@@ -206,28 +202,25 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         }
     }
 
-    /** Apply a network-power reading (RECEIVE mode): update {@link #powered} and push the new gate to wired gauges if
-     *  it changed. A SEND link only records the strength. */
-    private void setReceived(int strength) {
-        receivedStrength = strength;
-        if (!receive) return;
-        boolean now = strength > 0;
-        if (now == powered) return;
-        powered = now;
+    /** Apply a network power reading (RECEIVE mode): store the new {@link #strength} and push the gate to wired gauges
+     *  ({@link RedstoneConnection} dedupes when the on/off state is unchanged). No-op for a SEND link. */
+    private void setReceived(int value) {
+        if (!receive || value == strength) return;
+        strength = value;
         publish(RedstoneConnection.TYPE);
         if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
 
-    /** The strongest in-range transmitted signal on this link's frequency network — mirrors the handler's
-     *  {@code updateNetworkOf} power scan (which never targets our virtual link's own received strength). */
-    private int pullNetworkPower() {
+    /** (Re)establish our received power on a join or mode flip, where an already-steady transmitter won't re-fire on its
+     *  own. Re-drives each ON transmitter on our frequency so Create's push sets our strength through the handler's range
+     *  check — which Sable projects for bridged sub-level links. A direct {@code withinRange()} scan can't: it sees only
+     *  raw block positions (a sub-level link sits in a far storage region), reads out-of-range, and returns 0. */
+    private void refreshReceivedFromNetwork() {
         Level level = controller == null ? null : controller.getLevel();
-        if (level == null || level.isClientSide || !registered) return 0;
-        int power = 0;
-        for (IRedstoneLinkable other : handler().getNetworkOf(level, this))
-            if (other != this && RedstoneLinkNetworkHandler.withinRange(this, other))
-                power = Math.max(power, other.getTransmittedStrength());
-        return power;
+        if (level == null || level.isClientSide || !registered || !receive) return;
+        for (IRedstoneLinkable other : List.copyOf(handler().getNetworkOf(level, this)))
+            if (other != this && other.getTransmittedStrength() > 0)
+                handler().updateNetworkOf(level, other);
     }
 
     /** A RECEIVE link is the wire's source: it drives wired gauges with its current network power. (A SEND link sources
@@ -235,7 +228,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public ConnectionValue outputValue(Connection.Type type) {
         if (!RedstoneConnection.TYPE.equals(type) || !receive) return null;
-        return powered ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED;
+        return isPowered() ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED;
     }
 
     /** Re-fold wired gauges into transmit power (SEND link only). */
@@ -245,8 +238,9 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         boolean any = false;
         for (Connection c : graph().incomingConnections(position, RedstoneConnection.TYPE))
             if (c instanceof RedstoneConnection rc && rc.powered()) { any = true; break; }
-        if (any == powered) return;
-        powered = any;
+        int next = any ? TRANSMIT_STRENGTH : 0;
+        if (next == strength) return;
+        strength = next;
         updateTransmittedPower();
         if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
@@ -268,7 +262,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override
     public void tick() {
-        // Redstone-link power is refreshed on the lazy tick (see lazyTick/updatePower), not every tick.
+        // Nothing per-tick: SEND power is event-driven (onInputChanged), RECEIVE push-driven (setReceivedStrength);
+        // network (re)registration and transmit re-notify run on the lazy tick (updateState).
     }
 
     @Override
@@ -291,17 +286,21 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         boolean modeChanged = this.receive != receive;
         if (!freqChanged && !modeChanged) return;
 
-        if (freqChanged) removeFromNetwork();   // network membership is keyed by frequency → leave with the old key
+        if (freqChanged)
+            removeFromNetwork();
         redFreq = r;
         blueFreq = b;
         this.receive = receive;
-        lastTransmitted = -1;                    // force a transmit re-evaluation
-        if (modeChanged) reorientRedstoneConnections();
-        if (freqChanged) addToNetwork();         // rejoin with the new key
+        lastTransmitted = -1;
 
-        // A config change takes effect immediately, not on the next lazy tick. A mode flip already re-published/flagged
-        // every wired gauge in reorientRedstoneConnections; updatePower then pulls (RECEIVE) or re-notifies transmit
-        // (SEND) for the freq change. settleConnections folds every flagged sink once.
+        if (modeChanged || receive)
+            strength = 0;
+        if (modeChanged)
+            reorientRedstoneConnections();
+        if (freqChanged)
+            addToNetwork();
+
+        refreshReceivedFromNetwork();
         updatePower();
         if (controller != null) {
             controller.settleConnections();
@@ -344,17 +343,16 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // ── IRedstoneLinkable ──────────────────────────────────────────────────────
 
     @Override public boolean isListening() { return receive; }
-    @Override public int getTransmittedStrength() { return !receive && powered ? TRANSMIT_STRENGTH : 0; }
+    @Override public int getTransmittedStrength() { return receive ? 0 : strength; }
 
     /**
-     * The redstone network's event hook: called whenever this receiver's incoming power changes. Updates the gate on
-     * connected gauges <b>immediately</b> (real-time), rather than waiting for the lazy-tick poll. Never re-notifies
-     * the network (a receiver transmits nothing), so it's safe to run mid network update.
+     * The redstone network's event hook: called whenever this receiver's incoming power changes. Drives the gate on
+     * connected gauges <b>immediately</b>. Never re-notifies the network (a receiver transmits nothing), so it's safe to
+     * run mid network update.
      */
     @Override
     public void setReceivedStrength(int networkPower) {
-        if (this.receivedStrength == networkPower) return;
-        setReceived(networkPower);   // updates powered + drives wired gauges (RECEIVE) if it changed
+        setReceived(networkPower);   // stores the level + drives wired gauges (RECEIVE) if the gate changed
     }
 
     @Override
@@ -387,6 +385,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         if (level == null || level.isClientSide || registered) return;
         handler().addToNetwork(level, this);
         registered = true;
+        refreshReceivedFromNetwork();
     }
 
     public void removeFromNetwork() {
@@ -414,9 +413,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         tag.putBoolean("Receive", receive);
         tag.put("RedFreq", redFreq.saveOptional(registries));
         tag.put("BlueFreq", blueFreq.saveOptional(registries));
-        if (profile.includesRuntime())
-            tag.putBoolean("Powered", powered);
-        // Connections live in the controller's central graph (written there), not per-component.
+        if (profile.includesRuntime() && strength != 0)
+            tag.putInt("Strength", strength);
         return tag;
     }
 
@@ -429,8 +427,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         b.receive = tag.getBoolean("Receive");
         b.redFreq = ItemStack.parseOptional(registries, tag.getCompound("RedFreq"));
         b.blueFreq = ItemStack.parseOptional(registries, tag.getCompound("BlueFreq"));
-        b.powered = tag.getBoolean("Powered");
-        // Connections are loaded centrally by the controller / menu, not from the component tag.
+        b.strength = tag.contains("Strength") ? tag.getInt("Strength")
+                   : tag.getBoolean("Powered") ? TRANSMIT_STRENGTH : 0;
         return b;
     }
 }

@@ -1,5 +1,8 @@
 ## 1.1.2
 
+Optimization:
+- Improve performance of controller screen.
+
 Changes:
 - Removed component limit in blueprint selection.
 - Improve blueprint import UX.
@@ -8,6 +11,7 @@ Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
 - Fixed gauge timer animation is not properly rendered with some animation lib mods installed.
 - Fixed controller GUI may not open in forge-1.20 if data is too large.
+- Fixed redstone link component does not function properly when connect to another sable sub-level.
 
 ## 1.1.1
 

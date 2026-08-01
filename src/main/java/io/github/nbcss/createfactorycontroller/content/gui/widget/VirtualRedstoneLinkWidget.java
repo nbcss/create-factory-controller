@@ -48,7 +48,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        if (behaviour.powered)
+        if (behaviour.isPowered())
             BatchedBlitter.forSprite(sprite("back_power"))
                     .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
     }
@@ -58,11 +58,11 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        if (behaviour.powered)
+        if (behaviour.isPowered())
             BatchedBlitter.forSprite(sprite("front_power"))
                     .blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         String path = (behaviour.receive ? "receiver_" : "transmitter_") +
-                (behaviour.powered ? "on" : "off");
+                (behaviour.isPowered() ? "on" : "off");
         BatchedBlitter.forSprite(sprite(path)).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
 
         // The two type frequency icons (half-size): Red top-left, Blue bottom-right.
