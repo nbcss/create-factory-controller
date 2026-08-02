@@ -159,17 +159,12 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
                 index, value.copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY);
     }
 
-    /** A link speaks REDSTONE only; its mode is decisive for direction (RECEIVE drives gauges = SOURCE, SEND reads
-     *  them = SINK), so a wired gauge follows the link. */
     @Override
     public java.util.List<ConnectionCapability> ports() {
         return java.util.List.of(new ConnectionCapability(RedstoneConnection.TYPE,
                 receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK));
     }
 
-    // Two links bridge each other wirelessly, so a board wire between links is meaningless — reject a link partner
-    // (whichever role this link takes). Other partners are allowed; the link's single direction is forced by its
-    // decisive role (SOURCE when receive, SINK when send), so the reverse wire is structurally impossible.
     @Override
     public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
         if (RedstoneConnection.TYPE.equals(type) && !receive) return fail(this, sink);
@@ -189,10 +184,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     // ── Power computation ──────────────────────────────────────────────────────
 
     /**
-     * Pushes any change in our transmit strength onto the network. SEND power is event-driven: connected source
-     * components push their state into their {@link RedstoneConnection}, and the connection notifies this redstone
-     * component as the sink. RECEIVE is updated live in {@link #setReceivedStrength}. The gauge↔link wires live in the
-     * controller's central graph, read here via {@code graph().incoming/outgoingConnections}.
+     * Pushes any change in transmit strength onto the network.
      */
     public void updatePower() {
         int transmit = getTransmittedStrength();
@@ -375,12 +367,18 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     private RedstoneLinkNetworkHandler handler() { return Create.REDSTONE_LINK_NETWORK_HANDLER; }
 
-    public void updateState() {
+    // Controller lifecycle hooks: a link's Create-network membership simply follows its presence in the controller.
+    @Override public void onAdded()   { updateState(); }
+    @Override public void onRemoved() { removeFromNetwork(); }
+    @Override public void onUnload()  { removeFromNetwork(); }
+
+    /** Register on Create's network if needed, then re-evaluate power. Idempotent — also the {@link #lazyTick} upkeep. */
+    private void updateState() {
         addToNetwork();
         updatePower();
     }
 
-    public void addToNetwork() {
+    private void addToNetwork() {
         Level level = controller == null ? null : controller.getLevel();
         if (level == null || level.isClientSide || registered) return;
         handler().addToNetwork(level, this);
@@ -388,7 +386,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         refreshReceivedFromNetwork();
     }
 
-    public void removeFromNetwork() {
+    private void removeFromNetwork() {
         Level level = controller == null ? null : controller.getLevel();
         if (level == null || level.isClientSide || !registered) return;
         handler().removeFromNetwork(level, this);

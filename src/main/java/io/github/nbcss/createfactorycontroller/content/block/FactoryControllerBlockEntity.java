@@ -138,9 +138,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public String customName = "";
 
     // ── Menu sync bookkeeping ──────────────────────────────────────────────
-    // Mutation paths mark what changed (syncComponentState/Full/Removed,
-    // syncHeader, syncNetworks); the tick flush ships ONE packet per tick to every viewer — a small
-    // SyncPanelDeltaPacket, or the full SyncPanelStatePacket when someone marked everything().
+    // Mutation paths mark what changed
 
     /** What changed since the last flush; cleared by {@link #syncMenuToPlayers}. */
     private final PanelDeltaTracker deltaTracker = new PanelDeltaTracker();
@@ -203,10 +201,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         for (VirtualComponentBehaviour component : components.values())
             component.preTick();
-        // Drain signal changes from preTick
         settleConnections();
 
-        // Pre-pass: refresh passive demand from a single consistent (pre-tick) snapshot
         if (ServerConfig.passiveTotalDemand()) {
             PassiveDemandSolver.solve(this);
         } else {
@@ -225,7 +221,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             orderableDirty = false;
             heartbeatOrderableGauges();
         }
-        // Flush at most one menu-sync packet per tick (everything marked above rides one delta/snapshot).
+
         if (!deltaTracker.isEmpty())
             syncMenuToPlayers();
     }
@@ -236,7 +232,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (level != null && !level.isClientSide()) {
             updateRedstonePower();
             refreshMissingLinks();
-            heartbeatOrderableGauges();   // 20t heartbeat keeps this controller's gauges "live" in the registry
+            heartbeatOrderableGauges();
             for (VirtualComponentBehaviour component : components.values())
                 component.lazyTick();
         }
@@ -363,9 +359,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // registry's TTL is the fallback). On reload, the first tick/lazyTick heartbeats again.
         if (level != null && !level.isClientSide()) {
             OrderableGaugeRegistry.remove(level.dimension(), getBlockPos());
-            // Unregister every link from Create's frequency network (re-registered lazily on reload's first tick).
+            // Let each component drop transient external registrations (a link leaves Create's frequency network;
+            // re-registered lazily on reload's first tick). Components stay in the map for reload.
             for (VirtualComponentBehaviour c : components.values())
-                if (c instanceof VirtualRedstoneLinkBehaviour link) link.removeFromNetwork();
+                c.onUnload();
         }
     }
 
@@ -374,10 +371,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         boolean powered = level.hasNeighborSignal(getBlockPos());
         if (powered == redstonePowered) return;   // no edge → nothing to propagate
         redstonePowered = powered;
-        // Every managed gauge froze its request throttle while paused; kick it so unpausing doesn't
-        // resume from a stale countdown (mirrors VirtualGaugeBehaviour.onInputChanged for its own link).
-        for (VirtualComponentBehaviour c : components.values())
-            if (c instanceof VirtualGaugeBehaviour g) g.resetRequestTimer();
         syncHeader();   // push the new powered state to any open GUI
     }
 
@@ -405,7 +398,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (LogisticallyLinkedBlockItem.isTuned(carried)) {
                 networkId = LogisticallyLinkedBlockItem.networkFromStack(carried);
                 if (networkId == null) return;
-                if (networks.add(networkId)) syncNetworks();   // a newly-known network joins the synced list
+                if (networks.add(networkId)) syncNetworks();
             } else {
                 if (selectedNetwork == null || !networks.contains(selectedNetwork)) {
                     return;
@@ -416,9 +409,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, carried.getItem(), networkId);
         if (behaviour == null) return;
-        if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
-            link.addToNetwork();                          // join Create's frequency network
         components.put(pos, behaviour);
+        behaviour.onAdded();
 
         if (!player.isCreative())
             carried.shrink(1);
@@ -551,8 +543,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             for (Connection.Type type : Connection.Type.values())
                 c.publish(type);
         for (VirtualComponentBehaviour c : placed)
-            if (c instanceof VirtualRedstoneLinkBehaviour link)
-                link.updateState();
+            c.onAdded();
         for (VirtualComponentBehaviour c : placed)
             if (c instanceof VirtualGaugeBehaviour gauge && gauge.requestMode.allowsOrder())
                 updateGaugeOrderable(gauge);
@@ -633,13 +624,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         VirtualComponentBehaviour behaviour = components.remove(pos);
         if (behaviour == null) return;
 
-        if (behaviour instanceof VirtualGaugeBehaviour g && g.gaugeId != null && level != null)
-            ProductionOrderManager.invalidateTasksFor(level, g.networkId, g.gaugeId);
-        // A link is gone → leave Create's frequency network.
-        if (behaviour instanceof VirtualRedstoneLinkBehaviour link)
-            link.removeFromNetwork();
+        behaviour.onRemoved();
 
-        behaviour.disconnectAll();   // marks its wires' removals for the sync
+        behaviour.disconnectAll();
 
         // Return a component item
         ItemStack refund = new ItemStack(behaviour.getItem());
@@ -674,7 +661,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         VirtualComponentBehaviour behaviour = components.get(from);
         if (behaviour == null) return;
         if (isOutBoard(to)) return;     // can't relocate off the finite board
-        if (components.containsKey(to)) {   // destination occupied → aborted relocate
+        if (components.containsKey(to)) {
             playDenySound();
             return;
         }
@@ -688,10 +675,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             if (c instanceof VirtualGaugeBehaviour g) g.remapRecipeSlots(p -> p.equals(from) ? to : p);
 
         playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
-        markOrderableDirty();   // controllerPos is unchanged, but republish keeps the cached locator fresh
+        markOrderableDirty();
         setChanged();
-        // A relocate re-keys an open-ended web of wires and other gauges' CUSTOM recipe slots — precise
-        // delta marks would be intricate for a rare player action, so escalate to a full snapshot.
+
         syncEverything();
     }
 
@@ -1082,8 +1068,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     private SyncPanelDeltaPacket buildDelta() {
         var registries = level.registryAccess();
 
-        // A marked component that is no longer on the board (and was never marked removed — normally the
-        // remove path does both) must not linger on clients: downgrade its upsert to a removal.
         List<VirtualComponentPosition> removals = new ArrayList<>(deltaTracker.removedComponents());
         List<SyncPanelDeltaPacket.ComponentUpsert> upserts = new ArrayList<>();
         for (Map.Entry<VirtualComponentPosition, PanelDeltaTracker.Level> e : deltaTracker.components().entrySet()) {
@@ -1318,9 +1302,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             for (Connection.Type type : Connection.Type.values())
                 c.publish(type);   // overwrite the stale imported edges with each source's clean baseline output
         for (VirtualComponentBehaviour c : components.values())
-            if (c instanceof VirtualRedstoneLinkBehaviour link) {
-                link.updateState();
-            }
+            c.onAdded();
         settleConnections();
     }
 

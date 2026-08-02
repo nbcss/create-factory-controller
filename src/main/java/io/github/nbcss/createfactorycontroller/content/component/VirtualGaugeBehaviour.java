@@ -583,6 +583,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         tickRequests();
     }
 
+    /** Deleting an orderable gauge cancels the Stock-Keeper tasks that targeted it (a chunk unload must not — that is
+     *  why this is {@code onRemoved}, not {@code onUnload}). */
+    @Override
+    public void onRemoved() {
+        if (gaugeId != null && controller != null && controller.getLevel() != null)
+            ProductionOrderManager.invalidateTasksFor(controller.getLevel(), networkId, gaugeId);
+    }
+
     /**
      * Controller pre-pass hook: refresh the Passive Request target.
      */

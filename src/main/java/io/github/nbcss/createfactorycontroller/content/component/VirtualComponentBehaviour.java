@@ -131,6 +131,15 @@ public interface VirtualComponentBehaviour {
     /** Server tick every 20t, for upkeep too coarse to run every tick. Iteration order is unspecified. */
     default void lazyTick() {}
 
+    /** The component is added to the controller. */
+    default void onAdded() {}
+
+    /** The component was permanently removed from the controller。 */
+    default void onRemoved() {}
+
+    /** The controller block entity unloaded (chunk unload / block break). */
+    default void onUnload() {}
+
     // ── Connection graph (shared by all component kinds) ─────────────────────
 
     /** Incoming connections, keyed by the source component's position. */
