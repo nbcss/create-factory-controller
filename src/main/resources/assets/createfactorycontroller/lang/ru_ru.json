@@ -151,7 +151,7 @@
   "createfactorycontroller.gui.blueprint.library_title": "Библиотека чертежей",
   "createfactorycontroller.gui.blueprint.open_folder": "Открыть папку библиотеки",
   "createfactorycontroller.gui.blueprint.close_library": "Закрыть",
-  "createfactorycontroller.gui.blueprint.import": "Creating from Schematic And Quill",
+  "createfactorycontroller.gui.blueprint.import": "Создание с помощью Схематики и пера",
   "createfactorycontroller.gui.blueprint.schematic_entry": "Чертеж из Схематики",
   "createfactorycontroller.gui.blueprint.schematic_note": "Поз. 1: %s\nПоз. 2: %s",
   "createfactorycontroller.gui.blueprint.import_title": "Импорт из Схематики",
