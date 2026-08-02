@@ -151,7 +151,7 @@
   "createfactorycontroller.gui.blueprint.library_title": "Biblioteka schematów",
   "createfactorycontroller.gui.blueprint.open_folder": "Otwórz folder biblioteki",
   "createfactorycontroller.gui.blueprint.close_library": "Zamknij",
-  "createfactorycontroller.gui.blueprint.import": "Creating from Schematic And Quill",
+  "createfactorycontroller.gui.blueprint.import": "Utworzenie za pomocą Schematu z piórem",
   "createfactorycontroller.gui.blueprint.schematic_entry": "Schemat ze Schematu i pióra",
   "createfactorycontroller.gui.blueprint.schematic_note": "Poz. 1: %s\nPoz. 2: %s",
   "createfactorycontroller.gui.blueprint.import_title": "Importuj ze Schematu",
