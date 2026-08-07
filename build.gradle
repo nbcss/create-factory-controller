@@ -103,6 +103,14 @@ def fluidRuntime = (project.findProperty('fluidRuntime') ?: 'none').toString().t
 // (mixin plugin skips the Deployer mixin, keeper tab is replaced by the in-GUI button, etc.).
 def withDeployer = !project.hasProperty('noDeployer')
 
+// Create Factory Logistics is a SOFT dependency and an OPT-IN dev runtime: pass -PfactoryLogistics to launch the
+// client with FL on the runtime (see the "runClient (Factory Logistics)" IntelliJ run config). FL is mutually
+// incompatible with Deployer AND with the fluid-package addons (fluidlogistics/fluid/repackaged), so a conflict-free
+// FL runtime needs -PnoDeployer (enforced below) and the default -PfluidRuntime=none (no fluid addon on the runtime).
+def withFactoryLogistics = project.hasProperty('factoryLogistics')
+if (withFactoryLogistics && withDeployer)
+    throw new GradleException("-PfactoryLogistics requires -PnoDeployer (Create Factory Logistics and Deployer are mutually exclusive)")
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
@@ -120,6 +128,13 @@ neoForge {
     runs {
         client {
             client()
+
+            // A conflict-free Factory Logistics runtime (-PfactoryLogistics) excludes Deployer, but the shared
+            // run/mods dev folder is a Deployer + Create: Mobile Packages setup: extra_gauges hard-depends on
+            // deployer (breaks under -PnoDeployer), and create_mobile_packages bundles create_factory_abstractions
+            // (collides with FL's own JiJ'd copy). Give the FL run its own game directory so its mods/ folder is
+            // empty — FL, Create and CFC all come from the classpath. Drop FL-compatible test mods into run-fl/mods.
+            if (withFactoryLogistics) gameDirectory = project.file('run-fl')
 
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
@@ -208,6 +223,18 @@ dependencies {
     // No localRuntime: it comes JiJ'd inside Create: Mobile Packages when that mod is on the dev runtime.
     // transitive = false for the same reason as Deployer (avoids its create:slim / curse.maven graph).
     compileOnly("ru.zznty:create_factory_abstractions-1.21.1:${create_factory_abstractions_version}") { transitive = false }
+
+    // Create Factory Logistics (soft dependency — the full logistics mod built on CFA). Compile-only so the
+    // FactoryLogistics* adapters/mixins build; runtime-gated by CfcMixinPlugin on mod id "create_factory_logistics".
+    // Opt-in dev runtime via -PfactoryLogistics (which requires -PnoDeployer, enforced above). transitive = false
+    // for the same reason as CFA/Deployer (avoids FL's create:slim / curse.maven published graph); CFA is already a
+    // compileOnly above, so both FL and CFA types are on the compile classpath.
+    compileOnly("ru.zznty:create_factory_logistics-1.21.1:${create_factory_logistics_version}") { transitive = false }
+    if (withFactoryLogistics) {
+        // FL's published jar JiJ's create_factory_abstractions, so CFA rides along on the runtime. If a future FL
+        // stops bundling CFA, also add a create_factory_abstractions localRuntime here.
+        localRuntime("ru.zznty:create_factory_logistics-1.21.1:${create_factory_logistics_version}") { transitive = false }
+    }
 
     // JEI (optional): compile against the API only; run the full mod in dev for testing.
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"

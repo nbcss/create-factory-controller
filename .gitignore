@@ -41,6 +41,7 @@ out/
 
 ### Minecraft Modding ###
 /run/
+/run-fl/
 !**/src/**/run/
 **/src/generated/**/.cache/
 /repo/
