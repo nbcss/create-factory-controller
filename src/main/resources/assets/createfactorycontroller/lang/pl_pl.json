@@ -116,6 +116,8 @@
   "createfactorycontroller.gui.request_multiplier": "Maksymalny mnożnik żądania x%1$s/%2$s",
   "createfactorycontroller.gui.request_multiplier.tip_1": "Łącz wiele zestawów składników",
   "createfactorycontroller.gui.request_multiplier.tip_2": "w jedno żądanie, jeśli pozwalają na to zapasy",
+  "createfactorycontroller.gui.request_multiplier.exclude_tip": "Ctrl-Click an ingredient to exclude",
+  "createfactorycontroller.gui.request_multiplier.excluded": "Excluded from request multiplier",
   "createfactorycontroller.gui.production_output_header": "Wyjście przepisu:",
   "createfactorycontroller.gui.production_ingredients_header": "Składniki:",
   "createfactorycontroller.gui.production_address_header": "Na adres:",
