@@ -776,6 +776,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                                 boolean promiseLimitByAddress, int count, ThresholdUnit mode,
                                 RequestMode requestMode, GaugeWorkMode workMode,
                                 Map<VirtualComponentPosition, Integer> inputAmounts,
+                                Map<VirtualComponentPosition, Boolean> inputMultiplierExclusions,
                                 List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
                                 boolean clearPromises, boolean reset) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
@@ -832,9 +833,23 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (gauge.projectedInputSlots(inputAmounts) <= VirtualGaugeBehaviour.MAX_INGREDIENTS)
             for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
                 if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn) {
-                    conn.amount = Math.max(1, e.getValue());
-                    syncConnection(ConnectionKey.of(conn));
+                    int amount = Math.max(1, e.getValue());
+                    if (conn.amount != amount) {
+                        conn.amount = amount;
+                        syncConnection(ConnectionKey.of(conn));
+                    }
                 }
+        // Exclusions are meaningful only outside mechanical-crafting mode. Iterate every live input so a stale or
+        // omitted client entry clears safely instead of retaining hidden state.
+        for (Map.Entry<VirtualComponentPosition, Connection> e : gauge.targetedBy().entrySet()) {
+            if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
+            boolean excluded = workMode != GaugeWorkMode.CRAFTING
+                && inputMultiplierExclusions.getOrDefault(e.getKey(), false);
+            if (conn.excludeFromRequestMultiplier != excluded) {
+                conn.excludeFromRequestMultiplier = excluded;
+                syncConnection(ConnectionKey.of(conn));
+            }
+        }
         // Clamp last — the structural cap must see the just-applied mode, amounts, output, and batch.
         gauge.maxRequestMultiplier = gauge.clampMultiplierToStructure(maxRequestMultiplier);
         if (clearPromises) gauge.requestClearPromises();

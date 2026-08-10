@@ -27,6 +27,7 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                                     int promiseInterval, int promiseLimit, boolean promiseLimitByAddress, int count,
                                     ThresholdUnit mode, RequestMode requestMode, GaugeWorkMode workMode,
                                     List<VirtualComponentPosition> inputPositions, List<Integer> inputAmounts,
+                                    List<Boolean> inputMultiplierExclusions,
                                     List<ItemStack> craftingArrangement, List<RecipeSlot> recipeSlots,
                                     boolean clearPromises, boolean reset) implements CustomPacketPayload {
 
@@ -60,6 +61,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                     buf.writeInt(pkt.inputPositions.get(i).x());
                     buf.writeInt(pkt.inputPositions.get(i).y());
                     buf.writeInt(pkt.inputAmounts.get(i));
+                    buf.writeBoolean(i < pkt.inputMultiplierExclusions.size()
+                        && pkt.inputMultiplierExclusions.get(i));
                 }
                 buf.writeVarInt(pkt.craftingArrangement.size());
                 for (ItemStack stack : pkt.craftingArrangement)
@@ -90,9 +93,11 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 int n = buf.readVarInt();
                 List<VirtualComponentPosition> positions = new ArrayList<>(n);
                 List<Integer> amounts = new ArrayList<>(n);
+                List<Boolean> exclusions = new ArrayList<>(n);
                 for (int i = 0; i < n; i++) {
                     positions.add(new VirtualComponentPosition(buf.readInt(), buf.readInt()));
                     amounts.add(buf.readInt());
+                    exclusions.add(buf.readBoolean());
                 }
                 int m = buf.readVarInt();
                 List<ItemStack> arrangement = new ArrayList<>(m);
@@ -103,7 +108,8 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
                 for (int i = 0; i < k; i++) slots.add(RecipeSlot.read(buf));
                 return new ConfigureRecipePacket(pos, panelPos, address, recipeOutput, craftBatch, maxRequestMultiplier,
                     customRequestTimer, craftDimension, promiseInterval, promiseLimit, promiseLimitByAddress, count,
-                    mode, requestMode, workMode, positions, amounts, arrangement, slots, clearPromises, reset);
+                    mode, requestMode, workMode, positions, amounts, exclusions, arrangement, slots,
+                    clearPromises, reset);
             });
 
     @Override
@@ -115,13 +121,17 @@ public record ConfigureRecipePacket(BlockPos pos, VirtualComponentPosition panel
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             // One amount per connection (the UI owns the slot split). Last write wins if a position repeats.
             Map<VirtualComponentPosition, Integer> inputs = new LinkedHashMap<>();
+            Map<VirtualComponentPosition, Boolean> exclusions = new LinkedHashMap<>();
             int n = Math.min(packet.inputPositions().size(), packet.inputAmounts().size());
-            for (int i = 0; i < n; i++)
+            for (int i = 0; i < n; i++) {
                 inputs.put(packet.inputPositions().get(i), packet.inputAmounts().get(i));
+                exclusions.put(packet.inputPositions().get(i), i < packet.inputMultiplierExclusions().size()
+                    && packet.inputMultiplierExclusions().get(i));
+            }
             be.configureRecipe(packet.panelPos(), packet.address(), packet.recipeOutput(), packet.craftBatch(),
                 packet.maxRequestMultiplier(), packet.customRequestTimer(), packet.craftDimension(),
                 packet.promiseInterval(), packet.promiseLimit(), packet.promiseLimitByAddress(), packet.count(),
-                packet.mode(), packet.requestMode(), packet.workMode(), inputs, packet.craftingArrangement(),
+                packet.mode(), packet.requestMode(), packet.workMode(), inputs, exclusions, packet.craftingArrangement(),
                 packet.recipeSlots(), packet.clearPromises(), packet.reset());
         });
     }

@@ -44,6 +44,7 @@ class RegularEditor extends GaugeWorkModeEditor {
                 s.drawItemCount(gfx, stack, ix, iy, fluidIng
                         ? ConfigureRecipeScreen.formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
             }
+            VirtualComponentPosition source = s.inputConnections.get(slot.connectionIndex());
             if (in(mouseX, mouseY, ix, iy, 16, 16)) {
                 // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
                 int total = Math.max(1, s.inputTotals.get(slot.connectionIndex()));
@@ -60,13 +61,7 @@ class RegularEditor extends GaugeWorkModeEditor {
                         CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
                         Component.translatable("createfactorycontroller.gui.action_disconnect")
                             .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
-                    : ConfigureRecipeScreen.withIgnoreDataLine(List.of(
-                        inHeader,
-                        CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                        Component.translatable("createfactorycontroller.gui.action_disconnect")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
-                        srcIgnore);
+                    : ConfigureRecipeScreen.withIgnoreDataLine(ingredientTooltip(inHeader, source), srcIgnore);
             }
         }
         if (s.inputConnections.isEmpty() && in(mouseX, mouseY, s.panelX + 68, s.panelY + 28, 58, 58))
@@ -75,6 +70,28 @@ class RegularEditor extends GaugeWorkModeEditor {
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
         return tooltip;
+    }
+
+    private List<Component> ingredientTooltip(MutableComponent header, VirtualComponentPosition source) {
+        List<Component> lines = new java.util.ArrayList<>();
+        lines.add(header);
+        if (s.multiplierExcluded(source))
+            lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.excluded")
+                    .withColor(0xFFDD70));
+        lines.add(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        lines.add(Component.translatable("createfactorycontroller.gui.action_disconnect")
+            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        return lines;
+    }
+
+    @Override
+    VirtualComponentPosition ingredientSourceAt(double mouseX, double mouseY) {
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
+        for (int i = 0; i < slots.size(); i++)
+            if (in(mouseX, mouseY, cellX(i), cellY(i), 16, 16))
+                return s.inputConnections.get(slots.get(i).connectionIndex());
+        return null;
     }
 
     @Override
@@ -112,7 +129,8 @@ class RegularEditor extends GaugeWorkModeEditor {
         boolean[] cells = new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS];
         // Only called while the bar is hovered, so preview at the full multiplier (scaled spill included).
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.maxRequestMultiplier);
-        for (int i = 0; i < slots.size() && i < cells.length; i++) cells[i] = true;
+        for (int i = 0; i < slots.size() && i < cells.length; i++)
+            cells[i] = !s.multiplierExcluded(s.inputConnections.get(slots.get(i).connectionIndex()));
         return cells;
     }
 

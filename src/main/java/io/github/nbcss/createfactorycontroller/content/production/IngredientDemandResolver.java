@@ -153,7 +153,9 @@ public final class IngredientDemandResolver {
                 ItemStack ingredient = src == null ? ItemStack.EMPTY : src.filter;
                 if (ingredient.isEmpty()) continue;
                 int childId = intern(ingredient);
-                edges.get(id).add(new long[]{childId, (long) conn.amount() * batch});
+                boolean excluded = source.mode != GaugeWorkMode.CRAFTING
+                    && conn.excludeFromRequestMultiplier;
+                edges.get(id).add(new long[]{childId, (long) conn.amount() * batch, excluded ? 1 : 0});
                 explore(childId, src, controller, false);
             }
         }
@@ -177,9 +179,11 @@ public final class IngredientDemandResolver {
                 long net = dem[id] - stock.get(id);
                 if (producer.get(id) != null) {                 // producer (or root): size crafts, push to ingredients
                     long crafts = net > 0 ? Math.ceilDiv(net, outputPerCraft.get(id)) : 0;
+                    long dispatches = crafts <= 0 ? 0
+                        : Math.ceilDiv(crafts, producer.get(id).effectiveRequestMultiplierCeiling());
                     for (long[] edge : edges.get(id)) {
                         int child = (int) edge[0];
-                        if (crafts > 0) dem[child] += crafts * edge[1];
+                        if (crafts > 0) dem[child] += (edge[2] != 0 ? dispatches : crafts) * edge[1];
                         if (--indeg[child] == 0) queue.add(child);
                     }
                 } else if (net > 0) {                            // leaf short of stock

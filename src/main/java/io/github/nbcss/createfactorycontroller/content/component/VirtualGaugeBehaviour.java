@@ -602,12 +602,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
             if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
             int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;
-            // Stage enough for the consumer's next maximally-scaled request: one batch capped by its multiplier
-            // ceiling, but never more than its remaining deficit needs. So a multiplier-8 consumer with a large
-            // deficit gets 8 request-sets staged (it can then fire an 8× request); a nearly-satisfied one gets only
-            // its small deficit; and a multiplier-1 consumer collapses to the original single request-set. Bounding
-            // by the ceiling (not the full deficit) keeps the intermediate buffer to one max batch. O(1) per edge.
-            int parentRequests = Math.max(1, Math.min(parent.deficitRequestScaler(), parent.maxRequestMultiplier));
+
+            int parentRequests = conn.excludeFromRequestMultiplier ? 1 :
+                    Math.clamp(parent.effectiveRequestMultiplierCeiling(), 1, parent.deficitRequestScaler());
             demand += conn.amount() * parentBatch * parentRequests;
         }
         // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
@@ -790,14 +787,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * output so it doesn't request again until that promise is consumed or expires.
      */
     private void tickRequests() {
-        if (controller == null) return;                 // client snapshot never ticks, but be safe
-        if (!hasIngredientInputs()) return;             // no ingredient wires in → nothing to craft (redstone inputs don't count)
-        // Check satisfaction FIRST (Create's order) so the timer is frozen while stocked/promised. This
-        // is what prevents over-requesting: the timer never idles at 0 ready to fire, so the one-tick
-        // stock/promise flicker as the produced item lands can't trigger an extra request — a request
-        // only fires after the gauge has been continuously understocked for the whole interval.
+        if (controller == null) return;
+        if (!hasIngredientInputs()) return;
         if (satisfied || promisedSatisfied || waitingForNetwork || isRedstonePaused()) return;
         if (isMissingAddress()) return;
+
         // Limit-block FREEZES the timer (checked before the countdown), so it neither ticks nor fires while capped.
         if (promiseLimit > 0 && countLimitedPromises() >= promiseLimit) return;
         if (timer > 0) {                                // throttle between attempts
@@ -805,7 +799,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             timer--;
             return;
         }
-        resetTimer();                                   // we're attempting now; throttle the next one
+        resetTimer();
         // Stamp the attempt so the client can flash the connections once per request (not continuously).
         lastRequestTick = controller.getLevel() == null ? 0 : controller.getLevel().getGameTime();
         controller.setChanged();
@@ -827,14 +821,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // reach here when this is ≥ 1 (the !promisedSatisfied gate), so the max(1) is just defensive.
         int deficitScaler = Math.max(1, deficitRequestScaler());
 
-        Map<UUID, List<BigItemStack>> demandByNetwork = new LinkedHashMap<>();
-        // CUSTOM: the exact per-slot layout (ordered, unmerged, gaps preserved) per network, with ignore-data
-        // cells resolved to concrete variants. Built first so the merged availability demand below is derived
-        // from precisely what ships.
-        Map<UUID, List<BigItemStack>> orderByNetwork = null;
-        // The crafting pattern actually dispatched. For an ignore-data ingredient the stored pattern holds the
-        // pure-form item, but the package must carry (and the crafter pattern must match) concrete in-stock
-        // variants — so resolve those cells against live stock on every request.
+        Map<UUID, List<DemandParts>> demandByNetwork = new LinkedHashMap<>();
+        // CUSTOM: the exact per-slot layout (ordered, unmerged, gaps preserved)
+        Map<UUID, List<OrderedDemand>> orderByNetwork = null;
+        // The crafting pattern actually dispatched
         List<ItemStack> craftPattern = crafting ? new ArrayList<>(activeCraftingArrangement.size()) : null;
 
         if (custom) {
@@ -843,14 +833,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 setConnectionsSuccess(false);
                 return;
             }
-            for (Map.Entry<UUID, List<BigItemStack>> e : orderByNetwork.entrySet())
-                for (BigItemStack b : e.getValue())
-                    if (!b.stack.isEmpty() && b.count > 0) addDemand(demandByNetwork, e.getKey(), b.stack, b.count);
+            for (Map.Entry<UUID, List<OrderedDemand>> e : orderByNetwork.entrySet())
+                for (OrderedDemand ordered : e.getValue()) {
+                    BigItemStack b = ordered.base();
+                    if (!b.stack.isEmpty() && b.count > 0)
+                        addDemand(demandByNetwork, e.getKey(), b.stack, b.count, ordered.excluded());
+                }
         } else if (crafting) {
             Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools = new HashMap<>();
-            // A >3×3 arrangement holds more than 9 cells, so per-cell variant spill for an ignore-data ingredient
-            // could ship more distinct package slots than the box budget. Pin one variant per such source up front
-            // (covering all its cells); a ≤3×3 grid caps at 9 cells and keeps the flexible per-cell spill.
             Map<VirtualGaugeBehaviour, ItemStack> pinned = craftDimension > 3
                 ? pinCraftingVariants(variantPools, batch) : null;
             if (craftDimension > 3 && pinned == null) { setConnectionsSuccess(false); return; }
@@ -862,10 +852,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                         : takeVariant(variantPools.computeIfAbsent(source, this::variantPool), batch);
                     if (chosen == null || chosen.isEmpty()) { setConnectionsSuccess(false); return; }  // no single variant has enough
                     craftPattern.add(chosen.copyWithCount(1));
-                    addDemand(demandByNetwork, source.networkId, chosen, batch);
+                    addDemand(demandByNetwork, source.networkId, chosen, batch, false);
                 } else {
                     craftPattern.add(cell.copyWithCount(1));
-                    if (source != null) addDemand(demandByNetwork, source.networkId, cell, batch);
+                    if (source != null) addDemand(demandByNetwork, source.networkId, cell, batch, false);
                 }
             }
         } else {
@@ -886,41 +876,40 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                         if (remaining <= 0) break;
                         int take = Math.min(remaining, v.count);
                         if (take <= 0) continue;
-                        addDemand(demandByNetwork, source.networkId, v.stack, take);
+                        addDemand(demandByNetwork, source.networkId, v.stack, take,
+                            conn.excludeFromRequestMultiplier);
                         remaining -= take;
                     }
                     if (remaining > 0) { setConnectionsSuccess(false); return; }
                 } else {
-                    addDemand(demandByNetwork, source.networkId, ingredient, needed);
+                    addDemand(demandByNetwork, source.networkId, ingredient, needed,
+                        conn.excludeFromRequestMultiplier);
                 }
             }
         }
         if (demandByNetwork.isEmpty()) return;
 
         int scaler = Math.min(structuralScaler, deficitScaler);
-        for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
+        for (Map.Entry<UUID, List<DemandParts>> netEntry : demandByNetwork.entrySet()) {
             InventorySummary summary = LogisticsManager.getSummaryOfNetwork(netEntry.getKey(), true);
-            for (BigItemStack need : netEntry.getValue()) {
-                if (need.stack.isEmpty() || need.count <= 0) continue;   // gap/marker placeholder
+            for (DemandParts need : netEntry.getValue()) {
+                long oneSet = need.fixed + need.scalable;
                 int available = FluidCompat.isFluidFilter(need.stack)
                         ? FluidCompat.fluidStock(netEntry.getKey(), need.stack)
                         : summary.getCountOf(need.stack);
-                if (available < need.count) {        // can't supply even 1× → flash red
+                if (available < oneSet) {        // can't supply even 1× → flash red
                     setConnectionsSuccess(false);
                     return;
                 }
-                scaler = Math.min(scaler, available / need.count);
+                if (need.scalable > 0)
+                    scaler = Math.min(scaler, (int) ((available - need.fixed) / need.scalable));
             }
         }
         scaler = Math.max(1, scaler);
 
-        if (scaler > 1) {
-            for (List<BigItemStack> items : demandByNetwork.values())
-                for (BigItemStack b : items) b.count *= scaler;
-            if (orderByNetwork != null)
-                for (List<BigItemStack> items : orderByNetwork.values())
-                    for (BigItemStack b : items) b.count *= scaler;
-        }
+        Map<UUID, List<BigItemStack>> dispatchedDemand = materializeDemand(demandByNetwork, scaler);
+        Map<UUID, List<BigItemStack>> dispatchedOrder = orderByNetwork == null
+            ? null : materializeOrder(orderByNetwork, scaler);
 
         List<PackageOrderWithCrafts.CraftingEntry> crafts = !crafting
             ? PackageOrderWithCrafts.empty().orderedCrafts()
@@ -934,10 +923,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
         List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
         List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
-        for (Map.Entry<UUID, List<BigItemStack>> netEntry : demandByNetwork.entrySet()) {
+        for (Map.Entry<UUID, List<BigItemStack>> netEntry : dispatchedDemand.entrySet()) {
             UUID net = netEntry.getKey();
             // In CUSTOM mode use the ordered per-slot list (with gap placeholders); otherwise the merged demand.
-            List<BigItemStack> netItems = custom ? orderByNetwork.getOrDefault(net, netEntry.getValue()) : netEntry.getValue();
+            List<BigItemStack> netItems = custom ? dispatchedOrder.getOrDefault(net, netEntry.getValue()) : netEntry.getValue();
             // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order
             List<BigItemStack> externalFluids = netItems.stream()
                 .filter(b -> !b.stack.isEmpty() && !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
@@ -1022,7 +1011,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     /** One scaled request slot: {@code amount} at 1×, its {@code capacity} (item stack size or fluid mB cap), and
      *  whether it's a fluid (one package slot regardless of amount, but bounded by its mB cap). */
-    public record ScaleSlot(int amount, int capacity, boolean fluid) {}
+    public record ScaleSlot(int amount, int capacity, boolean fluid, boolean excluded) {}
 
     /** Output-bound scaler: largest M with {@code recipeOutput · M ≤ outputCap}. */
     private static int outputMultiplierCap(int recipeOutput, int outputCap) {
@@ -1036,11 +1025,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     private static boolean packsRegular(List<ScaleSlot> slots, int m) {
         int used = 0;
         for (ScaleSlot s : slots) {
+            long required = s.excluded() ? s.amount() : (long) s.amount() * m;
             if (s.fluid()) {
-                if ((long) s.amount() * m > s.capacity()) return false;
+                if (required > s.capacity()) return false;
                 used += 1;
             } else {
-                used += (int) ceilDiv((long) s.amount() * m, Math.max(1, s.capacity()));
+                used += (int) ceilDiv(required, Math.max(1, s.capacity()));
             }
             if (used > MAX_INGREDIENTS) return false;
         }
@@ -1050,6 +1040,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     /** REGULAR structural cap: largest M packing the scaled demand into the 9-slot package and keeping the scaled
      *  output within {@code outputCap}. Binary search over the monotonic packing feasibility. */
     public static int regularMultiplierCap(List<ScaleSlot> slots, int recipeOutput, int outputCap, int hardCap) {
+        if (slots.stream().allMatch(ScaleSlot::excluded)) return 1;
         int hi = Math.clamp(outputMultiplierCap(recipeOutput, outputCap), 1, hardCap);
         int lo = 1, best = 1;
         while (lo <= hi) {
@@ -1061,9 +1052,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     /** CUSTOM structural cap: each cell must stay within one stack/fluid cap, and the scaled output within its cap. */
     public static int customMultiplierCap(List<ScaleSlot> slots, int recipeOutput, int outputCap, int hardCap) {
+        if (slots.stream().allMatch(ScaleSlot::excluded)) return 1;
         int cap = Math.min(hardCap, outputMultiplierCap(recipeOutput, outputCap));
         for (ScaleSlot s : slots)
-            cap = Math.clamp(s.capacity() / Math.max(1, s.amount()), 1, cap);
+            if (!s.excluded()) cap = Math.clamp(s.capacity() / Math.max(1, s.amount()), 1, cap);
         return Math.max(1, cap);
     }
 
@@ -1092,7 +1084,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 if (src == null || src.filter.isEmpty()) continue;
                 boolean fluid = FluidCompat.isFluidFilter(src.filter);
                 int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
-                slots.add(new ScaleSlot(Math.max(1, rs.count()), capacity, fluid));
+                LogisticsConnection connection = (LogisticsConnection) targetedBy().get(rs.source());
+                slots.add(new ScaleSlot(Math.max(1, rs.count()), capacity, fluid,
+                    connection.excludeFromRequestMultiplier));
             }
             return customMultiplierCap(slots, output, outputCap, 64);
         }
@@ -1105,7 +1099,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                     continue;
                 boolean fluid = FluidCompat.isFluidFilter(src.filter);
                 int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
-                slots.add(new ScaleSlot(Math.max(1, lc.amount()), capacity, fluid));
+                slots.add(new ScaleSlot(Math.max(1, lc.amount()), capacity, fluid,
+                    lc.excludeFromRequestMultiplier));
             }
         return regularMultiplierCap(slots, output, outputCap, 64);
     }
@@ -1113,6 +1108,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     /** The scaler actually used for one request: the user ceiling clamped by structure and (caller-supplied) stock. */
     public int clampMultiplierToStructure(int value) {
         return Math.clamp(value, 1, structuralMultiplierCap());
+    }
+
+    /** Configured request ceiling after the current structure is applied. */
+    public int effectiveRequestMultiplierCeiling() {
+        return clampMultiplierToStructure(maxRequestMultiplier);
     }
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
@@ -1175,15 +1175,15 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  pattern); a source's cells share one pool, so their combined take stays within each variant's stock.
      *  Returns {@code null} when a cell can't be covered by any single variant. */
     @Nullable
-    private Map<UUID, List<BigItemStack>> buildOrderedSlots() {
-        Map<UUID, List<BigItemStack>> byNet = new LinkedHashMap<>();
+    private Map<UUID, List<OrderedDemand>> buildOrderedSlots() {
+        Map<UUID, List<OrderedDemand>> byNet = new LinkedHashMap<>();
         Map<VirtualGaugeBehaviour, List<BigItemStack>> variantPools = new HashMap<>();
         for (RecipeSlot slot : recipeSlots) {
             VirtualGaugeBehaviour src = sourceGauge(slot);
             if (src != null && !src.filter.isEmpty()) byNet.computeIfAbsent(src.networkId, k -> new ArrayList<>());
         }
         for (UUID net : byNet.keySet()) {
-            List<BigItemStack> ordered = new ArrayList<>();
+            List<OrderedDemand> ordered = new ArrayList<>();
             int lastFilled = 0;
             for (RecipeSlot slot : recipeSlots) {
                 VirtualGaugeBehaviour src = sourceGauge(slot);
@@ -1196,14 +1196,16 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                         shipped = takeVariant(variantPools.computeIfAbsent(src, this::variantPool), cnt);
                         if (shipped.isEmpty()) return null;   // no single variant has enough for this cell
                     }
-                    ordered.add(new BigItemStack(shipped.copyWithCount(1), cnt));
+                    LogisticsConnection connection = (LogisticsConnection) targetedBy().get(slot.source());
+                    ordered.add(new OrderedDemand(new BigItemStack(shipped.copyWithCount(1), cnt),
+                        connection.excludeFromRequestMultiplier));
                     lastFilled = ordered.size();
                 } else {
-                    ordered.add(new BigItemStack(ItemStack.EMPTY, 0));   // gap (empty cell or another network)
+                    ordered.add(new OrderedDemand(new BigItemStack(ItemStack.EMPTY, 0), false));
                 }
             }
-            List<BigItemStack> order = new ArrayList<>(ordered.subList(0, lastFilled));
-            order.add(ArrangementUnpackingHandler.marker());
+            List<OrderedDemand> order = new ArrayList<>(ordered.subList(0, lastFilled));
+            order.add(new OrderedDemand(ArrangementUnpackingHandler.marker(), false));
             byNet.put(net, order);
         }
         return byNet;
@@ -1218,14 +1220,59 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return controller.components.get(slot.source()) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
-    /** Adds {@code count} of {@code stack} to a network's demand list, merging into an existing exact-component
-     *  entry so repeated/equivalent ingredients collapse into one {@link BigItemStack}. */
-    private static void addDemand(Map<UUID, List<BigItemStack>> demandByNetwork, UUID network,
-                                  ItemStack stack, int count) {
-        List<BigItemStack> demands = demandByNetwork.computeIfAbsent(network, k -> new ArrayList<>());
-        for (BigItemStack b : demands)
-            if (ItemStack.isSameItemSameComponents(b.stack, stack)) { b.count += count; return; }
-        demands.add(new BigItemStack(stack.copyWithCount(1), count));
+    /** One concrete resource's base demand, split so excluded and scalable contributions can safely merge. */
+    private static final class DemandParts {
+        final ItemStack stack;
+        long fixed;
+        long scalable;
+
+        DemandParts(ItemStack stack) { this.stack = stack.copyWithCount(1); }
+    }
+
+    /** A positional CUSTOM order entry before the actual request scaler is known. */
+    private record OrderedDemand(BigItemStack base, boolean excluded) {}
+
+    private static void addDemand(Map<UUID, List<DemandParts>> demandByNetwork, UUID network,
+                                  ItemStack stack, int count, boolean excluded) {
+        List<DemandParts> demands = demandByNetwork.computeIfAbsent(network, k -> new ArrayList<>());
+        DemandParts found = null;
+        for (DemandParts demand : demands)
+            if (ItemStack.isSameItemSameComponents(demand.stack, stack)) { found = demand; break; }
+        if (found == null) {
+            found = new DemandParts(stack);
+            demands.add(found);
+        }
+        if (excluded) found.fixed += count;
+        else found.scalable += count;
+    }
+
+    private static Map<UUID, List<BigItemStack>> materializeDemand(
+            Map<UUID, List<DemandParts>> demandByNetwork, int scaler) {
+        Map<UUID, List<BigItemStack>> result = new LinkedHashMap<>();
+        for (Map.Entry<UUID, List<DemandParts>> e : demandByNetwork.entrySet()) {
+            List<BigItemStack> items = new ArrayList<>(e.getValue().size());
+            for (DemandParts demand : e.getValue()) {
+                long count = demand.fixed + demand.scalable * scaler;
+                items.add(new BigItemStack(demand.stack.copyWithCount(1), (int) Math.min(Integer.MAX_VALUE, count)));
+            }
+            result.put(e.getKey(), items);
+        }
+        return result;
+    }
+
+    private static Map<UUID, List<BigItemStack>> materializeOrder(
+            Map<UUID, List<OrderedDemand>> orderByNetwork, int scaler) {
+        Map<UUID, List<BigItemStack>> result = new LinkedHashMap<>();
+        for (Map.Entry<UUID, List<OrderedDemand>> e : orderByNetwork.entrySet()) {
+            List<BigItemStack> items = new ArrayList<>(e.getValue().size());
+            for (OrderedDemand ordered : e.getValue()) {
+                BigItemStack base = ordered.base();
+                long count = ordered.excluded() ? base.count : (long) base.count * scaler;
+                items.add(new BigItemStack(base.stack.copyWithCount(1), (int) Math.min(Integer.MAX_VALUE, count)));
+            }
+            result.put(e.getKey(), items);
+        }
+        return result;
     }
 
     private void resetTimer() {

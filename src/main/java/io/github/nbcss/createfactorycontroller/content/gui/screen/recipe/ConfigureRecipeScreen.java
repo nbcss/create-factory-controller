@@ -145,6 +145,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     final List<VirtualComponentPosition> inputConnections = new ArrayList<>();
     final List<Integer> inputTotals = new ArrayList<>();
     final List<BigItemStack> inputConfig = new ArrayList<>();   // for crafting-recipe search
+    /** Local recipe edit: source connections sent once per request instead of scaled by the multiplier. */
+    final Set<VirtualComponentPosition> multiplierExcludedInputs = new HashSet<>();
 
     @Nullable private CraftingRecipe availableCraftingRecipe;
     /** The active work mode (regular / crafting / custom); mirrors the gauge's, edited locally until sent. */
@@ -270,6 +272,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 if (availableCraftingRecipe == null) return;
                 GaugeWorkMode prev = workMode;
                 workMode = prev == GaugeWorkMode.CRAFTING ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
+                if (workMode == GaugeWorkMode.CRAFTING) multiplierExcludedInputs.clear();
                 editor().onChange(prev);
                 rebuildWidgets();
             });
@@ -367,6 +370,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return FluidCompat.isFluidFilter(ingredientOf(inputConnections.get(c)));
     }
 
+    boolean multiplierExcluded(VirtualComponentPosition source) {
+        return workMode != GaugeWorkMode.CRAFTING && multiplierExcludedInputs.contains(source);
+    }
+
     /** Per-ingredient millibucket cap — one grid cell of a fluid ingredient. */
     static final int FLUID_INGREDIENT_CAP_MB = VirtualGaugeBehaviour.FLUID_INGREDIENT_CAP_MB;
 
@@ -391,7 +398,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int s = Math.max(1, scale);
         List<InputSlot> slots = new ArrayList<>();
         for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
-            int total = Math.max(1, inputTotals.get(c)) * s;
+            int factor = multiplierExcluded(inputConnections.get(c)) ? 1 : s;
+            int total = Math.max(1, inputTotals.get(c)) * factor;
             if (isFluidConn(c)) {
                 slots.add(new InputSlot(c, total));
                 continue;
@@ -427,6 +435,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         inputConnections.remove(connectionIndex);
         inputTotals.remove(connectionIndex);
         inputConfig.remove(connectionIndex);
+        multiplierExcludedInputs.remove(from);
         PacketDistributor.sendToServer(new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
         onConnectionsChanged();
         playClickSound();
@@ -491,7 +500,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 if (ing.isEmpty()) continue;
                 boolean fluid = FluidCompat.isFluidFilter(ing);
                 int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : stackSizeOf(ing);
-                slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, rs.count()), capacity, fluid));
+                slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, rs.count()), capacity, fluid,
+                    multiplierExcluded(rs.source())));
             }
             return VirtualGaugeBehaviour.customMultiplierCap(slots, output, outputCap, 64);
         }
@@ -499,7 +509,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         for (int c = 0; c < inputConnections.size(); c++) {
             boolean fluid = isFluidConn(c);
             int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : stackSizeOf(ingredientOf(inputConnections.get(c)));
-            slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, inputTotals.get(c)), capacity, fluid));
+            slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, inputTotals.get(c)), capacity, fluid,
+                multiplierExcluded(inputConnections.get(c))));
         }
         return VirtualGaugeBehaviour.regularMultiplierCap(slots, output, outputCap, 64);
     }
@@ -734,6 +745,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         inputConnections.clear();
         inputTotals.clear();
         inputConfig.clear();
+        multiplierExcludedInputs.clear();
         VirtualGaugeBehaviour g = gauge();
         if (g == null) return;
         outputCount = Math.max(1, g.recipeOutput);
@@ -756,6 +768,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             inputConnections.add(conn.from);
             inputTotals.add(total);
             inputConfig.add(new BigItemStack(ingredientOf(conn.from), total));
+            if (g.mode != GaugeWorkMode.CRAFTING && lc.excludeFromRequestMultiplier)
+                multiplierExcludedInputs.add(conn.from);
         }
 
         workMode = g.mode;
@@ -1083,16 +1097,21 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 gfx.fill(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y,
                         panelX + MULTIPLIER_X + MULTIPLIER_W, panelY + MULTIPLIER_Y + MULTIPLIER_H,
                         0x55AAAAAA);
-                tooltip = List.of(
-                    Component.translatable("createfactorycontroller.gui.request_multiplier",
-                                    maxRequestMultiplier, multCap)
-                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
-                    Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
-                        .withStyle(ChatFormatting.GRAY),
-                    Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
-                        .withStyle(ChatFormatting.GRAY),
-                    CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                List<Component> multiplierTooltip = new ArrayList<>();
+                multiplierTooltip.add(Component.translatable("createfactorycontroller.gui.request_multiplier",
+                                maxRequestMultiplier, multCap)
+                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
+                multiplierTooltip.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
+                    .withStyle(ChatFormatting.GRAY));
+                multiplierTooltip.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
+                    .withStyle(ChatFormatting.GRAY));
+                if (workMode != GaugeWorkMode.CRAFTING)
+                    multiplierTooltip.add(Component.translatable(
+                            "createfactorycontroller.gui.request_multiplier.exclude_tip")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                multiplierTooltip.add(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                tooltip = multiplierTooltip;
             }
             SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.MULTIPLY + maxRequestMultiplier,
                     panelX + MULTIPLIER_X + MULTIPLIER_W + 2, panelY + MULTIPLIER_Y + MULTIPLIER_H - 6,
@@ -1460,6 +1479,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
+        if (button == 0 && hasControlDown() && workMode != GaugeWorkMode.CRAFTING) {
+            VirtualComponentPosition source = editor().ingredientSourceAt(mouseX, mouseY);
+            if (source != null) {
+                if (!multiplierExcludedInputs.add(source)) multiplierExcludedInputs.remove(source);
+                maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, structuralMultiplierCap());
+                playClickSound();
+                return true;
+            }
+        }
+
         if (editor().inputAreaClicked(mouseX, mouseY, button)) return true;
 
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
@@ -1591,11 +1620,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private void sendConfig(boolean clearPromises, boolean reset) {
         GaugeWorkModeEditor.Configuration config = editor().configuration();
+        List<Boolean> exclusions = config.inputPositions().stream()
+            .map(pos -> workMode != GaugeWorkMode.CRAFTING && multiplierExcludedInputs.contains(pos))
+            .toList();
         PacketDistributor.sendToServer(new ConfigureRecipePacket(
             menu.controllerPos, gaugePos, addressBox.getValue(), outputCount, config.craftBatch(), maxRequestMultiplier,
             customRequestTimer, config.craftDimension(),
             promiseExpiration.getState(), promiseLimitState, promiseLimitByAddress, thresholdCount, mode, requestMode,
-            workMode, config.inputPositions(), config.inputAmounts(), config.craftingArrangement(),
+            workMode, config.inputPositions(), config.inputAmounts(), exclusions, config.craftingArrangement(),
             config.recipeSlots(), clearPromises, reset));
     }
 

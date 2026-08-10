@@ -1,5 +1,8 @@
 ## 1.1.2
 
+Features:
+- Allow Ctrl-Click to exclude ingredient from request multiplier
+
 Optimization:
 - Improve performance of controller screen.
 

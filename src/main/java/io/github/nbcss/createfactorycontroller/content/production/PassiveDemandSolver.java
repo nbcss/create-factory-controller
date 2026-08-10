@@ -48,7 +48,7 @@ public final class PassiveDemandSolver {
 
         long[] dem = new long[n];                 // gross demand for this node's output (raw item count / mB)
         int[] indeg = new int[n];                 // number of consumers (must be sized before this node)
-        List<List<long[]>> edges = new ArrayList<>(n);   // edges[i] = {sourceIndex, perCraftQty}
+        List<List<long[]>> edges = new ArrayList<>(n);   // {sourceIndex, baseQty, excludedFromMultiplier ? 1 : 0}
         for (int i = 0; i < n; i++) edges.add(new ArrayList<>());
 
         for (int i = 0; i < n; i++) {
@@ -58,7 +58,8 @@ public final class PassiveDemandSolver {
                 if (!(e.getValue() instanceof LogisticsConnection lc)) continue;   // ingredient wires only
                 Integer si = idx.get(e.getKey());
                 if (si == null) continue;
-                edges.get(i).add(new long[]{ si, (long) lc.amount() * batch });
+                boolean excluded = g.mode != GaugeWorkMode.CRAFTING && lc.excludeFromRequestMultiplier;
+                edges.get(i).add(new long[]{ si, (long) lc.amount() * batch, excluded ? 1 : 0 });
                 indeg[si]++;
             }
         }
@@ -90,10 +91,12 @@ public final class PassiveDemandSolver {
             long net = gross - g.effectiveHeld();
             int output = Math.max(1, g.recipeOutput) * craftBatch(g);
             long crafts = (net > 0 && !g.filter.isEmpty()) ? Math.ceilDiv(net, output) : 0;
+            long dispatches = crafts <= 0 ? 0
+                : Math.ceilDiv(crafts, g.effectiveRequestMultiplierCeiling());
 
             for (long[] edge : edges.get(i)) {
                 int s = (int) edge[0];
-                if (crafts > 0) dem[s] += crafts * edge[1];
+                if (crafts > 0) dem[s] += (edge[2] != 0 ? dispatches : crafts) * edge[1];
                 if (--indeg[s] == 0) queue.add(s);
             }
         }

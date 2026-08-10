@@ -115,12 +115,16 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
                     ? ThresholdUnit.formatFluidAmount(draw.count()) : String.valueOf(draw.count());
                 boolean srcIgnore = s.getMenu().componentAt(draw.source())
                         instanceof VirtualGaugeBehaviour src && src.ignoreData;
-                tooltip = ConfigureRecipeScreen.withIgnoreDataLine(List.of(
+                List<Component> lines = new java.util.ArrayList<>(List.of(
                     CreateLang.translate("gui.factory_panel.sending_item",
                         FluidCompat.filterName(stack).getString() + " x" + amount)
                         .color(ScrollInput.HEADER_RGB).component(),
                     Component.translatable("createfactorycontroller.gui.custom_slot_tip", String.valueOf(i + 1))
-                        .withStyle(ChatFormatting.GRAY),
+                        .withStyle(ChatFormatting.GRAY)));
+                if (s.multiplierExcluded(draw.source()))
+                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.excluded")
+                            .withColor(0xFFDD70));
+                lines.addAll(List.of(
                     Component.translatable("createfactorycontroller.gui.custom_slot_move")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
                     Component.translatable("createfactorycontroller.gui.custom_slot_copy")
@@ -128,7 +132,8 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
                     CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                         .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
                     Component.translatable("createfactorycontroller.gui.action_remove_component")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)), srcIgnore);
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
+                tooltip = ConfigureRecipeScreen.withIgnoreDataLine(lines, srcIgnore);
             }
         }
 
@@ -156,8 +161,8 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         ItemStack stack = s.ingredientOf(slot.source());
         if (stack.isEmpty()) return;
         ResourceIconRenderer.render(gfx, stack, ix, iy);
-        // scale = 1 unless the multiplier bar is hovered, then each cell previews its scaled count.
-        s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, slot.count() * scale));
+        int shown = slot.count() * (s.multiplierExcluded(slot.source()) ? 1 : scale);
+        s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, shown));
     }
 
     @Override
@@ -209,6 +214,14 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         dragFrom = slot;   // begin a drag (left = move/swap, right = copy-to-empty), applied on release
         dragButton = button;
         return true;
+    }
+
+    @Override
+    VirtualComponentPosition ingredientSourceAt(double mouseX, double mouseY) {
+        int slot = slotAt(mouseX, mouseY);
+        if (slot < 0 || slot >= s.customSlots.size()) return null;
+        RecipeSlot recipeSlot = s.customSlots.get(slot);
+        return recipeSlot.isEmpty() ? null : recipeSlot.source();
     }
 
     @Override
@@ -291,7 +304,8 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     boolean[] occupiedCells() {
         boolean[] cells = new boolean[ConfigureRecipeScreen.MAX_INPUT_SLOTS];
         for (int i = 0; i < cells.length && i < s.customSlots.size(); i++)
-            cells[i] = !s.customSlots.get(i).isEmpty();
+            cells[i] = !s.customSlots.get(i).isEmpty()
+                && !s.multiplierExcluded(s.customSlots.get(i).source());
         return cells;
     }
 

@@ -70,6 +70,10 @@ abstract class GaugeWorkModeEditor {
     /** Handles a click inside the ingredient grid; {@code true} if consumed. */
     abstract boolean inputAreaClicked(double mouseX, double mouseY, int button);
 
+    /** Source ingredient under the cursor for Ctrl-click multiplier exclusion; null when none/not supported. */
+    @javax.annotation.Nullable
+    VirtualComponentPosition ingredientSourceAt(double mouseX, double mouseY) { return null; }
+
     /** Handles a scroll inside the ingredient grid (not the output slot); {@code true} if consumed. */
     abstract boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step);
 

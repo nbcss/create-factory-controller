@@ -121,6 +121,8 @@
   "createfactorycontroller.gui.request_multiplier": "Maximum request multiplier x%1$s/%2$s",
   "createfactorycontroller.gui.request_multiplier.tip_1": "Combine multiple sets of ingredients",
   "createfactorycontroller.gui.request_multiplier.tip_2": "into one request if stock allows",
+  "createfactorycontroller.gui.request_multiplier.exclude_tip": "Ctrl-Click an ingredient to exclude",
+  "createfactorycontroller.gui.request_multiplier.excluded": "Excluded from request multiplier",
   "createfactorycontroller.gui.production_output_header": "Recipe output:",
   "createfactorycontroller.gui.production_ingredients_header": "Ingredients:",
   "createfactorycontroller.gui.production_address_header": "To address:",

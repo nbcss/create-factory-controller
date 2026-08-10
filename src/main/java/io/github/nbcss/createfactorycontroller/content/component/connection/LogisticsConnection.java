@@ -34,6 +34,7 @@ public class LogisticsConnection extends Connection {
                                      VirtualComponentPosition from, VirtualComponentPosition to, int arrowBendMode) {
             LogisticsConnection c = new LogisticsConnection(from, to, buf.readVarInt());
             c.arrowBendMode = arrowBendMode;
+            c.excludeFromRequestMultiplier = buf.readBoolean();
             c.success = buf.readBoolean();
             return c;
         }
@@ -56,11 +57,14 @@ public class LogisticsConnection extends Connection {
     };
 
     public int amount;
+    /** When true this ingredient is sent once per request instead of being scaled by the request multiplier. */
+    public boolean excludeFromRequestMultiplier;
     public boolean success;
 
     public LogisticsConnection(VirtualComponentPosition from, VirtualComponentPosition to, int amount) {
         super(TYPE, from, to);
         this.amount = Math.max(1, amount);
+        this.excludeFromRequestMultiplier = false;
         this.success = false;
     }
 
@@ -93,6 +97,7 @@ public class LogisticsConnection extends Connection {
     public CompoundTag toNBT() {
         CompoundTag tag = super.toNBT();
         tag.putInt("Amount", Math.max(1, amount));
+        if (excludeFromRequestMultiplier) tag.putBoolean("ExcludeFromRequestMultiplier", true);
         tag.putBoolean("Success", success);
         return tag;
     }
@@ -101,12 +106,14 @@ public class LogisticsConnection extends Connection {
     public CompoundTag toExportNBT() {
         CompoundTag tag = super.toNBT();
         tag.putInt("Amount", Math.max(1, amount));
+        if (excludeFromRequestMultiplier) tag.putBoolean("ExcludeFromRequestMultiplier", true);
         return tag;
     }
 
     @Override
     protected void writeClientExtra(net.minecraft.network.RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(Math.max(1, amount));
+        buf.writeBoolean(excludeFromRequestMultiplier);
         buf.writeBoolean(success);
     }
 
@@ -121,6 +128,7 @@ public class LogisticsConnection extends Connection {
         } else {
             this.amount = 1;
         }
+        this.excludeFromRequestMultiplier = tag.getBoolean("ExcludeFromRequestMultiplier");
         this.success = tag.getBoolean("Success");
     }
 
