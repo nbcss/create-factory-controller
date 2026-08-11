@@ -11,12 +11,12 @@ Additionally, using a factory controller allows you to:
 
 - Quickly tune a new factory gauge to a network already tuned to by existing gauges. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#network-selector)
 - Select and move multiple gauges at once. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#components)
-- Save your setups in blueprints.
+- Save your setups in blueprints. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/blueprint.html)
 - See the item count labels of all gauges at once.
 - Disable all factory gauges in the controller with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
 - Change individual connection's arrow bending path. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#connections)
 - Display information with a display link. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/display-link.html)
-- Import existing gauge walls into a factory controller.
+- Import existing gauge walls into a factory controller. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/blueprint.html#import-world)
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
 
@@ -47,12 +47,12 @@ This mod does **not**:
 
 This mod replicates the logic of the vanilla factory gauge system. It is unlikely to conflict with other mods that modifies vanilla gauge behaviour, but it cannot also receive their enhancements, unless explicit support was made.
 
-The currently supported mods are:
+Explicit support is also required for items added by other mods to be placeable in a factory controller. See [supported components](https://nbcss.github.io/create-factory-controller/manual/en/components.html). Notably, Create: Extra Gauges can coexist in a game installation, but the extra gauges may not be placed in factory controllers.
 
-- Create: FluidLogistic: Transport fluids with factory gauges.
-- Create: Fluid: Transport fluids with factory gauges. (may drop compatibility in the future)
-- Create: Repackaged: Use fluid gauges in controller.
-- Mods providing portable stock keeper GUIs: Place production orders. (e.g Create: Mobile Packages and Create Phantom)
+See also:
+
+- [Fluid Transport](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#fluid)
+- [Production Orders](https://nbcss.github.io/create-factory-controller/manual/en/production-orders.html#mod-compat)
 
 ## Dependencies
 
