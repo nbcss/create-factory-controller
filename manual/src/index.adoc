@@ -12,4 +12,5 @@ Create: Factory Controller introduces a new block, the "Factory Controller". It 
 .. xref:electron-tube.adoc[Electron Tube]
 .. xref:redstone-link.adoc[Redstone Link]
 . xref:display-link.adoc[Display Link]
+. xref:blueprint.adoc[Blueprint]
 . xref:production-orders.adoc[Production Orders]

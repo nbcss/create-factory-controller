@@ -1,0 +1,156 @@
+= Blueprint
+
+:xrefstyle: short
+
+In a factory controller, you may select any number of xref:components.adoc[components], and save them into a blueprint. The configuration and relative position of each component, as well as the connections between them, are saved into the blueprint. It can then be reused at another location on the virtual board, or in another factory controller.
+
+[#create]
+== Creating Blueprints
+
+To create a blueprint, xref:dashboard.adoc#selecting[select] the desired components in the dashboard UI. A save button will subsequently appear in the top-right corner, clicking it directs you to the "New Blueprint" screen.
+
+[#figure-save-button]
+."Save as Blueprint" button
+image::btn-save-blueprint.png[,46,48]
+
+[#figure-blueprint-new]
+."New Blueprint" screen
+image::blueprint-new.svg[,408,462]
+
+❶ Blueprint name::
+Enter the name of the new blueprint. Mandatory. +
+Must be a valid file name for your operating system. +
+If a blueprint of the same name exists, it will be overwritten upon saving. This will be indicated by a image:icon-warning.png[,16,16].
+
+❷ Blueprint description::
+Enter an arbitrary description attached to the blueprint. Optional.
+
+❸ Components::
+Shows the type and number of components included in the blueprint.
+
+❹ Networks::
+Shows the networks the selected components are tuned to, and the indices they are saved as. See <<network-mapping>>. Drag an icon to reorder.
+
+❺ Discard button::
+Click to cancel blueprint creation.
+
+❻ Save button::
+Click to save the new blueprint. Enabled when a valid name is entered.
+
+[#network-mapping]
+=== Networks in Blueprints
+
+Blueprints do not save the networks the components are tuned to. Instead, the networks are tallied into a list (<<figure-blueprint-new>> ❹), where each network is mapped to an index within the list (1, 2, ...). Each component within the blueprint remembers only the index (e.g. whether it is connected to the 1st, 2nd, ... network). When <<place,placing>>, you will then be asked to fill in each index with an actual network.
+
+This design allows blueprints to be shared across game saves, where the networks you want to use the components on are different.
+
+[#manage]
+== Managing Blueprints
+
+Saved blueprints can be seen in the blueprint library, opened by clicking the "Blueprints" button on the top-right corner.
+
+[#figure-open-button]
+."Open Blueprints" button
+image::btn-open-blueprints.png[,46,48]
+
+[#figure-blueprint-library]
+.The blueprint library, showing 4 existing blueprints
+image::blueprint-library.svg[,408,498]
+
+❶ Name::
+Shows the name of the blueprint.
+
+❷ Components::
+Shows the type and number of components in the blueprint, and whether you have enough of them in your inventory.
+
+❸ Place button::
+Click to start placing the blueprint. Enabled only when the blueprint can be placed. See <<place>>.
+
+❹ Edit button::
+Click to edit the blueprint.
+
+❺ Importing hint::
+Hints about the existence of <<import-world>>.
+
+❻ Open folder button::
+Click to open the directory the blueprints are stored in with the operating system's file manager.
+
+Blueprints are stored as `.nbt` files in the `controller_blueprints` directory of your Minecraft client. You may copy and rename the files with the system file manager, they will be recognized by the blueprint library upon closing and re-opening. Deletion is only possible through the system file manager.
+
+[#edit]
+=== Editing Blueprints
+
+Clicking <<figure-blueprint-library>> ❹ opens the blueprint editing screen. This is very similar to the <<figure-blueprint-new,"New Blueprint" screen>>, however, you may only edit the name and the description here.
+
+[#figure-blueprint-edit]
+."Edit Blueprint" screen
+image::blueprint-edit.svg[,408,462]
+
+❶ Blueprint name::
+Edit to rename the blueprint.
+
+❷ Blueprint description::
+Edit to change the description of the blueprint.
+
+❺ Cancel button::
+Click to discard the changes.
+
+❻ Save button::
+Click to save the changes.
+
+[#place]
+== Placing Blueprints
+
+To place a saved blueprint, open the <<figure-blueprint-library,blueprint library>> and click the image:btn-place-blueprint.png[,18,18] "Place" button. For the blueprint to be placeable, there must be enough items in your inventory to create all the included components, and enough remaining xref:dashboard.adoc#capacity[capacity] in the factory controller.
+
+You can then xref:dashboard.adoc#navigation[navigate the dashboard] and click an empty space to select where the new components will be placed. A screen will then pop up for you to configure the new components.
+
+[#figure-blueprint-place]
+."Place Blueprint" screen
+image::blueprint-place.svg[,408,462]
+
+This is very similar to the <<figure-blueprint-new,"New Blueprint" screen>>, however, ❶ and ❷ may not be edited here.
+
+❹ Networks::
+Scroll on each slot to assign an existing network to an index. See <<network-mapping>>.
+
+❺ Cancel button::
+Click to cancel blueprint placement.
+
+❻ Place button::
+Click to confirm blueprint placement. Enabled when all networks are assigned.
+
+Upon confirming, the items in your inventory are automatically taken to be placed into the factory controller.
+
+[#import-world]
+== Importing Existing Setups from Game World
+
+Existing walls of components placed in the game world may be imported into factory controllers, or saved as blueprints. To do so, use a schematic and quill to select an area, without saving the area as a schematic.
+
+[#figure-import-world-select]
+.Selecting an area for importing with a schematic and quill
+image::import-world-select.png[,362,295]
+
+Note that:
+
+* The selected area must be 2-dimensional, i.e. 1 of the 3 dimensions must have a size of 1.
+* The other 2 dimensions must have a size smaller than or equal to 128.
+* Components must be facing the same direction and have the same orientation. The behaviour is otherwise undefined.
+* Only xref:components.adoc[some components] may be imported. Unsupported blocks are skipped.
+
+After selecting, stop holding the schematic and quill in your hand, and interact with a factory controller. The blueprint library will display a special entry at the top, representing the area selected by the schematic and quill.
+
+.The blueprint library while a valid area in the world is selected by a schematic and quill
+image::blueprint-library-import-world.svg[,408,144]
+
+❶ Components::
+Shows the recognized components in the selected area.
+
+❷ Place button::
+Click to place the selected components into the factory gauge. Similar to placing a blueprint, except the networks are not <<network-mapping,mapped>>.
+
+❸ Save button::
+Click to save the selected components as a blueprint.
+
+.The selected components of <<figure-import-world-select>> imported into a factory controller
+image::import-world-placed.png[,256,256]

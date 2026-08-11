@@ -2,23 +2,30 @@
 
 Some items can be placed inside a factory controller. Once placed, they are referred to as "virtual components". These include:
 
-[%autowidth%header,cols="3*"]
+[%autowidth%header,cols="4*"]
 |===
-| Icon | Name | From Mod
+| Icon
+| Name
+| From Mod
+| xref:blueprint.adoc#import-world[Importable from World]
 
 | image:icon-factory-gauge.png[width=32,height=32]
 | xref:factory-gauge.adoc[Factory Gauge]
 | Create
+| Yes
 
 | image:icon-fluid-gauge.png[width=32,height=32]
 | xref:factory-gauge.adoc#fluid[Fluid Gauge]
 | Create: Repackaged
+| Yes
 
 | image:icon-redstone-link.png[width=32,height=32]
 | xref:redstone-link.adoc[Redstone Link]
 | Create
+| Yes
 
 | image:icon-electron-tube.png[width=32,height=32]
 | xref:electron-tube.adoc[Electron Tube]
 | Create
+| No
 |===
