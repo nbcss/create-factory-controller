@@ -322,7 +322,7 @@ header nav {
   font-size: 0.9rem;
 }
 
-footer a {
+footer a[href] {
   color: inherit;
   text-decoration: underline;
 
@@ -365,7 +365,7 @@ p {
   margin: 0.6em 0;
 }
 
-a {
+a[href] {
   color: map.get($colors, link);
   color: var(--color-link);
   text-decoration: none;
@@ -398,9 +398,6 @@ a[href*="#term-"] {
     max-width: 100%;
     height: auto;
     display: block;
-    border-radius: 4px;
-    border: 1px solid map.get($colors, divider);
-    border-color: var(--color-divider);
   }
 }
 
@@ -499,6 +496,10 @@ dd {
 main :target {
   background: map.get($colors, highlight);
   background: var(--color-highlight);
+
+  &:empty::after {
+    content: '·';
+  }
 }
 
 // Font Awesome
