@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.helper;
 
+import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
@@ -66,6 +67,26 @@ public abstract class ControllerDataFixer {
                     comp.remove("Targeting");
                 }
                 tag.put("Connections", connections);
+                return tag;
+            }
+        });
+        // Data version 1 -> 2: Count changed from a passive gauge's transient effective target to its configured floor.
+        FIXERS.add(new ControllerDataFixer(2) {
+            @Override
+            public CompoundTag fix(CompoundTag tag) {
+                ListTag components = tag.getList("Components", Tag.TAG_COMPOUND);
+                for (int i = 0; i < components.size(); i++) {
+                    CompoundTag component = components.getCompound(i);
+                    String mode = component.getString("RequestMode");
+                    boolean passive = component.getBoolean("Passive")
+                            || RequestMode.PASSIVE.name().equals(mode)
+                            || RequestMode.PASSIVE_AND_ALLOW_ORDER.name().equals(mode);
+                    if (!passive) continue;
+                    component.remove("Count");
+                    if (component.getBoolean("Passive") && mode.isEmpty())
+                        component.putString("RequestMode", RequestMode.PASSIVE.name());
+                    component.remove("Passive");
+                }
                 return tag;
             }
         });

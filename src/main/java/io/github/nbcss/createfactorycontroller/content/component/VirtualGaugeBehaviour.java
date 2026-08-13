@@ -207,7 +207,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  promise counts sum every data-variant, and a downstream recipe wired to this gauge may consume any
      *  variant. Never set for a fluid filter (the set-item screen disables the toggle there). */
     public boolean ignoreData = false;
-    /** Target threshold (Create's {@code count}); 0 means the gauge is inactive.*/
+    /** Player-configured target threshold (Create's {@code count}). In passive modes this is the minimum target. */
     public int count = 0;
     /** How the threshold is measured (items or stacks). Replaces Create's {@code upTo}. */
     public ThresholdUnit unit = ThresholdUnit.ITEMS;
@@ -232,9 +232,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public boolean redstonePowered = false;
 
     // Internal tick state
-    /** Last synced {@link #count}; in passive mode count is recomputed each tick, so it must be part of the
-     *  storage-monitor dirty check or a count-only change wouldn't reach the client's gray number. */
-    private int lastReportedCount = -1;
+    /** Last synced {@link #getTargetCount()}; a passive target-only change must reach the client. */
+    private int lastReportedTargetCount = -1;
     /** Identity of the last loose summary object. The loose cache builds a NEW {@link InventorySummary} when
      *  it recomputes, so a changed reference is the precise "stock reading just refreshed (authoritative)"
      *  signal the monitor uses to confirm a fresh drop. */
@@ -250,12 +249,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  tick to ride out the mid-move "reads low" blip, then committed — keeps real drops responsive. */
     private boolean stockDropPending = false;
     private boolean sumDropPending = false;
-    /** Total-demand strategy only: the raw target the controller's {@link io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver}
-     *  computed for this gauge this tick (in units). Folded into {@link #count} by the storage monitor, holding a
-     *  DECREASE against the summary-refresh signal (see {@link #demandDropPending}) so the brief downstream-promise
-     *  demand dip doesn't flicker the target. */
+    /** Committed downstream-demand target in this gauge's unit. {@link #count} is applied as its configured floor. */
     public int passiveDemandTarget = 0;
-    /** One-refresh hold for a {@link #passiveDemandTarget} decrease, mirroring {@link #stockDropPending}. */
+    /** Total-demand solver's raw proposal for this tick, committed by the storage monitor with decrease hysteresis. */
+    private int computedPassiveDemandTargetCount = 0;
+    /** One-refresh hold for a computed passive-demand decrease, mirroring {@link #stockDropPending}. */
     private boolean demandDropPending = false;
     /** Last redstone OUTPUT state pushed to wired send-links; gates {@link #updateRedstoneOutput} so a steady gauge
      *  never re-walks its outgoing wires. {@code null} until first computed (forces an initial publish). */
@@ -437,9 +435,13 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     // ── Status ───────────────────────────────────────────────────────────────
 
-    /** The configured target threshold (Create's {@code count}). */
-    public int getCount() {
-        return count;
+    /** Fixed target in normal mode; configured minimum or downstream demand, whichever is greater, in passive mode. */
+    public int getTargetCount() {
+        return requestMode.isPassive() ? Math.max(count, passiveDemandTarget) : count;
+    }
+
+    public int getPassiveTargetCount() {
+        return requestMode.isPassive() ? passiveDemandTarget : 0;
     }
 
     public boolean isInfiniteStock() {
@@ -447,14 +449,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     }
 
     /**
-     * Whether the gauge has an active recipe target. A manual gauge becomes active once its target
-     * {@link #count} is non-zero; a passive mode gauge is <em>always</em> active — it
+     * Whether the gauge has an active recipe target. A manual gauge becomes active once its configured target is
+     * non-zero; a passive mode gauge is <em>always</em> active — it
      * manages a live, often-zero demand, so it must behave like a regular demand-0 gauge (satisfied,
      * green, bulb lit, labelled "stock/0") rather than an unconfigured one. Everything that used to test
      * {@code count == 0} for "inactive" goes through this instead.
      */
     public boolean isActive() {
-        return count != 0 || requestMode.isPassive();
+        return requestMode.isPassive() || getTargetCount() != 0;
     }
 
     /** Whether any incoming wire is an ingredient (LOGISTICS) connection. {@link #targetedBy()} now also holds redstone
@@ -530,7 +532,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * Count label drawn on the gauge face — replica of Create's
      * {@code FactoryPanelBehaviour#getCountLabelForValueBox}. Uses the synced {@link #stockLevel} as the
      * current network stock. Shows the stock (in stacks when {@code !upTo}), and when a target
-     * {@link #count} is set, "stock⏶/target" coloured by satisfaction, with the request marker.
+     * effective target is set, "stock⏶/target" coloured by satisfaction, with the request marker.
      */
     public String stockText() {
         return isInfiniteStock() ? "∞"
@@ -538,9 +540,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             : stockLevel / unit.toCountMultiplier(filter) + unit.suffix;
     }
 
-    /** The target threshold as shown on the gauge face ({@code count} in the gauge's unit). */
+    /** The effective target threshold as shown on the gauge face, in the gauge's unit. */
     public String demandText() {
-        return count + unit.suffix;
+        return getTargetCount() + unit.suffix;
     }
 
     public MutableComponent getCountLabel() {
@@ -590,27 +592,46 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             ProductionOrderManager.invalidateTasksFor(controller.getLevel(), networkId, gaugeId);
     }
 
-    /**
-     * Controller pre-pass hook: refresh the Passive Request target.
-     */
+    /** Standard-strategy pre-pass: refresh downstream demand immediately. The configured {@link #count} remains the
+     * passive minimum and is combined with this derived value by {@link #getTargetCount()}. */
     public void computeDemand() {
         if (!requestMode.isPassive() || controller == null) return;
-        int demand = 0;
+        long demand = 0;
         for (VirtualComponentPosition parentPos : targeting()) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
             if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
             int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;
 
+            int deficitRequests = parent.deficitRequestScaler();
+            if (deficitRequests <= 0) continue;   // satisfaction flags can lag the held quantities by one tick
             int parentRequests = conn.excludeFromRequestMultiplier ? 1 :
-                    Math.clamp(parent.effectiveRequestMultiplierCeiling(), 1, parent.deficitRequestScaler());
-            demand += conn.amount() * parentBatch * parentRequests;
+                    Math.min(parent.effectiveRequestMultiplierCeiling(), deficitRequests);
+            demand += (long) conn.amount() * parentBatch * parentRequests;
         }
         // External demand from open Production Orders (Stock Keeper blueprints targeting THIS gauge): a player
         // order acts like another downstream consumer, so the passive gauge produces to satisfy it too.
         if (gaugeId != null && controller.getLevel() != null)
             demand += ProductionOrderManager.externalDemand(controller.getLevel(), networkId, gaugeId);
-        count = demand <= 0 ? 0 : Math.ceilDiv(demand, unit.toCountMultiplier(filter));
+        int multiplier = Math.max(1, unit.toCountMultiplier(filter));
+        long units = demand <= 0 ? 0 : Math.ceilDiv(demand, multiplier);
+        setPassiveDemandTargetImmediately((int) Math.min(Integer.MAX_VALUE, units));
+    }
+
+    /** Stages the full solver's raw downstream target; the storage monitor commits it with decrease hysteresis. */
+    public void stagePassiveDemandTarget(int target) {
+        computedPassiveDemandTargetCount = Math.clamp(target, 0, unit.getMaxRequestCount());
+    }
+
+    private void setPassiveDemandTargetImmediately(int target) {
+        passiveDemandTarget = Math.clamp(target, 0, unit.getMaxRequestCount());
+        computedPassiveDemandTargetCount = passiveDemandTarget;
+        demandDropPending = false;
+    }
+
+    /** Clears derived passive state when entering/leaving passive operation or resetting the recipe. */
+    public void resetPassiveDemand() {
+        setPassiveDemandTargetImmediately(0);
     }
 
     /**
@@ -619,7 +640,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * demand.
      */
     private boolean isDemandingIngredients() {
-        if (count == 0 || waitingForNetwork || isRedstonePaused() || isMissingAddress())
+        if (getTargetCount() == 0 || waitingForNetwork || isRedstonePaused() || isMissingAddress())
             return false;
         return !promisedSatisfied;
     }
@@ -666,18 +687,23 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
         promisedCount = promised;              // the open-promise number is always shown live (the ⏶ box)
 
-        // Total-demand strategy: fold the solver's raw target into the gauge's count, holding a DECREASE against the
-        // summary-refresh signal exactly like the stock/sum holds above. An increase (more downstream demand) applies
-        // at once; a decrease is held one refresh so the transient downstream-promise dip — demand drops a few ticks
-        // before the ingredient it reserved leaves stock.
+        // Total-demand strategy: commit the solver's raw downstream target, holding a DECREASE against the summary-
+        // refresh signal exactly like the stock/sum holds above. The configured count remains untouched as the floor.
         if (requestMode.isPassive() && ServerConfig.passiveTotalDemand()) {
-            if (passiveDemandTarget >= count) { count = passiveDemandTarget; demandDropPending = false; }
-            else if (demandDropPending)       { count = passiveDemandTarget; demandDropPending = false; }
-            else if (refreshed)               { demandDropPending = true; }
-            // else: hold the current (higher) count until the next refresh confirms the decrease
+            if (computedPassiveDemandTargetCount >= passiveDemandTarget) {
+                passiveDemandTarget = computedPassiveDemandTargetCount;
+                demandDropPending = false;
+            } else if (demandDropPending) {
+                passiveDemandTarget = computedPassiveDemandTargetCount;
+                demandDropPending = false;
+            } else if (refreshed) {
+                demandDropPending = true;
+            }
+            // else: hold the current (higher) downstream target until the next refresh confirms the decrease
         }
 
-        int demand = count * unit.toCountMultiplier(filter);
+        int targetCount = getTargetCount();
+        int demand = targetCount * unit.toCountMultiplier(filter);
         satisfied = stockLevel >= demand;
         promisedSatisfied = heldSum >= demand;
 
@@ -685,10 +711,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
         if (!redstoneChanged && stockLevel == prevStock && promisedCount == prevPromised
                 && satisfied == wasSatisfied
-                && promisedSatisfied == prevPromiseSatisfy && lastReportedCount == count)
+                && promisedSatisfied == prevPromiseSatisfy && lastReportedTargetCount == targetCount)
             return;
 
-        lastReportedCount = count;
+        lastReportedTargetCount = targetCount;
 
         // Bulb-update chime on the unsatisfied → satisfied transition (Create's tickStorageMonitor),
         // played at the controller block so nearby players hear the gauge light up.
@@ -1005,8 +1031,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  batch. Pure O(1) field arithmetic — no stock/summary reads. */
     public int deficitRequestScaler() {
         int outputPerRequest = Math.max(1, recipeOutput) * effectiveBatch();
-        int deficit = Math.max(0, count * unit.toCountMultiplier(filter) - effectiveHeld());
-        return (int) ceilDiv(deficit, outputPerRequest);
+        long target = (long) getTargetCount() * unit.toCountMultiplier(filter);
+        long deficit = Math.max(0, target - effectiveHeld());
+        return (int) Math.min(Integer.MAX_VALUE, ceilDiv(deficit, outputPerRequest));
     }
 
     // ── Request multiplier ────────────────────────────────────────────────────
@@ -1351,6 +1378,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     @Override
     public void writeClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(count);
+        buf.writeVarInt(passiveDemandTarget);
         buf.writeBoolean(satisfied);
         buf.writeBoolean(promisedSatisfied);
         buf.writeBoolean(waitingForNetwork);
@@ -1363,6 +1391,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     @Override
     public void readClientState(net.minecraft.network.RegistryFriendlyByteBuf buf) {
         count = buf.readVarInt();
+        passiveDemandTarget = buf.readVarInt();
         satisfied = buf.readBoolean();
         promisedSatisfied = buf.readBoolean();
         waitingForNetwork = buf.readBoolean();
@@ -1484,8 +1513,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     protected void readGaugeNBT(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         filter = ItemStack.parseOptional(registries, tag.getCompound("Filter"));
         ignoreData = tag.getBoolean("IgnoreData");
-        count = tag.getInt("Count");
         unit = ThresholdUnit.fromName(tag.getString("Unit"));
+        count = Math.clamp(tag.getInt("Count"), 0, unit.getMaxRequestCount());
         requestMode = tag.contains("RequestMode")
                 ? RequestMode.fromName(tag.getString("RequestMode"))
                 : tag.getBoolean("Passive") ? RequestMode.PASSIVE : RequestMode.NORMAL;

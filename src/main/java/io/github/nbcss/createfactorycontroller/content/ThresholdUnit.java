@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
  * box can cycle between states.
  */
 public enum ThresholdUnit {
-    ITEMS("", Type.ITEM, 1_000) {
+    ITEMS("", Type.ITEM, 9_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -20,7 +20,7 @@ public enum ThresholdUnit {
             return CreateLang.translate("schedule.condition.threshold.items").component();
         }
     },
-    STACKS("▤", Type.ITEM, 1_000) {
+    STACKS("▤", Type.ITEM, 9_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return Math.max(1, stack.getMaxStackSize());
@@ -31,7 +31,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in millibuckets (1 mB = the unit value). Only valid for a fluid filter. */
-    FLUID_MB("mB", Type.FLUID, 10_000) {
+    FLUID_MB("mB", Type.FLUID, 9_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -42,7 +42,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in buckets (1 B = 1000 mB). Only valid for a fluid filter. */
-    FLUID_BUCKET("B", Type.FLUID, 1_000) {
+    FLUID_BUCKET("B", Type.FLUID, 9_000) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1000;

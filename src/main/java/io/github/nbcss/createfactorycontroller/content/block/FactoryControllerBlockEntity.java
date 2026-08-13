@@ -83,7 +83,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         .thenComparingInt(pos -> pos.pos().getY())
         .thenComparingInt(pos -> pos.pos().getZ());
 
-    public static final int DATA_VERSION = 1;
+    public static final int DATA_VERSION = 2;
     /** Version of the data most recently {@link #read}; {@code 0} = pre-versioning. For future migration logic. */
 
     /** Whether the given position lies on the finite ±{@link #BOARD_LIMIT}-cell board. */
@@ -746,6 +746,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             gauge.unit = ThresholdUnit.FLUID_BUCKET;
         else if (!fluid && gauge.unit.isFluid())
             gauge.unit = ThresholdUnit.ITEMS;
+        if (gauge.requestMode.isPassive())
+            gauge.resetPassiveDemand();   // filter/unit changes invalidate the derived target's unit and identity
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible
         gauge.publishRedstoneOutput();
         settleConnections();   // fold any SEND links this gauge's (in)activation just flagged
@@ -784,6 +786,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (reset) {
             gauge.filter = ItemStack.EMPTY;
             gauge.count = 0;
+            gauge.resetPassiveDemand();
             gauge.unit = ThresholdUnit.ITEMS;
             gauge.requestMode = RequestMode.NORMAL;
             gauge.recipeAddress = "";
@@ -819,9 +822,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         gauge.promiseClearingInterval = Math.clamp(promiseInterval, -1, 31);
         gauge.promiseLimit = Math.clamp(promiseLimit, 0, 999);
         gauge.promiseLimitByAddress = promiseLimitByAddress;
+        RequestMode previousRequestMode = gauge.requestMode;
+        ThresholdUnit previousUnit = gauge.unit;
         gauge.unit = mode;
         gauge.requestMode = requestMode;
-        if (!requestMode.isPassive()) gauge.count = Math.max(0, count);
+        gauge.count = Math.clamp(count, 0, mode.getMaxRequestCount());
+        if (previousRequestMode.isPassive() != requestMode.isPassive()
+                || requestMode.isPassive() && previousUnit != mode)
+            gauge.resetPassiveDemand();
         gauge.activeCraftingArrangement = new ArrayList<>(craftingArrangement);
         gauge.mode = workMode;
         gauge.recipeSlots = workMode == GaugeWorkMode.CUSTOM

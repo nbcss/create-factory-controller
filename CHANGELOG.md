@@ -2,9 +2,10 @@
 
 Features:
 - Allow Ctrl-Click to exclude ingredient from request multiplier
+- Follow Demand mode allow to set minimum target stock amount now.
 
 Optimization:
-- Improve performance of controller screen.
+- Improve performance of controller GUI.
 - Improve the performance with fluid logistics mod.
 
 Changes:
@@ -12,6 +13,7 @@ Changes:
 - Improve blueprint import UX.
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
 - Redstone Link frequency item icon is larger now.
+- Request limit changed to 9000 to all units (Item/Stack/Fluid mB/Fluid B)
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.

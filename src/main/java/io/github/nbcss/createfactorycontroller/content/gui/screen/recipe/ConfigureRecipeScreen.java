@@ -1244,18 +1244,23 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         // Count box tooltip
-        if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H))
-            tooltip = requestMode.isPassive()
-                ? List.of(
-                    CreateLang.translate("factory_panel.target_amount").color(ScrollInput.HEADER_RGB).component(),
-                    Component.translatable("createfactorycontroller.gui.threshold.auto_managed")
-                        .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC))
-                : List.of(
-                    CreateLang.translate("factory_panel.target_amount").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.translate("gui.scrollInput.scrollToModify")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                    CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+        if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
+            List<Component> countTooltip = new ArrayList<>();
+            countTooltip.add(Component.translatable(requestMode.isPassive() ?
+                            "createfactorycontroller.gui.threshold.minimum_target" :
+                            "createfactorycontroller.gui.threshold.stock_target")
+                            .withColor(ScrollInput.HEADER_RGB.getRGB()));
+            if (g != null && requestMode.isPassive()) {
+                countTooltip.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
+                                 Component.literal("" + g.getPassiveTargetCount()).withStyle(ChatFormatting.WHITE))
+                        .withStyle(ChatFormatting.GRAY));
+            }
+            countTooltip.add(CreateLang.translate("gui.scrollInput.scrollToModify")
+                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+            countTooltip.add(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
+                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+            tooltip = countTooltip;
+        }
 
         // Unit box tooltip
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
@@ -1361,19 +1366,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.pose().popPose();
         }
         // demand
-        int displayCount = thresholdCount;
-        if (requestMode.isPassive() && behaviour != null && behaviour.requestMode.isPassive()) {
-            displayCount = Math.max(0, behaviour.count);
-        }
-
-        String countStr;
-        if (countEditing && !requestMode.isPassive()) {
-            countStr = (countEdit.isEmpty() ? "" : countEdit) + ((System.currentTimeMillis() / 400) % 2 == 0 ? "_" : "");
+        String counttext;
+        if (countEditing) {
+            counttext = (countEdit.isEmpty() ? "" : countEdit) + ((System.currentTimeMillis() / 400) % 2 == 0 ? "_" : "");
         } else {
-            countStr = displayCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(displayCount);
+            counttext = thresholdCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(thresholdCount);
         }
         int countColor = requestMode.isPassive() ? 0xFF9ECFFC : 0xFFFFFFFF;
-        gfx.drawString(font, countStr, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
+        gfx.drawString(font, counttext, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
         // unit
         gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
 
@@ -1445,7 +1445,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        if (onCountBox && (button == 0 || button == 1) && !requestMode.isPassive()) {
+        if (onCountBox && (button == 0 || button == 1)) {
             countEditing = true;
             countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
             setFocused(null);
@@ -1584,12 +1584,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Threshold count box
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
             if (countEditing) commitCountEdit();
-            if (!requestMode.isPassive()) {
-                // Fluid threshold is a whole number in the unit box's unit.
-                step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
-                thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
-                playScrollSound();
-            }
+            // Fluid threshold is a whole number in the unit box's unit.
+            step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
+            thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
+            playScrollSound();
             return true;
         }
         if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
@@ -1652,16 +1650,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     private void cycleRequestMode() {
-        RequestMode next = RequestMode.byOrdinal(requestMode.ordinal() + 1);
-        boolean wasPassive = requestMode.isPassive();
-        boolean nowPassive = next.isPassive();
-        if (wasPassive && !nowPassive) {
-            VirtualGaugeBehaviour behaviour = gauge();
-            thresholdCount = Mth.clamp(behaviour != null ? behaviour.count : 0, 0, mode.getMaxRequestCount());
-        } else if (!wasPassive && nowPassive) {
-            thresholdCount = 0;
-        }
-        requestMode = next;
+        requestMode = RequestMode.byOrdinal(requestMode.ordinal() + 1);
         if (requestModeButton != null) requestModeButton.setIcon(iconFor(requestMode));
         playClickSound();
     }

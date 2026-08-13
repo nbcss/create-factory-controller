@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 
 /** Client-local persistence for reusable Factory Controller component blueprints. */
 public final class BlueprintStorage {
-    public static final int FORMAT_VERSION = 1;
+    public static final int FORMAT_VERSION = 2;
     public static final String EXTENSION = ".nbt";
     public static final int MAX_NAME_LENGTH = 50;
     public static final int MAX_NOTE_LENGTH = 500;

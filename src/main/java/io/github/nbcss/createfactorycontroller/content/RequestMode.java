@@ -4,7 +4,7 @@ package io.github.nbcss.createfactorycontroller.content;
  * How a virtual gauge sources its target amount and whether it's player-orderable:
  * <ul>
  *   <li>{@link #NORMAL} — a fixed manual threshold (Create's default behaviour).</li>
- *   <li>{@link #PASSIVE} — target auto-computed from live downstream demand (no manual count).</li>
+ *   <li>{@link #PASSIVE} — target is the greater of the configured minimum and live downstream demand.</li>
  *   <li>{@link #PASSIVE_AND_ALLOW_ORDER} — passive, and also exposed in network Stock Keepers as an
  *       orderable Promise Blueprint so players can add demand by hand.</li>
  * </ul>
