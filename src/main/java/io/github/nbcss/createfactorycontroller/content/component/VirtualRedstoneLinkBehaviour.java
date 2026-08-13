@@ -168,13 +168,13 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
         if (RedstoneConnection.TYPE.equals(type) && !receive) return fail(this, sink);
-        return sink instanceof VirtualRedstoneLinkBehaviour ? fail(this, sink) : ValidationResult.SUCCESS;
+        return ValidationResult.SUCCESS;
     }
 
     @Override
     public ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source) {
         if (RedstoneConnection.TYPE.equals(type) && receive) return fail(source, this);
-        return source instanceof VirtualRedstoneLinkBehaviour ? fail(source, this) : ValidationResult.SUCCESS;
+        return ValidationResult.SUCCESS;
     }
 
     private static ValidationResult fail(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
@@ -309,6 +309,17 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         for (Connection conn : redstone) {
             affected.add(conn.from);
             affected.add(conn.to);                                  // both endpoints (same set after the reverse)
+            VirtualComponentBehaviour source = siblingAt(conn.from);
+            VirtualComponentBehaviour sink = siblingAt(conn.to);
+            if (source instanceof VirtualRedstoneLinkBehaviour sourceLink
+                    && sink instanceof VirtualRedstoneLinkBehaviour sinkLink) {
+                if (!sourceLink.receive || sinkLink.receive) {
+                    if (controller != null)
+                        controller.syncConnectionRemoved(ConnectionKey.of(conn));
+                    graph().remove(conn.to, conn.from);
+                }
+                continue;
+            }
             if (position.equals(conn.from) == receive) continue;    // already oriented for the new mode
             if (controller != null)
                 controller.syncConnectionRemoved(ConnectionKey.of(conn));   // reversing re-keys the wire
