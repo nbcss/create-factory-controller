@@ -11,6 +11,7 @@ Changes:
 - Removed component limit in blueprint selection.
 - Improve blueprint import UX.
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
+- Redstone Link frequency item icon is larger now.
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.

@@ -65,9 +65,9 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
                 (behaviour.isPowered() ? "on" : "off");
         BatchedBlitter.forSprite(sprite(path)).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
 
-        // The two type frequency icons (half-size): Red top-left, Blue bottom-right.
-        renderFreqIcon(gfx, behaviour.redFreq, x0 + 6, y0 + 3);
-        renderFreqIcon(gfx, behaviour.blueFreq, x0 + 6, y0 + 9);
+        // The two 6x6 frequency icons: Red top, Blue bottom.
+        renderFreqIcon(gfx, behaviour.redFreq, x0 + 5, y0 + 2);
+        renderFreqIcon(gfx, behaviour.blueFreq, x0 + 5, y0 + 8);
 
         // While holding an item, cover the hovered half (top = Red, bottom = Blue) to show which type a click sets.
         ItemStack cursor = Minecraft.getInstance().player.containerMenu.getCarried();
@@ -82,7 +82,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         if (stack.isEmpty()) return;
         gfx.pose().pushPose();
         gfx.pose().translate(x, y, 0);
-        gfx.pose().scale(0.25f, 0.25f, 0.25f);
+        gfx.pose().scale(0.375f, 0.375f, 0.375f);
         gfx.renderItem(stack, 0, 0);
         gfx.pose().popPose();
     }
