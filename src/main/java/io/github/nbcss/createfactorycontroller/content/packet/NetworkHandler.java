@@ -36,6 +36,8 @@ public final class NetworkHandler {
         registrar.playToServer(RequestPanelResyncPacket.TYPE, RequestPanelResyncPacket.STREAM_CODEC, RequestPanelResyncPacket::handle);
         registrar.playToServer(ReturnCarriedPacket.TYPE, ReturnCarriedPacket.STREAM_CODEC, ReturnCarriedPacket::handle);
         registrar.playToServer(BlueprintPlacePacket.TYPE, BlueprintPlacePacket.STREAM_CODEC, BlueprintPlacePacket::handle);
+        registrar.playToServer(FilterLinkConfigurePacket.TYPE, FilterLinkConfigurePacket.STREAM_CODEC, FilterLinkConfigurePacket::handle);
+        registrar.playToClient(FilterLinkPlacedPacket.TYPE, FilterLinkPlacedPacket.STREAM_CODEC, FilterLinkPlacedPacket::handle);
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
         registrar.playToClient(SyncPanelDeltaPacket.TYPE, SyncPanelDeltaPacket.STREAM_CODEC, SyncPanelDeltaPacket::handle);
         registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);

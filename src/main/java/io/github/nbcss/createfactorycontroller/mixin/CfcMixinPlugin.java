@@ -15,6 +15,8 @@ public class CfcMixinPlugin implements IMixinConfigPlugin {
         "io.github.nbcss.createfactorycontroller.mixin.LogisticsGenericManagerMixin";
     private static final String GENERIC_PROMISE_CODEC_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.GenericPromiseCodecMixin";
+    private static final String DEPLOYER_ORDER_PACKET_MIXIN =
+        "io.github.nbcss.createfactorycontroller.mixin.GenericOrderRequestPacketMixin";
     private static final String REPACKAGE_MIXIN =
         "io.github.nbcss.createfactorycontroller.mixin.PackageRepackageHelperMixin";
     private static final String CFA_MIXIN =
@@ -42,6 +44,7 @@ public class CfcMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (DEPLOYER_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
         if (GENERIC_PROMISE_CODEC_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
+        if (DEPLOYER_ORDER_PACKET_MIXIN.equals(mixinClassName)) return DEPLOYER_PRESENT;
         if (REPACKAGE_MIXIN.equals(mixinClassName)) return !EXTRA_GAUGES_PRESENT;
         if (CFA_MIXIN.equals(mixinClassName)) return CFA_PRESENT;
         if (PHANTOM_NOTIFY_MIXIN.equals(mixinClassName)) return CREATEPHANTOM_PRESENT;

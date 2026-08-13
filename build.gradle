@@ -98,16 +98,25 @@ def createFluidJar = fileTree(dir: "lib", include: ["fluid-*.jar"])
 def repackagedJar = fileTree(dir: "lib", include: ["repackaged-*.jar"])
 def fluidRuntime = (project.findProperty('fluidRuntime') ?: 'none').toString().toLowerCase()
 
+// The `run-clean` IntelliJ profile passes -PcleanRuntime. It gets an isolated game directory and only the required
+// runtime stack (NeoForge, Minecraft, Create + Create's transitives, and CFC): no Deployer, JEI, FL, fluid addon, or
+// jars copied into the normal run/mods directory.
+def cleanRuntime = project.hasProperty('cleanRuntime')
+if (cleanRuntime && fluidRuntime != 'none')
+    throw new GradleException("-PcleanRuntime cannot be combined with -PfluidRuntime")
+
 // Deployer is a SOFT dependency. By default it's on the dev runtime; pass -PnoDeployer (see the
 // "runClient (No Deployer)" run config) to launch the client without it and exercise the no-Deployer code paths
 // (mixin plugin skips the Deployer mixin, keeper tab is replaced by the in-GUI button, etc.).
-def withDeployer = !project.hasProperty('noDeployer')
+def withDeployer = !cleanRuntime && !project.hasProperty('noDeployer')
 
 // Create Factory Logistics is a SOFT dependency and an OPT-IN dev runtime: pass -PfactoryLogistics to launch the
 // client with FL on the runtime (see the "runClient (Factory Logistics)" IntelliJ run config). FL is mutually
 // incompatible with Deployer AND with the fluid-package addons (fluidlogistics/fluid/repackaged), so a conflict-free
 // FL runtime needs -PnoDeployer (enforced below) and the default -PfluidRuntime=none (no fluid addon on the runtime).
 def withFactoryLogistics = project.hasProperty('factoryLogistics')
+if (cleanRuntime && withFactoryLogistics)
+    throw new GradleException("-PcleanRuntime cannot be combined with -PfactoryLogistics")
 if (withFactoryLogistics && withDeployer)
     throw new GradleException("-PfactoryLogistics requires -PnoDeployer (Create Factory Logistics and Deployer are mutually exclusive)")
 
@@ -134,7 +143,8 @@ neoForge {
             // deployer (breaks under -PnoDeployer), and create_mobile_packages bundles create_factory_abstractions
             // (collides with FL's own JiJ'd copy). Give the FL run its own game directory so its mods/ folder is
             // empty — FL, Create and CFC all come from the classpath. Drop FL-compatible test mods into run-fl/mods.
-            if (withFactoryLogistics) gameDirectory = project.file('run-fl')
+            if (cleanRuntime) gameDirectory = project.file('run-clean')
+            else if (withFactoryLogistics) gameDirectory = project.file('run-fl')
 
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
@@ -238,7 +248,9 @@ dependencies {
 
     // JEI (optional): compile against the API only; run the full mod in dev for testing.
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
-    localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
+    if (!cleanRuntime) {
+        localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
+    }
 
     // Inventory Profiles Next (optional): annotation API only. IPN reads @IPNIgnore reflectively when installed;
     // keeping the dependency compile-only avoids bundling or requiring IPN at runtime.

@@ -19,6 +19,7 @@ import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
+import io.github.nbcss.createfactorycontroller.content.helper.CfcFilterDispatch;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
@@ -649,8 +650,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         boolean refreshed = summary != lastSummaryRef;
         lastSummaryRef = summary;
 
-        // A fluid's network availability comes from the per-link summaries (getStockOf) — the exact path CFL's
-        // own fluid logic uses — rather than the merged network summary, which may not carry the virtual tanks.
         int inStorage = networkStockOf(filter);
         int promised = getPromised();
         int rawSum = inStorage + promised;
@@ -921,55 +920,60 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                     .toList()),
                 batch * scaler));
 
-        List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
-        List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
-        for (Map.Entry<UUID, List<BigItemStack>> netEntry : dispatchedDemand.entrySet()) {
-            UUID net = netEntry.getKey();
-            // In CUSTOM mode use the ordered per-slot list (with gap placeholders); otherwise the merged demand.
-            List<BigItemStack> netItems = custom ? dispatchedOrder.getOrDefault(net, netEntry.getValue()) : netEntry.getValue();
-            // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order
-            List<BigItemStack> externalFluids = netItems.stream()
-                .filter(b -> !b.stack.isEmpty() && !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
-            if (!externalFluids.isEmpty()) {
-                List<BigItemStack> items = netItems.stream()
-                    .filter(b -> b.stack.isEmpty() || FluidCompat.usesCreateItemLogistics(b.stack)).toList();
-                PackageOrderWithCrafts itemOrder = new PackageOrderWithCrafts(new PackageOrder(items), crafts);
-                if (!FluidCompat.broadcastRepackagedRecipe(net, itemOrder, externalFluids, recipeAddress)) {
+        CfcFilterDispatch.set(filter);
+        try {
+            List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
+            List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
+            for (Map.Entry<UUID, List<BigItemStack>> netEntry : dispatchedDemand.entrySet()) {
+                UUID net = netEntry.getKey();
+                // In CUSTOM mode use the ordered per-slot list (with gap placeholders); otherwise the merged demand.
+                List<BigItemStack> netItems = custom ? dispatchedOrder.getOrDefault(net, netEntry.getValue()) : netEntry.getValue();
+                // A network with Repackaged generic fluid ingredients is dispatched as ONE unified order
+                List<BigItemStack> externalFluids = netItems.stream()
+                    .filter(b -> !b.stack.isEmpty() && !FluidCompat.usesCreateItemLogistics(b.stack)).toList();
+                if (!externalFluids.isEmpty()) {
+                    List<BigItemStack> items = netItems.stream()
+                        .filter(b -> b.stack.isEmpty() || FluidCompat.usesCreateItemLogistics(b.stack)).toList();
+                    PackageOrderWithCrafts itemOrder = new PackageOrderWithCrafts(new PackageOrder(items), crafts);
+                    if (!FluidCompat.broadcastRepackagedRecipe(net, itemOrder, externalFluids, recipeAddress)) {
+                        setConnectionsSuccess(false);
+                        return;
+                    }
+                    continue;
+                }
+                // A virtual fluid tank ingredient (CFL/CreateFluid) must be dispatched via broadcastPackageRequest — see below.
+                if (netItems.stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
+                    fluidNetworks.add(new java.util.AbstractMap.SimpleEntry<>(net, netItems));
+                    continue;
+                }
+                PackageOrderWithCrafts order =
+                    new PackageOrderWithCrafts(new PackageOrder(netItems), crafts);
+                Multimap<PackagerBlockEntity, PackagingRequest> found =
+                    LogisticsManager.findPackagersForRequest(net, order, null, recipeAddress);
+                if (found.isEmpty()) return;     // no packager could serve this network
+                for (PackagerBlockEntity packager : found.keySet())
+                    if (packager.isTooBusyFor(RequestType.RESTOCK)) return;
+                dispatch.add(found);
+            }
+
+            for (Map.Entry<UUID, List<BigItemStack>> netEntry : fluidNetworks) {
+                PackageOrderWithCrafts order =
+                    new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);
+                if (!LogisticsManager.broadcastPackageRequest(netEntry.getKey(), RequestType.RESTOCK, order, null, recipeAddress)) {
                     setConnectionsSuccess(false);
                     return;
                 }
-                continue;
             }
-            // A virtual fluid tank ingredient (CFL/CreateFluid) must be dispatched via broadcastPackageRequest — see below.
-            if (netItems.stream().anyMatch(b -> FluidCompat.isFluidFilter(b.stack))) {
-                fluidNetworks.add(new java.util.AbstractMap.SimpleEntry<>(net, netItems));
-                continue;
-            }
-            PackageOrderWithCrafts order =
-                new PackageOrderWithCrafts(new PackageOrder(netItems), crafts);
-            Multimap<PackagerBlockEntity, PackagingRequest> found =
-                LogisticsManager.findPackagersForRequest(net, order, null, recipeAddress);
-            if (found.isEmpty()) return;     // no packager could serve this network
-            for (PackagerBlockEntity packager : found.keySet())
-                if (packager.isTooBusyFor(RequestType.RESTOCK)) return;
-            dispatch.add(found);
-        }
 
-        for (Map.Entry<UUID, List<BigItemStack>> netEntry : fluidNetworks) {
-            PackageOrderWithCrafts order =
-                new PackageOrderWithCrafts(new PackageOrder(netEntry.getValue()), crafts);
-            if (!LogisticsManager.broadcastPackageRequest(netEntry.getKey(), RequestType.RESTOCK, order, null, recipeAddress)) {
-                setConnectionsSuccess(false);
-                return;
-            }
+            // All clear — perform the item requests and promise the produced output.
+            for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
+                LogisticsManager.performPackageRequests(req);
+            setConnectionsSuccess(true);   // ingredients were dispatched → flash white
+            addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch * scaler);
+            controller.setChanged();
+        } finally {
+            CfcFilterDispatch.clear();
         }
-
-        // All clear — perform the item requests and promise the produced output.
-        for (Multimap<PackagerBlockEntity, PackagingRequest> req : dispatch)
-            LogisticsManager.performPackageRequests(req);
-        setConnectionsSuccess(true);   // ingredients were dispatched → flash white
-        addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch * scaler);
-        controller.setChanged();
     }
 
     /**
