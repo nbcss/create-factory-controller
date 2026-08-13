@@ -132,8 +132,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         @Override
         public int stockOf(VirtualGaugeBehaviour gauge, ItemStack stack) {
             if (stack.isEmpty()) return 0;
-            if (FluidCompat.isFluidFilter(stack))
-                return LogisticsManager.getStockOf(gauge.networkId, stack, null);
             if (gauge.ignoreData) {
                 List<BigItemStack> variants = gauge.getRelevantSummary().getItemMap().get(stack.getItem());
                 if (variants == null) return 0;
@@ -152,7 +150,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             // Pass EXPIRED_TICKS as the expiry: this removes only OUR promises that have latched to that sentinel
             // (past their own ttl) — a base promise's real ticksExisted never reaches it, so we never clear another
             // gauge's or Create's live promises. Our not-yet-aged promises sit at ticksExisted 0 and are untouched.
-            if (!gauge.ignoreData || FluidCompat.isFluidFilter(gauge.filter))
+            if (!gauge.ignoreData)
                 return promises.getTotalPromisedAndRemoveExpired(gauge.filter, ControllerPromise.EXPIRED_TICKS);
             List<ItemStack> variants = new ArrayList<>();
             for (RequestPromise p : promises.flatten(false)) {
@@ -846,7 +844,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             for (ItemStack cell : activeCraftingArrangement) {
                 if (cell.isEmpty()) { craftPattern.add(ItemStack.EMPTY); continue; }
                 VirtualGaugeBehaviour source = findIngredientSource(cell);
-                if (source != null && source.ignoreData && !FluidCompat.isFluidFilter(source.filter)) {
+                if (source != null && source.ignoreData) {
                     ItemStack chosen = pinned != null ? pinned.get(source)
                         : takeVariant(variantPools.computeIfAbsent(source, this::variantPool), batch);
                     if (chosen == null || chosen.isEmpty()) { setConnectionsSuccess(false); return; }  // no single variant has enough
@@ -867,7 +865,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 // An ignore-data ingredient may be served by any variant of its item type: resolve the demand
                 // into the concrete in-stock variants (Create's request/extraction matches exact components), so
                 // the recipe consumes whatever is actually on the network.
-                if (source.ignoreData && !FluidCompat.isFluidFilter(ingredient)) {
+                if (source.ignoreData) {
                     InventorySummary summary = LogisticsManager.getSummaryOfNetwork(source.networkId, true);
                     List<BigItemStack> variants = summary.getItemMap().get(ingredient.getItem());
                     int remaining = needed;
@@ -1157,7 +1155,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (ItemStack cell : activeCraftingArrangement) {
             if (cell.isEmpty()) continue;
             VirtualGaugeBehaviour source = findIngredientSource(cell);
-            if (source != null && source.ignoreData && !FluidCompat.isFluidFilter(source.filter))
+            if (source != null && source.ignoreData)
                 cellsPerSource.merge(source, 1, Integer::sum);
         }
         Map<VirtualGaugeBehaviour, ItemStack> pinned = new HashMap<>();
@@ -1196,7 +1194,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                     boolean fluid = FluidCompat.isFluidFilter(src.filter);
                     int cnt = Math.clamp(slot.count(), 1, fluid ? Integer.MAX_VALUE : Math.max(1, src.filter.getMaxStackSize()));
                     ItemStack shipped = src.filter;
-                    if (src.ignoreData && !fluid) {
+                    if (src.ignoreData) {
                         shipped = takeVariant(variantPools.computeIfAbsent(src, this::variantPool), cnt);
                         if (shipped.isEmpty()) return null;   // no single variant has enough for this cell
                     }

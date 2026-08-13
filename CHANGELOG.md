@@ -5,6 +5,7 @@ Features:
 
 Optimization:
 - Improve performance of controller screen.
+- Improve the performance with fluid logistics mod.
 
 Changes:
 - Removed component limit in blueprint selection.
