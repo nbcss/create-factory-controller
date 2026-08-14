@@ -2,7 +2,8 @@
 
 Features:
 - Allow Ctrl-Click to exclude ingredient from request multiplier
-- Follow Demand mode allow to set minimum target stock amount now.
+- Follow Demand mode allow to set minimum target stock amount now
+- Render colored outline to connected components when hover over a component
 
 Optimization:
 - Improve performance of controller GUI.

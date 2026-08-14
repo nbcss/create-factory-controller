@@ -75,13 +75,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector2d;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @IPNIgnore
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
@@ -176,7 +170,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private final List<ConnectionWidget> hoverHits = new ArrayList<>();
     private long connHoverSinceMs = 0;
     private static final long CONN_TOOLTIP_DELAY_MS = 500;
-    // Arrow-mode lock
     private boolean connArrowLocked = false;
     private int lockMouseX, lockMouseY;
     // Last cursor position seen by render(), so keyPressed (which has no mouse coords) can capture the lock anchor.
@@ -769,6 +762,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int TARGET_RED   = 0xFF3333;
     private static final int TARGET_GREEN = 0x33CC33;   // also the selected-component mark
     private static final int TARGET_BLUE  = 0x55AAFF;
+    // Connection-neighbour tints
+    private static final int TARGET_SOURCE      = 0x61d6f2;
+    private static final int TARGET_SINK        = 0xfcd860;
+    private static final int TARGET_SOURCE_SINK = 0xb7ed9f;
     private static final long PREVIEW_FLASH_MS = 900;
 
     /** Blue reticle over every component on the network currently selected in the network selector. */
@@ -781,12 +778,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private void renderHoverTarget(GuiGraphics graphics) {
-        // Source gauge of the active action mode — green, drawn first and given priority.
         VirtualComponentPosition source = pendingConnectionTarget != null ? pendingConnectionTarget : pendingRelocateTarget;
         if (source != null) renderTarget(graphics, source, TARGET_GREEN);
 
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
-        boolean hoverHasGauge = componentAt(hoveredPosition) != null;
+        final VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
         ItemStack carried = menu.getCarried();
 
         if (pendingConnectionTarget != null) {
@@ -813,7 +809,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         } else if (pendingRelocateTarget != null) {
             // Relocate mode
-            boolean valid = !hoverHasGauge && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            boolean valid = hovered != null && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
             VirtualComponentBehaviour moving = componentAt(pendingRelocateTarget);
             if (valid && moving != null) renderGhostAt(graphics, hoveredPosition, moving.getItem());   // ghost under the target
             renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
@@ -821,7 +817,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Holding a component
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
-            boolean valid = !hoverHasGauge && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            boolean valid = hovered != null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
             if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
             renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
@@ -832,8 +828,24 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         } else {
             // Empty cursor
-            if (hoverHasGauge) renderTarget(graphics, hoveredPosition, TARGET_WHITE);
+            if (hovered != null) {
+                renderConnectionNeighbours(graphics, hovered);
+                renderTarget(graphics, hoveredPosition, TARGET_WHITE);
+            }
         }
+    }
+
+    private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentBehaviour hovered) {
+        Set<VirtualComponentPosition> sources = new LinkedHashSet<>();
+        for (Connection conn : hovered.targetedBy().values())
+            sources.add(conn.from);
+        Set<VirtualComponentPosition> sinks = new LinkedHashSet<>();
+        for (Connection conn : hovered.outgoingConnections())
+            sinks.add(conn.to);
+        for (VirtualComponentPosition p : sources)
+            renderTarget(graphics, p, sinks.contains(p) ? TARGET_SOURCE_SINK : TARGET_SOURCE);
+        for (VirtualComponentPosition p : sinks)
+            if (!sources.contains(p)) renderTarget(graphics, p, TARGET_SINK);
     }
 
     /** In connection mode, the resolver result for wiring the currently-hovered component to the pending target, or
