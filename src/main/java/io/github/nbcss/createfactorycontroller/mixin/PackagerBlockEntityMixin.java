@@ -15,8 +15,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Filter Link: stamp the dispatch-time filter onto fresh packages and re-apply it when a box is unwrapped.
- * (The Create #10496 logistics bugfixes that used to live here now ship in the bundled Higher Logistics Patch
- * mod.)
  */
 @Mixin(value = PackagerBlockEntity.class, remap = false)
 public abstract class PackagerBlockEntityMixin {

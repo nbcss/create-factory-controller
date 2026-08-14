@@ -7,5 +7,8 @@
     "InventorySummaryMixin",
     "PackagerBlockEntityMixin"
   ],
+  "client": [
+    "StockKeeperRequestScreenMixin"
+  ],
   "refmap": "createhigherlogisticspatch.refmap.json"
 }
