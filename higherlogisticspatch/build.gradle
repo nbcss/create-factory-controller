@@ -1,0 +1,113 @@
+// Create: Higher Logistics Patch
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev'
+    id 'idea'
+}
+
+version = higher_logistics_patch_version
+group = 'io.github.nbcss.higherlogisticspatch'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "NeoForged"
+        url = "https://maven.neoforged.net/releases"
+    }
+    maven {
+        name = "Create Maven"
+        url = "https://maven.createmod.net"
+    }
+    maven {
+        name = "Registrate"
+        url = "https://maven.ithundxr.dev/snapshots"
+    }
+}
+
+base {
+    archivesName = 'higherlogisticspatch'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        // Optional standalone dev client (Create + this patch only). CFC's own runtime also exercises the
+        // bundled copy, so this is just for testing the patch in isolation.
+        client {
+            client()
+        }
+    }
+
+    mods {
+        "createhigherlogisticspatch" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+configurations {
+    localRuntime
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // Create is a REQUIRED dependency: this mod patches Create's PackagerBlockEntity / InventorySummary.
+    // compileOnly + localRuntime (never bundled — the consumer already ships Create). Transitive so Create's
+    // Flywheel/Registrate/Ponder/Catnip signatures resolve for the mixin compile + standalone runtime.
+    compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
+    localRuntime "com.simibubi.create:create-1.21.1:${create_version}"
+}
+
+// Expand mod metadata (version/ids) into the mods.toml template, same pattern as the root project.
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : 'createhigherlogisticspatch',
+            mod_name               : 'Create: Higher Logistics Patch',
+            mod_license            : mod_license,
+            mod_version            : higher_logistics_patch_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+// Publishable as a standalone artifact (e.g. `:higherlogisticspatch:publishToMavenLocal`).
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

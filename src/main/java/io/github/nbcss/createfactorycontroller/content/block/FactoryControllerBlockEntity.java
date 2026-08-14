@@ -146,8 +146,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      *  BE instance (reload/restart) can never match it, so it detects the swap and requests a full resync. */
     private final int syncEpoch = java.util.concurrent.ThreadLocalRandom.current().nextInt();
     /** Bumps once per flush that sends anything; a delta carries {@code (base = rev, new = rev + 1)} so the
-     *  client detects a gap (missed/unordered state — a bug, not normal operation) and requests a resync.
-     *  Transient: not saved, meaningless across BE reloads (that is what {@link #syncEpoch} covers). */
+     *  client detects a gap and requests a resync. */
     private int syncRevision = 0;
 
     public int syncEpoch() { return syncEpoch; }

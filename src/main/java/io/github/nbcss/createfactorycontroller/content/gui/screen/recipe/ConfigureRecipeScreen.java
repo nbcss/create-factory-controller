@@ -481,7 +481,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Largest free (non-crafting) item output count */
     int maxItemOutput() {
-        return Math.max(64, 9 * outputStackSize());
+        return Math.max(64, 64 * outputStackSize());
     }
 
     /** The request-multiplier ceiling this gauge's current edit state structurally allows (ignores stock).

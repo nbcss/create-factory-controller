@@ -214,6 +214,11 @@ dependencies {
     compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
     localRuntime "com.simibubi.create:create-1.21.1:${create_version}"
 
+    // Bundle the Higher Logistics Patch sub-mod
+    jarJar(project(path: ":higherlogisticspatch"))
+
+    localRuntime project(path: ":higherlogisticspatch")
+
     // Deployer (soft dependency — adds the Stock Keeper tab system + generic order dispatch the Production Orders
     // feature hooks into; every reference is guarded by DeployerCompat.isLoaded() / the mixin plugin, so the mod
     // loads and runs without it). We always COMPILE against it; it's on the dev runtime unless -PnoDeployer is set.

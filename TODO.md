@@ -23,22 +23,22 @@
 
 # 1.2.0
 - [TODO] Component Search
-- [TODO] Production Order Error Notification
-- [TODO] Selector Gauge
-- [TODO] Paper as component
 - [TODO] Number Connection & Arithmetic Component
-- [TODO] Projection Mode
-- [TODO] Controller disabled (redstone powered) indicator
-- [TODO] Custom arrow bend mode
-- [TODO] Color wire by limit blocked state
+- [TODO] Color wire/bulb by limit blocked state
+- [TODO] Selector Gauge
 - [TODO] Allow production order as ingredient for JEI crafting
 - [DONE] Allow minimum stock amount in Passive mode gauge
 - [TODO] Scale background
 - [TODO] Custom background tile (from block)
-- [TODO] Highlight upstream and downstream gauges when hover over a gauge
+- [DONE] Highlight upstream and downstream gauges when hover over a gauge
 
 # Roadmap
+- [TODO] Custom arrow bend mode
 - [TODO] Custom Keybinding Preset
+- [TODO] Paper as component
+- [TODO] Production Order Error Notification
+- [TODO] Projection Mode
+- [TODO] Controller disabled (redstone powered) indicator
 - [TODO] Guide GUI
 - [TODO] Set max item data length limit per gauge in configuration; increase component limit.
 - [TODO] Connection tab in recipe / redstone link setting screen

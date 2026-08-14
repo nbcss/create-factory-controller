@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.mixin;
+package io.github.nbcss.higherlogisticspatch.mixin;
 
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import net.minecraft.world.item.ItemStack;
@@ -19,7 +19,7 @@ public class InventorySummaryMixin {
         ),
         index = 0
     )
-    private ItemStack copyStackBeforeStore(ItemStack stack) {
+    private ItemStack hlp$copyStackBeforeStore(ItemStack stack) {
         return stack.copyWithCount(1);
     }
 }

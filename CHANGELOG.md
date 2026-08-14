@@ -15,6 +15,8 @@ Changes:
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
 - Redstone Link frequency item icon is larger now.
 - Request limit changed to 9999 to all units (Item/Stack/Fluid mB/Fluid B)
+- Gauge output limit is increased to 64 stacks
+- Bugfix mixins are extracted to bundled mod "Create: Higher Logistics Patch"
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
