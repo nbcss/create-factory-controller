@@ -542,7 +542,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     /** The effective target threshold as shown on the gauge face, in the gauge's unit. */
     public String demandText() {
-        return getTargetCount() + unit.suffix;
+        return unit.format(getTargetCount());
     }
 
     public MutableComponent getCountLabel() {
@@ -599,12 +599,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         long demand = 0;
         for (VirtualComponentPosition parentPos : targeting()) {
             if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
-            if (!parent.isDemandingIngredients()) continue;   // consumer satisfied/idle → needs nothing now
+            if (!parent.canRequestIngredients()) continue;
             if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
             int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;
 
             int deficitRequests = parent.deficitRequestScaler();
-            if (deficitRequests <= 0) continue;   // satisfaction flags can lag the held quantities by one tick
+            if (deficitRequests <= 0) continue;
             int parentRequests = conn.excludeFromRequestMultiplier ? 1 :
                     Math.min(parent.effectiveRequestMultiplierCeiling(), deficitRequests);
             demand += (long) conn.amount() * parentBatch * parentRequests;
@@ -635,14 +635,14 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     }
 
     /**
-     * Whether this gauge still needs more of its ingredients — i.e. it is configured to request and isn't
-     * yet covered by stock + open promises. An auto producer feeding this gauge calls it to size its own
-     * demand.
+     * Whether this gauge is eligible to request ingredients right now — it has a target and isn't blocked by
+     * network/redstone/a missing address. Whether it still <em>needs</em> more is a separate quantity test
+     * ({@link #deficitRequestScaler()} {@code > 0}), kept apart so an upstream producer sizing its own demand sees a
+     * same-tick target change immediately rather than waiting for the next storage monitor to refresh
+     * {@link #promisedSatisfied}. An auto producer feeding this gauge calls it to size its own demand.
      */
-    private boolean isDemandingIngredients() {
-        if (getTargetCount() == 0 || waitingForNetwork || isRedstonePaused() || isMissingAddress())
-            return false;
-        return !promisedSatisfied;
+    private boolean canRequestIngredients() {
+        return getTargetCount() != 0 && !waitingForNetwork && !isRedstonePaused() && !isMissingAddress();
     }
 
     private void tickStorageMonitor() {

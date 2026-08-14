@@ -1251,8 +1251,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                             "createfactorycontroller.gui.threshold.stock_target")
                             .withColor(ScrollInput.HEADER_RGB.getRGB()));
             if (g != null && requestMode.isPassive()) {
+                String targetCount = g.unit.format(g.getPassiveTargetCount(), true);
                 countTooltip.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
-                                 Component.literal("" + g.getPassiveTargetCount()).withStyle(ChatFormatting.WHITE))
+                                 Component.literal(targetCount).withColor(0x9ECFFC))
                         .withStyle(ChatFormatting.GRAY));
             }
             countTooltip.add(CreateLang.translate("gui.scrollInput.scrollToModify")
@@ -1372,8 +1373,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         } else {
             counttext = thresholdCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(thresholdCount);
         }
-        int countColor = requestMode.isPassive() ? 0xFF9ECFFC : 0xFFFFFFFF;
-        gfx.drawString(font, counttext, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, countColor, true);
+        gfx.drawString(font, counttext, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
         // unit
         gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
 

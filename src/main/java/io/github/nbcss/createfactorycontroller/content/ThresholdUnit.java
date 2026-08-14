@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
  * box can cycle between states.
  */
 public enum ThresholdUnit {
-    ITEMS("", Type.ITEM, 9_000) {
+    ITEMS("", Type.ITEM, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -20,7 +20,7 @@ public enum ThresholdUnit {
             return CreateLang.translate("schedule.condition.threshold.items").component();
         }
     },
-    STACKS("▤", Type.ITEM, 9_000) {
+    STACKS("▤", Type.ITEM, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return Math.max(1, stack.getMaxStackSize());
@@ -31,7 +31,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in millibuckets (1 mB = the unit value). Only valid for a fluid filter. */
-    FLUID_MB("mB", Type.FLUID, 9_000) {
+    FLUID_MB("mB", Type.FLUID, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -42,7 +42,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in buckets (1 B = 1000 mB). Only valid for a fluid filter. */
-    FLUID_BUCKET("B", Type.FLUID, 9_000) {
+    FLUID_BUCKET("B", Type.FLUID, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1000;
@@ -103,6 +103,26 @@ public enum ThresholdUnit {
         if (this == FLUID_MB)
             return millibuckets + "mB";
         return formatFluidAmount(millibuckets);
+    }
+
+    /**
+     * Renders a threshold {@code value} expressed in THIS unit for display: a fluid amount uses this unit's mB/B
+     * notation, an item/stack amount is the plain count followed by the unit marker. Any class holding a count in
+     * this unit (target, demand, minimum, …) can route it through here for one consistent look.
+     */
+    public String format(int value) {
+        return format(value, false);
+    }
+
+    /**
+     * {@link #format(int)} with {@code thousandsSeparator} toggling the {@code 1,234} grouping of item/stack counts
+     * (fluids ignore it — they carry their own mB/B notation).
+     */
+    public String format(int value, boolean thousandsSeparator) {
+        if (isFluid())
+            return formatInUnit(value * toCountMultiplier(ItemStack.EMPTY));
+        String number = thousandsSeparator ? String.format(java.util.Locale.US, "%,d", value) : Integer.toString(value);
+        return number + suffix;
     }
 
     public abstract int toCountMultiplier(ItemStack stack);

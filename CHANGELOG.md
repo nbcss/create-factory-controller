@@ -13,7 +13,7 @@ Changes:
 - Improve blueprint import UX.
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
 - Redstone Link frequency item icon is larger now.
-- Request limit changed to 9000 to all units (Item/Stack/Fluid mB/Fluid B)
+- Request limit changed to 9999 to all units (Item/Stack/Fluid mB/Fluid B)
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
