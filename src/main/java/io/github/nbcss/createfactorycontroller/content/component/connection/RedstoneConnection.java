@@ -3,7 +3,11 @@ package io.github.nbcss.createfactorycontroller.content.component.connection;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+
+import java.util.List;
 
 /**
  * A redstone connection whose {@link #state} is pushed by the source component and observed by the sink component.
@@ -59,6 +63,16 @@ public class RedstoneConnection extends Connection {
     @Override
     public int getConnectionColor(ComponentHolder holder) {
         return state.color;
+    }
+
+    @Override
+    public List<Component> getInfoTooltip(ComponentHolder holder) {
+        Component stateName = Component.translatable(state.isPowered()
+                        ? "createfactorycontroller.connection.state.powered"
+                        : "createfactorycontroller.connection.state.unpowered")
+                .withStyle(ChatFormatting.WHITE);
+        return List.of(Component.translatable("createfactorycontroller.connection.info.state", stateName)
+                .withStyle(ChatFormatting.GRAY));
     }
 
     @Override

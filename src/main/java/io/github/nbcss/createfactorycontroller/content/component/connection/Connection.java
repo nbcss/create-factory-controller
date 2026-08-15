@@ -74,6 +74,9 @@ public abstract class Connection {
     @Nullable
     public ConnectionValue value() { return null; }
 
+    /** The tooltip of connection, should include the current state. */
+    public List<Component> getInfoTooltip(ComponentHolder holder) { return List.of(); }
+
     /** Whether this wire may be flipped ({@code from → to} becomes {@code to → from}) */
     public boolean canReverse(ComponentHolder holder) {
         if (!type.reversible()) return false;

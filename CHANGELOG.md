@@ -7,6 +7,7 @@ Features:
 - Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 - Added a client configuration to upscale background texture (default disabled).
 - Ghost placement preview would now render connections and monitoring items.
+- Connection tooltip will now display current state, and display delay is configurable now.
 
 Optimization:
 - Improve performance of controller GUI.

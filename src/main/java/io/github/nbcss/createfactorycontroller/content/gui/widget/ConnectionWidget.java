@@ -117,10 +117,14 @@ public class ConnectionWidget {
      * than one wire sits under the cursor. {@code overlapCount}/{@code selectedIndex} are supplied by the screen, which
      * owns the set of overlapping wires; {@code overlapCount <= 1} shows the name only.
      */
-    public List<Component> getTooltip(int overlapCount, int selectedIndex, boolean arrowLocked) {
+    public List<Component> getTooltip(ComponentHolder holder, int overlapCount, int selectedIndex, boolean arrowLocked) {
         List<Component> lines = new ArrayList<>();
         lines.add(connection.type.displayName());
+        lines.addAll(connection.getInfoTooltip(holder));
+        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                .withStyle(ChatFormatting.DARK_GRAY));
         if (arrowLocked) {
+            lines.add(Component.empty());
             // Arrow-mode boxes: the 4 fixed bends, ■ marking the wire's current mode (auto shows none, until first cycle).
             int active = connection.arrowBendMode;   // 0..3; -1 (auto) highlights nothing
             StringBuilder boxes = new StringBuilder();
@@ -128,6 +132,7 @@ public class ConnectionWidget {
             lines.add(Component.translatable("createfactorycontroller.connection.cycle_arrow", boxes.toString())
                     .withStyle(ChatFormatting.GRAY));
         } else if (overlapCount > 1) {
+            lines.add(Component.empty());
             StringBuilder boxes = new StringBuilder();
             for (int i = 0; i < overlapCount; i++) boxes.append(i == selectedIndex ? '■' : '□');   // ■ marks the selected wire
             lines.add(Component.translatable("createfactorycontroller.connection.overlapping", boxes.toString())
@@ -135,8 +140,6 @@ public class ConnectionWidget {
             lines.add(Component.translatable("createfactorycontroller.connection.scroll_hint")
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
-        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
-                .withStyle(ChatFormatting.DARK_GRAY));
         return lines;
     }
 

@@ -2,14 +2,18 @@ package io.github.nbcss.createfactorycontroller.content.component.connection;
 
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+
+import java.util.List;
 
 /**
  * A gauge ingredient connection (gauge ← source gauge). Carries the single required input {@link #amount} and the
@@ -91,6 +95,16 @@ public class LogisticsConnection extends Connection {
         if (Minecraft.getInstance().level == null)
             return -1;
         return Minecraft.getInstance().level.getGameTime() - behaviour.lastRequestTick;
+    }
+
+    @Override
+    public List<Component> getInfoTooltip(ComponentHolder holder) {
+        if (!(holder.componentAt(from) instanceof VirtualGaugeBehaviour source))
+            return List.of();
+        Component itemName = source.getFilterName().copy().withStyle(ChatFormatting.WHITE);
+        return List.of(
+                Component.translatable("createfactorycontroller.connection.info.item", itemName)
+                        .withStyle(ChatFormatting.GRAY));
     }
 
     @Override

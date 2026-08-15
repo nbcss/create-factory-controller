@@ -175,8 +175,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private Connection selectedConnection = null;
     // All wires under the cursor this frame (after carried-item / pass-through filters), in stable order.
     private final List<ConnectionWidget> hoverHits = new ArrayList<>();
-    private long connHoverSinceMs = 0;
-    private static final long CONN_TOOLTIP_DELAY_MS = 500;
+    /** Wall-clock deadline for the current connection tooltip; max value means no connection is hovered. */
+    private long connTooltipShowAtMs = Long.MAX_VALUE;
     private boolean connArrowLocked = false;
     // Last cursor position seen by render()
     private int lastMouseX, lastMouseY;
@@ -443,7 +443,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 && !selectionDragging) {
             if (hoveredConn != null) {
                 // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
-                if (Util.getMillis() - connHoverSinceMs >= CONN_TOOLTIP_DELAY_MS)
+                if (Util.getMillis() >= connTooltipShowAtMs)
                     graphics.renderComponentTooltip(font, connectionTooltipLines(), mouseX, mouseY);
             } else if (hovered != null)
                 graphics.renderComponentTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
@@ -749,7 +749,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
         if (hoverHits.isEmpty()) {
             selectedConnection = null;
-            connHoverSinceMs = 0;
+            connTooltipShowAtMs = Long.MAX_VALUE;
             return null;
         }
         ConnectionWidget keep = null;
@@ -757,7 +757,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (Connection.sameConnection(w.connection, selectedConnection)) { keep = w; break; }
         if (keep == null) keep = hoverHits.getFirst();
         selectedConnection = keep.connection;
-        if (connHoverSinceMs == 0) connHoverSinceMs = Util.getMillis();
+        if (connTooltipShowAtMs == Long.MAX_VALUE)
+            connTooltipShowAtMs = Util.getMillis() + ClientConfig.connectionTooltipDelay();
         return keep;
     }
 
@@ -767,7 +768,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int sel = 0;
         for (int i = 0; i < count; i++)
             if (Connection.sameConnection(hoverHits.get(i).connection, selectedConnection)) { sel = i; break; }
-        return hoveredConn.getTooltip(count, sel, connArrowLocked);
+        assert hoveredConn != null;
+        return hoveredConn.getTooltip(menu, count, sel, connArrowLocked);
+    }
+
+    /** A connection operation is deliberate interaction, so its feedback should not wait on the hover delay. */
+    private void revealConnectionTooltip() {
+        if (hoveredConn != null) connTooltipShowAtMs = Util.getMillis();
     }
 
     // Reticle tints.
@@ -1248,6 +1255,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             boolean leftOrRight = button == 0 || button == 1;
 
             if (hoveredConn != null && leftOrRight && hasShiftDown()) {
+                revealConnectionTooltip();
                 PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos,
                         hoveredConn.connection.from, hoveredConn.connection.to));
                 selectedConnection = null;   // it's gone; let the hover re-resolve next frame
@@ -1404,13 +1412,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
             if (hasShiftDown()) {
                 // A scroll releases the arrow-mode lock; reconcile then resolves the tooltip to the hovered wire.
-                if (connArrowLocked) { connArrowLocked = false; return true; }
+                if (connArrowLocked) {
+                    revealConnectionTooltip();
+                    connArrowLocked = false;
+                    return true;
+                }
                 if (!hoverHits.isEmpty()) {
                     int idx = 0;
                     for (int i = 0; i < hoverHits.size(); i++)
                         if (Connection.sameConnection(hoverHits.get(i).connection, selectedConnection)) { idx = i; break; }
                     idx = Math.floorMod(idx + (int) Math.signum(-scrollY), hoverHits.size());
                     selectedConnection = hoverHits.get(idx).connection;   // timer keeps running across the switch
+                    revealConnectionTooltip();
                     return true;
                 }
                 networkSelector.scrollSelection(scrollY);
@@ -1698,6 +1711,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // A selected wire takes priority: cycle just that wire through all 5 bend modes (auto included), and lock it
             // so a reshaped path that moves off the cursor stays selected until the cursor moves.
             if (hoveredConn != null) {
+                revealConnectionTooltip();
                 connArrowLocked = true;
                 playWrenchSound();
                 PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
@@ -1734,6 +1748,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode)) {
             if (hoveredConn != null && hoveredConn.connection.type.reversible()) {
+                revealConnectionTooltip();
                 Connection conn = hoveredConn.connection;
                 if (conn.canReverse(this::componentAt)) {
                     playWrenchSound();

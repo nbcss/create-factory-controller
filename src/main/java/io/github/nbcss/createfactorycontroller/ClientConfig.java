@@ -17,6 +17,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
     public static final ModConfigSpec.BooleanValue HIDE_MISSING_LINK_WARNING;
     public static final ModConfigSpec.BooleanValue COLORED_CONNECTED_COMPONENT_OUTLINES;
+    public static final ModConfigSpec.IntValue CONNECTION_TOOLTIP_DELAY;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -60,6 +61,10 @@ public final class ClientConfig {
                 .comment("Show colored outlines on components connected to the hovered component in the Controller GUI.")
                 .translation("createfactorycontroller.config.colored_connected_component_outlines")
                 .define("coloredConnectedComponentOutlines", true);
+        CONNECTION_TOOLTIP_DELAY = builder
+                .comment("Delay in milliseconds before a hovered connection's tooltip appears.")
+                .translation("createfactorycontroller.config.connection_tooltip_delay")
+                .defineInRange("connectionTooltipDelay", 250, 0, 1000);
         SPEC = builder.build();
     }
 
@@ -95,6 +100,10 @@ public final class ClientConfig {
 
     public static boolean coloredConnectedComponentOutlines() {
         return COLORED_CONNECTED_COMPONENT_OUTLINES.get();
+    }
+
+    public static int connectionTooltipDelay() {
+        return CONNECTION_TOOLTIP_DELAY.get();
     }
 
     public static String getControllerBackground() {
