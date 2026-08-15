@@ -1,3 +1,5 @@
 files:
   - source: /src/main/resources/assets/createfactorycontroller/lang/en_us.json
     translation: /src/main/resources/assets/createfactorycontroller/lang/%locale_with_underscore%.json
+  - source: /logisticscontrol/src/main/resources/assets/createlogisticscontrol/lang/en_us.json
+    translation: /logisticscontrol/src/main/resources/assets/createlogisticscontrol/lang/%locale_with_underscore%.json
