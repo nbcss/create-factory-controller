@@ -24,11 +24,10 @@ public class VirtualConnectionRenderer {
     private static final float FRAME_TIME = 2f; // ticks per frame
     private static final int N_FRAMES = 8;
 
-    // Create's connection sprite (16×16).
     private static final ResourceLocation TEX_STATIC =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections.png");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/static.png");
     private static final ResourceLocation TEX_ANIMATED =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/factory_panel_connections_animated.png");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/animated.png");
 
     private static final BatchedBlitter BLITTER_STATIC = BatchedBlitter.forTexture(TEX_STATIC, FRAME_SIZE, FRAME_SIZE);
     private static final BatchedBlitter BLITTER_ANIMATED = BatchedBlitter.forTexture(TEX_ANIMATED, FRAME_SIZE, FRAME_SIZE * N_FRAMES);
@@ -37,29 +36,28 @@ public class VirtualConnectionRenderer {
 
     // Subtexture rect coordinates in a frame.
     // (ox, oy) = origin which is aligned with the center of a cell
-    // t = starting frame
     // LINE_*_0 = line that fills the earlier half of the cell in this direction
     // LINE_*_1 = line that fills the latter half of the cell in this direction
-    private record Subtexture(int u, int v, int w, int h, int ox, int oy, int t) {
-        public static final Subtexture LINE_UP_0    = of( 0,  0,  4,  8,  2,  0, 0);
-        public static final Subtexture LINE_UP_1    = of( 0,  0,  4,  8,  2,  8, 0);
-        public static final Subtexture LINE_DOWN_0  = of( 4,  0,  4,  8,  2,  8, 0);
-        public static final Subtexture LINE_DOWN_1  = of( 4,  0,  4,  8,  2,  0, 0);
-        public static final Subtexture LINE_LEFT_0  = of( 0,  8,  8,  4,  0,  2, 0);
-        public static final Subtexture LINE_LEFT_1  = of( 0,  8,  8,  4,  8,  2, 0);
-        public static final Subtexture LINE_RIGHT_0 = of( 0, 12,  8,  4,  8,  2, 0);
-        public static final Subtexture LINE_RIGHT_1 = of( 0, 12,  8,  4,  0,  2, 0);
-        public static final Subtexture HEAD_UP      = of( 8,  3,  4,  2,  2, -6, 4);
-        public static final Subtexture HEAD_DOWN    = of(12,  3,  4,  2,  2,  8, 4);
-        public static final Subtexture HEAD_LEFT    = of(11,  8,  2,  4, -6,  2, 4);
-        public static final Subtexture HEAD_RIGHT   = of(11, 12,  2,  4,  8,  2, 4);
-        public static final Subtexture TAIL_UP      = of( 0,  0,  4,  2,  2,  8, 0);
-        public static final Subtexture TAIL_DOWN    = of( 4,  6,  4,  2,  2, -6, 0);
-        public static final Subtexture TAIL_LEFT    = of( 0,  8,  2,  4,  8,  2, 0);
-        public static final Subtexture TAIL_RIGHT   = of( 6, 12,  2,  4, -6,  2, 0);
+    private record Subtexture(int u, int v, int w, int h, int ox, int oy) {
+        public static final Subtexture LINE_UP_0    = of( 0,  0,  4,  8,  2,  0);
+        public static final Subtexture LINE_UP_1    = of( 0,  0,  4,  8,  2,  8);
+        public static final Subtexture LINE_DOWN_0  = of( 4,  0,  4,  8,  2,  8);
+        public static final Subtexture LINE_DOWN_1  = of( 4,  0,  4,  8,  2,  0);
+        public static final Subtexture LINE_LEFT_0  = of( 0,  8,  8,  4,  0,  2);
+        public static final Subtexture LINE_LEFT_1  = of( 0,  8,  8,  4,  8,  2);
+        public static final Subtexture LINE_RIGHT_0 = of( 0, 12,  8,  4,  8,  2);
+        public static final Subtexture LINE_RIGHT_1 = of( 0, 12,  8,  4,  0,  2);
+        public static final Subtexture HEAD_UP      = of( 8,  0,  4,  4,  2, -6);
+        public static final Subtexture HEAD_DOWN    = of(12,  0,  4,  4,  2, 10);
+        public static final Subtexture HEAD_LEFT    = of( 8,  4,  4,  4, -6,  2);
+        public static final Subtexture HEAD_RIGHT   = of(12,  4,  4,  4, 10,  2);
+        public static final Subtexture TAIL_UP      = of( 0,  0,  4,  2,  2,  8);
+        public static final Subtexture TAIL_DOWN    = of( 4,  6,  4,  2,  2, -6);
+        public static final Subtexture TAIL_LEFT    = of( 0,  8,  2,  4,  8,  2);
+        public static final Subtexture TAIL_RIGHT   = of( 6, 12,  2,  4, -6,  2);
 
-        public static Subtexture of(int u, int v, int w, int h, int ox, int oy, int t) {
-            return new Subtexture(u, v, w, h, ox, oy, t);
+        public static Subtexture of(int u, int v, int w, int h, int ox, int oy) {
+            return new Subtexture(u, v, w, h, ox, oy);
         }
     }
 
@@ -153,7 +151,7 @@ public class VirtualConnectionRenderer {
      */
     private void drawSegment(MultiBufferSource bufferSource, PoseStack pose, Subtexture st, int x, int y) {
         int frame = !animated ? 0 :
-                (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME + st.t) % N_FRAMES;
+                (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME) % N_FRAMES;
         blitter.blit(bufferSource, pose,
                 x * CELL + CELL / 2 - st.ox, y * CELL + CELL / 2 - st.oy,
                 st.w, st.h, st.u, st.v + frame * FRAME_SIZE);
