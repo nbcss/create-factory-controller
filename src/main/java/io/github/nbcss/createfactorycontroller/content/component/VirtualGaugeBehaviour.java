@@ -19,7 +19,7 @@ import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
-import io.github.nbcss.createfactorycontroller.content.helper.CfcFilterDispatch;
+import io.github.nbcss.logisticscontrol.api.LogisticsControlApi;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
@@ -944,7 +944,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                     .toList()),
                 batch * scaler));
 
-        CfcFilterDispatch.set(filter);
+        LogisticsControlApi.beginDispatch(filter);
         try {
             List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
             List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
@@ -996,7 +996,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch * scaler);
             controller.setChanged();
         } finally {
-            CfcFilterDispatch.clear();
+            LogisticsControlApi.endDispatch();
         }
     }
 

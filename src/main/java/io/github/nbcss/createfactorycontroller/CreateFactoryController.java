@@ -8,9 +8,6 @@ import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpacki
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlock;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.block.FilterLinkBlock;
-import io.github.nbcss.createfactorycontroller.content.block.FilterLinkBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.item.FilterLinkBlockItem;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
@@ -26,8 +23,6 @@ import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRendere
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.codec.ByteBufCodecs;
-import io.github.nbcss.createfactorycontroller.content.helper.NonCraftGroups;
-import io.github.nbcss.createfactorycontroller.content.helper.PackageFilter;
 import net.minecraft.world.item.Item;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -71,23 +66,11 @@ public class CreateFactoryController {
                 .requiresCorrectToolForDrops()
                 .noOcclusion()));
 
-    public static final DeferredBlock<FilterLinkBlock> FILTER_LINK =
-        BLOCKS.register("filter_link", () ->
-            new FilterLinkBlock(BlockBehaviour.Properties.of()
-                .mapColor(MapColor.PODZOL)
-                .strength(1.5f)
-                .sound(SoundType.WOOD)
-                .noOcclusion()));
-
     // ── Items ──────────────────────────────────────────────────────────────
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
     public static final DeferredItem<FactoryControllerBlockItem> FACTORY_CONTROLLER_ITEM =
         ITEMS.register("factory_controller", () ->
             new FactoryControllerBlockItem(FACTORY_CONTROLLER.get(), new Item.Properties()));
-
-    public static final DeferredItem<FilterLinkBlockItem> FILTER_LINK_ITEM =
-        ITEMS.register("filter_link", () ->
-            new FilterLinkBlockItem(FILTER_LINK.get(), new Item.Properties()));
 
     /** Unobtainable, just for Stock Keeper GUI */
     public static final DeferredItem<ProductionPatternItem> PRODUCTION_PATTERN =
@@ -124,29 +107,12 @@ public class CreateFactoryController {
                 .networkSynchronized(ByteBufCodecs.BOOL)
                 .build());
 
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<PackageFilter>> PACKAGE_FILTER =
-        DATA_COMPONENTS.register("package_filter", () ->
-            DataComponentType.<PackageFilter>builder()
-                .persistent(PackageFilter.CODEC)
-                .networkSynchronized(PackageFilter.STREAM_CODEC)
-                .build());
-
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<NonCraftGroups>> NONCRAFT_GROUPS =
-        DATA_COMPONENTS.register("noncraft_groups", () ->
-            DataComponentType.<NonCraftGroups>builder()
-                .persistent(NonCraftGroups.CODEC)
-                .networkSynchronized(NonCraftGroups.STREAM_CODEC)
-                .build());
-
     // ── Block Entity Types ─────────────────────────────────────────────────
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FactoryControllerBlockEntity>> FACTORY_CONTROLLER_BE =
         BLOCK_ENTITY_TYPES.register("factory_controller", () ->
             BlockEntityType.Builder.of(FactoryControllerBlockEntity::new, FACTORY_CONTROLLER.get()).build(null));
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FilterLinkBlockEntity>> FILTER_LINK_BE =
-        BLOCK_ENTITY_TYPES.register("filter_link", () ->
-            BlockEntityType.Builder.of(FilterLinkBlockEntity::new, FILTER_LINK.get()).build(null));
 
     // ── Sound Events ───────────────────────────────────────────────────────
     public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
@@ -220,7 +186,6 @@ public class CreateFactoryController {
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey()) {
             event.accept(FACTORY_CONTROLLER_ITEM);
-            event.accept(FILTER_LINK_ITEM);
         }
     }
 

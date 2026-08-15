@@ -219,6 +219,11 @@ dependencies {
 
     localRuntime project(path: ":higherlogisticspatch")
 
+    // Create: Logistics Control
+    compileOnly project(path: ":logisticscontrol")
+    jarJar(project(path: ":logisticscontrol"))
+    localRuntime project(path: ":logisticscontrol")
+
     // Deployer (soft dependency — adds the Stock Keeper tab system + generic order dispatch the Production Orders
     // feature hooks into; every reference is guarded by DeployerCompat.isLoaded() / the mixin plugin, so the mod
     // loads and runs without it). We always COMPILE against it; it's on the dev runtime unless -PnoDeployer is set.

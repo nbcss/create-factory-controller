@@ -8,14 +8,8 @@ import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.stockTicker.CraftableBigItemStack;
-import com.simibubi.create.content.logistics.stockTicker.PackageOrder;
-import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
-import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.Level;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
 import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
-import io.github.nbcss.createfactorycontroller.content.helper.FilterOrderCodec;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
@@ -37,11 +31,9 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -57,51 +49,6 @@ public abstract class StockKeeperRequestScreenMixin {
     @Shadow @Nullable List<List<ClipboardEntry>> clipboardItem;
     @Shadow StockTickerBlockEntity blockEntity;
     @Shadow public AddressEditBox addressBox;
-
-    /** Non-crafting recipes ([+]'d saw/press/mixing) are dropped by Create's sendIt (crafting-only orderedCrafts), so
-     *  each would merge into one package with the first order's filter. Append them as real orderedCrafts entries so the
-     *  re-packager splits one box per recipe, and carry their outputs so each box gets its own filter. Crafting recipes
-     *  are already in orderedCrafts and get their filter derived from the pattern in the re-packager. */
-    @ModifyVariable(method = "sendIt", at = @At("STORE"), name = "order")
-    private PackageOrderWithCrafts cfc$encodeFilter(PackageOrderWithCrafts order) {
-        if (encodeRequester || recipesToOrder == null || recipesToOrder.isEmpty()) return order;
-        Level level = Minecraft.getInstance().level;
-        if (level == null) return order;
-        List<PackageOrderWithCrafts.CraftingEntry> crafts = new ArrayList<>(order.orderedCrafts());
-        List<ItemStack> nonCraftOutputs = new ArrayList<>();
-        for (CraftableBigItemStack cbis : recipesToOrder) {
-            if (cbis.stack == null || cbis.stack.isEmpty() || cbis.recipe instanceof CraftingRecipe
-                || FluidCompat.isFluidFilter(cbis.stack)) continue;   // a fluid output is not a valid filter
-            List<BigItemStack> pattern = cfc$resolveNonCraftingPattern(cbis);
-            if (pattern.stream().allMatch(b -> b.stack.isEmpty())) continue;
-            int outputCount = Math.max(1, cbis.getOutputCount(level));
-            int count = Math.max(1, cbis.count / outputCount);
-            crafts.add(new PackageOrderWithCrafts.CraftingEntry(new PackageOrder(pattern), count));
-            nonCraftOutputs.add(cbis.stack.copyWithCount(1));
-        }
-        if (nonCraftOutputs.isEmpty()) return order;
-        return FilterOrderCodec.encodeList(new PackageOrderWithCrafts(order.orderedStacks(), crafts), nonCraftOutputs);
-    }
-
-    /** Resolve a non-crafting recipe's ingredients to the concrete in-stock stacks that were ordered, laid out one per
-     *  pattern slot, so the re-packager can consume them from the summary. */
-    @Unique
-    private List<BigItemStack> cfc$resolveNonCraftingPattern(CraftableBigItemStack cbis) {
-        List<BigItemStack> pattern = new ArrayList<>();
-        for (Ingredient ing : cbis.recipe.getIngredients()) {
-            ItemStack chosen = ItemStack.EMPTY;
-            if (!ing.isEmpty()) {
-                for (BigItemStack b : itemsToOrder)
-                    if (!b.stack.isEmpty() && ing.test(b.stack)) { chosen = b.stack.copyWithCount(1); break; }
-                if (chosen.isEmpty()) {
-                    ItemStack[] items = ing.getItems();
-                    if (items.length > 0 && !items[0].isEmpty()) chosen = items[0].copyWithCount(1);
-                }
-            }
-            pattern.add(new BigItemStack(chosen));
-        }
-        return pattern;
-    }
 
     /** Before the order is sent, register the player for status toasts on this (network, address) — but only when the
      *  order actually contains a Production Blueprint (otherwise no ProductionOrder is created). The subscribe packet

@@ -10,6 +10,5 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
-// Standalone sub-mod bundled into this mod via Jar-in-Jar (see build.gradle). Builds independently as
-// :higherlogisticspatch; inherits the net.neoforged.moddev plugin version from the root project.
 include 'higherlogisticspatch'
+include 'logisticscontrol'

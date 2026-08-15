@@ -4,6 +4,7 @@ Features:
 - Allow Ctrl-Click to exclude ingredient from request multiplier
 - Follow Demand mode allow to set minimum target stock amount now
 - Render colored outline to connected components when hover over a component
+- Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 
 Optimization:
 - Improve performance of controller GUI.

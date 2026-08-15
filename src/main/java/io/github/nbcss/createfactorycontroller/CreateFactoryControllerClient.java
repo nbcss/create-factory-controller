@@ -6,9 +6,7 @@ import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersTab;
-import io.github.nbcss.createfactorycontroller.content.ponder.CfcPonderPlugin;
 import net.createmod.catnip.lang.FontHelper;
-import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.world.item.Item;
@@ -88,7 +86,6 @@ public class CreateFactoryControllerClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            PonderIndex.addPlugin(new CfcPonderPlugin());
             // Deployer is optional: only register the keeper TAB when it's present
             if (DeployerCompat.isLoaded())
                 ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);

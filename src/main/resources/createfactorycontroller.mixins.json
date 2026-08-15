@@ -10,12 +10,6 @@
     "LogisticsGenericManagerMixin",
     "LogisticsManagerMixin",
     "PackageRepackageHelperMixin",
-    "FilterPackageRepackageMixin",
-    "FactoryPanelBehaviourMixin",
-    "PackageOrderRequestPacketMixin",
-    "GenericOrderRequestPacketMixin",
-    "PackagerBlockMixin",
-    "PackagerBlockEntityMixin",
     "RequestPromiseQueueMixin",
     "SendPackageMixin",
     "TunablePortableTickerSendOrderMixin"

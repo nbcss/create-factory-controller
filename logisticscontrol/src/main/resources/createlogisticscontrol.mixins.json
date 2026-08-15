@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.nbcss.logisticscontrol.mixin",
+  "plugin": "io.github.nbcss.logisticscontrol.mixin.ClcMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "FilterPackageRepackageMixin",
+    "PackageOrderRequestPacketMixin",
+    "GenericOrderRequestPacketMixin",
+    "PackagerBlockMixin",
+    "PackagerFilterMixin",
+    "FactoryPanelBehaviourMixin"
+  ],
+  "client": [
+    "StockKeeperFilterMixin"
+  ],
+  "refmap": "createlogisticscontrol.refmap.json"
+}

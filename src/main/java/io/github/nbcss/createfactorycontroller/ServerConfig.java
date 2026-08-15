@@ -14,7 +14,6 @@ public final class ServerConfig {
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue PRESERVE_CONTROLLER_DATA;
     public static final ModConfigSpec.BooleanValue PASSIVE_TOTAL_DEMAND;
-    public static final ModConfigSpec.IntValue FILTER_LINK_RANGE;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -48,10 +47,6 @@ public final class ServerConfig {
                         "for deep production chains.")
                 .translation("createfactorycontroller.config.passive_total_demand")
                 .define("passiveTotalDemand", false);
-        FILTER_LINK_RANGE = builder
-                .comment("Maximum distance (in blocks) a Filter Link may reach to select its filter target blocks.")
-                .translation("createfactorycontroller.config.filter_link_range")
-                .defineInRange("filterLinkRange", 16, 1, 256);
         SPEC = builder.build();
     }
 
@@ -75,9 +70,5 @@ public final class ServerConfig {
 
     public static boolean passiveTotalDemand() {
         return PASSIVE_TOTAL_DEMAND.get();
-    }
-
-    public static int filterLinkRange() {
-        return FILTER_LINK_RANGE.get();
     }
 }

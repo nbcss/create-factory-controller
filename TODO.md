@@ -27,10 +27,10 @@
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Selector Gauge
 - [TODO] Allow production order as ingredient for JEI crafting
-- [DONE] Allow minimum stock amount in Passive mode gauge
 - [TODO] Scale background
 - [TODO] Custom background tile (from block)
 - [DONE] Highlight upstream and downstream gauges when hover over a gauge
+- [DONE] Allow minimum stock amount in Passive mode gauge
 
 # Roadmap
 - [TODO] Custom arrow bend mode

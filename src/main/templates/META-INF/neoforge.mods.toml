@@ -96,6 +96,14 @@ config="${mod_id}.mixins.json"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
+    modId="createlogisticscontrol"
+    type="required"
+    reason="Provides the Filter Link and its API (the virtual gauge bridge). Bundled inside this mod via Jar-in-Jar."
+    versionRange="[0.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
     modId="deployer"
     type="optional"
     reason="Adds the Stock Keeper tab system and generic order dispatch this mod's Production Orders feature hooks into. When absent, Production Orders are reached via an in-GUI button instead."
