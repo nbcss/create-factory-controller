@@ -6,6 +6,8 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.gui.GhostPreview;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -32,6 +34,8 @@ public class BlueprintPlacement {
     private final List<UUID> presetNetworks;
     @Nullable private final BlockPos boxMin;
     @Nullable private final BlockPos boxMax;
+    /** Lazily-built translucent placement preview (reconstructed components + the blueprint's internal wires). */
+    @Nullable private GhostPreview ghostPreview;
 
     public BlueprintPlacement(String name, BlueprintStorage.Info info, byte[] payload) {
         this(name, info, payload, List.of(), null, null);
@@ -73,6 +77,16 @@ public class BlueprintPlacement {
 
     public int componentCount() {
         return info.placements().size();
+    }
+
+    /** The translucent placement preview (reconstructed components + internal wires), built once from the payload. */
+    public GhostPreview ghostPreview() {
+        if (ghostPreview == null) {
+            var connection = Minecraft.getInstance().getConnection();
+            ghostPreview = GhostPreview.fromBlueprint(payload,
+                    connection == null ? null : connection.registryAccess());
+        }
+        return ghostPreview;
     }
 
     @Nullable

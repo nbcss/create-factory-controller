@@ -26,11 +26,11 @@
 - [TODO] Number Connection & Arithmetic Component
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Selector Gauge
-- [TODO] Improve BP System: More info for ghost components
 - [TODO] Improve BP System: Handle missing component from compat
 - [TODO] Allow production order as ingredient for JEI crafting
-- [TODO] Scale background
 - [TODO] Custom background tile (from block)
+- [DONE] Improve BP System: More info for ghost components
+- [DONE] Scale background
 - [DONE] Highlight upstream and downstream gauges when hover over a gauge
 - [DONE] Allow minimum stock amount in Passive mode gauge
 

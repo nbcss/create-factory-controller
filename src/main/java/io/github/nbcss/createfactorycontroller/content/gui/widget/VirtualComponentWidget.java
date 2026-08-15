@@ -56,10 +56,11 @@ public interface VirtualComponentWidget {
      *  the layer. */
     void renderFront(RenderingParameters params);
 
-    /** Blank placement/relocate preview (back + bare front frame, no configured content). Drawn translucent by the
-     *  screen's ghost render; the caller sets the alpha. Defaults to back + front; a component whose front carries
-     *  state-dependent content (e.g. the logical tube's mode icon) overrides to omit it. Implementations may enqueue
-     *  batched blits, so callers must flush after rendering the layer. */
+    /** Placement/relocate preview: back + front, so the component's configured content (a gauge's filter, a link's
+     *  frequencies, a tube's mode) shows. The ghost behaviour is freshly built with default runtime state, so the
+     *  front's runtime-driven bits (a lit bulb, transmitted power) stay off. Drawn translucent by the screen's ghost
+     *  render; the caller sets the alpha. Implementations may enqueue batched blits, so callers must flush after
+     *  rendering the layer. */
     default void renderGhost(RenderingParameters params) {
         renderBack(params);
         renderFront(params);

@@ -59,15 +59,6 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
                 .blit(gfx.bufferSource(), gfx.pose(), x0 + CELL / 4, y0 + CELL / 4, CELL / 2, CELL / 2);
     }
 
-    /** Ghost = back + bare front frame only; the mode icon is configured state, so it's omitted from the preview. */
-    @Override
-    public void renderGhost(RenderingParameters params) {
-        GuiGraphics gfx = params.graphics();
-        int x0 = position().x() * CELL, y0 = position().y() * CELL;
-        BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        BatchedBlitter.forSprite(sprite("front_off")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-    }
-
     @Override
     public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
         List<Component> lines = new ArrayList<>();

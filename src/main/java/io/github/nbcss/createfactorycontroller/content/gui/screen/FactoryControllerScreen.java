@@ -20,6 +20,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
+import io.github.nbcss.createfactorycontroller.content.gui.GhostPreview;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintLibraryScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintPlaceScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintSaveScreen;
@@ -223,6 +224,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private boolean batchRelocating = false;
     @Nullable private VirtualComponentPosition batchAnchor = null;
     private int batchDx = 0, batchDy = 0;
+
+    // Cached translucent preview of the components a relocate/batch-move would shift (rebuilt when the moving set
+    // changes or the board re-syncs); rendered each frame under the current move delta.
+    @Nullable private GhostPreview movePreview = null;
+    @Nullable private Set<VirtualComponentPosition> movePreviewKey = null;
 
     // Pending batch relocate
     @Nullable private Set<VirtualComponentPosition> pendingMoveSources = null;
@@ -437,6 +443,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         updateDragSelectionMovement(mouseX, mouseY);
+        updateBatchRelocateDelta(mouseX, mouseY);   // keep the batch-move ghost tracking the cursor across pans
         // Keep a cycled wire pinned only while the cursor remains where it was when the key was pressed.
         if (connArrowLocked && (mouseX != lastMouseX || mouseY != lastMouseY)) connArrowLocked = false;
         lastMouseX = mouseX;
@@ -829,10 +836,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
             }
         } else if (pendingRelocateTarget != null) {
-            // Relocate mode
+            // Relocate mode: preview the one moving component (and its wires) shifted to the cursor cell.
             boolean valid = hovered == null && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
-            VirtualComponentBehaviour moving = componentAt(pendingRelocateTarget);
-            if (valid && moving != null) renderGhostAt(graphics, hoveredPosition, moving.getItem());   // ghost under the target
+            GhostPreview preview = movePreviewFor(java.util.Set.of(pendingRelocateTarget));
+            if (preview != null)
+                preview.render(graphics, new VirtualComponentPosition(
+                                hoveredPosition.x() - pendingRelocateTarget.x(),
+                                hoveredPosition.y() - pendingRelocateTarget.y()),
+                        componentRenderingHelper, occupiedCells());
             renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (ComponentRegistry.containsItem(carried)) {
             // Holding a component
@@ -883,7 +894,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return ConnectionResolver.resolve(hovered, initiator, initiator);
     }
 
-    /** Draws a component preview */
+    /** Draws a translucent single-component preview from a cursor item — a fresh component, so no configured state
+     *  (a placed blueprint or a move uses {@link GhostPreview} instead, which reconstructs configured components). */
     private void renderGhostAt(GuiGraphics graphics, VirtualComponentPosition pos, net.minecraft.world.item.Item item) {
         VirtualComponentBehaviour ghost = ComponentRegistry.createFromItem(null, pos, item, null);
         VirtualComponentWidget widget = ghost == null ? null : ComponentWidgetRegistry.create(ghost);
@@ -894,6 +906,26 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Batched component blits must draw while the ghost alpha is still active.
         componentRenderingHelper.flushBuffers(graphics);
         graphics.setColor(1f, 1f, 1f, 1f);
+    }
+
+    /** The {@link GhostPreview} for a relocate/batch-move of {@code movingCells}, built (and cached) from the live
+     *  components. Rebuilt when the moving set changes; invalidated on board re-sync. {@code null} if it can't be
+     *  built (no client registries). */
+    @Nullable
+    private GhostPreview movePreviewFor(Set<VirtualComponentPosition> movingCells) {
+        if (movePreview == null || !movingCells.equals(movePreviewKey)) {
+            var connection = Minecraft.getInstance().getConnection();
+            if (connection == null) return null;
+            List<VirtualComponentBehaviour> moving = new ArrayList<>();
+            for (VirtualComponentPosition p : movingCells) {
+                VirtualComponentBehaviour b = componentAt(p);
+                if (b != null) moving.add(b);
+            }
+            movePreview = GhostPreview.fromSelection(moving, new LinkedHashSet<>(movingCells),
+                    connection.registryAccess());
+            movePreviewKey = new LinkedHashSet<>(movingCells);
+        }
+        return movePreview;
     }
 
     private void updateVisibleComponents(Rect2i visibleArea) {
@@ -964,6 +996,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             dragSelection.hasMoved = true;
     }
 
+    /** Recomputes the batch-relocate delta from the cursor's current board cell. Run every frame (not just on
+     *  {@code mouseDragged}) so the ghost — and the committed move — track the cursor even when the camera is panned
+     *  (WASD) without the mouse moving. */
+    private void updateBatchRelocateDelta(double mouseX, double mouseY) {
+        if (!batchRelocating || batchAnchor == null) return;
+        VirtualComponentPosition cell = cellAt(mouseX, mouseY);
+        batchDx = cell.x() - batchAnchor.x();
+        batchDy = cell.y() - batchAnchor.y();
+    }
+
     /** The inclusive cell box from the drag's board-anchored origin to the current cursor position. */
     private Rect2i dragSelectionCellBox(DragSelectionState state, Vector2d currentWorld) {
         VirtualComponentPosition a = cellAtWorld(state.startWorldX, state.startWorldY);
@@ -987,13 +1029,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     renderTarget(graphics, p, TARGET_GREEN);
         }
         if (batchRelocating && (batchDx != 0 || batchDy != 0)) {
-            for (VirtualComponentPosition p : selected) {
-                VirtualComponentBehaviour moving = componentAt(p);
-                if (moving == null) continue;
+            Set<VirtualComponentPosition> movingCells = new LinkedHashSet<>();
+            for (VirtualComponentPosition p : selected)
+                if (componentWidgets.containsKey(p)) movingCells.add(p);
+            GhostPreview preview = movePreviewFor(movingCells);
+            if (preview != null)
+                preview.render(graphics, new VirtualComponentPosition(batchDx, batchDy),
+                        componentRenderingHelper, occupiedCells());
+            for (VirtualComponentPosition p : movingCells) {                        // reticle on top of each ghost
                 VirtualComponentPosition to = new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy);
-                boolean valid = batchDestValid(to);
-                if (valid) renderGhostAt(graphics, to, moving.getItem());   // ghost under the target...
-                renderTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);   // ...reticle on top
+                renderTargetAboveGhost(graphics, to, batchDestValid(to) ? TARGET_WHITE : TARGET_RED);
             }
             graphics.flush();
         }
@@ -1108,34 +1153,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void renderPlacementGhost(GuiGraphics graphics) {
         if (pendingPlacement == null || hoveredPosition == null) return;
         VirtualComponentPosition anchor = pendingPlacement.anchorFor(hoveredPosition);
-        renderPlacementWires(graphics, anchor);   // under the blueprint's own ghosts and reticles
+        // The reconstructed components + the blueprint's internal wires, anchored under the cursor.
+        pendingPlacement.ghostPreview().render(graphics, anchor, componentRenderingHelper, occupiedCells());
         for (BlueprintStorage.Placement placement : pendingPlacement.info().placements()) {
             VirtualComponentPosition cell = BlueprintPlacement.cellFor(placement, anchor);
-            boolean valid = pendingPlacement.cellFree(cell, menu);
-            if (valid) renderGhostAt(graphics, cell, BuiltInRegistries.ITEM.get(placement.item()));
-            renderTargetAboveGhost(graphics, cell, valid ? TARGET_WHITE : TARGET_RED);
+            renderTargetAboveGhost(graphics, cell, pendingPlacement.cellFree(cell, menu) ? TARGET_WHITE : TARGET_RED);
         }
         graphics.flush();
-    }
-
-    private void renderPlacementWires(GuiGraphics graphics, VirtualComponentPosition anchor) {
-        assert pendingPlacement != null;
-        List<BlueprintStorage.Wire> wires = pendingPlacement.info().connections();
-        if (wires.isEmpty()) return;
-
-        Set<VirtualComponentPosition> occupied = occupiedCells();
-        for (BlueprintStorage.Placement placement : pendingPlacement.info().placements())
-            occupied.add(BlueprintPlacement.cellFor(placement, anchor));
-
-        for (BlueprintStorage.Wire wire : wires) {
-            List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(
-                    BlueprintPlacement.cellFor(wire.from(), anchor),
-                    BlueprintPlacement.cellFor(wire.to(), anchor),
-                    wire.arrowBendMode(), occupied);
-            if (path != null)
-                VirtualConnectionRenderer.create(
-                        path, (0x80 << 24) | (wire.color() & 0xFFFFFF), false).drawPath(graphics);
-        }
     }
 
     /** A prompt that stays until the mode ends (no fade). */
@@ -1387,13 +1411,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             updateDragSelectionMovement(mouseX, mouseY);
             return true;
         }
-        // Batch relocate: the live cell delta from the anchor drives the ghost reticles.
-        if (button == 0 && batchRelocating && batchAnchor != null) {
-            VirtualComponentPosition cell = cellAt(mouseX, mouseY);
-            batchDx = cell.x() - batchAnchor.x();
-            batchDy = cell.y() - batchAnchor.y();
+        // Batch relocate: just consume the drag — the delta is recomputed every frame (updateBatchRelocateDelta),
+        // which also tracks camera pans made without moving the mouse.
+        if (button == 0 && batchRelocating && batchAnchor != null)
             return true;
-        }
         if (isDragging && CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
             if (mouseX != panStartX || mouseY != panStartY) panMoved = true;
             viewX -= deltaX / getZoomFactor();
@@ -1844,6 +1865,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Rebuilds the position→widget index from the synced component list, preserving widget-owned client state. */
     private void rebuildGaugeWidgets() {
+        movePreview = null;   // the live components it was reconstructed from just changed
+        movePreviewKey = null;
         Map<VirtualComponentPosition, VirtualComponentWidget> previousWidgets = new LinkedHashMap<>(componentWidgets);
         componentWidgets.clear();
         for (VirtualComponentBehaviour b : menu.components) {

@@ -1,4 +1,4 @@
-## 1.1.2
+## 1.2.0
 
 Features:
 - Allow Ctrl-Click to exclude ingredient from request multiplier.
@@ -6,6 +6,7 @@ Features:
 - Render colored outline to connected components when hover over a component (configurable).
 - Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 - Added a client configuration to upscale background texture (default disabled).
+- Ghost placement preview would now render connections and monitoring items.
 
 Optimization:
 - Improve performance of controller GUI.
