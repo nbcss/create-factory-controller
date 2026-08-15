@@ -1396,6 +1396,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.drawString(font, title, panelX + 97 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
 
         addressBox.render(gfx, mouseX, mouseY, partialTicks);
+        gfx.flush();
+        RenderSystem.clear(256, Minecraft.ON_OSX);
+
         if (addressBox.isHovered() && !addressBox.isFocused())
             gfx.renderComponentTooltip(font, addressBox.getValue().isBlank()
                 ? List.of(
