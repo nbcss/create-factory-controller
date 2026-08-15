@@ -193,7 +193,7 @@ For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 sla
 Another mode of the factory gauge, image:btn-follow-demand-and-order.png[,18,18] "follow demand and order", additionally allows the item produceable by a gauge to be manually ordered from a stock keeper tuned to the same network. In the stock keeper UI, the <<term-recipe,recipe>> of each gauge in this mode appears as a production task, signified by a blueprint background.
 
 .A production task of oak planks
-image::gauge-production-task.png[,308,111]
+image::production-task.png[,310,154]
 
 See xref:production-orders.adoc[Production Orders] for details.
 
