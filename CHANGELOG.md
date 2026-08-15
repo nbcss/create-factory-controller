@@ -3,7 +3,7 @@
 Features:
 - Allow Ctrl-Click to exclude ingredient from request multiplier
 - Follow Demand mode allow to set minimum target stock amount now
-- Render colored outline to connected components when hover over a component
+- Render colored outline to connected components when hover over a component (configurable)
 - Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 
 Optimization:
@@ -13,11 +13,12 @@ Optimization:
 Changes:
 - Removed component limit in blueprint selection.
 - Improve blueprint import UX.
+- Improve selection tool interaction while moving camera.
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
 - Redstone Link frequency item icon is larger now.
-- Request limit changed to 9999 to all units (Item/Stack/Fluid mB/Fluid B)
-- Gauge output limit is increased to 64 stacks
-- Bugfix mixins are extracted to bundled mod "Create: Higher Logistics Patch"
+- Request limit changed to 9999 to all units (Item/Stack/Fluid mB/Fluid B).
+- Gauge output limit is increased to 64 stacks.
+- Bugfix mixins are extracted to bundled mod "Create: Higher Logistics Patch".
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.

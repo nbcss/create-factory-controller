@@ -645,6 +645,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
+        // Draw the drag-selection rectangle above board contents but below the frame and top-level controls.
+        if (dragSelection != null && dragSelection.hasMoved) {
+            Vector2d startScreen = screenAt(dragSelection.startWorldX, dragSelection.startWorldY, centerX, centerY);
+            int rx0 = (int) Math.min(startScreen.x, mouseX);
+            int ry0 = (int) Math.min(startScreen.y, mouseY);
+            int rx1 = (int) Math.max(startScreen.x, mouseX);
+            int ry1 = (int) Math.max(startScreen.y, mouseY);
+            graphics.enableScissor(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY());
+            graphics.fill(rx0, ry0, rx1, ry1, 0x3333CC33);          // body
+            graphics.fill(rx0, ry0, rx1, ry0 + 1, 0xAA33CC33);      // top border
+            graphics.fill(rx0, ry1 - 1, rx1, ry1, 0xAA33CC33);      // bottom
+            graphics.fill(rx0, ry0, rx0 + 1, ry1, 0xAA33CC33);      // left
+            graphics.fill(rx1 - 1, ry0, rx1, ry1, 0xAA33CC33);      // right
+            graphics.disableScissor();
+            graphics.flush();
+        }
+
         // Frame
         RenderSystem.enableBlend();
         TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
@@ -711,22 +728,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
-
-        // Drag-selection rectangle (screen space, translucent green), clipped to the canvas.
-        if (dragSelection != null && dragSelection.hasMoved) {
-            Vector2d startScreen = screenAt(dragSelection.startWorldX, dragSelection.startWorldY, centerX, centerY);
-            int rx0 = (int) Math.min(startScreen.x, mouseX);
-            int ry0 = (int) Math.min(startScreen.y, mouseY);
-            int rx1 = (int) Math.max(startScreen.x, mouseX);
-            int ry1 = (int) Math.max(startScreen.y, mouseY);
-            graphics.enableScissor(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY());
-            graphics.fill(rx0, ry0, rx1, ry1, 0x3333CC33);          // body
-            graphics.fill(rx0, ry0, rx1, ry0 + 1, 0xAA33CC33);      // top border
-            graphics.fill(rx0, ry1 - 1, rx1, ry1, 0xAA33CC33);      // bottom
-            graphics.fill(rx0, ry0, rx0 + 1, ry1, 0xAA33CC33);      // left
-            graphics.fill(rx1 - 1, ry0, rx1, ry1, 0xAA33CC33);      // right
-            graphics.disableScissor();
-        }
 
         profiler.pop();
 
@@ -842,7 +843,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         } else {
             // Empty cursor
             if (hovered != null) {
-                renderConnectionNeighbours(graphics, hovered);
+                if (ClientConfig.coloredConnectedComponentOutlines())
+                    renderConnectionNeighbours(graphics, hovered);
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
             }
         }

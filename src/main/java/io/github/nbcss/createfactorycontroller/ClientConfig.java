@@ -15,6 +15,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
     public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
     public static final ModConfigSpec.BooleanValue HIDE_MISSING_LINK_WARNING;
+    public static final ModConfigSpec.BooleanValue COLORED_CONNECTED_COMPONENT_OUTLINES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -47,9 +48,13 @@ public final class ClientConfig {
                 .translation("createfactorycontroller.config.compact_recipe_count_font")
                 .define("compactRecipeCountFont", true);
         HIDE_MISSING_LINK_WARNING = builder
-                .comment("Hide the missing logistics-link warning indicators in the Controller Screen.")
+                .comment("Hide the missing logistics-link warning indicators in the Controller GUI.")
                 .translation("createfactorycontroller.config.hide_missing_link_warning")
                 .define("hideMissingLinkWarning", false);
+        COLORED_CONNECTED_COMPONENT_OUTLINES = builder
+                .comment("Show colored outlines on components connected to the hovered component in the Controller GUI.")
+                .translation("createfactorycontroller.config.colored_connected_component_outlines")
+                .define("coloredConnectedComponentOutlines", true);
         SPEC = builder.build();
     }
 
@@ -77,6 +82,10 @@ public final class ClientConfig {
 
     public static boolean hideMissingLinkWarning() {
         return HIDE_MISSING_LINK_WARNING.get();
+    }
+
+    public static boolean coloredConnectedComponentOutlines() {
+        return COLORED_CONNECTED_COMPONENT_OUTLINES.get();
     }
 
     public static String getControllerBackground() {
