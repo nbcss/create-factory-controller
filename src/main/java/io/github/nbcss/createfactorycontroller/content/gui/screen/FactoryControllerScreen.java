@@ -823,7 +823,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         } else if (pendingRelocateTarget != null) {
             // Relocate mode
-            boolean valid = hovered != null && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            boolean valid = hovered == null && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
             VirtualComponentBehaviour moving = componentAt(pendingRelocateTarget);
             if (valid && moving != null) renderGhostAt(graphics, hoveredPosition, moving.getItem());   // ghost under the target
             renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
@@ -831,7 +831,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Holding a component
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
-            boolean valid = hovered != null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            boolean valid = hovered == null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
             if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
             renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
