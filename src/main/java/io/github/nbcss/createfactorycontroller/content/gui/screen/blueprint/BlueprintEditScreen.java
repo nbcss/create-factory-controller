@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import com.simibubi.create.foundation.gui.AllIcons;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;

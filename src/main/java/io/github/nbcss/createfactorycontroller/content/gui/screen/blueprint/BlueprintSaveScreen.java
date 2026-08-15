@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;

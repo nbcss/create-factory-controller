@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.gui.screen;
+package io.github.nbcss.createfactorycontroller.content.gui.screen.controller;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -21,9 +21,15 @@ import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.gui.GhostPreview;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPathResolver;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ControllerSettingScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.NetworkSettingsScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintLibraryScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintPlaceScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintSaveScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.BatchMoveState;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.DragSelectionState;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.CollapsiblePlayerInventory;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
@@ -205,35 +211,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private final Set<VirtualComponentPosition> selected = new LinkedHashSet<>();
     // Drag-selection origin is stored in canvas-world coordinates so pan, zoom, or GUI resizing cannot move it.
     @Nullable private DragSelectionState dragSelection = null;
-
-    private static final class DragSelectionState {
-        private final double startWorldX;
-        private final double startWorldY;
-        // Whether the selection that existed when the drag began should be preserved.
-        private final boolean isPreserved;
-        // Sticky once the pointer has crossed the click/drag threshold.
-        private boolean hasMoved;
-
-        private DragSelectionState(double startWorldX, double startWorldY, boolean isPreserved) {
-            this.startWorldX = startWorldX;
-            this.startWorldY = startWorldY;
-            this.isPreserved = isPreserved;
-        }
-    }
     // Batch relocate drag (normal mode, started by pressing a selected component).
-    private boolean batchRelocating = false;
-    @Nullable private VirtualComponentPosition batchAnchor = null;
-    private int batchDx = 0, batchDy = 0;
+    private final BatchMoveState batchMove = new BatchMoveState();
 
     // Cached translucent preview of the components a relocate/batch-move would shift (rebuilt when the moving set
     // changes or the board re-syncs); rendered each frame under the current move delta.
     @Nullable private GhostPreview movePreview = null;
     @Nullable private Set<VirtualComponentPosition> movePreviewKey = null;
-
-    // Pending batch relocate
-    @Nullable private Set<VirtualComponentPosition> pendingMoveSources = null;
-    @Nullable private Set<VirtualComponentPosition> pendingMoveDestinations = null;
-    private int pendingMoveSyncs = 0;
 
     // Network selector widget
     private NetworkSelectorWidget networkSelector;
@@ -443,7 +427,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
         updateDragSelectionMovement(mouseX, mouseY);
-        updateBatchRelocateDelta(mouseX, mouseY);   // keep the batch-move ghost tracking the cursor across pans
+        batchMove.update(cellAt(mouseX, mouseY));   // keep the batch-move ghost tracking the cursor across pans
         // Keep a cycled wire pinned only while the cursor remains where it was when the key was pressed.
         if (connArrowLocked && (mouseX != lastMouseX || mouseY != lastMouseY)) connArrowLocked = false;
         lastMouseX = mouseX;
@@ -454,7 +438,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
         // No hover tooltips while a drag selection or batch relocate is in progress.
-        boolean selectionDragging = dragSelection != null || batchRelocating;
+        boolean selectionDragging = dragSelection != null || batchMove.isActive();
         if (pendingConnectionTarget == null && pendingRelocateTarget == null && pendingPlacement == null
                 && !selectionDragging) {
             if (hoveredConn != null) {
@@ -609,7 +593,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         boolean carrying = !menu.getCarried().isEmpty();   // holding an item skips connection hover entirely
         boolean overComponent = componentWidgetAt(hoveredPosition) != null;
         // No connection hover while dragging a selection rectangle or a batch relocate.
-        if (isInCanvasArea(mouseX, mouseY) && !carrying && dragSelection == null && !batchRelocating
+        if (isInCanvasArea(mouseX, mouseY) && !carrying && dragSelection == null && !batchMove.isActive()
                 && pendingConnectionTarget == null && pendingRelocateTarget == null) {
             for (ConnectionWidget w : connWidgets) {
                 if (overComponent && !hoveredPosition.equals(w.connection.from)
@@ -660,8 +644,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
         // Draw the drag-selection rectangle above board contents but below the frame and top-level controls.
-        if (dragSelection != null && dragSelection.hasMoved) {
-            Vector2d startScreen = screenAt(dragSelection.startWorldX, dragSelection.startWorldY, centerX, centerY);
+        if (dragSelection != null && dragSelection.hasMoved()) {
+            Vector2d startScreen = screenAt(
+                    dragSelection.startWorldX(), dragSelection.startWorldY(), centerX, centerY);
             int rx0 = (int) Math.min(startScreen.x, mouseX);
             int ry0 = (int) Math.min(startScreen.y, mouseY);
             int rx1 = (int) Math.max(startScreen.x, mouseX);
@@ -966,7 +951,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public void clearSelection() {
         selected.clear();
         dragSelection = null;
-        batchRelocating = false;
+        batchMove.cancel();
     }
 
     /** The canvas cell a screen position falls into (computes the board centre itself). */
@@ -977,78 +962,42 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 canvas.minY() + canvas.h() / 2);
     }
 
-    /** Whether a batch relocate by the current delta would put {@code to} on a valid cell (in-board and not onto a
-     *  non-selected component). Mirrors the server's {@code moveComponents} validation for the drag ghosts. */
-    private boolean batchDestValid(VirtualComponentPosition to) {
-        boolean occupiedByOther = componentWidgets.containsKey(to) && !selected.contains(to);
-        return !FactoryControllerBlockEntity.isOutBoard(to) && !occupiedByOther;
-    }
-
     private void beginDragSelection(double mouseX, double mouseY, boolean isPreserved) {
         Vector2d startWorld = worldAt(mouseX, mouseY);
         dragSelection = new DragSelectionState(startWorld.x, startWorld.y, isPreserved);
     }
 
     private void updateDragSelectionMovement(double mouseX, double mouseY) {
-        if (dragSelection == null || dragSelection.hasMoved) return;
-        Vector2d startScreen = screenAt(dragSelection.startWorldX, dragSelection.startWorldY);
-        if (Math.abs(mouseX - startScreen.x) > 3 || Math.abs(mouseY - startScreen.y) > 3)
-            dragSelection.hasMoved = true;
-    }
-
-    /** Recomputes the batch-relocate delta from the cursor's current board cell. Run every frame (not just on
-     *  {@code mouseDragged}) so the ghost — and the committed move — track the cursor even when the camera is panned
-     *  (WASD) without the mouse moving. */
-    private void updateBatchRelocateDelta(double mouseX, double mouseY) {
-        if (!batchRelocating || batchAnchor == null) return;
-        VirtualComponentPosition cell = cellAt(mouseX, mouseY);
-        batchDx = cell.x() - batchAnchor.x();
-        batchDy = cell.y() - batchAnchor.y();
-    }
-
-    /** The inclusive cell box from the drag's board-anchored origin to the current cursor position. */
-    private Rect2i dragSelectionCellBox(DragSelectionState state, Vector2d currentWorld) {
-        VirtualComponentPosition a = cellAtWorld(state.startWorldX, state.startWorldY);
-        VirtualComponentPosition b = cellAtWorld(currentWorld.x, currentWorld.y);
-        int minX = Math.min(a.x(), b.x());
-        int minY = Math.min(a.y(), b.y());
-        return Rect2i.fromBounds(minX, minY, Math.max(a.x(), b.x()), Math.max(a.y(), b.y()));
+        if (dragSelection == null) return;
+        Vector2d startScreen = screenAt(dragSelection.startWorldX(), dragSelection.startWorldY());
+        dragSelection.updateMovement(startScreen, mouseX, mouseY);
     }
 
     /** Green mark on selected components; white/red ghosts during a batch drag; and a live green preview of every
      *  component currently inside the drag-selection rectangle. */
     private void renderSelectionTargets(GuiGraphics graphics, Vector2d currentWorld) {
-        if (!(dragSelection != null && dragSelection.hasMoved && !dragSelection.isPreserved))
+        if (!(dragSelection != null && dragSelection.hasMoved() && !dragSelection.isPreserved()))
             for (VirtualComponentPosition p : selected)
                 if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
-        if (dragSelection != null && dragSelection.hasMoved) {
+        if (dragSelection != null && dragSelection.hasMoved()) {
             // Live preview: components the drag would select show the mark too.
-            Rect2i box = dragSelectionCellBox(dragSelection, currentWorld);
-            for (VirtualComponentPosition p : componentWidgets.keySet())
-                if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE))
-                    renderTarget(graphics, p, TARGET_GREEN);
+            for (VirtualComponentPosition p : dragSelection.positionsIn(
+                    componentWidgets.keySet(), currentWorld, CANVAS_COMPONENT_SIZE))
+                renderTarget(graphics, p, TARGET_GREEN);
         }
-        if (batchRelocating && (batchDx != 0 || batchDy != 0)) {
-            Set<VirtualComponentPosition> movingCells = new LinkedHashSet<>();
-            for (VirtualComponentPosition p : selected)
-                if (componentWidgets.containsKey(p)) movingCells.add(p);
+        if (batchMove.isActive() && batchMove.hasMoved()) {
+            Set<VirtualComponentPosition> movingCells = batchMove.movingSources(selected, componentWidgets.keySet());
             GhostPreview preview = movePreviewFor(movingCells);
             if (preview != null)
-                preview.render(graphics, new VirtualComponentPosition(batchDx, batchDy),
+                preview.render(graphics, new VirtualComponentPosition(batchMove.dx(), batchMove.dy()),
                         componentRenderingHelper, occupiedCells());
             for (VirtualComponentPosition p : movingCells) {                        // reticle on top of each ghost
-                VirtualComponentPosition to = new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy);
-                renderTargetAboveGhost(graphics, to, batchDestValid(to) ? TARGET_WHITE : TARGET_RED);
+                VirtualComponentPosition to = batchMove.destinationOf(p);
+                boolean valid = batchMove.destinationValid(to, selected, componentWidgets.keySet());
+                renderTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
             }
             graphics.flush();
         }
-    }
-
-    /** Adds every component whose cell lies within the drag-selection rectangle to the selection. */
-    private void selectInRect(DragSelectionState state, Vector2d currentWorld) {
-        Rect2i box = dragSelectionCellBox(state, currentWorld);
-        for (VirtualComponentPosition p : componentWidgets.keySet())
-            if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE)) selected.add(p);
     }
 
     @Nullable
@@ -1060,14 +1009,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private int effectiveSelectedCount(double mouseX, double mouseY) {
-        if (dragSelection == null || !dragSelection.hasMoved) return selected.size();
-        Set<VirtualComponentPosition> result = dragSelection.isPreserved
-                ? new LinkedHashSet<>(selected)
-                : new LinkedHashSet<>();
-        Rect2i box = dragSelectionCellBox(dragSelection, worldAt(mouseX, mouseY));
-        for (VirtualComponentPosition p : componentWidgets.keySet())
-            if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE)) result.add(p);
-        return result.size();
+        if (dragSelection == null || !dragSelection.hasMoved()) return selected.size();
+        return dragSelection.effectiveSelection(
+                selected, componentWidgets.keySet(), worldAt(mouseX, mouseY), CANVAS_COMPONENT_SIZE).size();
     }
 
     private void toggleOrClearAt(double mx, double my) {
@@ -1080,31 +1024,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private void commitBatchRelocate() {
-        if (batchDx == 0 && batchDy == 0) return;
-        List<VirtualComponentPosition> sources = new ArrayList<>();
-        for (VirtualComponentPosition p : selected)
-            if (componentWidgets.containsKey(p)) sources.add(p);
-        if (sources.isEmpty()) return;
-
-        for (VirtualComponentPosition p : sources)
-            if (!batchDestValid(new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy))) {
-                playDenySound();
-                return;
-            }
-
-        PacketDistributor.sendToServer(new BatchMoveComponentPacket(menu.controllerPos, sources, batchDx, batchDy));
-        // Track the pending move so the selection follows it across syncs
-        pendingMoveSources = new LinkedHashSet<>(sources);
-        pendingMoveDestinations = new LinkedHashSet<>();
-        for (VirtualComponentPosition p : sources)
-            pendingMoveDestinations.add(new VirtualComponentPosition(p.x() + batchDx, p.y() + batchDy));
-        pendingMoveSyncs = 20;   // bound: a rejected/lost move can't pin the selection forever
-    }
-
-    private void clearPendingMove() {
-        pendingMoveSources = null;
-        pendingMoveDestinations = null;
-        pendingMoveSyncs = 0;
+        BatchMoveState.FinishResult result = batchMove.finish(selected, componentWidgets.keySet());
+        if (result.status() == BatchMoveState.FinishStatus.INVALID) {
+            playDenySound();
+            return;
+        }
+        BatchMoveState.MoveRequest request = result.request();
+        if (request != null)
+            PacketDistributor.sendToServer(new BatchMoveComponentPacket(
+                    menu.controllerPos, request.sources(), request.dx(), request.dy()));
     }
 
     // ── Mouse interaction ──────────────────────────────────────────────────
@@ -1387,9 +1315,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     return true;
                 }
                 if (button == 0 && selected.contains(clicked)) {
-                    batchRelocating = true;
-                    batchAnchor = widget.position();
-                    batchDx = batchDy = 0;
+                    batchMove.begin(widget.position());
                     return true;
                 }
                 return widget.onClick(this, carried, worldX, worldY, button);
@@ -1411,9 +1337,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             updateDragSelectionMovement(mouseX, mouseY);
             return true;
         }
-        // Batch relocate: just consume the drag — the delta is recomputed every frame (updateBatchRelocateDelta),
+        // Batch relocate: just consume the drag — the delta is recomputed every frame by BatchMoveState,
         // which also tracks camera pans made without moving the mouse.
-        if (button == 0 && batchRelocating && batchAnchor != null)
+        if (button == 0 && batchMove.isActive())
             return true;
         if (isDragging && CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button)) {
             if (mouseX != panStartX || mouseY != panStartY) panMoved = true;
@@ -1430,10 +1356,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && dragSelection != null) {
             DragSelectionState completed = dragSelection;
             dragSelection = null;
-            if (completed.hasMoved) {
-                if (!completed.isPreserved) selected.clear();
-                selectInRect(completed, worldAt(mouseX, mouseY));
-            } else if (completed.isPreserved) {
+            if (completed.hasMoved()) {
+                completed.applyTo(
+                        selected, componentWidgets.keySet(), worldAt(mouseX, mouseY), CANVAS_COMPONENT_SIZE);
+            } else if (completed.isPreserved()) {
                 // A Selection-Mode click toggles the component, or clears on empty.
                 toggleOrClearAt(mouseX, mouseY);
             } else {
@@ -1443,8 +1369,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
             return true;
         }
-        if (button == 0 && batchRelocating) {
-            batchRelocating = false;
+        if (button == 0 && batchMove.isActive()) {
             commitBatchRelocate();
             return true;
         }
@@ -1873,26 +1798,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             VirtualComponentWidget widget = ComponentWidgetRegistry.create(b, previousWidgets.get(b.position()));
             if (widget != null) componentWidgets.put(b.position(), widget);
         }
-        if (pendingMoveDestinations != null) {
-            if (componentWidgets.keySet().containsAll(pendingMoveDestinations)) {
-                selected.clear();
-                selected.addAll(pendingMoveDestinations);
-                clearPendingMove();
-            } else if (--pendingMoveSyncs <= 0) {
-                clearPendingMove();
-            } else {
-                selected.clear();
-                assert pendingMoveSources != null;
-                selected.addAll(pendingMoveSources);
-            }
-        }
+        batchMove.reconcile(componentWidgets.keySet()).ifPresent(reconciled -> {
+            selected.clear();
+            selected.addAll(reconciled);
+        });
         // Drop selected cells that no longer hold a component
         selected.retainAll(componentWidgets.keySet());
     }
 
     /** The widget at {@code pos}, or {@code null} if the cell is empty (O(1)). */
     @Nullable
-    VirtualComponentWidget componentWidgetAt(@Nullable VirtualComponentPosition pos) {
+    public VirtualComponentWidget componentWidgetAt(@Nullable VirtualComponentPosition pos) {
         return pos == null ? null : componentWidgets.get(pos);
     }
 

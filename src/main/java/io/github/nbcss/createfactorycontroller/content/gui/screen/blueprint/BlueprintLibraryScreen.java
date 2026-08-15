@@ -10,7 +10,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.blueprint.SchematicImport;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ActionPromptWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;

@@ -6,7 +6,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedstoneLinkScreen;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;

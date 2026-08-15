@@ -12,7 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;

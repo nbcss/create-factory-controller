@@ -3,7 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.compat.jei;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedstoneLinkScreen;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.NetworkSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import mezz.jei.api.IModPlugin;

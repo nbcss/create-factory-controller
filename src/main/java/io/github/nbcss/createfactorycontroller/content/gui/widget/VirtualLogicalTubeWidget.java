@@ -3,7 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.LogicalTubeSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;

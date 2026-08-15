@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersTab;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;

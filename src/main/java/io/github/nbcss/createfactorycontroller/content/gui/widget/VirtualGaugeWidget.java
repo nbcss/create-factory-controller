@@ -7,7 +7,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBeh
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
