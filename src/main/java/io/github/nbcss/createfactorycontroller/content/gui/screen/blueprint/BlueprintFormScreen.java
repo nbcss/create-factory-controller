@@ -27,13 +27,11 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultilineTextField;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
-import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -444,7 +442,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             int material = materialAt(mouseX, mouseY);
             if (material >= 0) {
                 BlueprintStorage.Material entry = materials().get(material);
-                gfx.renderTooltip(font, new ItemStack(BuiltInRegistries.ITEM.get(entry.item())), mouseX, mouseY);
+                BlueprintMaterialDisplay.renderTooltip(gfx, font, entry, mouseX, mouseY);
             } else {
                 int network = networkAt(mouseX, mouseY);
                 List<Component> tooltip = network >= 0 ? networkTooltip(network) : List.of();
@@ -531,7 +529,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             int sx = x + i % SLOTS_PER_ROW * SLOT;
             int sy = y + i / SLOTS_PER_ROW * SLOT;
             BlueprintStorage.Material material = materials.get(i);
-            gfx.renderItem(new ItemStack(BuiltInRegistries.ITEM.get(material.item())), sx + 1, sy + 1);
+            gfx.renderItem(BlueprintMaterialDisplay.icon(material), sx + 1, sy + 1);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
             SpriteNumbersRender.drawCountRightAligned(gfx, Integer.toString(material.count()),

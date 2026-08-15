@@ -115,7 +115,12 @@ public class BlueprintPlacement {
     public static final int MATERIAL_HELD_COLOR = 0xFFD7FFA8;
     public static final int MATERIAL_MISSING_COLOR = 0xFFFCA4A4;
 
+    public boolean hasKnownItems() {
+        return !info.hasUnknownItems();
+    }
+
     public boolean hasMaterials(Player player) {
+        if (!hasKnownItems()) return false;
         if (player.isCreative()) return true;
         Map<Item, Integer> held = inventoryCounts(player);
         for (BlueprintStorage.Material material : info.materials())
@@ -126,8 +131,8 @@ public class BlueprintPlacement {
     /** Whether {@code held} covers {@code material}; creative always does. */
     public static boolean isMaterialSufficient(Player player, Map<Item, Integer> held,
                                                BlueprintStorage.Material material) {
-        return player.isCreative()
-                || held.getOrDefault(BuiltInRegistries.ITEM.get(material.item()), 0) >= material.count();
+        return !material.isUnknown() && (player.isCreative()
+                || held.getOrDefault(BuiltInRegistries.ITEM.get(material.item()), 0) >= material.count());
     }
 
     public boolean hasCapacity(FactoryControllerMenu menu) {

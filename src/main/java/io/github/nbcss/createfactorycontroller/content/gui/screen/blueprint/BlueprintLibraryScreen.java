@@ -29,7 +29,6 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -290,9 +289,8 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
     private boolean isMaterialSufficient(BlueprintStorage.Material material) {
         assert Minecraft.getInstance().player != null;
-        return Minecraft.getInstance().player.isCreative() ||
-                inventoryCounts.getOrDefault(BuiltInRegistries.ITEM.get(material.item()), 0)
-                        >= material.count();
+        return BlueprintPlacement.isMaterialSufficient(
+                Minecraft.getInstance().player, inventoryCounts, material);
     }
 
     @Override
@@ -546,6 +544,8 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
         @Nullable
         private Component placeBlockedReason() {
+            if (info.hasUnknownItems())
+                return Component.translatable("createfactorycontroller.gui.blueprint.unknown_items");
             if (info.placements().isEmpty() || entry.oversized())
                 return Component.translatable("createfactorycontroller.gui.blueprint.unplaceable");
             if (menu.components.size() + info.placements().size()
@@ -633,7 +633,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             for (int i = 0; i < visibleMaterialCount(); i++) {
                 int slotX = x + i * SLOT_SIZE;
                 BlueprintStorage.Material material = materials.get(i);
-                ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(material.item()));
+                ItemStack stack = BlueprintMaterialDisplay.icon(material);
                 gfx.renderItem(stack, slotX + 1, y + 1);
                 gfx.pose().pushPose();
                 gfx.pose().translate(0, 0, 200);
@@ -684,8 +684,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             int slot = (localX - 3) / SLOT_SIZE;
             if (slot >= visibleMaterialCount()) return false;
             BlueprintStorage.Material material = info.materials().get(slot);
-            ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(material.item()));
-            gfx.renderTooltip(font, stack, mouseX, mouseY);
+            BlueprintMaterialDisplay.renderTooltip(gfx, font, material, mouseX, mouseY);
             return true;
         }
 

@@ -202,7 +202,8 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
 
     @Override
     protected boolean canConfirm() {
-        return placement.allNetworksAssigned()
+        return placement.hasKnownItems()
+                && placement.allNetworksAssigned()
                 && placement.hasCapacity(menu)
                 && placement.hasMaterials(Minecraft.getInstance().player);
     }
@@ -210,6 +211,8 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
     @Nullable
     @Override
     protected Component confirmBlockedReason() {
+        if (!placement.hasKnownItems())
+            return Component.translatable("createfactorycontroller.gui.blueprint.unknown_items");
         if (!placement.hasCapacity(menu))
             return Component.translatable("createfactorycontroller.gui.blueprint.capacity_reached");
         if (!placement.hasMaterials(Minecraft.getInstance().player))

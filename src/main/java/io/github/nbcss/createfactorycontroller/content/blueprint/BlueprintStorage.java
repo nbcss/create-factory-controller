@@ -14,7 +14,9 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,7 +43,12 @@ public final class BlueprintStorage {
 
     private BlueprintStorage() {}
 
-    public record Material(ResourceLocation item, int count) {}
+    public record Material(ResourceLocation item, int count) {
+        /** Missing registry entries resolve to AIR; AIR itself is never a valid controller component material. */
+        public boolean isUnknown() {
+            return BuiltInRegistries.ITEM.get(item) == Items.AIR;
+        }
+    }
 
     public record Placement(ResourceLocation item, VirtualComponentPosition pos) {}
 
@@ -57,6 +64,10 @@ public final class BlueprintStorage {
     public record Info(String note, List<Material> materials, int networkCount, int width, int height,
                        List<Placement> placements, List<Wire> connections) {
         public static final Info EMPTY = new Info("", List.of(), 0, 0, 0, List.of(), List.of());
+
+        public boolean hasUnknownItems() {
+            return materials.stream().anyMatch(Material::isUnknown);
+        }
     }
 
     public static List<Material> materials(ComponentHolder holder,
@@ -153,6 +164,7 @@ public final class BlueprintStorage {
 
     public static Path edit(Path source, String name, String note) throws IOException {
         if (!isValidBlueprintName(name)) throw new IOException("Invalid blueprint file name");
+        // Edit the raw NBT instead of rebuilding from Info so unavailable optional-mod item IDs remain untouched.
         CompoundTag root = NbtIo.readCompressed(source, NbtAccounter.unlimitedHeap());
         root.putString("Note", truncateNote(note));
 

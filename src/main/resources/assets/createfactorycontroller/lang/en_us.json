@@ -181,6 +181,8 @@
   "createfactorycontroller.gui.blueprint.load_failed": "Load failed: %1$s",
   "createfactorycontroller.gui.blueprint.place_title": "Place Blueprint",
   "createfactorycontroller.gui.blueprint.missing_materials": "Missing materials",
+  "createfactorycontroller.gui.blueprint.unknown_item": "Unknown item",
+  "createfactorycontroller.gui.blueprint.unknown_items": "Blueprint contains unknown items",
   "createfactorycontroller.gui.blueprint.capacity_reached": "Capacity limit reached",
   "createfactorycontroller.gui.blueprint.unplaceable": "Blueprint cannot be placed",
   "createfactorycontroller.gui.blueprint.assign_networks": "Some networks are not assigned",
