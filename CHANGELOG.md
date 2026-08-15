@@ -10,7 +10,7 @@ Features:
 - Connection tooltip will now display current state, and display delay is configurable now.
 
 Optimization:
-- Improve performance of controller GUI.
+- Improve the performance of controller GUI.
 - Improve the performance with fluid logistics mod.
 
 Changes:

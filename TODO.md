@@ -24,14 +24,38 @@
 # 1.2.0
 - [TODO] Component Search
 - [TODO] Number Connection & Arithmetic Component
-- [TODO] Color wire/bulb by limit blocked state
-- [TODO] Improve BP System: Handle missing component from compat
+- [TODO] Improve the wording of production order
+- [TODO] CC integration
+- [TODO] Crafter Filter
+- [TODO] Fix outline still appear for selected component
+- [TODO] Improve BP System: Blueprint tooltip includes more info
+- [TODO] Filter Link model
+- [TBC] Fix gauge sound overload?
+- [DONE] Improve BP System: Handle missing component from compat
 - [DONE] Improve BP System: More info for ghost components
+- [DONE] Improve BP System: Selection tool button relocate
 - [DONE] Scale background
 - [DONE] Highlight upstream and downstream gauges when hover over a gauge
 - [DONE] Allow minimum stock amount in Passive mode gauge
 
 # Roadmap
+- [TODO] Color wire/bulb by limit blocked state
+- [TODO] Crafting pattern overload
+- [TODO] Crafting output filter
+- [TODO] Comparator unit
+- [TODO] More redstone units (timer etc.)
+- [TODO] Controller IO Link
+- [TODO] No-sending production order
+- [TODO] Delta production order
+- [TODO] Redstone Requester
+- [TODO] Multi-package request
+- [TODO] Alternative production order icon formatting
+- [TODO] Connection type selector
+- [TODO] Better handle of custom grid layout (width)
+- [TODO] Custom filter setting in gauge
+- [TODO] Short-cut controls (Ctrl-A, Ctrl-S etc.)
+- [TODO] Expand controller settings screen
+- [TODO] Change network of existing gauge
 - [TODO] Selector Gauge
 - [TODO] Custom background tile (from block)
 - [TODO] Allow production order as ingredient for JEI crafting
@@ -41,6 +65,9 @@
 - [TODO] Production Order Error Notification
 - [TODO] Projection Mode
 - [TODO] Controller disabled (redstone powered) indicator
+- [TODO] Local redstone link mode
+- [TODO] Passive item as gauge target (bridge connection)
+- [TODO] Save gauge settings without close
 - [TODO] Guide GUI
 - [TODO] Set max item data length limit per gauge in configuration; increase component limit.
 - [TODO] Connection tab in recipe / redstone link setting screen
@@ -51,8 +78,6 @@
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
 - [TODO] Improve BP System: Layout preview
-- [TODO] Improve BP System: Selection tool button relocate
-- [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TBC] No promise request
 - [TBC] Redstone Frequency from clipboard
 - [TBC] Gauge with recipe filter

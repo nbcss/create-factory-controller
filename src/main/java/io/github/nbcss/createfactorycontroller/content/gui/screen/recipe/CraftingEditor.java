@@ -88,8 +88,10 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 else
                     tooltip = List.of(
                             CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                            CreateLang.translate("gui.factory_panel.crafting_input_tip").style(ChatFormatting.GRAY).component(),
-                            CreateLang.translate("gui.factory_panel.crafting_input_tip_1").style(ChatFormatting.GRAY).component(),
+                            Component.translatable("createfactorycontroller.gui.crafting_unpacked")
+                                    .withStyle(ChatFormatting.GRAY),
+                            Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim)
+                                    .withStyle(ChatFormatting.GRAY),
                             Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
                                     .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
             }
