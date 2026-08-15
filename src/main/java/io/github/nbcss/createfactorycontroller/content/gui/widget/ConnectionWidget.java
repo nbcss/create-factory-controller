@@ -143,7 +143,7 @@ public class ConnectionWidget {
     /** Returns true if the canvas-world point lies within the 4 px-wide path strip (segments and turn points). */
     public boolean hitTest(double worldMouseX, double worldMouseY) {
         for (Rect2i rect : stripRects)
-            if (rect.contains(Mth.floor(worldMouseX), Mth.floor(worldMouseY), Rect2i.Boundary.INCLUSIVE))
+            if (rect.contains(Mth.floor(worldMouseX), Mth.floor(worldMouseY), Rect2i.Boundary.HALF_OPEN))
                 return true;
         return false;
     }
