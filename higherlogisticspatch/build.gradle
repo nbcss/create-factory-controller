@@ -39,13 +39,9 @@ neoForge {
         minecraftVersion = project.parchment_minecraft_version
     }
 
-    runs {
-        // Optional standalone dev client (Create + this patch only). CFC's own runtime also exercises the
-        // bundled copy, so this is just for testing the patch in isolation.
-        client {
-            client()
-        }
-    }
+    // No dev run here: this patch ships bundled inside Create: Factory Controller and loads into the root project's
+    // client via `localRuntime project(':higherlogisticspatch')`. Defining a `client` run here would add a second
+    // `runClient` task that an unqualified `runClient` invocation would launch as a separate game instance.
 
     mods {
         "createhigherlogisticspatch" {

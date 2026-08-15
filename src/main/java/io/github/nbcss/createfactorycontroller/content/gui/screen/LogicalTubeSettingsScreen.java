@@ -302,10 +302,8 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     }
 
     private static void highlight(GuiGraphics gfx, int x, int y) {
-        gfx.pose().pushPose();
-        gfx.pose().translate(0, 0, 300);
+        // Keep this below the deferred gauge item/fluid icon (rendered at z=150/100 during the batch flush).
         gfx.fill(x, y, x + CELL, y + CELL, 0x80FFFFFF);
-        gfx.pose().popPose();
     }
 
     @Override

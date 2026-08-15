@@ -171,8 +171,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private long connHoverSinceMs = 0;
     private static final long CONN_TOOLTIP_DELAY_MS = 500;
     private boolean connArrowLocked = false;
-    private int lockMouseX, lockMouseY;
-    // Last cursor position seen by render(), so keyPressed (which has no mouse coords) can capture the lock anchor.
+    // Last cursor position seen by render()
     private int lastMouseX, lastMouseY;
 
     private final ComponentRenderingHelper componentRenderingHelper = new ComponentRenderingHelper();
@@ -203,11 +202,23 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     // ── Selection mode (client-only) ─────────────────────────────────────────
     /** Components currently marked "selected" (gold reticle). Client-only; never serialized or synced. */
     private final Set<VirtualComponentPosition> selected = new LinkedHashSet<>();
-    // Rubber-band drag
-    private boolean rubberBanding = false;
-    private boolean rubberMoved = false;
-    private boolean rubberCtrl = false;   // was the Selection-Mode key held when the rubber-band started?
-    private double rubberStartX, rubberStartY, rubberCurX, rubberCurY;
+    // Drag-selection origin is stored in canvas-world coordinates so pan, zoom, or GUI resizing cannot move it.
+    @Nullable private DragSelectionState dragSelection = null;
+
+    private static final class DragSelectionState {
+        private final double startWorldX;
+        private final double startWorldY;
+        // Whether the selection that existed when the drag began should be preserved.
+        private final boolean isPreserved;
+        // Sticky once the pointer has crossed the click/drag threshold.
+        private boolean hasMoved;
+
+        private DragSelectionState(double startWorldX, double startWorldY, boolean isPreserved) {
+            this.startWorldX = startWorldX;
+            this.startWorldY = startWorldY;
+            this.isPreserved = isPreserved;
+        }
+    }
     // Batch relocate drag (normal mode, started by pressing a selected component).
     private boolean batchRelocating = false;
     @Nullable private VirtualComponentPosition batchAnchor = null;
@@ -425,15 +436,18 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         Minecraft.getInstance().getProfiler().push("FactoryControllerScreen");
 
         tickKeyboardPan();   // pan from held movement keys before the board is drawn this frame
-        lastMouseX = mouseX;   // remembered so keyPressed (no mouse coords) can anchor the arrow-mode lock
+        updateDragSelectionMovement(mouseX, mouseY);
+        // Keep a cycled wire pinned only while the cursor remains where it was when the key was pressed.
+        if (connArrowLocked && (mouseX != lastMouseX || mouseY != lastMouseY)) connArrowLocked = false;
+        lastMouseX = mouseX;
         lastMouseY = mouseY;
         updateBlueprintButtonVisibility();
 
         super.render(graphics, mouseX, mouseY, partialTick);
 
         VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
-        // No hover tooltips while a selection drag (rubber-band rectangle or batch relocate) is in progress.
-        boolean selectionDragging = rubberBanding || batchRelocating;
+        // No hover tooltips while a drag selection or batch relocate is in progress.
+        boolean selectionDragging = dragSelection != null || batchRelocating;
         if (pendingConnectionTarget == null && pendingRelocateTarget == null && pendingPlacement == null
                 && !selectionDragging) {
             if (hoveredConn != null) {
@@ -481,7 +495,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.disableDepthTest();
         if (playerInventory != null) playerInventory.render(graphics, mouseX, mouseY, partialTick);
 
-        Component persistentPrompt = selectionStatusPrompt();
+        Component persistentPrompt = selectionStatusPrompt(mouseX, mouseY);
         if (persistentPrompt == null) persistentPrompt = persistentActionPrompt;
 
         Component temporaryPrompt = temporaryActionPrompt;
@@ -555,9 +569,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.pose().translate((float) -viewX, (float) -viewY, 0);
 
         // Cursor in canvas-world coords (so widgets can hit-test sub-regions).
-        Vector2d worldMouse = new Vector2d(
-                viewX + (mouseX - centerX) / getZoomFactor(),
-                viewY + (mouseY - centerY) / getZoomFactor());
+        Vector2d worldMouse = worldAt(mouseX, mouseY, centerX, centerY);
 
         // Background — one tile per component cell, snapped to cell boundaries (world-locked).
         int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
@@ -579,14 +591,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         componentRenderingHelper.flushBuffers(graphics);
 
         profiler.popPush("connection");
-        // A cursor move releases the arrow-mode lock (so the pinned wire goes back to normal hover resolution).
-        if (connArrowLocked && (mouseX != lockMouseX || mouseY != lockMouseY)) connArrowLocked = false;
-
         hoverHits.clear();
         boolean carrying = !menu.getCarried().isEmpty();   // holding an item skips connection hover entirely
         boolean overComponent = componentWidgetAt(hoveredPosition) != null;
         // No connection hover while dragging a selection rectangle or a batch relocate.
-        if (isInCanvasArea(mouseX, mouseY) && !carrying && !rubberBanding && !batchRelocating
+        if (isInCanvasArea(mouseX, mouseY) && !carrying && dragSelection == null && !batchRelocating
                 && pendingConnectionTarget == null && pendingRelocateTarget == null) {
             for (ConnectionWidget w : connWidgets) {
                 if (overComponent && !hoveredPosition.equals(w.connection.from)
@@ -596,12 +605,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         hoveredConn = reconcileConnectionSelection(connWidgets);
-        for (ConnectionWidget widget : connWidgets) {
-            if (widget == hoveredConn)
-                widget.renderHighlight(graphics);
-            widget.render(graphics, menu);
-        }
+        // Flush the ordinary wires first so the selected wire and its highlight are always composited on top
+        for (ConnectionWidget widget : connWidgets)
+            if (widget != hoveredConn) widget.render(graphics, menu);
         graphics.flush();
+        if (hoveredConn != null) {
+            hoveredConn.renderHighlight(graphics);
+            hoveredConn.render(graphics, menu);
+            graphics.flush();
+        }
 
         profiler.popPush("front");
         for (VirtualComponentWidget component : visibleComponents)
@@ -612,7 +624,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         renderSelectedNetworkMask(graphics);
         // The blueprint ghost owns the cursor cell while placing; the normal hover reticle would fight it.
         if (hoveredConn == null && pendingPlacement == null) renderHoverTarget(graphics);
-        renderSelectionTargets(graphics);
+        renderSelectionTargets(graphics, worldMouse);
 
         profiler.push("ghost");
         renderPlacementGhost(graphics);
@@ -700,12 +712,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
 
-        // Rubber-band selection rectangle (screen space, translucent green), clipped to the canvas.
-        if (rubberBanding && rubberMoved) {
-            int rx0 = (int) Math.min(rubberStartX, rubberCurX);
-            int ry0 = (int) Math.min(rubberStartY, rubberCurY);
-            int rx1 = (int) Math.max(rubberStartX, rubberCurX);
-            int ry1 = (int) Math.max(rubberStartY, rubberCurY);
+        // Drag-selection rectangle (screen space, translucent green), clipped to the canvas.
+        if (dragSelection != null && dragSelection.hasMoved) {
+            Vector2d startScreen = screenAt(dragSelection.startWorldX, dragSelection.startWorldY, centerX, centerY);
+            int rx0 = (int) Math.min(startScreen.x, mouseX);
+            int ry0 = (int) Math.min(startScreen.y, mouseY);
+            int rx1 = (int) Math.max(startScreen.x, mouseX);
+            int ry1 = (int) Math.max(startScreen.y, mouseY);
             graphics.enableScissor(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY());
             graphics.fill(rx0, ry0, rx1, ry1, 0x3333CC33);          // body
             graphics.fill(rx0, ry0, rx1, ry0 + 1, 0xAA33CC33);      // top border
@@ -911,7 +924,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      *  overlay opens (per the feature spec) and on a left-click on empty space. */
     public void clearSelection() {
         selected.clear();
-        rubberBanding = false;
+        dragSelection = null;
         batchRelocating = false;
     }
 
@@ -930,23 +943,36 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return !FactoryControllerBlockEntity.isOutBoard(to) && !occupiedByOther;
     }
 
-    /** The inclusive cell box spanned by the current rubber-band rectangle. */
-    private Rect2i rubberCellBox() {
-        VirtualComponentPosition a = cellAt(rubberStartX, rubberStartY);
-        VirtualComponentPosition b = cellAt(rubberCurX, rubberCurY);
+    private void beginDragSelection(double mouseX, double mouseY, boolean isPreserved) {
+        Vector2d startWorld = worldAt(mouseX, mouseY);
+        dragSelection = new DragSelectionState(startWorld.x, startWorld.y, isPreserved);
+    }
+
+    private void updateDragSelectionMovement(double mouseX, double mouseY) {
+        if (dragSelection == null || dragSelection.hasMoved) return;
+        Vector2d startScreen = screenAt(dragSelection.startWorldX, dragSelection.startWorldY);
+        if (Math.abs(mouseX - startScreen.x) > 3 || Math.abs(mouseY - startScreen.y) > 3)
+            dragSelection.hasMoved = true;
+    }
+
+    /** The inclusive cell box from the drag's board-anchored origin to the current cursor position. */
+    private Rect2i dragSelectionCellBox(DragSelectionState state, Vector2d currentWorld) {
+        VirtualComponentPosition a = cellAtWorld(state.startWorldX, state.startWorldY);
+        VirtualComponentPosition b = cellAtWorld(currentWorld.x, currentWorld.y);
         int minX = Math.min(a.x(), b.x());
         int minY = Math.min(a.y(), b.y());
         return Rect2i.fromBounds(minX, minY, Math.max(a.x(), b.x()), Math.max(a.y(), b.y()));
     }
 
     /** Green mark on selected components; white/red ghosts during a batch drag; and a live green preview of every
-     *  component currently inside the rubber-band rectangle while drag-selecting. */
-    private void renderSelectionTargets(GuiGraphics graphics) {
-        if (!(rubberBanding && rubberMoved && !rubberCtrl))
+     *  component currently inside the drag-selection rectangle. */
+    private void renderSelectionTargets(GuiGraphics graphics, Vector2d currentWorld) {
+        if (!(dragSelection != null && dragSelection.hasMoved && !dragSelection.isPreserved))
             for (VirtualComponentPosition p : selected)
                 if (componentWidgets.containsKey(p)) renderTarget(graphics, p, TARGET_GREEN);
-        if (rubberBanding && rubberMoved) {   // live preview: components the drag would select show the mark too
-            Rect2i box = rubberCellBox();
+        if (dragSelection != null && dragSelection.hasMoved) {
+            // Live preview: components the drag would select show the mark too.
+            Rect2i box = dragSelectionCellBox(dragSelection, currentWorld);
             for (VirtualComponentPosition p : componentWidgets.keySet())
                 if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE))
                     renderTarget(graphics, p, TARGET_GREEN);
@@ -964,25 +990,27 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
-    /** Adds every component whose cell lies within the rubber-band rectangle to the selection. */
-    private void selectInRect() {
-        Rect2i box = rubberCellBox();
+    /** Adds every component whose cell lies within the drag-selection rectangle to the selection. */
+    private void selectInRect(DragSelectionState state, Vector2d currentWorld) {
+        Rect2i box = dragSelectionCellBox(state, currentWorld);
         for (VirtualComponentPosition p : componentWidgets.keySet())
             if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE)) selected.add(p);
     }
 
     @Nullable
-    private Component selectionStatusPrompt() {
-        int count = effectiveSelectedCount();
+    private Component selectionStatusPrompt(double mouseX, double mouseY) {
+        int count = effectiveSelectedCount(mouseX, mouseY);
         return count > 0
             ? Component.translatable("createfactorycontroller.gui.selection.count", count).withStyle(ChatFormatting.GREEN)
             : null;
     }
 
-    private int effectiveSelectedCount() {
-        if (!rubberBanding || !rubberMoved) return selected.size();
-        Set<VirtualComponentPosition> result = rubberCtrl ? new LinkedHashSet<>(selected) : new LinkedHashSet<>();
-        Rect2i box = rubberCellBox();
+    private int effectiveSelectedCount(double mouseX, double mouseY) {
+        if (dragSelection == null || !dragSelection.hasMoved) return selected.size();
+        Set<VirtualComponentPosition> result = dragSelection.isPreserved
+                ? new LinkedHashSet<>(selected)
+                : new LinkedHashSet<>();
+        Rect2i box = dragSelectionCellBox(dragSelection, worldAt(mouseX, mouseY));
         for (VirtualComponentPosition p : componentWidgets.keySet())
             if (box.contains(p.x(), p.y(), Rect2i.Boundary.INCLUSIVE)) result.add(p);
         return result.size();
@@ -1139,7 +1167,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Attaches a carried component at the empty {@code cell} (board-full / network checks, then the packet). No-op
-     *  when not carrying a component. Reached from the rubber-band release path (every empty-cell press starts one). */
+     *  when not carrying a component. Reached from the drag-selection release path (every empty-cell press starts one). */
     private void attachCarriedAt(VirtualComponentPosition cell, ItemStack carried) {
         if (!ComponentRegistry.containsItem(carried) || componentWidgetAt(cell) != null) return;
         if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
@@ -1266,19 +1294,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            boolean ctrl = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
-            if (ctrl && CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && carried.isEmpty()
+            boolean isPreserved = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
+            if (isPreserved && CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && carried.isEmpty()
                     && pendingConnectionTarget == null && pendingRelocateTarget == null) {
-                rubberBanding = true;
-                rubberMoved = false;
-                rubberCtrl = true;
-                rubberStartX = rubberCurX = mouseX;
-                rubberStartY = rubberCurY = mouseY;
+                beginDragSelection(mouseX, mouseY, true);
                 return true;
             }
 
             if (leftOrRight && widget == null && carried.isEmpty() && !selected.isEmpty()
-                    && pendingConnectionTarget == null && pendingRelocateTarget == null && !ctrl) {
+                    && pendingConnectionTarget == null && pendingRelocateTarget == null && !isPreserved) {
                 if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button))
                     beginPan(mouseX, mouseY, true);
                 else
@@ -1288,12 +1312,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button)
                     && !CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button) && carried.isEmpty()
                     && pendingConnectionTarget == null && pendingRelocateTarget == null
-                    && (ctrl || widget == null)) {
-                rubberBanding = true;
-                rubberMoved = false;
-                rubberCtrl = ctrl;
-                rubberStartX = rubberCurX = mouseX;
-                rubberStartY = rubberCurY = mouseY;
+                    && (isPreserved || widget == null)) {
+                beginDragSelection(mouseX, mouseY, isPreserved);
                 return true;
             }
 
@@ -1353,11 +1373,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        // Rubber-band: track the current corner; a few pixels of travel promotes the click to a drag.
-        if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && rubberBanding) {
-            rubberCurX = mouseX;
-            rubberCurY = mouseY;
-            if (Math.abs(mouseX - rubberStartX) > 3 || Math.abs(mouseY - rubberStartY) > 3) rubberMoved = true;
+        // A few pixels of travel from the board-anchored origin promotes the click to a drag.
+        if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && dragSelection != null) {
+            updateDragSelectionMovement(mouseX, mouseY);
             return true;
         }
         // Batch relocate: the live cell delta from the anchor drives the ghost reticles.
@@ -1379,14 +1397,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && rubberBanding) {
-            rubberBanding = false;
-            if (rubberMoved) {
-                // A drag merges with the existing selection only while the Selection-Mode key is held
-                if (!rubberCtrl) selected.clear();
-                selectInRect();
-            } else if (rubberCtrl) {
-                toggleOrClearAt(mouseX, mouseY);    // a Ctrl click → toggle the component, or clear on empty
+        if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && dragSelection != null) {
+            DragSelectionState completed = dragSelection;
+            dragSelection = null;
+            if (completed.hasMoved) {
+                if (!completed.isPreserved) selected.clear();
+                selectInRect(completed, worldAt(mouseX, mouseY));
+            } else if (completed.isPreserved) {
+                // A Selection-Mode click toggles the component, or clears on empty.
+                toggleOrClearAt(mouseX, mouseY);
             } else {
                 // a normal-mode click on empty space → drop the selection, then place a carried component if any
                 clearSelection();
@@ -1540,11 +1559,45 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return Mth.clamp(view, lower, upper);
     }
 
+    /** Maps a screen position to canvas-world coordinates. */
+    private Vector2d worldAt(double posX, double posY) {
+        Rect2i canvas = canvasArea();
+        return worldAt(posX, posY,
+                canvas.minX() + canvas.w() / 2,
+                canvas.minY() + canvas.h() / 2);
+    }
+
+    private Vector2d worldAt(double posX, double posY, int centerX, int centerY) {
+        return new Vector2d(
+                viewX + (posX - centerX) / getZoomFactor(),
+                viewY + (posY - centerY) / getZoomFactor());
+    }
+
+    /** Maps canvas-world coordinates back to the current screen position. */
+    private Vector2d screenAt(double worldX, double worldY) {
+        Rect2i canvas = canvasArea();
+        return screenAt(worldX, worldY,
+                canvas.minX() + canvas.w() / 2,
+                canvas.minY() + canvas.h() / 2);
+    }
+
+    private Vector2d screenAt(double worldX, double worldY, int centerX, int centerY) {
+        double zoom = getZoomFactor();
+        return new Vector2d(
+                (worldX - viewX) * zoom + centerX,
+                (worldY - viewY) * zoom + centerY);
+    }
+
+    private static VirtualComponentPosition cellAtWorld(double worldX, double worldY) {
+        return new VirtualComponentPosition(
+                (int) Math.floor(worldX / CANVAS_COMPONENT_SIZE),
+                (int) Math.floor(worldY / CANVAS_COMPONENT_SIZE));
+    }
+
     /** Maps a screen position to the canvas cell it falls into. */
     private VirtualComponentPosition at(double posX, double posY, int centerX, int centerY) {
-        int cellX = (int) Math.floor((viewX + (posX - centerX) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
-        int cellY = (int) Math.floor((viewY + (posY - centerY) / getZoomFactor()) / CANVAS_COMPONENT_SIZE);
-        return new VirtualComponentPosition(cellX, cellY);
+        Vector2d world = worldAt(posX, posY, centerX, centerY);
+        return cellAtWorld(world.x, world.y);
     }
 
     // ── JEI ghost drop (drag an item/fluid from JEI onto an empty board gauge to set its filter) ──────────────
@@ -1691,8 +1744,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // so a reshaped path that moves off the cursor stays selected until the cursor moves.
             if (hoveredConn != null) {
                 connArrowLocked = true;
-                lockMouseX = lastMouseX;
-                lockMouseY = lastMouseY;
                 playWrenchSound();
                 PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
                         hoveredConn.connection.from, hoveredConn.connection.to));

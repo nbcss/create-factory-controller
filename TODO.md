@@ -26,6 +26,8 @@
 - [TODO] Number Connection & Arithmetic Component
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Selector Gauge
+- [TODO] Improve BP System: More info for ghost components
+- [TODO] Improve BP System: Handle missing component from compat
 - [TODO] Allow production order as ingredient for JEI crafting
 - [TODO] Scale background
 - [TODO] Custom background tile (from block)
@@ -49,10 +51,8 @@
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
 - [TODO] Improve BP System: Layout preview
-- [TODO] Improve BP System: More info for ghost components
 - [TODO] Improve BP System: Selection tool button relocate
 - [TODO] Improve BP System: Blueprint tooltip includes more info
-- [TODO] Improve BP System: Handle missing component from compat
 - [TBC] No promise request
 - [TBC] Redstone Frequency from clipboard
 - [TBC] Gauge with recipe filter
