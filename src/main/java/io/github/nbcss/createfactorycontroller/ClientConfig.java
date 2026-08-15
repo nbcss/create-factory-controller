@@ -9,6 +9,7 @@ public final class ClientConfig {
 
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<String> CONTROLLER_BACKGROUND;
+    public static final ModConfigSpec.BooleanValue UPSCALE_BACKGROUND_TEXTURE;
     public static final ModConfigSpec.BooleanValue ALWAYS_SHOW_LABEL;
     public static final ModConfigSpec.BooleanValue DYNAMIC_LABEL_SCALING;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
@@ -23,6 +24,10 @@ public final class ClientConfig {
                 .comment("Background texture path of Controller Screen. The texture file must locate in 'createfactorycontroller/textures/gui/controller_background/' path, and in 16 pixel resolution.")
                 .translation("createfactorycontroller.config.controller_background")
                 .define("controllerBackground", "plain_cardboard");
+        UPSCALE_BACKGROUND_TEXTURE = builder
+                .comment("Upscale controller background texture tiles to 2x2 component size.")
+                .translation("createfactorycontroller.config.upscale_background_texture")
+                .define("upscaleBackgroundTexture", false);
         ALWAYS_SHOW_LABEL = builder
                 .comment("Show the count label on every gauge in the controller interface, instead of only the hovered gauge.")
                 .translation("createfactorycontroller.config.always_show_label")
@@ -62,6 +67,10 @@ public final class ClientConfig {
 
     public static boolean alwaysShowLabel() {
         return ALWAYS_SHOW_LABEL.get();
+    }
+
+    public static boolean upscaleBackgroundTexture() {
+        return UPSCALE_BACKGROUND_TEXTURE.get();
     }
 
     public static boolean dynamicLabelScaling() {

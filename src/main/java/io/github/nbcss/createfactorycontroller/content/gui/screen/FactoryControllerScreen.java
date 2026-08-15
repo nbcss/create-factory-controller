@@ -571,14 +571,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Cursor in canvas-world coords (so widgets can hit-test sub-regions).
         Vector2d worldMouse = worldAt(mouseX, mouseY, centerX, centerY);
 
-        // Background — one tile per component cell, snapped to cell boundaries (world-locked).
-        int bgStartX = Math.floorDiv(minX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
-        int bgStartY = Math.floorDiv(minY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE;
-        int bgEndX   = Math.floorDiv(maxX, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
-        int bgEndY   = Math.floorDiv(maxY, CANVAS_COMPONENT_SIZE) * CANVAS_COMPONENT_SIZE + CANVAS_COMPONENT_SIZE;
+        // Background tiles rendering
+        int backgroundScale = ClientConfig.upscaleBackgroundTexture() ? 2 : 1;
+        int backgroundTileSize = CANVAS_COMPONENT_SIZE * backgroundScale;
+        int bgStartX = Math.floorDiv(minX, backgroundTileSize) * backgroundTileSize;
+        int bgStartY = Math.floorDiv(minY, backgroundTileSize) * backgroundTileSize;
+        int bgEndX   = Math.floorDiv(maxX, backgroundTileSize) * backgroundTileSize + backgroundTileSize;
+        int bgEndY   = Math.floorDiv(maxY, backgroundTileSize) * backgroundTileSize + backgroundTileSize;
+        graphics.pose().pushPose();
+        graphics.pose().scale(backgroundScale, backgroundScale, 1);
         TiledSpriteRenderer.create(BACKGROUND_TEXTURE_PATH.withSuffix(ClientConfig.getControllerBackground() + ".png"), 0, 0,
                         new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
-                .render(graphics, bgStartX, bgStartY, bgEndX - bgStartX, bgEndY - bgStartY);
+                .render(graphics,
+                        bgStartX / backgroundScale, bgStartY / backgroundScale,
+                        (bgEndX - bgStartX) / backgroundScale, (bgEndY - bgStartY) / backgroundScale);
+        graphics.pose().popPose();
 
         profiler.push("cull");
         updateVisibleComponents(visibleArea);
