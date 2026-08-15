@@ -13,6 +13,7 @@ import io.github.nbcss.createfactorycontroller.content.blueprint.SchematicImport
 import io.github.nbcss.createfactorycontroller.content.gui.screen.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ActionPromptWidget;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.BlueprintPlacePacket;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -86,6 +87,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     private final Map<Item, Integer> inventoryCounts = new HashMap<>();
     private List<LibraryEntry> blueprints = List.of();
 
+    private HelpButton helpButton;
     private TooltipIconButton openFolderButton;
     private TooltipIconButton closeButton;
     private SchematicImport.Scan importScan;
@@ -134,6 +136,10 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         addWidget(closeButton);
 
         relayout();
+
+        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
+                HelpButton.ColorPalette.GENERAL, "blueprint.html");
+        addWidget(helpButton);
     }
 
     private void relayout() {
@@ -358,6 +364,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                 if (widget.renderTooltip(gfx, mouseX, mouseY)) return;
         }
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, openFolderButton, closeButton);
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
         if (overImportIcon(mouseX, mouseY))
             gfx.renderComponentTooltip(font, importTooltip(), mouseX, mouseY);
     }
@@ -379,6 +386,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         renderScrollbar(gfx, renderedScroll, mouseX, mouseY);
         openFolderButton.render(gfx, mouseX, mouseY, partialTick);
         closeButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
         AllIcons.I_SCHEMATIC.render(gfx, importIconX, importIconY);
         if (importScan.ready()) {
             gfx.pose().pushPose();
@@ -435,11 +443,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             }
             return true;
         }
-        boolean inBottomBar = mouseY >= panelY + panelH - BOTTOM_H && mouseY < panelY + panelH
-                && mouseX >= panelX && mouseX < panelX + PANEL_W;
-        if (insideViewport(mouseX, mouseY) || inBottomBar)
-            return super.mouseClicked(mouseX, mouseY, button);
-        return false;
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override

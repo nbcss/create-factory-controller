@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -84,6 +85,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
 
     protected final FactoryControllerScreen controller;
 
+    private HelpButton helpButton;
     private CenteredEditBox nameBox;
     private SpacedMultiLineEditBox noteBox;
     private TooltipIconButton discardButton;
@@ -282,7 +284,12 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         updateNameValidity();
         refreshOverwriteState();
         nameWasFocused = nameBox.isFocused();
+
         relayout();
+
+        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
+                HelpButton.ColorPalette.GENERAL, "blueprint.html");
+        addWidget(helpButton);
     }
 
     private void updateNameValidity() {
@@ -444,8 +451,10 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
                 if (!tooltip.isEmpty()) gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
             }
         }
-        if (draggedNetwork < 0)
+        if (draggedNetwork < 0) {
             TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, discardButton, confirmButton);
+            helpButton.renderTooltip(gfx, font, mouseX, mouseY);
+        }
     }
 
     @Override
@@ -465,6 +474,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         renderScrollbar(gfx, renderedScroll, mouseX, mouseY);
         discardButton.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
     }
 
     private void renderContent(GuiGraphics gfx, int mouseX, int mouseY, float partialTick, float currentScroll) {
@@ -642,13 +652,10 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
                 return true;
             }
         }
-        boolean inBottomBar = mouseY >= panelY + panelH - BOTTOM_H && mouseY < panelY + panelH
-                && mouseX >= panelX && mouseX < panelX + PANEL_W;
-        if (insideViewport(mouseX, mouseY) || inBottomBar)
-            return super.mouseClicked(mouseX, mouseY, button);
         nameBox.setFocused(false);
         noteBox.setFocused(false);
-        return false;
+
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override

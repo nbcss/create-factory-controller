@@ -318,7 +318,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
-                HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html#recipe-settings");
+                HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html");
         addWidget(helpButton);
 
         GaugeInfoClient.clear();   // drop any stale count; the next tick polls fresh
