@@ -10,7 +10,8 @@
     "GenericOrderRequestPacketMixin",
     "PackagerBlockMixin",
     "PackagerFilterMixin",
-    "FactoryPanelBehaviourMixin"
+    "FactoryPanelBehaviourMixin",
+    "FluidRepackagerFilterMixin"
   ],
   "client": [
     "StockKeeperFilterMixin"
