@@ -147,7 +147,7 @@ image::blueprint-library-import-world.svg[,408,144]
 Shows the recognized components in the selected area.
 
 ❷ Place button::
-Click to place the selected components into the factory gauge. Similar to placing a blueprint, except the networks are not <<network-mapping,mapped>>.
+Click to place the selected components into the factory controller. Similar to placing a blueprint, except the networks are not <<network-mapping,mapped>>.
 
 ❸ Save button::
 Click to save the selected components as a blueprint.

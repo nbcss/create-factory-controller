@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"POT-Creation-Date: 2026-08-15 11:43+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,13 +17,13 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#: ../src/components.adoc:8 ../src/production-orders.adoc:41
 #, no-wrap
 msgid "Icon"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#: ../src/components.adoc:9 ../src/production-orders.adoc:41
 #, no-wrap
 msgid "Name"
 msgstr ""
@@ -53,131 +53,221 @@ msgstr ""
 #. type: Plain text
 #: ../src/production-orders.adoc:9
 msgid ""
-"Click to add the production task to the order, and adjust the amount per "
-"usual. Sending an order containing production tasks creates a [#term-"
-"production-order]_production order_, causing the corresponding factory "
-"gauges to add the number of items in the order to their xref:factory-"
-"gauge.adoc#term-demand[demands]. When the produced items arrive in the "
-"logistic network, they are sent out again to the address specified on the "
-"order."
-msgstr ""
-
-#. type: Plain text
-#: ../src/production-orders.adoc:11
-msgid ""
-"Pending production orders can be viewed in the \"production orders\" tab in "
-"the stock keeper UI. They are automatically removed when all ordered items "
-"arrive in the logistic network. Otherwise, they remain stuck if the items "
-"never arrive."
+"Click to add the production task to the order. The amount of output items to "
+"send can be adjusted per usual. Sending an order containing production tasks "
+"creates a [#term-production-order]_production order_, causing the "
+"corresponding factory gauges to add the number of items in the order to "
+"their xref:factory-gauge.adoc#term-demand[demands]. When the ordered items "
+"arrive in the logistic network, they are sent out again to the address "
+"specified on the order."
 msgstr ""
 
 #. type: Block title
-#: ../src/production-orders.adoc:12
+#: ../src/production-orders.adoc:10
+#, no-wrap
+msgid "Ordering 16 oak planks to be sent to the address \"`output`\""
+msgstr ""
+
+#. type: Plain text
+#: ../src/production-orders.adoc:14
+msgid ""
+"The responsible factory gauge will produce enough items to satisfy the "
+"amount specified in the production order, reusing existing items in storage. "
+"For example, if the xref:factory-gauge.adoc#term-recipe[recipe] of the gauge "
+"produces 4 oak planks from 1 oak log, and 5 oak planks are ordered when 0 "
+"oak planks are in storage, then 8 planks will be produced, 5 sent to the "
+"destination address, 3 left over in storage; when 5 planks are order again, "
+"4 new planks will be produced, leaving 2 left-over."
+msgstr ""
+
+#. type: Title ==
+#: ../src/production-orders.adoc:16
+#, no-wrap
+msgid "Pending Production Orders"
+msgstr ""
+
+#. type: #view
+#: ../src/production-orders.adoc:19
+msgid ""
+"Pending production orders can be viewed in the \"production orders\" tab (❶) "
+"in the stock keeper UI. They are automatically removed when all ordered "
+"items arrive in the logistic network. Otherwise, they remain stuck if the "
+"items never arrive."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:20
 #, no-wrap
 msgid "Production orders UI"
 msgstr ""
 
-#. type: Plain text
-#: ../src/production-orders.adoc:17
+#. type: #view
+#: ../src/production-orders.adoc:25
 msgid "❶ Production orders tab:: Click to switch to this tab."
 msgstr ""
 
-#. type: Plain text
-#: ../src/production-orders.adoc:20
+#. type: #view
+#: ../src/production-orders.adoc:28
 msgid ""
 "❷ Destination address:: The address the items are sent to after they arrive "
 "in storage."
 msgstr ""
 
-#. type: Plain text
-#: ../src/production-orders.adoc:23
+#. type: #view
+#: ../src/production-orders.adoc:31
 msgid "❸ Elapsed time:: Time elapsed since the order was created."
 msgstr ""
 
-#. type: Plain text
-#: ../src/production-orders.adoc:26
+#. type: #view
+#: ../src/production-orders.adoc:34
 msgid "❹ Cancel button:: Click to cancel the order."
 msgstr ""
 
-#. type: Plain text
-#: ../src/production-orders.adoc:29
+#. type: #view
+#: ../src/production-orders.adoc:37
 msgid "❺ Ordered items:: Type, amount, and status of the ordered items."
 msgstr ""
 
 #. type: Block title
-#: ../src/production-orders.adoc:30
+#: ../src/production-orders.adoc:38
 #, no-wrap
 msgid "Statuses of ordered items"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:35
+#: ../src/production-orders.adoc:43
 #, no-wrap
 msgid "Description"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:36
+#: ../src/production-orders.adoc:44
 #, no-wrap
 msgid "Waiting for ingredients"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:38
+#: ../src/production-orders.adoc:46
 #, no-wrap
 msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:38
+#: ../src/production-orders.adoc:46
 #, no-wrap
 msgid "image:production-order-processing.png[,14,14]"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:39
+#: ../src/production-orders.adoc:47
 #, no-wrap
 msgid "Processing"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:41
+#: ../src/production-orders.adoc:49
 #, no-wrap
 msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:41
+#: ../src/production-orders.adoc:49
 #, no-wrap
 msgid "image:production-order-sent.png[,14,14]"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:42
+#: ../src/production-orders.adoc:50
 #, no-wrap
 msgid "Sent"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:44
+#: ../src/production-orders.adoc:52
 #, no-wrap
 msgid "The produced item has arrived in storage, and been dispatched to the destination address."
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:44
+#: ../src/production-orders.adoc:52
 #, no-wrap
 msgid "image:production-order-invalid.png[,14,14]"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:45
+#: ../src/production-orders.adoc:53
 #, no-wrap
-msgid "Invalid gauge"
+msgid "[#term-invalid-gauge]#Invalid gauge#"
 msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:46
+#: ../src/production-orders.adoc:54
 #, no-wrap
 msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
+msgstr ""
+
+#. type: Title ==
+#: ../src/production-orders.adoc:57
+#, no-wrap
+msgid "Delivery Notification"
+msgstr ""
+
+#. type: #notification
+#: ../src/production-orders.adoc:60
+msgid ""
+"When all items in a production order arrive, and are dispatched to the "
+"destination address, a notification is shown on the top-right corner of the "
+"screen, to the player that has created the production order."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:61
+#, no-wrap
+msgid "\"Order shipped\" notification"
+msgstr ""
+
+#. type: #notification
+#: ../src/production-orders.adoc:65
+msgid ""
+"A similar notification is shown when a responsible gauge has become <<term-"
+"invalid-gauge,invalid>>."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:66
+#, no-wrap
+msgid "\"Gauge became invalid\" notification"
+msgstr ""
+
+#. type: Title ==
+#: ../src/production-orders.adoc:70
+#, no-wrap
+msgid "Mod Compatibility"
+msgstr ""
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:73
+msgid ""
+"Other mods may provide UIs alternative to the stock keeper for ordering "
+"items, such as handheld remote stock keepers. These UIs are likely able to "
+"create production orders without explicit support. However, they will not be "
+"able to view pending production orders, and will not display "
+"<<notification,delivery notifications>>."
+msgstr ""
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:75
+msgid ""
+"The following mods are tested to work with production orders, and have "
+"explicit support to display notifications:"
+msgstr ""
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:77
+msgid "Create: Mobile Packages"
+msgstr ""
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:77
+msgid "Create: Phantom"
 msgstr ""

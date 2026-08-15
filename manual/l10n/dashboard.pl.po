@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"POT-Creation-Date: 2026-08-15 11:43+1000\n"
 "PO-Revision-Date: 2026-07-18 00:38+1000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -104,7 +104,7 @@ msgid "Remove component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:26 ../src/dashboard.adoc:152
+#: ../src/dashboard.adoc:26 ../src/dashboard.adoc:157
 #, no-wrap
 msgid "Shift + Click"
 msgstr ""
@@ -115,25 +115,25 @@ msgid "Most of the controls can be changed in _Options--Controls--Key Binds_."
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:31
+#: ../src/dashboard.adoc:32
 #, no-wrap
 msgid "UI Overview"
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:35
+#. type: #ui-overview
+#: ../src/dashboard.adoc:36
 msgid ""
 "❶ Title bar:: Shows the name of this factory controller. Name can be edited "
 "by clicking on it."
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:38
+#. type: #ui-overview
+#: ../src/dashboard.adoc:39
 msgid "❷ Help button:: Opens this help page."
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:41
+#. type: #ui-overview
+#: ../src/dashboard.adoc:42
 msgid ""
 "❸ Network selector:: All networks tuned to by components placed in this "
 "controller are listed here. Scroll to select a network to highlight its "
@@ -141,63 +141,70 @@ msgid ""
 "<<network-selector,More Info>>"
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:45
+#. type: #ui-overview
+#: ../src/dashboard.adoc:46
 #, no-wrap
 msgid ""
-"❹ Capacity indicator:: Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up.\n"
+"❹ Capacity indicator:: [[capacity]] Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up.\n"
 "The capacity may be modified by the \"Controller Capacity\" server setting."
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:48
+#. type: #ui-overview
+#: ../src/dashboard.adoc:49
 msgid "❺ Zoom indicator:: Shows the current zoom level."
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:51
+#. type: #ui-overview
+#: ../src/dashboard.adoc:52
 msgid "❻ Settings button:: Opens the settings screen."
 msgstr ""
 
-#. type: TIP
-#: ../src/dashboard.adoc:54
+#. type: #ui-overview
+#: ../src/dashboard.adoc:55
 msgid ""
-"❼ Player inventory:: Shows the player inventory. Only the 9 hotbar slots are "
+"❼ Blueprints button:: Opens the blueprint library. See "
+"xref:blueprint.adoc[Blueprint]."
+msgstr ""
+
+#. type: #ui-overview
+#: ../src/dashboard.adoc:58
+msgid ""
+"❽ Player inventory:: Shows the player inventory. Only the 9 hotbar slots are "
 "shown by default. Click the \"+\" button to expand the other 27 slots."
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:56
+#: ../src/dashboard.adoc:60
 #, no-wrap
 msgid "Navigation"
 msgstr ""
 
 #. type: #navigation
-#: ../src/dashboard.adoc:59
+#: ../src/dashboard.adoc:63
 msgid ""
 "Drag with the left mouse button to pan the view around the virtual board. "
 "The W, A, S, D keys can also be used to move the view in cardinal directions."
 msgstr ""
 
 #. type: #navigation
-#: ../src/dashboard.adoc:61
+#: ../src/dashboard.adoc:65
 msgid "Scroll with the mouse wheel to zoom in/out."
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:63
+#: ../src/dashboard.adoc:67
 #, no-wrap
 msgid "Working with Components"
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:65
+#: ../src/dashboard.adoc:69
 #, no-wrap
 msgid "Holding a tuned factory gauge over an empty location"
 msgstr ""
 
 #. type: #components
-#: ../src/dashboard.adoc:69
+#: ../src/dashboard.adoc:73
 msgid ""
 "To place a component, grab a corresponding item from the inventory and click "
 "on an empty spot on the board. The xref:components.adoc[Components] page "
@@ -208,20 +215,20 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:70
+#: ../src/dashboard.adoc:74
 #, no-wrap
 msgid "A just-placed factory gauge"
 msgstr ""
 
 #. type: #components
-#: ../src/dashboard.adoc:74
+#: ../src/dashboard.adoc:78
 msgid ""
 "Holding shift and clicking on a component removes it from the controller and "
 "returns the item to your inventory."
 msgstr ""
 
 #. type: #components
-#: ../src/dashboard.adoc:76
+#: ../src/dashboard.adoc:80
 msgid ""
 "Either left- or right-clicking a component opens its configuration screen. "
 "To move a component, open its screen and click the image:btn-"
@@ -230,8 +237,8 @@ msgid ""
 "then click a new location."
 msgstr ""
 
-#. type: #components
-#: ../src/dashboard.adoc:78
+#. type: #selecting
+#: ../src/dashboard.adoc:83
 msgid ""
 "Multiple components may be selected. Hold Ctrl and drag with the left mouse "
 "button to select all components within a rectangular area. Selected "
@@ -240,34 +247,35 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:79
+#: ../src/dashboard.adoc:84
 #, no-wrap
 msgid "Rectangle-selecting multiple components"
 msgstr ""
 
-#. type: #components
-#: ../src/dashboard.adoc:83
+#. type: #selecting
+#: ../src/dashboard.adoc:88
 msgid ""
 "When components are selected, drag on any of them to move all selected "
 "components. Likewise, shift-clicking on any of them removes all selected "
-"components from the board."
+"components from the board. Selected components can be saved as "
+"xref:blueprint.adoc[blueprints]."
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:85
+#: ../src/dashboard.adoc:90
 #, no-wrap
 msgid "Creating and Modifying Connections"
 msgstr ""
 
 #. type: #connections
-#: ../src/dashboard.adoc:88
+#: ../src/dashboard.adoc:93
 msgid ""
 "Components may be connected to one another. Refer to a specific component's "
 "documentation for the functionality provided by connections."
 msgstr ""
 
 #. type: #connections
-#: ../src/dashboard.adoc:90
+#: ../src/dashboard.adoc:95
 msgid ""
 "To connect component A to B, click on B to open its UI, click on the "
 "image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
@@ -277,7 +285,7 @@ msgid ""
 msgstr ""
 
 #. type: #connections
-#: ../src/dashboard.adoc:92
+#: ../src/dashboard.adoc:97
 msgid ""
 "A component's UI may allow you to remove its connections. They can also be "
 "removed using the dashboard by hovering over them and shift-clicking. When "
@@ -286,13 +294,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:93
+#: ../src/dashboard.adoc:98
 #, no-wrap
 msgid "Selecting overlapping connections"
 msgstr ""
 
 #. type: #connections
-#: ../src/dashboard.adoc:97
+#: ../src/dashboard.adoc:102
 msgid ""
 "Connections automatically choose paths between their 2 ends. To customize "
 "this path, select from 4 path modes by hovering over a connection and "
@@ -302,25 +310,25 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:98
+#: ../src/dashboard.adoc:103
 #, no-wrap
 msgid "Path modes"
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:102
+#: ../src/dashboard.adoc:107
 #, no-wrap
 msgid "Network Selector"
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:104
+#: ../src/dashboard.adoc:109
 #, no-wrap
 msgid "Network selector with no network"
 msgstr ""
 
 #. type: #network-selector
-#: ../src/dashboard.adoc:108
+#: ../src/dashboard.adoc:113
 msgid ""
 "Factory gauges need to be tuned to a network before being placed in the "
 "controller. The first gauge needs to be tuned the usual way (e.g. by "
@@ -329,13 +337,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:109
+#: ../src/dashboard.adoc:114
 #, no-wrap
 msgid "Network selector with a network selected"
 msgstr ""
 
 #. type: #network-selector
-#: ../src/dashboard.adoc:113
+#: ../src/dashboard.adoc:118
 msgid ""
 "With an empty cursor, scrolling with the mouse wheel selects one of the "
 "tuned networks, highlighting all components tuned to that network with a "
@@ -344,7 +352,7 @@ msgid ""
 msgstr ""
 
 #. type: #network-selector
-#: ../src/dashboard.adoc:115
+#: ../src/dashboard.adoc:120
 msgid ""
 "While holding a factory gauge item, scrolling on the network selector "
 "changes the network this item is tuned to, allowing you to quickly tune a "
@@ -353,13 +361,13 @@ msgid ""
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:117
+#: ../src/dashboard.adoc:122
 #, no-wrap
 msgid "Additional Interactions"
 msgstr ""
 
 #. type: #additional-interactions
-#: ../src/dashboard.adoc:120
+#: ../src/dashboard.adoc:125
 msgid ""
 "Some components, like the xref:redstone-link.adoc[redstone link], have modes "
 "of operation that can be switched either by pressing the F key while "
@@ -367,7 +375,7 @@ msgid ""
 msgstr ""
 
 #. type: #additional-interactions
-#: ../src/dashboard.adoc:122
+#: ../src/dashboard.adoc:127
 msgid ""
 "Each factory gauge displays a label, providing relevant information (e.g. "
 "items in stock) at a glance. When the labels become distracting or obstruct "
@@ -376,163 +384,163 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:123
+#: ../src/dashboard.adoc:128
 #, no-wrap
 msgid "Summary"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:127
+#: ../src/dashboard.adoc:132
 #, no-wrap
 msgid "Move component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:129
+#: ../src/dashboard.adoc:134
 #, no-wrap
 msgid "Q on component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:130
+#: ../src/dashboard.adoc:135
 #, no-wrap
 msgid "Rectangle select"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:132
+#: ../src/dashboard.adoc:137
 #, no-wrap
 msgid "Ctrl + Drag with left mouse button"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:133
+#: ../src/dashboard.adoc:138
 #, no-wrap
 msgid "Add to selection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:135
+#: ../src/dashboard.adoc:140
 #, no-wrap
 msgid "Ctrl + Click component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:137
+#: ../src/dashboard.adoc:142
 #, no-wrap
 msgid "Remove from selection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:138
+#: ../src/dashboard.adoc:143
 #, no-wrap
 msgid "Move selected components"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:140
+#: ../src/dashboard.adoc:145
 #, no-wrap
 msgid "Drag on a selected component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:141
+#: ../src/dashboard.adoc:146
 #, no-wrap
 msgid "Remove selected components"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:143
+#: ../src/dashboard.adoc:148
 #, no-wrap
 msgid "Shift + Click on a selected component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:144
+#: ../src/dashboard.adoc:149
 #, no-wrap
 msgid "Create connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:146
+#: ../src/dashboard.adoc:151
 #, no-wrap
 msgid "C on component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:147
+#: ../src/dashboard.adoc:152
 #, no-wrap
 msgid "Select overlapping connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:149
+#: ../src/dashboard.adoc:154
 #, no-wrap
 msgid "Shift + Scroll"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:150
+#: ../src/dashboard.adoc:155
 #, no-wrap
 msgid "Remove connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:153
+#: ../src/dashboard.adoc:158
 #, no-wrap
 msgid "Change connection shape"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:155
+#: ../src/dashboard.adoc:160
 #, no-wrap
 msgid "R on component or connection"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:156
+#: ../src/dashboard.adoc:161
 #, no-wrap
 msgid "Change component mode"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:158
+#: ../src/dashboard.adoc:163
 #, no-wrap
 msgid "F on component"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:159
+#: ../src/dashboard.adoc:164
 #, no-wrap
 msgid "Tune item to network"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:161
+#: ../src/dashboard.adoc:166
 #, no-wrap
 msgid "Hold item + Shift + Scroll"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:162
+#: ../src/dashboard.adoc:167
 #, no-wrap
 msgid "Toggle gauge labels"
 msgstr ""
 
 #. type: Table
-#: ../src/dashboard.adoc:163
+#: ../src/dashboard.adoc:168
 #, no-wrap
 msgid "Alt"
 msgstr ""
 
 #. type: Title ==
-#: ../src/dashboard.adoc:166
+#: ../src/dashboard.adoc:171
 #, no-wrap
 msgid "Notices"
 msgstr ""
 
 #. type: #notices
-#: ../src/dashboard.adoc:169
+#: ../src/dashboard.adoc:174
 msgid ""
 "When a xref:factory-gauge.adoc[factory gauge] is tuned to a network that "
 "contains stock links in unloaded chunks, the gauge stops functioning and "
@@ -543,7 +551,7 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/dashboard.adoc:170
+#: ../src/dashboard.adoc:175
 #, no-wrap
 msgid "Notice about unloaded stock links"
 msgstr ""

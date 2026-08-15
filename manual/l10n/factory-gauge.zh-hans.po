@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-27 04:14+1000\n"
+"POT-Creation-Date: 2026-08-15 11:43+1000\n"
 "PO-Revision-Date: 2026-07-26 18:16+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
@@ -21,7 +21,15 @@ msgstr ""
 "X-Generator: Weblate 2026.7.1\n"
 
 #. type: Table
-#: ../src/components.adoc:17 ../src/factory-gauge.adoc:307
+#: ../src/components.adoc:17 ../src/components.adoc:22
+#: ../src/components.adoc:27 ../src/factory-gauge.adoc:303
+#: ../src/factory-gauge.adoc:309
+#, no-wrap
+msgid "Yes"
+msgstr "是"
+
+#. type: Table
+#: ../src/components.adoc:20 ../src/factory-gauge.adoc:307
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr "Create: Repackaged"
@@ -1073,12 +1081,6 @@ msgstr "兼容性"
 #, no-wrap
 msgid "Create: FluidLogistic"
 msgstr "流体包裹（Create: FluidLogistic）"
-
-#. type: Table
-#: ../src/factory-gauge.adoc:303 ../src/factory-gauge.adoc:309
-#, no-wrap
-msgid "Yes"
-msgstr "是"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:304

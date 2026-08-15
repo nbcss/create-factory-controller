@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"POT-Creation-Date: 2026-08-15 11:43+1000\n"
 "PO-Revision-Date: 2026-07-25 22:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://"
@@ -21,13 +21,13 @@ msgstr ""
 "X-Generator: Weblate 2026.7.1\n"
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#: ../src/components.adoc:8 ../src/production-orders.adoc:41
 #, no-wrap
 msgid "Icon"
 msgstr "图标"
 
 #. type: Table
-#: ../src/components.adoc:7 ../src/production-orders.adoc:33
+#: ../src/components.adoc:9 ../src/production-orders.adoc:41
 #, no-wrap
 msgid "Name"
 msgstr "名称"
@@ -60,139 +60,250 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/production-orders.adoc:9
+#, fuzzy
+#| msgid ""
+#| "Click to add the production task to the order, and adjust the amount per "
+#| "usual. Sending an order containing production tasks creates a [#term-"
+#| "production-order]_production order_, causing the corresponding factory "
+#| "gauges to add the number of items in the order to their xref:factory-"
+#| "gauge.adoc#term-demand[demands]. When the produced items arrive in the "
+#| "logistic network, they are sent out again to the address specified on the "
+#| "order."
 msgid ""
-"Click to add the production task to the order, and adjust the amount per "
-"usual. Sending an order containing production tasks creates a [#term-"
-"production-order]_production order_, causing the corresponding factory "
-"gauges to add the number of items in the order to their xref:factory-"
-"gauge.adoc#term-demand[demands]. When the produced items arrive in the "
-"logistic network, they are sent out again to the address specified on the "
-"order."
+"Click to add the production task to the order. The amount of output items to "
+"send can be adjusted per usual. Sending an order containing production tasks "
+"creates a [#term-production-order]_production order_, causing the "
+"corresponding factory gauges to add the number of items in the order to "
+"their xref:factory-gauge.adoc#term-demand[demands]. When the ordered items "
+"arrive in the logistic network, they are sent out again to the address "
+"specified on the order."
 msgstr ""
 "点击以将此生产任务加入订单，然后与往常一样调整其数量。提交包含生产任务的订单"
 "将会创建一个[#term-production-order]__生产订单__，把订单中的物品数量加入对应"
 "工厂仪表的xref:factory-gauge.adoc#term-demand[需求]。当产物进入物流网络所监测"
 "的仓储后，会再次被发往订单指定的地址。"
 
+#. type: Block title
+#: ../src/production-orders.adoc:10
+#, no-wrap
+msgid "Ordering 16 oak planks to be sent to the address \"`output`\""
+msgstr ""
+
 #. type: Plain text
-#: ../src/production-orders.adoc:11
+#: ../src/production-orders.adoc:14
 msgid ""
-"Pending production orders can be viewed in the \"production orders\" tab in "
-"the stock keeper UI. They are automatically removed when all ordered items "
-"arrive in the logistic network. Otherwise, they remain stuck if the items "
-"never arrive."
+"The responsible factory gauge will produce enough items to satisfy the "
+"amount specified in the production order, reusing existing items in storage. "
+"For example, if the xref:factory-gauge.adoc#term-recipe[recipe] of the gauge "
+"produces 4 oak planks from 1 oak log, and 5 oak planks are ordered when 0 "
+"oak planks are in storage, then 8 planks will be produced, 5 sent to the "
+"destination address, 3 left over in storage; when 5 planks are order again, "
+"4 new planks will be produced, leaving 2 left-over."
+msgstr ""
+
+#. type: Title ==
+#: ../src/production-orders.adoc:16
+#, fuzzy, no-wrap
+#| msgid "Production Orders"
+msgid "Pending Production Orders"
+msgstr "生产订单"
+
+#. type: #view
+#: ../src/production-orders.adoc:19
+#, fuzzy
+#| msgid ""
+#| "Pending production orders can be viewed in the \"production orders\" tab "
+#| "in the stock keeper UI. They are automatically removed when all ordered "
+#| "items arrive in the logistic network. Otherwise, they remain stuck if the "
+#| "items never arrive."
+msgid ""
+"Pending production orders can be viewed in the \"production orders\" tab (❶) "
+"in the stock keeper UI. They are automatically removed when all ordered "
+"items arrive in the logistic network. Otherwise, they remain stuck if the "
+"items never arrive."
 msgstr ""
 "待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品"
 "进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表"
 "中。"
 
 #. type: Block title
-#: ../src/production-orders.adoc:12
+#: ../src/production-orders.adoc:20
 #, no-wrap
 msgid "Production orders UI"
 msgstr "生产订单界面"
 
-#. type: Plain text
-#: ../src/production-orders.adoc:17
+#. type: #view
+#: ../src/production-orders.adoc:25
 msgid "❶ Production orders tab:: Click to switch to this tab."
 msgstr "❶ 生产订单标签页:: 点击切换至此页。"
 
-#. type: Plain text
-#: ../src/production-orders.adoc:20
+#. type: #view
+#: ../src/production-orders.adoc:28
 msgid ""
 "❷ Destination address:: The address the items are sent to after they arrive "
 "in storage."
 msgstr "❷ 目标地址:: 物品进入库存后将被发送到的地址。"
 
-#. type: Plain text
-#: ../src/production-orders.adoc:23
+#. type: #view
+#: ../src/production-orders.adoc:31
 msgid "❸ Elapsed time:: Time elapsed since the order was created."
 msgstr "❸ 已用时间:: 自订单创建以来经过的时间。"
 
-#. type: Plain text
-#: ../src/production-orders.adoc:26
+#. type: #view
+#: ../src/production-orders.adoc:34
 msgid "❹ Cancel button:: Click to cancel the order."
 msgstr "❹ 取消按钮:: 点击取消订单。"
 
-#. type: Plain text
-#: ../src/production-orders.adoc:29
+#. type: #view
+#: ../src/production-orders.adoc:37
 msgid "❺ Ordered items:: Type, amount, and status of the ordered items."
 msgstr "❺ 请求物品:: 显示物品类型、数量与当前状态。"
 
 #. type: Block title
-#: ../src/production-orders.adoc:30
+#: ../src/production-orders.adoc:38
 #, no-wrap
 msgid "Statuses of ordered items"
 msgstr "订单中物品的状态"
 
 #. type: Table
-#: ../src/production-orders.adoc:35
+#: ../src/production-orders.adoc:43
 #, no-wrap
 msgid "Description"
 msgstr "描述"
 
 #. type: Table
-#: ../src/production-orders.adoc:36
+#: ../src/production-orders.adoc:44
 #, no-wrap
 msgid "Waiting for ingredients"
 msgstr "等待原材料"
 
 #. type: Table
-#: ../src/production-orders.adoc:38
+#: ../src/production-orders.adoc:46
 #, no-wrap
 msgid "The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent."
 msgstr "负责生产的仪表没有足够原材料，或原材料尚未发出。"
 
 #. type: Table
-#: ../src/production-orders.adoc:38
+#: ../src/production-orders.adoc:46
 #, no-wrap
 msgid "image:production-order-processing.png[,14,14]"
 msgstr "image:production-order-processing.png[,14,14]"
 
 #. type: Table
-#: ../src/production-orders.adoc:39
+#: ../src/production-orders.adoc:47
 #, no-wrap
 msgid "Processing"
 msgstr "生产中"
 
 #. type: Table
-#: ../src/production-orders.adoc:41
+#: ../src/production-orders.adoc:49
 #, no-wrap
 msgid "The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage."
 msgstr "仪表已经发出原材料，但产物尚未进入仓储。"
 
 #. type: Table
-#: ../src/production-orders.adoc:41
+#: ../src/production-orders.adoc:49
 #, no-wrap
 msgid "image:production-order-sent.png[,14,14]"
 msgstr "image:production-order-sent.png[,14,14]"
 
 #. type: Table
-#: ../src/production-orders.adoc:42
+#: ../src/production-orders.adoc:50
 #, no-wrap
 msgid "Sent"
 msgstr "已发送"
 
 #. type: Table
-#: ../src/production-orders.adoc:44
+#: ../src/production-orders.adoc:52
 #, no-wrap
 msgid "The produced item has arrived in storage, and been dispatched to the destination address."
 msgstr "产物已进入仓储，并已发往目标地址。"
 
 #. type: Table
-#: ../src/production-orders.adoc:44
+#: ../src/production-orders.adoc:52
 #, no-wrap
 msgid "image:production-order-invalid.png[,14,14]"
 msgstr "image:production-order-invalid.png[,14,14]"
 
 #. type: Table
-#: ../src/production-orders.adoc:45
+#: ../src/production-orders.adoc:53
 #, no-wrap
-msgid "Invalid gauge"
-msgstr "无效仪表"
+msgid "[#term-invalid-gauge]#Invalid gauge#"
+msgstr ""
 
 #. type: Table
-#: ../src/production-orders.adoc:46
+#: ../src/production-orders.adoc:54
 #, no-wrap
 msgid "The responsible gauge has been destroyed or switched to a mode other than \"follow demand and order\"."
 msgstr "负责生产的仪表已被破坏，或已切换为其他工作模式。"
+
+#. type: Title ==
+#: ../src/production-orders.adoc:57
+#, no-wrap
+msgid "Delivery Notification"
+msgstr ""
+
+#. type: #notification
+#: ../src/production-orders.adoc:60
+msgid ""
+"When all items in a production order arrive, and are dispatched to the "
+"destination address, a notification is shown on the top-right corner of the "
+"screen, to the player that has created the production order."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:61
+#, no-wrap
+msgid "\"Order shipped\" notification"
+msgstr ""
+
+#. type: #notification
+#: ../src/production-orders.adoc:65
+msgid ""
+"A similar notification is shown when a responsible gauge has become <<term-"
+"invalid-gauge,invalid>>."
+msgstr ""
+
+#. type: Block title
+#: ../src/production-orders.adoc:66
+#, no-wrap
+msgid "\"Gauge became invalid\" notification"
+msgstr ""
+
+#. type: Title ==
+#: ../src/production-orders.adoc:70
+#, fuzzy, no-wrap
+#| msgid "Compatibility"
+msgid "Mod Compatibility"
+msgstr "兼容性"
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:73
+msgid ""
+"Other mods may provide UIs alternative to the stock keeper for ordering "
+"items, such as handheld remote stock keepers. These UIs are likely able to "
+"create production orders without explicit support. However, they will not be "
+"able to view pending production orders, and will not display "
+"<<notification,delivery notifications>>."
+msgstr ""
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:75
+msgid ""
+"The following mods are tested to work with production orders, and have "
+"explicit support to display notifications:"
+msgstr ""
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:77
+#, fuzzy
+#| msgid "Create: Repackaged"
+msgid "Create: Mobile Packages"
+msgstr "Create: Repackaged"
+
+#. type: #mod-compat
+#: ../src/production-orders.adoc:77
+#, fuzzy
+#| msgid "Create connection"
+msgid "Create: Phantom"
+msgstr "创建连接"
