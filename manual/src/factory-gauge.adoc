@@ -169,13 +169,13 @@ A package with custom arrangement may be unpacked into any block supported by pa
 [#on-demand]
 == On-Demand Production
 
-By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] "maintain stock only" mode, which [#term-active]_activates_ (starts making <<term-request,requests>>) when the <<term-storage-amount,storage amount>> is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to image:btn-follow-demand.png[,18,18] "follow demand" mode, which instead combines a configured minimum target amount with downstream demand, that is, demand from its <<term-consumer-gauge,consumer gauges>>.
+By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] "maintain stock" mode, which [#term-active]_activates_ (starts making <<term-request,requests>>) when the <<term-storage-amount,storage amount>> is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to image:btn-follow-demand.png[,18,18] "follow demand" mode, which instead activates the gauge when there is downstream demand, that is, when any of its <<term-consumer-gauge,consumer gauges>> is active.
 
 [#figure-follow-demand]
 .A gauge producing oak planks in "follow demand" mode
 image::gauge-follow-demand-mode.svg[,296,48]
 
-In this mode, the target amount (❶) is the greater of the configured _minimum target amount_ and downstream [#term-demand]_demand_. Downstream demand is the total quantity of the items produced by this gauge defined in the <<term-recipe,recipes>> of all currently <<term-active,active>> consumer gauges. Setting the minimum to zero retains the previous fully demand-managed behaviour. Switching from "maintain stock only" preserves its target as the passive mode's minimum.
+In this mode, the target amount (❶) cannot be modified manually. It is automatically set according to downstream [#term-demand]_demand_, that is, the total quantity of the items produced by this gauge defined in the <<term-recipe,recipes>> of all currently <<term-active,active>> consumer gauges.
 
 .An example setup to produce barrels from oak logs
 image::gauge-follow-demand-barrel-example.png[,329,198]
