@@ -57,6 +57,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
+          depth: 0
           lfs: true
           sparse-checkout: manual
 
