@@ -361,6 +361,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.componentAt(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
+    /** Whether the request-amount input is locked because a Number Connection is driving the target. */
+    private boolean numberManaged() {
+        VirtualGaugeBehaviour g = gauge();
+        return g != null && g.isNumberManaged();
+    }
+
     ItemStack ingredientOf(VirtualComponentPosition pos) {
         return menu.componentAt(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
@@ -1245,22 +1251,31 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         // Count box tooltip
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
-            List<Component> countTooltip = new ArrayList<>();
-            countTooltip.add(Component.translatable(requestMode.isPassive() ?
-                            "createfactorycontroller.gui.threshold.minimum_target" :
-                            "createfactorycontroller.gui.threshold.stock_target")
-                            .withColor(ScrollInput.HEADER_RGB.getRGB()));
-            if (g != null && requestMode.isPassive()) {
-                String targetCount = g.unit.format(g.getPassiveTargetCount(), true);
-                countTooltip.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
-                                 Component.literal(targetCount).withColor(0x9ECFFC))
-                        .withStyle(ChatFormatting.GRAY));
+            if(g != null && g.isNumberManaged()) {
+                tooltip = List.of(Component.translatable(requestMode.isPassive() ?
+                                        "createfactorycontroller.gui.threshold.minimum_target" :
+                                        "createfactorycontroller.gui.threshold.stock_target")
+                                .withColor(ScrollInput.HEADER_RGB.getRGB()),
+                        Component.translatable("createfactorycontroller.gui.threshold.auto_managed_by_number")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            }else{
+                List<Component> countTooltip = new ArrayList<>();
+                countTooltip.add(Component.translatable(requestMode.isPassive() ?
+                                "createfactorycontroller.gui.threshold.minimum_target" :
+                                "createfactorycontroller.gui.threshold.stock_target")
+                        .withColor(ScrollInput.HEADER_RGB.getRGB()));
+                if (g != null && requestMode.isPassive()) {
+                    String targetCount = g.unit.format(g.getPassiveTargetCount(), true);
+                    countTooltip.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
+                                    Component.literal(targetCount).withColor(0x9ECFFC))
+                            .withStyle(ChatFormatting.GRAY));
+                }
+                countTooltip.add(CreateLang.translate("gui.scrollInput.scrollToModify")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                countTooltip.add(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                tooltip = countTooltip;
             }
-            countTooltip.add(CreateLang.translate("gui.scrollInput.scrollToModify")
-                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-            countTooltip.add(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
-                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-            tooltip = countTooltip;
         }
 
         // Unit box tooltip
@@ -1367,15 +1382,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             gfx.pose().popPose();
         }
         // demand
+        final boolean managed = behaviour != null && behaviour.isNumberManaged();
         String counttext;
-        if (countEditing) {
+        if (managed) {
+            counttext = behaviour.numberManagedCountText();
+        } else if (countEditing) {
             counttext = (countEdit.isEmpty() ? "" : countEdit) + ((System.currentTimeMillis() / 400) % 2 == 0 ? "_" : "");
         } else {
             counttext = thresholdCount == 0 && !requestMode.isPassive() ? "/" : String.valueOf(thresholdCount);
         }
-        gfx.drawString(font, counttext, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
+        gfx.drawString(font, counttext, panelX + COUNT_X + 4, panelY + THRESH_TOP + 5,
+                managed ? 0xFFD899FF : 0xFFFFFFFF, true);
         // unit
-        gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5, 0xFFFFFFFF, true);
+        gfx.drawString(font, mode.label().getString(), panelX + UNIT_X + 4, panelY + THRESH_TOP + 5,
+                0xFFFFFFFF, true);
 
     }
 
@@ -1449,6 +1469,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         if (onCountBox && (button == 0 || button == 1)) {
+            if (numberManaged()) return true;   // locked — Auto managed by Number Connection
             countEditing = true;
             countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
             setFocused(null);
@@ -1586,6 +1607,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (editor().outputScrolled(mouseX, mouseY, dir, step)) return true;
         // Threshold count box
         if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
+            if (numberManaged()) return true;   // locked — Auto managed by Number Connection
             if (countEditing) commitCountEdit();
             // Fluid threshold is a whole number in the unit box's unit.
             step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;

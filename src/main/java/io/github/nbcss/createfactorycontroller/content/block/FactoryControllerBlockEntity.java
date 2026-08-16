@@ -822,7 +822,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         ThresholdUnit previousUnit = gauge.unit;
         gauge.unit = mode;
         gauge.requestMode = requestMode;
-        gauge.count = Math.clamp(count, 0, mode.getMaxRequestCount());
+        if (!gauge.isNumberManaged())
+            gauge.count = Math.clamp(count, 0, mode.getMaxRequestCount());
         if (previousRequestMode.isPassive() != requestMode.isPassive()
                 || requestMode.isPassive() && previousUnit != mode)
             gauge.resetPassiveDemand();

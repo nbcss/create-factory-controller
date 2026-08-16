@@ -30,6 +30,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import io.github.nbcss.createfactorycontroller.content.display.DisplayDataProvider;
@@ -258,6 +259,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     /** Last redstone OUTPUT state pushed to wired send-links; gates {@link #updateRedstoneOutput} so a steady gauge
      *  never re-walks its outgoing wires. {@code null} until first computed (forces an initial publish). */
     private RedstoneConnection.State lastRedstoneOutput = null;
+    private double lastNumberOutput = Double.NaN;
     protected int timer = 0;
     /** Per-gauge request-timer reset value (ticks). 0 = unspecified → use Create's {@code factoryGaugeTimer} config.
      *  Only a value &gt; 0 overrides. Not client-synced (no set/view UI yet); the animation gets it via the poll. */
@@ -317,7 +319,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     @Override
     public List<ConnectionCapability> ports() {
         return List.of(new ConnectionCapability(LogisticsConnection.TYPE, ConnectionCapability.Role.BOTH),
-                       new ConnectionCapability(RedstoneConnection.TYPE, ConnectionCapability.Role.BOTH));
+                       new ConnectionCapability(RedstoneConnection.TYPE, ConnectionCapability.Role.BOTH),
+                       new ConnectionCapability(NumberConnection.TYPE, ConnectionCapability.Role.BOTH));
     }
 
     /** As a LOGISTICS source the gauge feeds its stock, so it must carry a filter. (REDSTONE source: no rule.) */
@@ -456,7 +459,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * {@code count == 0} for "inactive" goes through this instead.
      */
     public boolean isActive() {
-        return requestMode.isPassive() || getTargetCount() != 0;
+        return requestMode.isPassive() || effectiveDemandBase() > 0;
     }
 
     /** Whether any incoming wire is an ingredient (LOGISTICS) connection. {@link #targetedBy()} now also holds redstone
@@ -477,21 +480,33 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return hasIngredientInputs() && isActive() && recipeAddress.isBlank();
     }
 
-    /** A gauge's redstone OUTPUT to wired send-links: gray INACTIVE when it has no target, else POWERED/UNPOWERED by
-     *  whether its stock is satisfied. (A gauge is not driven by its own redstone input — that only gates requests.) */
+    /** A gauge's OUTPUT to wired sinks. REDSTONE: gray INACTIVE when it has no target, else POWERED/UNPOWERED by
+     *  whether its stock is satisfied. NUMBER: the current stock reading in the selected unit (never null — a
+     *  filterless gauge reads 0; a fluid gauge in buckets can read a fraction). (A gauge is not driven by its own
+     *  redstone input — that only gates requests.) */
     @Override
     public ConnectionValue outputValue(Connection.Type type) {
-        if (!RedstoneConnection.TYPE.equals(type)) return null;
-        return !isActive() ? RedstoneConnection.State.INACTIVE
-             : satisfied   ? RedstoneConnection.State.POWERED
-             :               RedstoneConnection.State.UNPOWERED;
+        if (RedstoneConnection.TYPE.equals(type))
+            return !isActive() ? RedstoneConnection.State.INACTIVE
+                 : satisfied   ? RedstoneConnection.State.POWERED
+                 :               RedstoneConnection.State.UNPOWERED;
+        if (NumberConnection.TYPE.equals(type)) {
+            if (filter.isEmpty()) return new NumberConnection.NumberValue(0.0);
+            return new NumberConnection.NumberValue(
+                    stockLevel / (double) Math.max(1, unit.toCountMultiplier(filter)));
+        }
+        return null;
+    }
+
+    @Override
+    public void onInputChanged(Connection.Type type) {
+        if (RedstoneConnection.TYPE.equals(type))    onRedstoneInputChanged();
+        else if (NumberConnection.TYPE.equals(type)) onNumberInputChanged();
     }
 
     /** Re-fold the request gate — powered by any wired, powered RECEIVE link. Synced on change so the client gate
      *  colour follows. */
-    @Override
-    public void onInputChanged(Connection.Type type) {
-        if (!RedstoneConnection.TYPE.equals(type)) return;
+    private void onRedstoneInputChanged() {
         boolean now = false;
         for (Connection c : graph().incomingConnections(position, RedstoneConnection.TYPE))
             if (c instanceof RedstoneConnection rc && rc.powered()) { now = true; break; }
@@ -499,6 +514,34 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         redstonePowered = now;
         resetRequestTimer();
         if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
+    }
+
+    /** Re-fold NUMBER inputs into {@link #count}: sum, tolerant floor, then clamp to the selected unit's cap. */
+    private void onNumberInputChanged() {
+        var edges = graph().incomingConnections(position, NumberConnection.TYPE);
+        if (edges.isEmpty()) return;
+        double sum = 0;
+        for (Connection c : edges)
+            if (c instanceof NumberConnection nc) sum += nc.doubleValue();
+        int next = (int) Math.clamp(NumberConnection.floorTolerant(sum), 0, unit.getMaxRequestCount());
+        if (next == count) return;
+        count = next;
+        if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
+    }
+
+    /** Whether incoming NUMBER connections currently own the gauge's count. */
+    public boolean isNumberManaged() {
+        return !graph().incomingConnections(position, NumberConnection.TYPE).isEmpty();
+    }
+
+    /** The number-driven count shown in the locked request-amount box. */
+    public String numberManagedCountText() {
+        return isNumberManaged() ? String.valueOf(count) : "";
+    }
+
+    /** The gauge's effective target in base units (items / mB). */
+    public long effectiveDemandBase() {
+        return (long) getTargetCount() * unit.toCountMultiplier(filter);
     }
 
     public void resetRequestTimer() { timer = 1; }
@@ -513,6 +556,16 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         lastRedstoneOutput = now;
         publish(RedstoneConnection.TYPE);
         return true;
+    }
+
+    /** Re-evaluate this gauge's NUMBER output (the stock reading) and push it to wired number sinks (no-op unless it
+     *  changed). {@link #outputValue} never returns null for NUMBER, so the cast is safe. Dormant until a NUMBER sink
+     *  exists. */
+    private void updateNumberOutput() {
+        double now = ((NumberConnection.NumberValue) outputValue(NumberConnection.TYPE)).value();
+        if (Double.compare(now, lastNumberOutput) == 0) return;
+        lastNumberOutput = now;
+        publish(NumberConnection.TYPE);
     }
 
     /**
@@ -642,7 +695,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * {@link #promisedSatisfied}. An auto producer feeding this gauge calls it to size its own demand.
      */
     private boolean canRequestIngredients() {
-        return getTargetCount() != 0 && !waitingForNetwork && !isRedstonePaused() && !isMissingAddress();
+        return effectiveDemandBase() > 0 && !waitingForNetwork && !isRedstonePaused() && !isMissingAddress();
     }
 
     private void tickStorageMonitor() {
@@ -652,6 +705,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             stockLevel = 0;
             promisedCount = 0;
             updateRedstoneOutput();
+            updateNumberOutput();
             return;
         }
 
@@ -703,11 +757,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         }
 
         int targetCount = getTargetCount();
-        int demand = targetCount * unit.toCountMultiplier(filter);
+        long demand = effectiveDemandBase();
         satisfied = stockLevel >= demand;
         promisedSatisfied = heldSum >= demand;
 
         boolean redstoneChanged = updateRedstoneOutput();
+        updateNumberOutput();
 
         if (!redstoneChanged && stockLevel == prevStock && promisedCount == prevPromised
                 && satisfied == wasSatisfied
@@ -1031,7 +1086,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  batch. Pure O(1) field arithmetic — no stock/summary reads. */
     public int deficitRequestScaler() {
         int outputPerRequest = Math.max(1, recipeOutput) * effectiveBatch();
-        long target = (long) getTargetCount() * unit.toCountMultiplier(filter);
+        long target = effectiveDemandBase();
         long deficit = Math.max(0, target - effectiveHeld());
         return (int) Math.min(Integer.MAX_VALUE, ceilDiv(deficit, outputPerRequest));
     }

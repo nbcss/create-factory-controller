@@ -167,6 +167,7 @@ public abstract class Connection {
         public static void registerConnections() {
             registerType(LogisticsConnection.TYPE);
             registerType(RedstoneConnection.TYPE);
+            registerType(NumberConnection.TYPE);
         }
 
         public static void registerType(Connection.Type type) {

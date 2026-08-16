@@ -12,6 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
+import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 
@@ -161,8 +162,10 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
 
     @Override
     public java.util.List<ConnectionCapability> ports() {
-        return java.util.List.of(new ConnectionCapability(RedstoneConnection.TYPE,
-                receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK));
+        ConnectionCapability.Role role = receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK;
+        // NUMBER is mode-decisive exactly like REDSTONE: source in RECEIVE (outputs strength), sink in SEND.
+        return java.util.List.of(new ConnectionCapability(RedstoneConnection.TYPE, role),
+                                 new ConnectionCapability(NumberConnection.TYPE, role));
     }
 
     @Override
@@ -200,6 +203,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         if (!receive || value == strength) return;
         strength = value;
         publish(RedstoneConnection.TYPE);
+        publish(NumberConnection.TYPE);   // a RECEIVE link is also the NUMBER source (outputs its strength)
         if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
 
@@ -215,24 +219,39 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
                 handler().updateNetworkOf(level, other);
     }
 
-    /** A RECEIVE link is the wire's source: it drives wired gauges with its current network power. (A SEND link sources
-     *  nothing onto the board — its output is the network transmit, handled in {@link #onInputChanged}.) */
+    /** A RECEIVE link is the wire's source for both REDSTONE (drives wired gauges with its current network power)
+     *  and NUMBER (outputs its network strength, 0-15). A SEND link sources nothing onto the board — its output is
+     *  the network transmit, computed in {@link #recomputeSendStrength}. */
     @Override
     public ConnectionValue outputValue(Connection.Type type) {
-        if (!RedstoneConnection.TYPE.equals(type) || !receive) return null;
-        return isPowered() ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED;
+        if (!receive) return null;
+        if (RedstoneConnection.TYPE.equals(type))
+            return isPowered() ? RedstoneConnection.State.POWERED : RedstoneConnection.State.UNPOWERED;
+        if (NumberConnection.TYPE.equals(type))
+            return new NumberConnection.NumberValue(strength);
+        return null;
     }
 
-    /** Re-fold wired gauges into transmit power (SEND link only). */
+    /** A SEND link sinks both REDSTONE and NUMBER into its transmit strength; a RECEIVE link sinks nothing (the
+     *  network owns its strength). */
     @Override
     public void onInputChanged(Connection.Type type) {
-        if (receive || !RedstoneConnection.TYPE.equals(type)) return;
-        boolean any = false;
+        if (receive) return;
+        recomputeSendStrength();
+    }
+
+    /** SEND transmit strength = MAX over all inputs: any powered redstone edge counts as 15, each number edge as
+     *  its value floored (tolerant) and clamped to 0-15. With no NUMBER edges this reduces to the redstone-only
+     *  {@code any powered ? 15 : 0} fold. */
+    private void recomputeSendStrength() {
+        int best = 0;
         for (Connection c : graph().incomingConnections(position, RedstoneConnection.TYPE))
-            if (c instanceof RedstoneConnection rc && rc.powered()) { any = true; break; }
-        int next = any ? TRANSMIT_STRENGTH : 0;
-        if (next == strength) return;
-        strength = next;
+            if (c instanceof RedstoneConnection rc && rc.powered()) { best = TRANSMIT_STRENGTH; break; }
+        for (Connection c : graph().incomingConnections(position, NumberConnection.TYPE))
+            if (c instanceof NumberConnection nc)
+                best = Math.max(best, Math.clamp(NumberConnection.floorTolerant(nc.doubleValue()), 0, 15));
+        if (best == strength) return;
+        strength = best;
         updateTransmittedPower();
         if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
     }
@@ -273,6 +292,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     public void configure(boolean receive, ItemStack red, ItemStack blue) {
         ItemStack r = red.copy();  r.setCount(1);
         ItemStack b = blue.copy(); b.setCount(1);
+        int previousStrength = strength;
         boolean freqChanged = !ItemStack.isSameItemSameComponents(r, redFreq)
                            || !ItemStack.isSameItemSameComponents(b, blueFreq);
         boolean modeChanged = this.receive != receive;
@@ -288,11 +308,15 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         if (modeChanged || receive)
             strength = 0;
         if (modeChanged)
-            reorientRedstoneConnections();
+            reorientConnections();
         if (freqChanged)
             addToNetwork();
 
         refreshReceivedFromNetwork();
+        if (receive && strength != previousStrength) {
+            publish(RedstoneConnection.TYPE);
+            publish(NumberConnection.TYPE);
+        }
         updatePower();
         if (controller != null) {
             controller.settleConnections();
@@ -301,26 +325,25 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         }
     }
 
-    private void reorientRedstoneConnections() {
-        java.util.List<Connection> redstone = new java.util.ArrayList<>();
-        redstone.addAll(graph().incomingConnections(position, RedstoneConnection.TYPE));
-        redstone.addAll(graph().outgoingConnections(position, RedstoneConnection.TYPE));
-        java.util.Set<VirtualComponentPosition> affected = new java.util.LinkedHashSet<>();
-        for (Connection conn : redstone) {
-            affected.add(conn.from);
-            affected.add(conn.to);                                  // both endpoints (same set after the reverse)
-            VirtualComponentBehaviour source = siblingAt(conn.from);
-            VirtualComponentBehaviour sink = siblingAt(conn.to);
-            if (source instanceof VirtualRedstoneLinkBehaviour sourceLink
-                    && sink instanceof VirtualRedstoneLinkBehaviour sinkLink) {
-                if (!sourceLink.receive || sinkLink.receive) {
-                    if (controller != null)
-                        controller.syncConnectionRemoved(ConnectionKey.of(conn));
-                    graph().remove(conn.to, conn.from);
-                }
+    private void reorientConnections() {
+        java.util.List<Connection> connections = new java.util.ArrayList<>();
+        connections.addAll(graph().incomingConnections(position));
+        connections.addAll(graph().outgoingConnections(position));
+        java.util.Map<Connection.Type, java.util.Set<VirtualComponentPosition>> affected = new java.util.LinkedHashMap<>();
+        for (Connection conn : connections) {
+            java.util.Set<VirtualComponentPosition> affectedForType =
+                    affected.computeIfAbsent(conn.type, ignored -> new java.util.LinkedHashSet<>());
+            affectedForType.add(conn.from);
+            affectedForType.add(conn.to);                            // both endpoints (same set after the reverse)
+            if (position.equals(conn.from) == receive) continue;    // already oriented for the new mode
+            VirtualComponentBehaviour newSource = siblingAt(conn.to);
+            VirtualComponentBehaviour newSink = siblingAt(conn.from);
+            if (!ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess()) {
+                if (controller != null)
+                    controller.syncConnectionRemoved(ConnectionKey.of(conn));
+                graph().remove(conn.to, conn.from);
                 continue;
             }
-            if (position.equals(conn.from) == receive) continue;    // already oriented for the new mode
             if (controller != null)
                 controller.syncConnectionRemoved(ConnectionKey.of(conn));   // reversing re-keys the wire
             graph().reverse(conn);
@@ -329,12 +352,13 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         }
         // Every affected component's incoming AND outgoing set may have changed: re-publish its output (writes edges +
         // flags its sinks) and flag itself so it re-folds its own inputs. settleConnections (in configure) folds once.
-        for (VirtualComponentPosition p : affected) {
-            VirtualComponentBehaviour c = siblingAt(p);
-            if (c == null) continue;
-            c.publish(RedstoneConnection.TYPE);
-            if (controller != null) controller.markSinkDirty(p, RedstoneConnection.TYPE);
-        }
+        for (var entry : affected.entrySet())
+            for (VirtualComponentPosition p : entry.getValue()) {
+                VirtualComponentBehaviour behaviour = siblingAt(p);
+                if (behaviour == null) continue;
+                behaviour.publish(entry.getKey());
+                if (controller != null) controller.markSinkDirty(p, entry.getKey());
+            }
     }
 
     /** The operation-mode key on the board: toggle Send/Receive, keeping the current frequencies. */

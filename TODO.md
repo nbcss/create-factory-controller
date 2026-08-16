@@ -77,6 +77,7 @@
 - [TODO] Show Active Promise Timer
 - [TODO] Connected controller blocks form a group
 - [TODO] List gauge view
+- [TODO] Better Display Link integration (Stream processing?)
 - [TODO] Improve BP System: Layout preview
 - [TBC] No promise request
 - [TBC] Redstone Frequency from clipboard
