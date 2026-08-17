@@ -853,7 +853,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         } else {
             // Empty cursor
             if (hovered != null) {
-                if (ClientConfig.coloredConnectedComponentOutlines())
+                if (dragSelection == null && ClientConfig.coloredConnectedComponentOutlines())
                     renderConnectionNeighbours(graphics, hovered);
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
             }

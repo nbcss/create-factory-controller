@@ -27,10 +27,10 @@
 - [TODO] Improve the wording of production order
 - [TODO] CC integration
 - [TODO] Crafter Filter
-- [TODO] Fix outline still appear for selected component
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Filter Link model
 - [TBC] Fix gauge sound overload?
+- [DONE] Fix outline still appear for selected component
 - [DONE] Improve BP System: Handle missing component from compat
 - [DONE] Improve BP System: More info for ghost components
 - [DONE] Improve BP System: Selection tool button relocate
@@ -39,6 +39,9 @@
 - [DONE] Allow minimum stock amount in Passive mode gauge
 
 # Roadmap
+- [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
+- [Patch] Stock Link priority system is broken https://github.com/Creators-of-Create/Create/issues/9689
+- [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
 - [TODO] Crafting output filter
@@ -81,6 +84,5 @@
 - [TODO] Improve BP System: Layout preview
 - [TBC] No promise request
 - [TBC] Redstone Frequency from clipboard
-- [TBC] Gauge with recipe filter
 - [TBC] JEI to create gauge
 - [5YM don't want me to do this] Configure controller item network by interact with stock link
