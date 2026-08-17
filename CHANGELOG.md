@@ -1,6 +1,8 @@
 ## 1.2.0
 
 Features:
+- Added a read-only CC: Tweaked peripheral to the factory controller (optional): gauges, logic tubes, networks,
+  production orders and promise counts are readable from a computer; the controller cannot be driven by one.
 - Allow Ctrl-Click to exclude ingredient from request multiplier.
 - Follow Demand mode allow to set minimum target stock amount now.
 - Render colored outline to connected components when hover over a component (configurable).

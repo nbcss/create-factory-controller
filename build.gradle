@@ -53,6 +53,13 @@ repositories {
         url = "https://maven.blamejared.com"
     }
     maven {
+        name = "SquidDev (CC: Tweaked)"
+        url = "https://maven.squiddev.cc"
+        content {
+            includeGroup("cc.tweaked")
+        }
+    }
+    maven {
         name = "IPN Releases"
         url = "https://maven.ipn-mod.org/releases"
         mavenContent {
@@ -260,6 +267,16 @@ dependencies {
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
     if (!cleanRuntime) {
         localRuntime "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
+    }
+
+    // CC: Tweaked (optional — a read-only peripheral on the factory controller; every reference to a
+    // dan200.computercraft class is guarded by CcTweakedCompat.isLoaded(), so the mod loads and runs without it).
+    // Compile against the common + loader API only; run the full mod in dev for testing. Note: for this MC version
+    // CC: Tweaked's own published artifacts keep the "forge" classifier even though the jar targets NeoForge.
+    compileOnly "cc.tweaked:cc-tweaked-1.21.1-common-api:${cc_tweaked_version}"
+    compileOnly "cc.tweaked:cc-tweaked-1.21.1-forge-api:${cc_tweaked_version}"
+    if (!cleanRuntime) {
+        localRuntime "cc.tweaked:cc-tweaked-1.21.1-forge:${cc_tweaked_version}"
     }
 
     // Inventory Profiles Next (optional): annotation API only. IPN reads @IPNIgnore reflectively when installed;
