@@ -17,6 +17,7 @@ Additionally, using a factory controller allows you to:
 - Change individual connection's arrow bending path. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#connections)
 - Display information with a display link. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/display-link.html)
 - Import existing gauge walls into a factory controller. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/blueprint.html#import-world)
+- Read a controller's gauges, logic tubes, networks, production orders and promises from a CC: Tweaked computer (read-only).
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
 
@@ -56,12 +57,13 @@ See also:
 
 ## Dependencies
 
-| Dependency             | Version  |
-|------------------------|----------|
-| Minecraft              | 1.21.1   |
-| NeoForge               | 21.1.227 |
-| Create                 | 6.0.10   |
-| Deployer (Recommended) | 0.1.2    |
+| Dependency              | Version  |
+|-------------------------|----------|
+| Minecraft               | 1.21.1   |
+| NeoForge                | 21.1.227 |
+| Create                  | 6.0.10   |
+| Deployer (Recommended)  | 0.1.2    |
+| CC: Tweaked (Optional)  | 1.120.2  |
 
 ## Contributing
 
