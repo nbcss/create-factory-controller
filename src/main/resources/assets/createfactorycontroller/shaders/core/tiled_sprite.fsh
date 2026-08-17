@@ -6,6 +6,7 @@ uniform vec4 ColorModulator;
 uniform vec2 texSize;
 
 in vec2 targetCoord;
+in vec4 vertexColor;
 flat in vec2 spriteTopLeft;
 flat in vec2 spriteBottomRight;
 
@@ -18,5 +19,5 @@ void main() {
     if (color.a == 0.0) {
         discard;
     }
-    fragColor = color * ColorModulator;
+    fragColor = color * vertexColor * ColorModulator;
 }

@@ -84,7 +84,7 @@ public class BatchedBlitter {
     }
 
     public BatchedBlitter setColorRGB(int color) {
-        return setColorARGB(color & (0xFF << 24));
+        return setColorARGB(color | (0xFF << 24));
     }
 
     public BatchedBlitter setColorARGB(int color) {

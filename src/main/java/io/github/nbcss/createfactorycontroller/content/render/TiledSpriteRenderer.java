@@ -1,10 +1,15 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.GuiSpriteManager;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.resources.ResourceLocation;
@@ -12,9 +17,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Matrix4f;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Renders a sprite in a tiled or nine-sliced manner. Functionally similar to
@@ -32,8 +37,9 @@ public abstract class TiledSpriteRenderer {
     // - Bounding box of the sprite in the texture atlas. The most suitable built-in VertexFormatElement are UV1 and
     //   UV2, making 4 i16's, as integers they are in pixel coordinates.
 
-    protected static final VertexFormat VERTEX_FORMAT = VertexFormat.builder()
+    private static final VertexFormat VERTEX_FORMAT = VertexFormat.builder()
             .add("Position", VertexFormatElement.POSITION)
+            .add("Color", VertexFormatElement.COLOR)
             .add("UV0", VertexFormatElement.UV0)
             .add("UV1", VertexFormatElement.UV1)
             .add("UV2", VertexFormatElement.UV2)
@@ -52,6 +58,22 @@ public abstract class TiledSpriteRenderer {
 
     protected static ShaderInstance getShader() {
         return shader;
+    }
+
+    private static final RenderStateShard.ShaderStateShard SHADER_STATE =
+            new RenderStateShard.ShaderStateShard(TiledSpriteRenderer::getShader);
+    private static final Cache<ResourceLocation, RenderType> RENDER_TYPES =
+            CacheBuilder.newBuilder().weakValues().build();
+
+    private static RenderType createRenderType(ResourceLocation texture) {
+        return RenderType.create("create_factory_controller_tiled_sprite",
+                VERTEX_FORMAT, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE,
+                RenderType.CompositeState.builder()
+                        .setShaderState(SHADER_STATE)
+                        .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
+                        .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                        .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                        .createCompositeState(false));
     }
 
 
@@ -87,35 +109,76 @@ public abstract class TiledSpriteRenderer {
 
     protected final ResourceLocation atlasLocation;
     protected final int uOffset, vOffset; // Offset of sprite in the atlas
+    private final RenderType renderType;
+    private int color = 0xFFFFFFFF;
 
     protected TiledSpriteRenderer(ResourceLocation atlasLocation, int uOffset, int vOffset) {
         this.atlasLocation = atlasLocation;
         this.uOffset = uOffset;
         this.vOffset = vOffset;
+
+        try {
+            renderType = RENDER_TYPES.get(atlasLocation, () -> createRenderType(atlasLocation));
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void render(@NotNull GuiGraphics graphics, int x, int y, int width, int height) {
         render(graphics, x, y, 0, width, height);
     }
 
-    public abstract void render(@NotNull GuiGraphics graphics, int x, int y, int blitOffset, int width, int height);
+    public void render(@NotNull GuiGraphics graphics, int x, int y, int blitOffset, int width, int height) {
+        RenderSystem.setShaderTexture(0, atlasLocation);
+        RenderSystem.setShader(TiledSpriteRenderer::getShader);
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, VERTEX_FORMAT);
+        renderImpl(buffer, graphics.pose(), x, y, blitOffset, width, height);
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
+    }
+
+    public void render(MultiBufferSource bufferSource, PoseStack pose, int x, int y, int width, int height) {
+        render(bufferSource, pose, x, y, 0, width, height);
+    }
+
+    public void render(MultiBufferSource bufferSource, PoseStack pose, int x, int y, int blitOffset, int width, int height) {
+        renderImpl(bufferSource.getBuffer(renderType), pose, x, y, blitOffset, width, height);
+    }
+
+    public TiledSpriteRenderer setColorRGB(int color) {
+        return setColorARGB(color | (0xFF << 24));
+    }
+
+    public TiledSpriteRenderer setColorARGB(int color) {
+        this.color = color;
+        return this;
+    }
+
+    protected abstract void renderImpl(VertexConsumer buffer, PoseStack pose, int x, int y, int blitOffset, int width, int height);
+
+    public void endBatch(MultiBufferSource.BufferSource bufferSource) {
+        bufferSource.endBatch(renderType);
+    }
 
 
     // Helper
-    protected static void buildQuad(BufferBuilder bufferBuilder, Matrix4f pose, int blitOffset,
-                                    int x1, int y1, int x2, int y2,
-                                    int u1, int v1, int u2, int v2) {
+    protected void buildQuad(VertexConsumer buffer, PoseStack.Pose pose, int blitOffset,
+                             int x1, int y1, int x2, int y2,
+                             int u1, int v1, int u2, int v2) {
         int width = x2 - x1, height = y2 - y1;
-        bufferBuilder.addVertex(pose, x1, y1, blitOffset)
+        buffer.addVertex(pose, x1, y1, blitOffset)
+                .setColor(color)
                 .setUv(0, 0)
                 .setUv1(u1, v1).setUv2(u2, v2);
-        bufferBuilder.addVertex(pose, x1, y2, blitOffset)
+        buffer.addVertex(pose, x1, y2, blitOffset)
+                .setColor(color)
                 .setUv(0, height)
                 .setUv1(u1, v1).setUv2(u2, v2);
-        bufferBuilder.addVertex(pose, x2, y2, blitOffset)
+        buffer.addVertex(pose, x2, y2, blitOffset)
+                .setColor(color)
                 .setUv(width, height)
                 .setUv1(u1, v1).setUv2(u2, v2);
-        bufferBuilder.addVertex(pose, x2, y1, blitOffset)
+        buffer.addVertex(pose, x2, y1, blitOffset)
+                .setColor(color)
                 .setUv(width, 0)
                 .setUv1(u1, v1).setUv2(u2, v2);
     }
@@ -134,15 +197,10 @@ public abstract class TiledSpriteRenderer {
         }
 
         @Override
-        public void render(@NotNull GuiGraphics graphics, int x, int y, int blitOffset, int width, int height) {
-            RenderSystem.setShaderTexture(0, atlasLocation);
-            RenderSystem.setShader(TiledSpriteRenderer::getShader);
-            Matrix4f pose = graphics.pose().last().pose();
-            BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, VERTEX_FORMAT);
-            buildQuad(bufferBuilder, pose, blitOffset,
+        protected void renderImpl(VertexConsumer buffer, PoseStack pose, int x, int y, int blitOffset, int width, int height) {
+            buildQuad(buffer, pose.last(), blitOffset,
                     x, y, x + width, y + height,
                     uOffset, vOffset, uOffset + spriteScaling.width(), vOffset + spriteScaling.height());
-            BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());
         }
     }
 
@@ -159,12 +217,7 @@ public abstract class TiledSpriteRenderer {
         }
 
         @Override
-        public void render(@NotNull GuiGraphics graphics, int x, int y, int blitOffset, int width, int height) {
-            RenderSystem.setShaderTexture(0, atlasLocation);
-            RenderSystem.setShader(TiledSpriteRenderer::getShader);
-            Matrix4f pose = graphics.pose().last().pose();
-            BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, VERTEX_FORMAT);
-
+        protected void renderImpl(VertexConsumer buffer, PoseStack pose, int x, int y, int blitOffset, int width, int height) {
             var border = spriteScaling.border();
 
             //            x,u
@@ -191,12 +244,10 @@ public abstract class TiledSpriteRenderer {
 
             // Build the 9 quads.
              for (int i = 0; i < 9; i++) {
-                 buildQuad(bufferBuilder, pose, blitOffset,
+                 buildQuad(buffer, pose.last(), blitOffset,
                          xs[i % 3], ys[i / 3], xs[i % 3 + 1], ys[i / 3 + 1],
                          us[i % 3], vs[i / 3], us[i % 3 + 1], vs[i / 3 + 1]);
              }
-
-            BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());
         }
     }
 }
