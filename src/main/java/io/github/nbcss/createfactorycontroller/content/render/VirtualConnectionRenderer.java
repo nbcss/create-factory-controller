@@ -2,15 +2,18 @@ package io.github.nbcss.createfactorycontroller.content.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.createmod.catnip.animation.AnimationTickHolder;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Vector2i;
+import org.joml.Vector2ic;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Draws connection arrows between virtual components on the canvas, reusing Create's own
@@ -29,132 +32,123 @@ public class VirtualConnectionRenderer {
     private static final ResourceLocation TEX_ANIMATED =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/connection/animated.png");
 
-    private static final BatchedBlitter BLITTER_STATIC = BatchedBlitter.forTexture(TEX_STATIC, FRAME_SIZE, FRAME_SIZE);
-    private static final BatchedBlitter BLITTER_ANIMATED = BatchedBlitter.forTexture(TEX_ANIMATED, FRAME_SIZE, FRAME_SIZE * N_FRAMES);
+    private enum Direction {
+        UP(0, -1),
+        DOWN(0, 1),
+        LEFT(-1, 0),
+        RIGHT(1, 0);
 
-    private enum Direction { UP, DOWN, LEFT, RIGHT }
+        final Vector2ic vector;
+        Direction(int x, int y) {
+            vector = new Vector2i(x, y);
+        }
+
+        Vector2i vector(int scalar) {
+            return new Vector2i(vector).mul(scalar);
+        }
+    }
 
     // Subtexture rect coordinates in a frame.
-    // (ox, oy) = origin which is aligned with the center of a cell
-    // LINE_*_0 = line that fills the earlier half of the cell in this direction
-    // LINE_*_1 = line that fills the latter half of the cell in this direction
+    // (ox, oy) = for heads and tails: origin which is aligned with the center of a cell
     private record Subtexture(int u, int v, int w, int h, int ox, int oy) {
-        public static final Subtexture LINE_UP_0    = of( 0,  0,  4,  8,  2,  0);
-        public static final Subtexture LINE_UP_1    = of( 0,  0,  4,  8,  2,  8);
-        public static final Subtexture LINE_DOWN_0  = of( 4,  0,  4,  8,  2,  8);
-        public static final Subtexture LINE_DOWN_1  = of( 4,  0,  4,  8,  2,  0);
-        public static final Subtexture LINE_LEFT_0  = of( 0,  8,  8,  4,  0,  2);
-        public static final Subtexture LINE_LEFT_1  = of( 0,  8,  8,  4,  8,  2);
-        public static final Subtexture LINE_RIGHT_0 = of( 0, 12,  8,  4,  8,  2);
-        public static final Subtexture LINE_RIGHT_1 = of( 0, 12,  8,  4,  0,  2);
-        public static final Subtexture HEAD_UP      = of( 8,  0,  4,  4,  2, -6);
-        public static final Subtexture HEAD_DOWN    = of(12,  0,  4,  4,  2, 10);
-        public static final Subtexture HEAD_LEFT    = of( 8,  4,  4,  4, -6,  2);
-        public static final Subtexture HEAD_RIGHT   = of(12,  4,  4,  4, 10,  2);
-        public static final Subtexture TAIL_UP      = of( 0,  0,  4,  2,  2,  8);
-        public static final Subtexture TAIL_DOWN    = of( 4,  6,  4,  2,  2, -6);
-        public static final Subtexture TAIL_LEFT    = of( 0,  8,  2,  4,  8,  2);
-        public static final Subtexture TAIL_RIGHT   = of( 6, 12,  2,  4, -6,  2);
+        public static final Map<Direction, Subtexture> LINES = Map.of(
+                Direction.UP,    new Subtexture( 0,  0,  4,  8),
+                Direction.DOWN,  new Subtexture( 4,  0,  4,  8),
+                Direction.LEFT,  new Subtexture( 0,  8,  8,  4),
+                Direction.RIGHT, new Subtexture( 0, 12,  8,  4)
+        );
+        public static final Map<Direction, Subtexture> HEADS = Map.of(
+                Direction.UP,    new Subtexture( 8,  0,  4,  4,  2, -6),
+                Direction.DOWN,  new Subtexture(12,  0,  4,  4,  2, 10),
+                Direction.LEFT,  new Subtexture( 8,  4,  4,  4, -6,  2),
+                Direction.RIGHT, new Subtexture(12,  4,  4,  4, 10,  2)
+        );
+        public static final Map<Direction, Subtexture> TAILS = Map.of(
+                Direction.UP,    new Subtexture( 0,  0,  4,  2,  2,  8),
+                Direction.DOWN,  new Subtexture( 4,  6,  4,  2,  2, -6),
+                Direction.LEFT,  new Subtexture( 0,  8,  2,  4,  8,  2),
+                Direction.RIGHT, new Subtexture( 6, 12,  2,  4, -6,  2)
+        );
 
-        public static Subtexture of(int u, int v, int w, int h, int ox, int oy) {
-            return new Subtexture(u, v, w, h, ox, oy);
+        private Subtexture(int u, int v, int w, int h) {
+            this(u, v, w, h, 0, 0);
         }
     }
 
     private final List<Vector2i> path;
     private final int color;
     private final boolean animated;
-    private final BatchedBlitter blitter;
 
     protected VirtualConnectionRenderer(List<Vector2i> path, int color, boolean animated) {
         this.path = path;
         this.color = FastColor.ARGB32.alpha(color) == 0 ? FastColor.ARGB32.opaque(color) : color;
         this.animated = animated;
-        this.blitter = animated ? BLITTER_ANIMATED : BLITTER_STATIC;
     }
 
     public static VirtualConnectionRenderer create(List<Vector2i> path, int color, boolean animated) {
         return new VirtualConnectionRenderer(path, color, animated);
     }
 
-    /** Draws the connection path in its configured color. Immediate. */
-    public void drawPath(GuiGraphics gfx) {
-        drawPath(gfx.bufferSource(), gfx.pose());
-        blitter.endBatch(gfx.bufferSource());
-    }
-
     /** Draws the connection path in its configured color. Batched. */
     public void drawPath(MultiBufferSource bufferSource, PoseStack pose) {
-        blitter.setColorARGB(color);
 
-        // Walk every line of the path and blit.
+        int frameIndex = !animated ? 0 : (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME) % N_FRAMES;
+
+        // Walk every line of the path.
         for (int i = 0; i < path.size() - 1; i++) {
-            Vector2i a = path.get(i), b = path.get(i + 1);
-            int length = (int) a.gridDistance(b);
+            Vector2ic a = path.get(i), b = path.get(i + 1);
 
             Direction direction;
-            if      (a.y > b.y) direction = Direction.UP;
-            else if (a.y < b.y) direction = Direction.DOWN;
-            else if (a.x > b.x) direction = Direction.LEFT;
-            else if (a.x < b.x) direction = Direction.RIGHT;
+            if      (a.y() > b.y()) direction = Direction.UP;
+            else if (a.y() < b.y()) direction = Direction.DOWN;
+            else if (a.x() > b.x()) direction = Direction.LEFT;
+            else if (a.x() < b.x()) direction = Direction.RIGHT;
             else continue;
 
-            // Walk cell by cell along this line, blitting the body strip in each cell.
-            for (int j = 0; j <= length; j++) {
-                Vector2i cell = switch (direction) {
-                    case UP    -> new Vector2i(a.x,     a.y - j);
-                    case DOWN  -> new Vector2i(a.x,     a.y + j);
-                    case LEFT  -> new Vector2i(a.x - j, a.y    );
-                    case RIGHT -> new Vector2i(a.x + j, a.y    );
-                };
+            boolean tail = i == 0;
+            boolean head = i == path.size() - 2;
 
-                // Earlier half of the cell in the current direction
-                if (j != 0) {
-                    var st0 = (i == path.size() - 2 && j == length)
-                    ? switch (direction) {
-                        case UP    -> Subtexture.HEAD_UP;
-                        case DOWN  -> Subtexture.HEAD_DOWN;
-                        case LEFT  -> Subtexture.HEAD_LEFT;
-                        case RIGHT -> Subtexture.HEAD_RIGHT;
-                    } : switch (direction) {
-                        case UP    -> Subtexture.LINE_UP_0;
-                        case DOWN  -> Subtexture.LINE_DOWN_0;
-                        case LEFT  -> Subtexture.LINE_LEFT_0;
-                        case RIGHT -> Subtexture.LINE_RIGHT_0;
-                    };
-                    drawSegment(bufferSource, pose, st0, cell.x, cell.y);
-                }
-                // Latter half of the cell in the current direction
-                if (j != length) {
-                    var st1 = (i == 0 && j == 0)
-                    ? switch (direction) {
-                        case UP    -> Subtexture.TAIL_UP;
-                        case DOWN  -> Subtexture.TAIL_DOWN;
-                        case LEFT  -> Subtexture.TAIL_LEFT;
-                        case RIGHT -> Subtexture.TAIL_RIGHT;
-                    } : switch (direction) {
-                        case UP    -> Subtexture.LINE_UP_1;
-                        case DOWN  -> Subtexture.LINE_DOWN_1;
-                        case LEFT  -> Subtexture.LINE_LEFT_1;
-                        case RIGHT -> Subtexture.LINE_RIGHT_1;
-                    };
-                    drawSegment(bufferSource, pose, st1, cell.x, cell.y);
-                }
+            // Pixel coordinates of cell centers
+            Vector2i pa = new Vector2i(a).mul(CELL).add(CELL/2, CELL/2);
+            Vector2i pb = new Vector2i(b).mul(CELL).add(CELL/2, CELL/2);
+
+            // Draw line, each line texture has length of half a cell.
+            Vector2i lineStart = new Vector2i(pa).add(direction.vector(CELL/4));
+            Vector2i lineEnd   = new Vector2i(pb).sub(direction.vector(CELL/4));
+
+            if (tail) lineStart.add(direction.vector(CELL/2));
+            if (head)   lineEnd.sub(direction.vector(CELL/2));
+
+            Vector2i lineMin = new Vector2i(lineStart).min(lineEnd);
+            Vector2i lineSize = new Vector2i(lineStart).sub(lineEnd).absolute();
+
+            var lineSt = Subtexture.LINES.get(direction);
+            getSpriteRenderer(lineSt, frameIndex).render(bufferSource, pose,
+                    lineMin.x - lineSt.w/2, lineMin.y - lineSt.h/2,
+                    lineSize.x + lineSt.w, lineSize.y + lineSt.h);
+
+            // Draw tail and head
+            if (tail) {
+                var tailSt = Subtexture.TAILS.get(direction);
+                getSpriteRenderer(tailSt, frameIndex).render(bufferSource, pose,
+                        pa.x - tailSt.ox, pa.y - tailSt.oy,
+                        tailSt.w, tailSt.h);
+            }
+            if (head) {
+                var headSt = Subtexture.HEADS.get(direction);
+                getSpriteRenderer(headSt, frameIndex).render(bufferSource, pose,
+                        pb.x - headSt.ox, pb.y - headSt.oy,
+                        headSt.w, headSt.h);
             }
         }
     }
 
-    /**
-     * Draw a single segment of arrow graphics. Align sprite origin with cell center.
-     * @param x Cell x coordinate.
-     * @param y Cell y coordinate.
-     */
-    private void drawSegment(MultiBufferSource bufferSource, PoseStack pose, Subtexture st, int x, int y) {
-        int frame = !animated ? 0 :
-                (int) (AnimationTickHolder.getRenderTime() / FRAME_TIME) % N_FRAMES;
-        blitter.blit(bufferSource, pose,
-                x * CELL + CELL / 2 - st.ox, y * CELL + CELL / 2 - st.oy,
-                st.w, st.h, st.u, st.v + frame * FRAME_SIZE);
+    private TiledSpriteRenderer getSpriteRenderer(Subtexture st, int frameIndex) {
+        return TiledSpriteRenderer.create(
+                animated ? TEX_ANIMATED : TEX_STATIC,
+                st.u, st.v + frameIndex * FRAME_SIZE,
+                new GuiSpriteScaling.Tile(st.w, st.h)
+        ).setColorARGB(color);
     }
 
 }

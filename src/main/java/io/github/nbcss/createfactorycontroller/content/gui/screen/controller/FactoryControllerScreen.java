@@ -822,7 +822,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
                         float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);   // 1.0 at phase 0, 0.6 at half
                         int color = Math.round(alpha * 255) << 24 | (result.type().color() & 0xFFFFFF);
-                        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics);
+                        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics.bufferSource(), graphics.pose());
                     }
                 }
                 renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
@@ -858,6 +858,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
             }
         }
+        graphics.flush();
     }
 
     private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentBehaviour hovered) {

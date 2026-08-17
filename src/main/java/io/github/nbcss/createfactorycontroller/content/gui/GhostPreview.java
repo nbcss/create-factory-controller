@@ -171,7 +171,7 @@ public final class GhostPreview implements ComponentHolder {
                 List<Vector2i> path = ConnectionPathResolver.resolvePath(from, to, wire.arrowBendMode(), occupied);
                 if (path != null)
                     VirtualConnectionRenderer.create(path, (GHOST_ALPHA << 24) | (wire.color() & 0xFFFFFF), false)
-                            .drawPath(graphics);
+                            .drawPath(graphics.bufferSource(), graphics.pose());
             }
             graphics.flush();   // composite the wire strips before the sprites draw over them
         }

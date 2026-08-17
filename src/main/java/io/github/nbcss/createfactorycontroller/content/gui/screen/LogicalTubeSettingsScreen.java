@@ -250,8 +250,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
         gfx.pose().pushPose();
         gfx.pose().translate(gridX(), gridY(), 0);
-        for (Wire w : wires) VirtualConnectionRenderer.create(w.path(), w.color(), false).drawPath(gfx);
+        for (Wire w : wires) VirtualConnectionRenderer.create(w.path(), w.color(), false).drawPath(gfx.bufferSource(), gfx.pose());
         gfx.pose().popPose();
+        gfx.flush();
     }
 
     /** Render order */
