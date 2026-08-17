@@ -10,13 +10,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 
 /**
  * A component that can be placed in the controller's virtual panel.
@@ -142,14 +140,29 @@ public interface VirtualComponentBehaviour {
 
     // ── Connection graph (shared by all component kinds) ─────────────────────
 
-    /** Incoming connections, keyed by the source component's position. */
-    Map<VirtualComponentPosition, Connection> targetedBy();
+    /** Incoming connections (this component as sink), across every source and type. */
+    Collection<Connection> incomingConnections();
 
-    /** Positions this component points at. */
-    Set<VirtualComponentPosition> targeting();
+    /** Incoming connections, filtered by given type. */
+    default Collection<Connection> incomingConnections(Connection.Type type) {
+        return incomingConnections().stream().filter(c -> c.type == type).toList();
+    }
 
-    /** Outgoing connections (this component as source). Symmetric to {@link #targetedBy()}, but as a value collection. */
+    /** The single incoming wire from {@code source} of {@code type} (this component as sink), or {@code null}. */
+    @Nullable
+    Connection incomingConnection(VirtualComponentPosition source, Connection.Type type);
+
+    /** Outgoing connections (this component as source). Symmetric to {@link #incomingConnections()}. */
     Collection<Connection> outgoingConnections();
+
+    /** Outgoing connections, filtered by given type. */
+    default Collection<Connection> outgoingConnections(Connection.Type type) {
+        return outgoingConnections().stream().filter(c -> c.type == type).toList();
+    }
+
+    /** The single outgoing wire to {@code sink} of {@code type} (this component as source), or {@code null}. */
+    @Nullable
+    Connection outgoingConnection(VirtualComponentPosition sink, Connection.Type type);
 
     /** The connection {@link ConnectionCapability types} this component participates in (its static capabilities). Read by
      *  {@link ConnectionResolver} to decide whether a wire is possible — no {@code instanceof} pair matrix. */

@@ -53,11 +53,13 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements DisplayDataProvider {
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
@@ -342,7 +344,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.no_item")
                     .style(ChatFormatting.RED).component());
         int used = mode == GaugeWorkMode.CUSTOM
-            ? occupiedRecipeSlots() : usedInputSlots(targetedBy(), this::filterAt);
+            ? occupiedRecipeSlots() : usedInputSlots(incomingConnections(), this::filterAt);
         if (LogisticsConnection.TYPE.equals(type) && used >= MAX_INGREDIENTS)
             return ValidationResult.fail(() -> CreateLang.translate("factory_panel.cannot_add_more_inputs")
                     .style(ChatFormatting.RED).component());
@@ -365,12 +367,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * let the grid overflow. {@code filterResolver} maps a source position to its ingredient (server: via the
      * controller; client: via the menu snapshot), letting both sides share this logic.
      */
-    public static int usedInputSlots(Map<VirtualComponentPosition, Connection> connections,
-                                     java.util.function.Function<VirtualComponentPosition, ItemStack> filterResolver) {
+    public static int usedInputSlots(Collection<Connection> connections,
+                                     Function<VirtualComponentPosition, ItemStack> filterResolver) {
         int used = 0;
-        for (Map.Entry<VirtualComponentPosition, Connection> e : connections.entrySet()) {
-            if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
-            ItemStack src = filterResolver.apply(e.getKey());
+        for (Connection c : connections) {
+            if (!(c instanceof LogisticsConnection lc)) continue;
+            ItemStack src = filterResolver.apply(c.from);
             if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
             int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
             used += (lc.amount() + ss - 1) / ss;   // ceil
@@ -386,11 +388,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      */
     public int projectedInputSlots(Map<VirtualComponentPosition, Integer> proposedAmounts) {
         int used = 0;
-        for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
-            if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
-            ItemStack src = filterAt(e.getKey());
+        for (Connection c : incomingConnections()) {
+            if (!(c instanceof LogisticsConnection lc)) continue;
+            ItemStack src = filterAt(c.from);
             if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
-            int amount = Math.max(1, proposedAmounts.getOrDefault(e.getKey(), lc.amount()));
+            int amount = Math.max(1, proposedAmounts.getOrDefault(c.from, lc.amount()));
             int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
             used += (amount + ss - 1) / ss;   // ceil
         }
@@ -408,12 +410,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         while (recipeSlots.size() < MAX_INGREDIENTS) recipeSlots.add(RecipeSlot.EMPTY);
         for (int i = 0; i < recipeSlots.size(); i++) {
             RecipeSlot slot = recipeSlots.get(i);
-            if (!slot.isEmpty() && !(targetedBy().get(slot.source()) instanceof LogisticsConnection))
+            if (!slot.isEmpty() && !(incomingConnection(slot.source(), LogisticsConnection.TYPE) instanceof LogisticsConnection))
                 recipeSlots.set(i, RecipeSlot.EMPTY);   // its wire was removed
         }
-        for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
-            if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
-            VirtualComponentPosition src = e.getKey();
+        for (Connection c : incomingConnections()) {
+            if (!(c instanceof LogisticsConnection lc)) continue;
+            VirtualComponentPosition src = c.from;
             if (recipeSlots.stream().anyMatch(sl -> !sl.isEmpty() && src.equals(sl.source()))) continue;
             int empty = -1;
             for (int i = 0; i < recipeSlots.size(); i++) if (recipeSlots.get(i).isEmpty()) { empty = i; break; }
@@ -427,7 +429,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     /** Re-keys {@link #recipeSlots} sources through {@code remap} — relocation renames the wires' endpoint
      *  positions, and a CUSTOM arrangement referencing a moved source must follow or its cells go stale. */
-    public void remapRecipeSlots(java.util.function.Function<VirtualComponentPosition, VirtualComponentPosition> remap) {
+    public void remapRecipeSlots(Function<VirtualComponentPosition, VirtualComponentPosition> remap) {
         for (int i = 0; i < recipeSlots.size(); i++) {
             RecipeSlot slot = recipeSlots.get(i);
             if (slot.isEmpty()) continue;
@@ -462,11 +464,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return requestMode.isPassive() || effectiveDemandBase() > 0;
     }
 
-    /** Whether any incoming wire is an ingredient (LOGISTICS) connection. {@link #targetedBy()} now also holds redstone
-     *  inputs (from RECEIVE links / logic tubes), which are NOT ingredients — so "has ingredients" must filter by type,
-     *  or a redstone-only gauge would wrongly look like it has a recipe to fulfil. */
+    /** Whether any incoming wire is an ingredient (LOGISTICS) connection. {@link #incomingConnections()} also holds
+     *  redstone/number inputs (from RECEIVE links / logic tubes / number sources), which are NOT ingredients — so "has
+     *  ingredients" must filter by type, or a redstone-only gauge would wrongly look like it has a recipe to fulfil. */
     private boolean hasIngredientInputs() {
-        for (Connection c : targetedBy().values())
+        for (Connection c : incomingConnections())
             if (c instanceof LogisticsConnection) return true;
         return false;
     }
@@ -650,10 +652,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public void computeDemand() {
         if (!requestMode.isPassive() || controller == null) return;
         long demand = 0;
-        for (VirtualComponentPosition parentPos : targeting()) {
-            if (!(controller.components.get(parentPos) instanceof VirtualGaugeBehaviour parent)) continue;
+        for (Connection connection : outgoingConnections(LogisticsConnection.TYPE)) {
+            if (!(connection instanceof LogisticsConnection conn)) continue;
+            if (!(controller.components.get(conn.to) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.canRequestIngredients()) continue;
-            if (!(parent.targetedBy().get(position) instanceof LogisticsConnection conn)) continue;
             int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;
 
             int deficitRequests = parent.deficitRequestScaler();
@@ -937,9 +939,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 }
             }
         } else {
-            for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
-                if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
-                if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
+            for (Connection c : incomingConnections()) {
+                if (!(controller.components.get(c.from) instanceof VirtualGaugeBehaviour source)) continue;
+                if (!(c instanceof LogisticsConnection conn)) continue;
                 ItemStack ingredient = source.filter;
                 if (ingredient.isEmpty()) continue;
                 int needed = conn.amount();
@@ -1062,7 +1064,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      */
     private void setConnectionsSuccess(boolean value) {
         boolean changed = false;
-        for (Connection conn : targetedBy().values())
+        for (Connection conn : incomingConnections())
             if (conn instanceof LogisticsConnection lc && lc.success != value) {
                 lc.success = value;
                 changed = true;
@@ -1168,7 +1170,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 if (src == null || src.filter.isEmpty()) continue;
                 boolean fluid = FluidCompat.isFluidFilter(src.filter);
                 int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
-                LogisticsConnection connection = (LogisticsConnection) targetedBy().get(rs.source());
+                LogisticsConnection connection = (LogisticsConnection) incomingConnection(rs.source(), LogisticsConnection.TYPE);
                 slots.add(new ScaleSlot(Math.max(1, rs.count()), capacity, fluid,
                     connection.excludeFromRequestMultiplier));
             }
@@ -1177,9 +1179,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         // REGULAR: one entry per ingredient connection (its whole total). Server-only path (controller != null);
         // the client screen computes its own cap from edit state.
         if (controller != null)
-            for (Map.Entry<VirtualComponentPosition, Connection> e : targetedBy().entrySet()) {
-                if (!(e.getValue() instanceof LogisticsConnection lc)) continue;
-                if (!(controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour src) || src.filter.isEmpty())
+            for (Connection c : incomingConnections()) {
+                if (!(c instanceof LogisticsConnection lc)) continue;
+                if (!(controller.components.get(c.from) instanceof VirtualGaugeBehaviour src) || src.filter.isEmpty())
                     continue;
                 boolean fluid = FluidCompat.isFluidFilter(src.filter);
                 int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
@@ -1201,8 +1203,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     /** The wired-in source gauge whose filter matches a crafting pattern cell (exact components), or null. */
     private VirtualGaugeBehaviour findIngredientSource(ItemStack cell) {
-        for (VirtualComponentPosition p : targetedBy().keySet())
-            if (controller.components.get(p) instanceof VirtualGaugeBehaviour s
+        for (Connection c : incomingConnections())
+            if (c instanceof LogisticsConnection
+                    && controller.components.get(c.from) instanceof VirtualGaugeBehaviour s
                     && !s.filter.isEmpty() && ItemStack.isSameItemSameComponents(s.filter, cell))
                 return s;
         return null;
@@ -1280,7 +1283,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                         shipped = takeVariant(variantPools.computeIfAbsent(src, this::variantPool), cnt);
                         if (shipped.isEmpty()) return null;   // no single variant has enough for this cell
                     }
-                    LogisticsConnection connection = (LogisticsConnection) targetedBy().get(slot.source());
+                    LogisticsConnection connection = (LogisticsConnection) incomingConnection(slot.source(), LogisticsConnection.TYPE);
                     ordered.add(new OrderedDemand(new BigItemStack(shipped.copyWithCount(1), cnt),
                         connection.excludeFromRequestMultiplier));
                     lastFilled = ordered.size();
@@ -1300,7 +1303,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  carry items the merged availability check never covered. */
     private VirtualGaugeBehaviour sourceGauge(RecipeSlot slot) {
         if (slot.isEmpty() || controller == null) return null;
-        if (!(targetedBy().get(slot.source()) instanceof LogisticsConnection)) return null;
+        if (!(incomingConnection(slot.source(), LogisticsConnection.TYPE) instanceof LogisticsConnection)) return null;
         return controller.components.get(slot.source()) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 

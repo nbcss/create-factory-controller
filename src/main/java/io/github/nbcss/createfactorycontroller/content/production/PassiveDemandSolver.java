@@ -5,6 +5,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import net.minecraft.world.level.Level;
 
@@ -55,9 +56,9 @@ public final class PassiveDemandSolver {
         for (int i = 0; i < n; i++) {
             VirtualGaugeBehaviour g = nodes.get(i);
             int batch = craftBatch(g);
-            for (Map.Entry<VirtualComponentPosition, ?> e : g.targetedBy().entrySet()) {
-                if (!(e.getValue() instanceof LogisticsConnection lc)) continue;   // ingredient wires only
-                Integer si = idx.get(e.getKey());
+            for (Connection c : g.incomingConnections()) {
+                if (!(c instanceof LogisticsConnection lc)) continue;   // ingredient wires only
+                Integer si = idx.get(c.from);
                 if (si == null) continue;
                 boolean excluded = g.mode != GaugeWorkMode.CRAFTING && lc.excludeFromRequestMultiplier;
                 edges.get(i).add(new long[]{ si, (long) lc.amount() * batch, excluded ? 1 : 0 });

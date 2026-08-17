@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -12,7 +13,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 
-public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
+public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to,
+                                             String connectionType)
     implements CustomPacketPayload {
 
     public static final Type<CycleConnectionArrowModePacket> TYPE =
@@ -30,6 +32,7 @@ public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosit
             BlockPos.STREAM_CODEC, CycleConnectionArrowModePacket::pos,
             POS_CODEC, CycleConnectionArrowModePacket::from,
             POS_CODEC, CycleConnectionArrowModePacket::to,
+            ByteBufCodecs.STRING_UTF8, CycleConnectionArrowModePacket::connectionType,
             CycleConnectionArrowModePacket::new
         );
 
@@ -40,7 +43,9 @@ public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosit
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.cycleConnectionArrowMode(packet.from(), packet.to());
+            Connection.Type type = Connection.Type.get(packet.connectionType());
+            if (type == null) return;
+            be.cycleConnectionArrowMode(packet.from(), packet.to(), type);
         });
     }
 }

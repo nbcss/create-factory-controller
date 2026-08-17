@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -12,7 +13,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 
-public record ReverseConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
+public record ReverseConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to,
+                                      String connectionType)
     implements CustomPacketPayload {
 
     public static final Type<ReverseConnectionPacket> TYPE =
@@ -30,6 +32,7 @@ public record ReverseConnectionPacket(BlockPos pos, VirtualComponentPosition fro
             BlockPos.STREAM_CODEC, ReverseConnectionPacket::pos,
             POS_CODEC, ReverseConnectionPacket::from,
             POS_CODEC, ReverseConnectionPacket::to,
+            ByteBufCodecs.STRING_UTF8, ReverseConnectionPacket::connectionType,
             ReverseConnectionPacket::new
         );
 
@@ -40,7 +43,9 @@ public record ReverseConnectionPacket(BlockPos pos, VirtualComponentPosition fro
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.reverseConnection(packet.from(), packet.to());
+            Connection.Type type = Connection.Type.get(packet.connectionType());
+            if (type == null) return;
+            be.reverseConnection(packet.from(), packet.to(), type);
         });
     }
 }

@@ -156,10 +156,11 @@ public record SyncPanelDeltaPacket(BlockPos pos,
             boolean broken = false;
 
             for (ConnectionKey key : packet.removedConnections()) {
-                Connection old = menu.connectionAt(key.from(), key.to());
-                if (old == null) continue;   // e.g. already dropped by a component removal — fine
-                menu.removeConnectionAt(key.from(), key.to());
-                refolds.add(new Refold(key.to(), old.type));
+                if (key.type() == null) { broken = true; continue; }   // unknown type name (version mismatch) — resync
+                menu.removeConnectionAt(key.from(), key.to(), key.type());
+                // Re-fold the sink even if the wire was already dropped (e.g. by a component removal) — onInputChanged
+                // recomputes from the remaining edges and is a no-op if the sink is gone.
+                refolds.add(new Refold(key.to(), key.type()));
             }
 
             for (VirtualComponentPosition pos : packet.removedComponents())

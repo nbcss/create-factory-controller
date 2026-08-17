@@ -11,9 +11,9 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import net.minecraft.world.item.Item;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Base implementation for all virtual components.
@@ -45,9 +45,17 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
 
     // ── Connection graph ──────────────────────────────────────────────────────
 
-    @Override public Map<VirtualComponentPosition, Connection> targetedBy() { return graph().targetedBy(position); }
-    @Override public Set<VirtualComponentPosition> targeting() { return graph().targeting(position); }
-    @Override public java.util.Collection<Connection> outgoingConnections() { return graph().outgoingConnections(position); }
+    @Override
+    public Collection<Connection> incomingConnections() { return graph().incomingConnections(position); }
+
+    @Override
+    public Connection incomingConnection(VirtualComponentPosition source, Connection.Type type) { return graph().get(source, position, type); }
+
+    @Override
+    public Collection<Connection> outgoingConnections() { return graph().outgoingConnections(position); }
+
+    @Override
+    public Connection outgoingConnection(VirtualComponentPosition sink, Connection.Type type) { return graph().get(position, sink, type); }
 
     /** The connection store backing this component: the controller's (server) or the injected one (client snapshot). */
     protected ConnectionGraph graph() {
@@ -132,11 +140,6 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     /** The connections whose arrow-bend this component's cycle-arrow key cycles. By default its outgoing wires; gauges
      *  also include incoming redstone (whose RECEIVE-link end can't cycle — see {@code VirtualGaugeBehaviour}). */
     public List<Connection> connectionsToCycle() {
-        List<Connection> result = new java.util.ArrayList<>();
-        for (VirtualComponentPosition targetPos : targeting()) {
-            Connection conn = graph().get(position, targetPos);
-            if (conn != null) result.add(conn);
-        }
-        return result;
+        return new ArrayList<>(outgoingConnections());
     }
 }

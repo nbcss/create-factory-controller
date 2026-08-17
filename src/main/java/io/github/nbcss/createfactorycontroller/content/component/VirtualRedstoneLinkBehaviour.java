@@ -259,8 +259,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public List<Connection> connectionsToCycle() {
         List<Connection> result = super.connectionsToCycle();
-        for (Connection conn : targetedBy().values())
-            if (conn != null) result.add(conn);
+        result.addAll(incomingConnections());
         return result;
     }
 
@@ -341,7 +340,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
             if (!ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess()) {
                 if (controller != null)
                     controller.syncConnectionRemoved(ConnectionKey.of(conn));
-                graph().remove(conn.to, conn.from);
+                graph().remove(conn.to, conn.from, conn.type);
                 continue;
             }
             if (controller != null)

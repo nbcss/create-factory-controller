@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -11,7 +12,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-public record RemoveConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to)
+public record RemoveConnectionPacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to,
+                                     String connectionType)
     implements CustomPacketPayload {
 
     public static final Type<RemoveConnectionPacket> TYPE =
@@ -29,6 +31,7 @@ public record RemoveConnectionPacket(BlockPos pos, VirtualComponentPosition from
             BlockPos.STREAM_CODEC, RemoveConnectionPacket::pos,
             POS_CODEC, RemoveConnectionPacket::from,
             POS_CODEC, RemoveConnectionPacket::to,
+            ByteBufCodecs.STRING_UTF8, RemoveConnectionPacket::connectionType,
             RemoveConnectionPacket::new
         );
 
@@ -39,7 +42,9 @@ public record RemoveConnectionPacket(BlockPos pos, VirtualComponentPosition from
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
-            be.removeConnection(packet.from(), packet.to());
+            Connection.Type type = Connection.Type.get(packet.connectionType());
+            if (type == null) return;
+            be.removeConnection(packet.from(), packet.to(), type);
         });
     }
 }
