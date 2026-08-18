@@ -160,7 +160,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation BACKGROUND_TEXTURE_PATH = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/controller_background/");
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
-    private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
+    private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/regular");
     // Edit-name cue drawn after the controller name when idle (indicator only). 9×9 sprite.
     private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
     private static final int RENAME_BUTTON_SIZE = 9;
