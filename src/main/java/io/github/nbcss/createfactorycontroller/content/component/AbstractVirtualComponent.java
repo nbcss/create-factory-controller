@@ -115,8 +115,13 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
             if (position.equals(conn.to)) continue;
             VirtualComponentBehaviour sink = siblingAt(conn.to);
             if (sink == null) continue;
-            if (controller != null) controller.markSinkDirty(conn.to, conn.type);
-            else sink.onInputChanged(conn.type);
+            if (controller != null) {
+                controller.connectionSetChanged(conn.to, conn.type);
+                controller.markSinkDirty(conn.to, conn.type);
+            } else {
+                sink.onConnectionSetChanged(conn.type);
+                sink.onInputChanged(conn.type);
+            }
         }
         // Callers mark the component itself (removed / FULL); this only marks the wires it took down.
         if (controller != null) { controller.settleConnections(); controller.setChanged(); }

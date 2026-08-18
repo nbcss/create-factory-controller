@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 /**
  * A component that can be placed in the controller's virtual panel.
@@ -138,6 +139,9 @@ public interface VirtualComponentBehaviour {
     /** The controller block entity unloaded (chunk unload / block break). */
     default void onUnload() {}
 
+    /** Updates component-owned position references after one or more board components move. */
+    default void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {}
+
     // ── Connection graph (shared by all component kinds) ─────────────────────
 
     /** Incoming connections (this component as sink), across every source and type. */
@@ -164,6 +168,12 @@ public interface VirtualComponentBehaviour {
     @Nullable
     Connection outgoingConnection(VirtualComponentPosition sink, Connection.Type type);
 
+    /** Reconciles component-owned assignments after an edge is added or removed. Returns whether a full component sync
+     *  is required. */
+    default boolean onConnectionSetChanged(Connection.Type type) {
+        return false;
+    }
+
     /** The connection {@link ConnectionCapability types} this component participates in (its static capabilities). Read by
      *  {@link ConnectionResolver} to decide whether a wire is possible — no {@code instanceof} pair matrix. */
     List<ConnectionCapability> ports();
@@ -175,6 +185,12 @@ public interface VirtualComponentBehaviour {
     /** Validates this component acting as the SINK of a {@code type} wire from {@code source}. (E.g. a gauge sink
      *  caps its ingredient slots; a link rejects a link partner.) */
     ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source);
+
+    /** Whether this component can still take another input (used to gate entering connection mode from it). Most
+     *  components have no fixed input cap; the Arithmetic Tube overrides this with its operator's arity. */
+    default boolean canAcceptMoreInput() {
+        return true;
+    }
 
     /** For component to look up other components. */
     void setHolder(ComponentHolder holder);

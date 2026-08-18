@@ -578,6 +578,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.push("cull");
         updateVisibleComponents(visibleArea);
         List<ConnectionWidget> connWidgets = buildConnectionWidgets(visibleArea);
+        componentRenderingHelper.setOccupiedCells(occupiedCells());
 
         profiler.popPush("back");
         // Cull components and connections that fall outside the visible canvas rectangle
@@ -1674,6 +1675,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (CreateFactoryControllerClient.START_CONNECTION.matches(keyCode, scanCode) && hover != null
                 && !connectionMode.isActive() && pendingRelocateTarget == null && selected.isEmpty()) {
+            if (!hover.canAcceptMoreInput()) {
+                playDenySound();
+                setTimedPrompt(Component.translatable("createfactorycontroller.arithmetic_tube.inputs_full")
+                        .withStyle(ChatFormatting.RED), 3000);
+                return true;
+            }
             beginConnectionMode(hoveredPosition);
             return true;
         }

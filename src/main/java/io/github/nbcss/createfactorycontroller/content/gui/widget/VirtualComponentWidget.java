@@ -91,6 +91,10 @@ public interface VirtualComponentWidget {
         /** Whether the mouse is hovering over this componen. */
         @Pure boolean mouseOver();
 
+        /** Positions of all placed components this frame — canvas context for resolving connection paths
+         *  (e.g. the Arithmetic Tube resolves each incoming wire's entry face to draw its connection strips). */
+        @Pure java.util.Set<VirtualComponentPosition> occupiedCells();
+
         /** Queues an item or fluid icon to be rendered in batch. */
         void addBatchRenderedItem(ItemStack stack, int x, int y);
     }

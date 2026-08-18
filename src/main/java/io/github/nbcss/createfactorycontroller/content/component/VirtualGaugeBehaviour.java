@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements DisplayDataProvider {
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
@@ -405,7 +406,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      * screen applies on open, so server dispatch and the eventual screen edit agree). No-op in other modes.
      * Called after a wire is added to / removed from this gauge.
      */
-    public void reconcileRecipeSlots() {
+    private void reconcileRecipeSlots() {
         if (mode != GaugeWorkMode.CUSTOM) return;
         while (recipeSlots.size() < MAX_INGREDIENTS) recipeSlots.add(RecipeSlot.EMPTY);
         for (int i = 0; i < recipeSlots.size(); i++) {
@@ -423,13 +424,20 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             ItemStack ingredient = filterAt(src);
             int cap = FluidCompat.isFluidFilter(ingredient) ? FLUID_INGREDIENT_CAP_MB
                 : ingredient.isEmpty() ? 64 : Math.max(1, ingredient.getMaxStackSize());
-            recipeSlots.set(empty, new RecipeSlot(src, Math.min(Math.max(1, lc.amount()), cap)));
+            recipeSlots.set(empty, new RecipeSlot(src, Math.clamp(lc.amount(), 1, cap)));
         }
     }
 
-    /** Re-keys {@link #recipeSlots} sources through {@code remap} — relocation renames the wires' endpoint
-     *  positions, and a CUSTOM arrangement referencing a moved source must follow or its cells go stale. */
-    public void remapRecipeSlots(Function<VirtualComponentPosition, VirtualComponentPosition> remap) {
+    @Override
+    public boolean onConnectionSetChanged(Connection.Type type) {
+        if (type != LogisticsConnection.TYPE || mode != GaugeWorkMode.CUSTOM) return false;
+        reconcileRecipeSlots();
+        return true;
+    }
+
+    /** Re-keys CUSTOM recipe sources so their slot assignment survives relocation. */
+    @Override
+    public void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {
         for (int i = 0; i < recipeSlots.size(); i++) {
             RecipeSlot slot = recipeSlots.get(i);
             if (slot.isEmpty()) continue;

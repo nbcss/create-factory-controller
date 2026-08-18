@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
+import io.github.nbcss.createfactorycontroller.content.component.ArithmeticTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
@@ -26,6 +27,7 @@ public final class ComponentWidgetRegistry {
         register(VirtualGaugeBehaviour.class, VirtualGaugeWidget::new);
         register(VirtualRedstoneLinkBehaviour.class, VirtualRedstoneLinkWidget::new);
         register(LogicalTubeBehaviour.class, VirtualLogicalTubeWidget::new);
+        register(ArithmeticTubeBehaviour.class, VirtualArithmeticTubeWidget::new);
     }
 
     private ComponentWidgetRegistry() {}
