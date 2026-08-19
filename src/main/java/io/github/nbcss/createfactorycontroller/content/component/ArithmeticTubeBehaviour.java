@@ -11,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Vali
 import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.content.component.operator.OperatorArity;
+import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -23,8 +24,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalDouble;
@@ -190,9 +189,12 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     public double getOutput() { return output; }
 
-    /** Compact display of the current output (≤3 fractional digits, trailing zeros trimmed) — the face label. */
     public String getOutputLabel() {
-        return BigDecimal.valueOf(output).setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        return NumberFormatter.formatCompact(output);
+    }
+
+    public String getOutputText() {
+        return NumberFormatter.format(output);
     }
 
     // ── Connections: NUMBER only, BOTH role ─────────────────────────────────────

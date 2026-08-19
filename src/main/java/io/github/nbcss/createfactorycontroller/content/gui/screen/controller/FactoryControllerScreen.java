@@ -9,6 +9,7 @@ import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import io.github.nbcss.createfactorycontroller.content.render.ComponentRenderingHelper;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
@@ -33,6 +34,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.sta
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.DragSelectionState;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.CollapsiblePlayerInventory;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectedTargetRole;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.IndicatorColumnWidget;
@@ -162,6 +164,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
     private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/regular");
+    private static final ResourceLocation TARGET_HALF_1_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/half_1");
+    private static final ResourceLocation TARGET_HALF_2_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/half_2");
     // Edit-name cue drawn after the controller name when idle (indicator only). 9×9 sprite.
     private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
     private static final int RENAME_BUTTON_SIZE = 9;
@@ -780,10 +784,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int TARGET_RED   = 0xFF3333;
     private static final int TARGET_GREEN = 0x33CC33;   // also the selected-component mark
     private static final int TARGET_BLUE  = 0x55AAFF;
-    // Connection-neighbour tints
-    private static final int TARGET_SOURCE      = 0x61d6f2;
-    private static final int TARGET_SINK        = 0xfcd860;
-    private static final int TARGET_SOURCE_SINK = 0xb7ed9f;
     private static final long PREVIEW_FLASH_MS = 900;
 
     /** Blue reticle over every component on the network currently selected in the network selector. */
@@ -800,7 +800,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (source != null) renderTarget(graphics, source, TARGET_GREEN);
 
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
-        final VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
+        final VirtualComponentWidget hoveredWidget = componentWidgetAt(hoveredPosition);
+        final VirtualComponentBehaviour hovered = hoveredWidget == null ? null : hoveredWidget.behaviour();
         ItemStack carried = menu.getCarried();
 
         if (connectionMode.isActive()) {
@@ -845,26 +846,43 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         } else {
             // Empty cursor
-            if (hovered != null) {
+            if (hoveredWidget != null) {
                 if (dragSelection == null && ClientConfig.coloredConnectedComponentOutlines())
-                    renderConnectionNeighbours(graphics, hovered);
+                    renderConnectionNeighbours(graphics, hoveredWidget);
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
             }
         }
         graphics.flush();
     }
 
-    private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentBehaviour hovered) {
-        Set<VirtualComponentPosition> sources = new LinkedHashSet<>();
-        for (Connection conn : hovered.incomingConnections())
-            sources.add(conn.from);
-        Set<VirtualComponentPosition> sinks = new LinkedHashSet<>();
-        for (Connection conn : hovered.outgoingConnections())
-            sinks.add(conn.to);
-        for (VirtualComponentPosition p : sources)
-            renderTarget(graphics, p, sinks.contains(p) ? TARGET_SOURCE_SINK : TARGET_SOURCE);
-        for (VirtualComponentPosition p : sinks)
-            if (!sources.contains(p)) renderTarget(graphics, p, TARGET_SINK);
+    private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentWidget hovered) {
+        Map<VirtualComponentPosition, List<Connection>> inputs = new LinkedHashMap<>();
+        for (Connection conn : hovered.behaviour().incomingConnections())
+            inputs.computeIfAbsent(conn.from, ignored -> new ArrayList<>()).add(conn);
+
+        Map<VirtualComponentPosition, List<Connection>> outputs = new LinkedHashMap<>();
+        for (Connection conn : hovered.behaviour().outgoingConnections())
+            outputs.computeIfAbsent(conn.to, ignored -> new ArrayList<>()).add(conn);
+
+        Set<VirtualComponentPosition> neighbours = new LinkedHashSet<>(inputs.keySet());
+        neighbours.addAll(outputs.keySet());
+        for (VirtualComponentPosition neighbour : neighbours) {
+            List<Connection> inputConnections = inputs.get(neighbour);
+            List<Connection> outputConnections = outputs.get(neighbour);
+            if (inputConnections != null && outputConnections != null) {
+                int inputColor = hovered.connectedTargetColor(
+                        ConnectedTargetRole.INPUT, neighbour, inputConnections);
+                int outputColor = hovered.connectedTargetColor(
+                        ConnectedTargetRole.OUTPUT, neighbour, outputConnections);
+                renderSplitTarget(graphics, neighbour, inputColor, outputColor);
+            } else if (inputConnections != null) {
+                renderTarget(graphics, neighbour, hovered.connectedTargetColor(
+                        ConnectedTargetRole.INPUT, neighbour, inputConnections));
+            } else if (outputConnections != null) {
+                renderTarget(graphics, neighbour, hovered.connectedTargetColor(
+                        ConnectedTargetRole.OUTPUT, neighbour, outputConnections));
+            }
+        }
     }
 
     /** Draws a translucent single-component preview from a cursor item — a fresh component, so no configured state
@@ -916,13 +934,20 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
     private void renderTarget(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
+        renderTargetSprite(graphics, pos, TARGET_SPRITE, rgb);
+    }
+
+    private void renderSplitTarget(GuiGraphics graphics, VirtualComponentPosition pos, int inputColor, int outputColor) {
+        renderTargetSprite(graphics, pos, TARGET_HALF_1_SPRITE, inputColor);
+        renderTargetSprite(graphics, pos, TARGET_HALF_2_SPRITE, outputColor);
+    }
+
+    private void renderTargetSprite(GuiGraphics graphics, VirtualComponentPosition pos, ResourceLocation sprite, int rgb) {
         int x0 = pos.x() * CANVAS_COMPONENT_SIZE;
         int y0 = pos.y() * CANVAS_COMPONENT_SIZE;
-        RenderSystem.enableBlend();
-        graphics.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-        graphics.blitSprite(TARGET_SPRITE, x0, y0, CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE);
-        graphics.setColor(1f, 1f, 1f, 1f);
-        RenderSystem.disableBlend();
+        BatchedBlitter.forSprite(sprite).setColorRGB(rgb)
+                .blit(graphics.bufferSource(), graphics.pose(), x0, y0,
+                        CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE);
     }
 
     private void renderTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {

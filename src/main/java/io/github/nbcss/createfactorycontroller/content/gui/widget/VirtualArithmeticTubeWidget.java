@@ -39,6 +39,8 @@ import java.util.Set;
 public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) implements VirtualComponentWidget {
 
     private static final int CELL = 16;
+    private static final int PRIMARY_INPUT_COLOR = 0xCF2D3A;
+    private static final int SECONDARY_INPUT_COLOR = 0x385BC1;
     private static final int STRIP_HEIGHT = 8;   // the strip sprite is 16×8, UP-oriented and rotated per face
     private static final int LABEL_INSET = 1;
     private static final float LABEL_SCALE = 0.5f;
@@ -59,6 +61,14 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         return behaviour.position();
     }
 
+    @Override
+    public int connectedTargetColor(ConnectedTargetRole role, VirtualComponentPosition neighbour,
+                                    List<Connection> connections) {
+        if (role == ConnectedTargetRole.INPUT)
+            return behaviour.isSecondarySource(neighbour) ? SECONDARY_INPUT_COLOR : PRIMARY_INPUT_COLOR;
+        return VirtualComponentWidget.super.connectedTargetColor(role, neighbour, connections);
+    }
+
     private ResourceLocation sprite(String name) {
         return behaviour.getTexture().withSuffix("/" + name);
     }
@@ -68,7 +78,6 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        renderStrips(gfx, x0, y0, params.occupiedCells());   // connection strips, right after the tube back
     }
 
     @Override
@@ -76,6 +85,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
+        renderStrips(gfx, x0, y0, params.occupiedCells());
         renderOperatorSymbol(gfx, x0, y0);
     }
 
@@ -182,7 +192,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.operator_prefix",
                 behaviour.getOperator().displayName().copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.output",
-                Component.literal(behaviour.getOutputLabel()).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
+                Component.literal(behaviour.getOutputText()).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         if (selected)
             lines.add(Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component").withStyle(ChatFormatting.DARK_GRAY));
