@@ -4,7 +4,7 @@
   "createlogisticscontrol.filter_link.not_packager": "Фильтрующий передатчик должен быть размещен на упаковщик",
   "createlogisticscontrol.config.filter_link_range": "Радиус целей фильтрующего передатчика",
   "createlogisticscontrol.config.filter_link_range.tooltip": "Максимальное расстояние (в блоках), до целей фильтрующего передатчика.",
-  "createlogisticscontrol.ponder.filter_link.header": "Использование Фильтрующего передатчика",
+  "createlogisticscontrol.ponder.filter_link.header": "Использованием Фильтрующего передатчика",
   "createlogisticscontrol.ponder.filter_link.text_1": "Некоторые рецепты могут неправильно обрабатываться без фильтра",
   "createlogisticscontrol.ponder.filter_link.text_2": "Фильтрующий передатчик может быть использован для автоматической установки фильтров",
   "createlogisticscontrol.ponder.filter_link.text_3": "Кликните ПКМ по блоку, чтобы выбрать его как цель",
