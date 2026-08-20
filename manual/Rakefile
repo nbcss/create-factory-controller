@@ -11,10 +11,12 @@ require_relative 'lib/util'
 
 CLOBBER << 'build'
 
-# Get languages from po4a config
-LANGS = File.readlines("l10n/po4a.cfg")
-  .find{|x| x =~ /^\[po4a_langs\]/ }
-  .split(?])[1].scan(/[\w_-]+/)
+# Get languages from existing localisation file names
+LANGS = Dir.entries('l10n')
+  .map{|x| x.split '.' }
+  .filter{|x| x.length >= 3 }
+  .map{|x| x[-2] }
+  .uniq
 
 LANGS.prepend 'en'
 def LANGS.default() first end
@@ -34,15 +36,28 @@ LANGS.each do |lang|
 end
 
 namespace 'po4a' do
+  desc "Update po4a config"
+  task :config do
+    orig = File.read('l10n/po4a.cfg')
+    changed = orig.sub(/(?<=\[po4a_langs\] ).*$/) do
+      changed = true
+      LANGS[1..-1].join(' ')
+    end
+    if orig != changed
+      puts "Write po4a.cfg" if verbose
+      File.write 'l10n/po4a.cfg', changed
+    end
+  end
+
   desc "Update translation files"
-  task :update do
+  task :update => :config do
     cd 'l10n' do
       sh *%W(po4a --no-translations po4a.cfg)
     end
   end
 
   desc "Generated translated documents"
-  task :translate do
+  task :translate => :config do
     cd 'l10n' do
       sh *%W(po4a --no-update po4a.cfg)
     end
