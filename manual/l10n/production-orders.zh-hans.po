@@ -8,11 +8,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-08-15 11:43+1000\n"
-"PO-Revision-Date: 2026-07-25 22:49+0000\n"
+"PO-Revision-Date: 2026-08-20 06:35+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
-"Language-Team: Chinese (Simplified Han script) <https://"
-"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
-"production-orders/zh_Hans/>\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/production-orders/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -60,15 +58,6 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/production-orders.adoc:9
-#, fuzzy
-#| msgid ""
-#| "Click to add the production task to the order, and adjust the amount per "
-#| "usual. Sending an order containing production tasks creates a [#term-"
-#| "production-order]_production order_, causing the corresponding factory "
-#| "gauges to add the number of items in the order to their xref:factory-"
-#| "gauge.adoc#term-demand[demands]. When the produced items arrive in the "
-#| "logistic network, they are sent out again to the address specified on the "
-#| "order."
 msgid ""
 "Click to add the production task to the order. The amount of output items to "
 "send can be adjusted per usual. Sending an order containing production tasks "
@@ -77,17 +66,13 @@ msgid ""
 "their xref:factory-gauge.adoc#term-demand[demands]. When the ordered items "
 "arrive in the logistic network, they are sent out again to the address "
 "specified on the order."
-msgstr ""
-"点击以将此生产任务加入订单，然后与往常一样调整其数量。提交包含生产任务的订单"
-"将会创建一个[#term-production-order]__生产订单__，把订单中的物品数量加入对应"
-"工厂仪表的xref:factory-gauge.adoc#term-demand[需求]。当产物进入物流网络所监测"
-"的仓储后，会再次被发往订单指定的地址。"
+msgstr "点击以将此生产任务加入订单。请求发送的物品数量与往常一样调整。提交包含生产任务的订单将会创建一个[#term-production-order]__生产订单__，把订单中的物品数量加入对应工厂仪表的xref:factory-gauge.adoc#term-demand[需求]。当请求的物品进入物流网络所监测的仓储后，会再次被发往订单指定的地址。"
 
 #. type: Block title
 #: ../src/production-orders.adoc:10
 #, no-wrap
 msgid "Ordering 16 oak planks to be sent to the address \"`output`\""
-msgstr ""
+msgstr "下单 16 个橡木木板，发送至地址“output”"
 
 #. type: Plain text
 #: ../src/production-orders.adoc:14
@@ -99,32 +84,22 @@ msgid ""
 "oak planks are in storage, then 8 planks will be produced, 5 sent to the "
 "destination address, 3 left over in storage; when 5 planks are order again, "
 "4 new planks will be produced, leaving 2 left-over."
-msgstr ""
+msgstr "负责的工厂仪表将生产足够数量的物品，以满足生产订单中指定的数量，并重复利用库存中现有的物品。例如，如果仪表的xref:factory-gauge.adoc#term-recipe[配方]使用 1 块橡木原木生产 4 块橡木木板，而当库存中橡木木板数量为 0 时下单了 5 块木板，则将生产 8 块木板，其中 5 块发送到目的地，剩余 3 块存放在仓库中；当再次下单 5 块木板时，将生产 4 块新木板，剩余 2 块。"
 
 #. type: Title ==
 #: ../src/production-orders.adoc:16
-#, fuzzy, no-wrap
-#| msgid "Production Orders"
+#, no-wrap
 msgid "Pending Production Orders"
-msgstr "生产订单"
+msgstr "待处理生产订单"
 
 #. type: #view
 #: ../src/production-orders.adoc:19
-#, fuzzy
-#| msgid ""
-#| "Pending production orders can be viewed in the \"production orders\" tab "
-#| "in the stock keeper UI. They are automatically removed when all ordered "
-#| "items arrive in the logistic network. Otherwise, they remain stuck if the "
-#| "items never arrive."
 msgid ""
 "Pending production orders can be viewed in the \"production orders\" tab (❶) "
 "in the stock keeper UI. They are automatically removed when all ordered "
 "items arrive in the logistic network. Otherwise, they remain stuck if the "
 "items never arrive."
-msgstr ""
-"待处理的生产订单可在仓库管理员界面的“生产订单”标签页查看。所有请求生产的物品"
-"进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表"
-"中。"
+msgstr "待处理的生产订单可在仓库管理员界面的“生产订单”标签页（❶）查看。所有请求生产的物品进入物流网络后，订单会自动移除。如果物品始终没有到达，订单会一直停留在列表中。"
 
 #. type: Block title
 #: ../src/production-orders.adoc:20
@@ -229,7 +204,7 @@ msgstr "image:production-order-invalid.png[,14,14]"
 #: ../src/production-orders.adoc:53
 #, no-wrap
 msgid "[#term-invalid-gauge]#Invalid gauge#"
-msgstr ""
+msgstr "[#term-invalid-gauge]#失效仪表#"
 
 #. type: Table
 #: ../src/production-orders.adoc:54
@@ -241,7 +216,7 @@ msgstr "负责生产的仪表已被破坏，或已切换为其他工作模式。
 #: ../src/production-orders.adoc:57
 #, no-wrap
 msgid "Delivery Notification"
-msgstr ""
+msgstr "配送通知"
 
 #. type: #notification
 #: ../src/production-orders.adoc:60
@@ -249,33 +224,32 @@ msgid ""
 "When all items in a production order arrive, and are dispatched to the "
 "destination address, a notification is shown on the top-right corner of the "
 "screen, to the player that has created the production order."
-msgstr ""
+msgstr "当一个生产订单中的所有物品已到达、并已发货至目标地址时，创建此订单的玩家屏幕右上角将会显示通知。"
 
 #. type: Block title
 #: ../src/production-orders.adoc:61
 #, no-wrap
 msgid "\"Order shipped\" notification"
-msgstr ""
+msgstr "“订单已配送”通知"
 
 #. type: #notification
 #: ../src/production-orders.adoc:65
 msgid ""
 "A similar notification is shown when a responsible gauge has become <<term-"
 "invalid-gauge,invalid>>."
-msgstr ""
+msgstr "当一个负责的仪表<<term-invalid-gauge,失效>>时，也会显示类似的通知。"
 
 #. type: Block title
 #: ../src/production-orders.adoc:66
 #, no-wrap
 msgid "\"Gauge became invalid\" notification"
-msgstr ""
+msgstr "“仪表失效”通知"
 
 #. type: Title ==
 #: ../src/production-orders.adoc:70
-#, fuzzy, no-wrap
-#| msgid "Compatibility"
+#, no-wrap
 msgid "Mod Compatibility"
-msgstr "兼容性"
+msgstr "模组兼容性"
 
 #. type: #mod-compat
 #: ../src/production-orders.adoc:73
@@ -285,25 +259,21 @@ msgid ""
 "create production orders without explicit support. However, they will not be "
 "able to view pending production orders, and will not display "
 "<<notification,delivery notifications>>."
-msgstr ""
+msgstr "其他模组可能会提供替代仓库管理员的订购界面，例如手持的远程仓库管理员。这些界面通常无需特地支持也可创建生产订单，但它们无法查看待处理的生产订单，也不会显示<<notification,配送通知>>。"
 
 #. type: #mod-compat
 #: ../src/production-orders.adoc:75
 msgid ""
 "The following mods are tested to work with production orders, and have "
 "explicit support to display notifications:"
-msgstr ""
+msgstr "以下模组经测试可与生产订单配合使用，并被添加了对通知的支持："
 
 #. type: #mod-compat
 #: ../src/production-orders.adoc:77
-#, fuzzy
-#| msgid "Create: Repackaged"
 msgid "Create: Mobile Packages"
-msgstr "Create: Repackaged"
+msgstr "机械动力：无人机物流（Mobile Packages）"
 
 #. type: #mod-compat
 #: ../src/production-orders.adoc:77
-#, fuzzy
-#| msgid "Create connection"
 msgid "Create: Phantom"
-msgstr "创建连接"
+msgstr "机械动力：幻翼物流（Phantom）"
