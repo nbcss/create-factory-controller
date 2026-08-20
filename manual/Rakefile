@@ -40,7 +40,6 @@ namespace 'po4a' do
   task :config do
     orig = File.read('l10n/po4a.cfg')
     changed = orig.sub(/(?<=\[po4a_langs\] ).*$/) do
-      changed = true
       LANGS[1..-1].join(' ')
     end
     if orig != changed
