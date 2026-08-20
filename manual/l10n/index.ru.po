@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-15 11:43+1000\n"
+"POT-Creation-Date: 2026-08-20 15:51+1000\n"
 "PO-Revision-Date: 2026-08-20 01:12+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Russian <https://weblate.fiveyellowmice.com/projects/create-"
@@ -38,56 +38,63 @@ msgstr ""
 #. type: Plain text
 #: ../src/index.adoc:6
 msgid ""
-"This manual provides a reference to the features of the mod, some of which "
-"are difficult to explain fully in the UI. You do not need to read the manual "
-"in full to use the mod."
+"You do not need to read this manual in full to use the mod. The manual "
+"serves to provide a reference to the features of the mod, especially to "
+"those that are difficult to explain fully in the UI."
+msgstr ""
+
+#. type: Plain text
+#: ../src/index.adoc:10
+msgid ""
+"This manual corresponds to version {mod-version} of the mod. Information may "
+"be incorrect for other versions."
 msgstr ""
 
 #. type: Title ==
-#: ../src/index.adoc:8
+#: ../src/index.adoc:12
 #, no-wrap
 msgid "{toc-title}"
 msgstr ""
 
 #. type: #manual-toc
-#: ../src/index.adoc:12
+#: ../src/index.adoc:16
 msgid "xref:dashboard.adoc[Dashboard]"
 msgstr ""
 
 #. type: #manual-toc
-#: ../src/index.adoc:13
+#: ../src/index.adoc:17
 msgid "xref:components.adoc[Components]"
 msgstr ""
 
 #. type: Table
-#: ../src/index.adoc:14 ../src/components.adoc:14
+#: ../src/index.adoc:18 ../src/components.adoc:14
 #, no-wrap
 msgid "xref:factory-gauge.adoc[Factory Gauge]"
 msgstr ""
 
 #. type: Table
-#: ../src/index.adoc:15 ../src/components.adoc:29
+#: ../src/index.adoc:19 ../src/components.adoc:29
 #, no-wrap
 msgid "xref:electron-tube.adoc[Electron Tube]"
 msgstr ""
 
 #. type: Table
-#: ../src/index.adoc:16 ../src/components.adoc:24
+#: ../src/index.adoc:20 ../src/components.adoc:24
 #, no-wrap
 msgid "xref:redstone-link.adoc[Redstone Link]"
 msgstr ""
 
 #. type: #manual-toc
-#: ../src/index.adoc:17
+#: ../src/index.adoc:21
 msgid "xref:display-link.adoc[Display Link]"
 msgstr ""
 
 #. type: #manual-toc
-#: ../src/index.adoc:18
+#: ../src/index.adoc:22
 msgid "xref:blueprint.adoc[Blueprint]"
 msgstr ""
 
 #. type: #manual-toc
-#: ../src/index.adoc:18
+#: ../src/index.adoc:22
 msgid "xref:production-orders.adoc[Production Orders]"
 msgstr ""
