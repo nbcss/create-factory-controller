@@ -1,0 +1,16 @@
+{
+  "block.createlogisticscontrol.filter_link": "Фильтрующий передатчик",
+  "createlogisticscontrol.filter_link.linked": "Подключен к %1$s целям",
+  "createlogisticscontrol.filter_link.not_packager": "Фильтрующий передатчик должен быть размещен на упаковщик",
+  "createlogisticscontrol.config.filter_link_range": "Радиус целей фильтрующего передатчика",
+  "createlogisticscontrol.config.filter_link_range.tooltip": "Максимальное расстояние (в блоках), до целей фильтрующего передатчика.",
+  "createlogisticscontrol.ponder.filter_link.header": "Использованием Фильтрующего передатчика",
+  "createlogisticscontrol.ponder.filter_link.text_1": "Некоторые рецепты могут неправильно обрабатываться без фильтра",
+  "createlogisticscontrol.ponder.filter_link.text_2": "Фильтрующий передатчик может быть использован для автоматической установки фильтров",
+  "createlogisticscontrol.ponder.filter_link.text_3": "Кликните ПКМ по блоку, чтобы выбрать его как цель",
+  "createlogisticscontrol.ponder.filter_link.text_4": "Любой блок с возможностью фильтрации является допустимым, и можно выбрать несколько целей",
+  "createlogisticscontrol.ponder.filter_link.text_5": "После этого поместите фильтрующий передатчик на упаковщик",
+  "createlogisticscontrol.ponder.filter_link.text_6": "Каждый раз, когда Упаковщик распакует коробку с прикреплённой меткой фильтра...",
+  "createlogisticscontrol.ponder.filter_link.text_7": "...Фильтрующий передатчик автоматически применит фильтр ко всем выбранным целям",
+  "createlogisticscontrol.ponder.filter_link.text_8": "Посылки запрошенные у кладовщиков с помощью рецептов JEI, или с помощью фабричных контролеров, имеют метку фильтра которая является их ожидаемым результатом"
+}
