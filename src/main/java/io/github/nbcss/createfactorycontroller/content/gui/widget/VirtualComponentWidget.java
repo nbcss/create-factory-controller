@@ -95,7 +95,7 @@ public interface VirtualComponentWidget {
         /** Mouse XY in pixels. NaN if irrelevant or unknown. */
         @Pure Vector2d mousePosition();
         /** Whether the mouse is hovering over this componen. */
-        @Pure boolean mouseOver();
+        @Pure boolean renderOverlay();
 
         /** Positions of all placed components this frame — canvas context for resolving connection paths
          *  (e.g. the Arithmetic Tube resolves each incoming wire's entry face to draw its connection strips). */

@@ -32,6 +32,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.Blue
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.BatchMoveState;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.ConnectionModeState;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.DragSelectionState;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.TargetAnimationState;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.CollapsiblePlayerInventory;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectedTargetRole;
@@ -187,6 +188,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private int lastMouseX, lastMouseY;
 
     private final ComponentRenderingHelper componentRenderingHelper = new ComponentRenderingHelper();
+    private final TargetAnimationState targetAnimations = new TargetAnimationState();
 
     private final Map<VirtualComponentPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
     private final List<VirtualComponentWidget> visibleComponents = new ArrayList<>();
@@ -621,6 +623,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         componentRenderingHelper.flushBuffers(graphics);
 
         profiler.pop();
+        targetAnimations.beginFrame(Util.getMillis());
         renderSelectedNetworkMask(graphics);
         // The blueprint ghost owns the cursor cell while placing; the normal hover reticle would fight it.
         if (hoveredConn == null && pendingPlacement == null) renderHoverTarget(graphics);
@@ -628,11 +631,34 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         profiler.push("ghost");
         renderPlacementGhost(graphics);
+        renderFadingTargets(graphics);
+        graphics.flush();
 
         profiler.popPush("overlay");
-        // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
+
+        // label to show
+        boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
+        Set<VirtualComponentPosition> shouldShowLabel;
+        if (hoveredPosition == null) {
+            shouldShowLabel = Set.of();
+        } else {
+            shouldShowLabel = new HashSet<>();
+            shouldShowLabel.add(hoveredPosition);
+            if (!alwaysShowLabel && hoveredConn == null && pendingPlacement == null
+                    && !connectionMode.isActive() && pendingRelocateTarget == null && menu.getCarried().isEmpty()
+                    && dragSelection == null && !batchMove.isActive()) {
+                VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
+                if (hovered != null) {
+                    for (Connection connection : hovered.incomingConnections())
+                        shouldShowLabel.add(connection.from);
+                    for (Connection connection : hovered.outgoingConnections())
+                        shouldShowLabel.add(connection.to);
+                }
+            }
+        }
         for (VirtualComponentWidget component : visibleComponents)
-            component.renderOverlay(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
+            component.renderOverlay(componentRenderingHelper.params(
+                    graphics, worldMouse, alwaysShowLabel || shouldShowLabel.contains(component.position())));
         componentRenderingHelper.flushBuffers(graphics);
 
         profiler.pop();
@@ -830,14 +856,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                                 hoveredPosition.x() - pendingRelocateTarget.x(),
                                 hoveredPosition.y() - pendingRelocateTarget.y()),
                         componentRenderingHelper, occupiedCells());
-            renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            renderTransientTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (ComponentRegistry.containsItem(carried)) {
             // Holding a component
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
             boolean valid = hovered == null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
             if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
-            renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            renderTransientTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
             // Holding a non-component item
             if (componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
@@ -934,27 +960,45 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
     private void renderTarget(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
-        renderTargetSprite(graphics, pos, TARGET_SPRITE, rgb);
+        renderTargetSprite(graphics, pos, TARGET_SPRITE, rgb, false);
     }
 
     private void renderSplitTarget(GuiGraphics graphics, VirtualComponentPosition pos, int inputColor, int outputColor) {
-        renderTargetSprite(graphics, pos, TARGET_HALF_1_SPRITE, inputColor);
-        renderTargetSprite(graphics, pos, TARGET_HALF_2_SPRITE, outputColor);
+        renderTargetSprite(graphics, pos, TARGET_HALF_1_SPRITE, inputColor, false);
+        renderTargetSprite(graphics, pos, TARGET_HALF_2_SPRITE, outputColor, false);
     }
 
-    private void renderTargetSprite(GuiGraphics graphics, VirtualComponentPosition pos, ResourceLocation sprite, int rgb) {
+    private void renderTargetSprite(GuiGraphics graphics, VirtualComponentPosition pos, ResourceLocation sprite,
+                                    int rgb, boolean raised) {
+        targetAnimations.track(pos, sprite, rgb, raised);
+        drawTargetSprite(graphics, pos, sprite, rgb, raised, 1, 1);
+    }
+
+    private void drawTargetSprite(GuiGraphics graphics, VirtualComponentPosition pos, ResourceLocation sprite,
+                                  int rgb, boolean raised, float alpha, float scale) {
         int x0 = pos.x() * CANVAS_COMPONENT_SIZE;
         int y0 = pos.y() * CANVAS_COMPONENT_SIZE;
-        BatchedBlitter.forSprite(sprite).setColorRGB(rgb)
+        graphics.pose().pushPose();
+        graphics.pose().translate(x0 + CANVAS_COMPONENT_SIZE / 2f, y0 + CANVAS_COMPONENT_SIZE / 2f, raised ? 200 : 0);
+        graphics.pose().scale(scale, scale, 1);
+        graphics.pose().translate(-x0 - CANVAS_COMPONENT_SIZE / 2f, -y0 - CANVAS_COMPONENT_SIZE / 2f, 0);
+        int argb = Math.round(alpha * 255) << 24 | (rgb & 0xFFFFFF);
+        BatchedBlitter.forSprite(sprite).setColorARGB(argb)
                 .blit(graphics.bufferSource(), graphics.pose(), x0, y0,
                         CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE);
+        graphics.pose().popPose();
     }
 
-    private void renderTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 200);
-        renderTarget(graphics, pos, rgb);
-        graphics.pose().popPose();
+    private void renderFadingTargets(GuiGraphics graphics) {
+        for (TargetAnimationState.AnimatedTarget target :
+                targetAnimations.fadingTargets(ClientConfig.enableSmoothAnimation()))
+            drawTargetSprite(graphics, target.position(), target.sprite(), target.color(), target.raised(),
+                    target.alpha(), target.scale());
+    }
+
+    private void renderTransientTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
+        targetAnimations.discard(pos, TARGET_SPRITE);
+        drawTargetSprite(graphics, pos, TARGET_SPRITE, rgb, true, 1, 1);
     }
 
     // ── Selection mode ───────────────────────────────────────────────────────
@@ -1007,7 +1051,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             for (VirtualComponentPosition p : movingCells) {                        // reticle on top of each ghost
                 VirtualComponentPosition to = batchMove.destinationOf(p);
                 boolean valid = batchMove.destinationValid(to, selected, componentWidgets.keySet());
-                renderTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
+                renderTransientTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
             }
             graphics.flush();
         }
@@ -1097,7 +1141,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         pendingPlacement.ghostPreview().render(graphics, anchor, componentRenderingHelper, occupiedCells());
         for (BlueprintStorage.Placement placement : pendingPlacement.info().placements()) {
             VirtualComponentPosition cell = BlueprintPlacement.cellFor(placement, anchor);
-            renderTargetAboveGhost(graphics, cell, pendingPlacement.cellFree(cell, menu) ? TARGET_WHITE : TARGET_RED);
+            renderTransientTargetAboveGhost(graphics, cell,
+                    pendingPlacement.cellFree(cell, menu) ? TARGET_WHITE : TARGET_RED);
         }
         graphics.flush();
     }

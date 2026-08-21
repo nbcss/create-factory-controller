@@ -2,9 +2,11 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.utility.CreateLang;
+import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedstoneLinkScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
@@ -12,13 +14,16 @@ import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPac
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +38,9 @@ import java.util.List;
 public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) implements VirtualComponentWidget {
 
     private static final int CELL = 16;
+    private static final int LABEL_INSET = 1;
+    private static final float LABEL_SCALE = 0.5f;
+    private static final int LABEL_COLOR = 0xFF000000 | RedstoneConnection.TYPE.color();
 
     @Override
     public VirtualComponentPosition position() {
@@ -71,7 +79,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
 
         // While holding an item, cover the hovered half (top = Red, bottom = Blue) to show which type a click sets.
         ItemStack cursor = Minecraft.getInstance().player.containerMenu.getCarried();
-        if (!cursor.isEmpty() && params.mouseOver()) {
+        if (!cursor.isEmpty() && params.renderOverlay()) {
             boolean top = params.mousePosition().y < y0 + CELL / 2.0;
             int hy = top ? y0 : y0 + CELL / 2;
             gfx.fill(x0, hy, x0 + CELL, hy + CELL / 2, top ? 0x80FF5555 : 0x805599FF);
@@ -84,6 +92,26 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
         gfx.pose().translate(x, y, 0);
         gfx.pose().scale(0.375f, 0.375f, 0.375f);
         gfx.renderItem(stack, 0, 0);
+        gfx.pose().popPose();
+    }
+
+    @Override
+    public void renderOverlay(RenderingParameters params) {
+        if (!ClientConfig.showRedstoneLinkSignalStrengthLabel() || behaviour.strength <= 0
+                || !params.renderOverlay()) return;
+
+        GuiGraphics gfx = params.graphics();
+        int x0 = position().x() * CELL, y0 = position().y() * CELL;
+        String label = Integer.toString(behaviour.strength);
+        Font font = Minecraft.getInstance().font;
+        int width = font.width(label);
+
+        gfx.pose().pushPose();
+        gfx.pose().translate(x0 + CELL - LABEL_INSET, y0 + CELL - LABEL_INSET, 200);
+        gfx.pose().scale(LABEL_SCALE, LABEL_SCALE, 1);
+        Matrix4f matrix = gfx.pose().last().pose();
+        font.drawInBatch8xOutline(Component.literal(label).getVisualOrderText(), -width, -font.lineHeight,
+                LABEL_COLOR, 0x000000, matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
         gfx.pose().popPose();
     }
 

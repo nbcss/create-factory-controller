@@ -164,7 +164,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
 
     @Override
     public void renderOverlay(RenderingParameters params) {
-        if (!(ClientConfig.alwaysShowLabel() || params.mouseOver())) return;
+        if (!params.renderOverlay()) return;
         String label = behaviour.getOutputLabel();
         if (label.isEmpty()) return;
 

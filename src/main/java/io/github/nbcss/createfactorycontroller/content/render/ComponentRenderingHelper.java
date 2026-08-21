@@ -21,7 +21,7 @@ public class ComponentRenderingHelper {
     public record RenderingParameters(
             GuiGraphics graphics,
             Vector2d mousePosition,
-            boolean mouseOver,
+            boolean renderOverlay,
             ResourceIconRenderer.Batch batchRenderedItems,
             Set<VirtualComponentPosition> occupiedCells
 

@@ -159,8 +159,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
         GuiGraphics gfx = params.graphics();
         Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
 
-        Component label = ClientConfig.alwaysShowLabel() || params.mouseOver() ?
-                behaviour.getCountLabel() : Component.empty();
+        Component label = params.renderOverlay() ? behaviour.getCountLabel() : Component.empty();
         if (label.getString().isEmpty()) {
             Minecraft.getInstance().getProfiler().pop();
             return;
