@@ -8,6 +8,7 @@ import com.simibubi.create.content.logistics.packagerLink.LogisticsNetwork;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.registry.CFCBlockEntityTypes;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
@@ -182,7 +183,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** Used by BlockEntityType.Builder registration (2-arg supplier form). */
     public FactoryControllerBlockEntity(BlockPos pos, BlockState state) {
-        super(CreateFactoryController.FACTORY_CONTROLLER_BE.get(), pos, state);
+        super(CFCBlockEntityTypes.FACTORY_CONTROLLER.get(), pos, state);
         setLazyTickRate(20);
     }
 

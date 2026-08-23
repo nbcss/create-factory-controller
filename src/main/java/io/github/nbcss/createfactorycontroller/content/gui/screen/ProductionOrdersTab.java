@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestMenu;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
-import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.liukrast.deployer.lib.logistics.packager.screen.KeeperSourceContext;
 import net.liukrast.deployer.lib.logistics.packager.screen.KeeperTabScreen;
 import net.liukrast.deployer.lib.logistics.packager.screen.TabsWidget;
@@ -17,7 +17,7 @@ public class ProductionOrdersTab extends KeeperTabScreen {
 
     public ProductionOrdersTab(KeeperSourceContext context, StockKeeperRequestMenu menu) {
         super(context, menu, Component.translatable("createfactorycontroller.gui.production_orders"),
-              CreateFactoryController.PRODUCTION_PATTERN.get());
+              CFCItems.PRODUCTION_PATTERN.get());
     }
 
     @Override

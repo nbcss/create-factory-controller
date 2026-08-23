@@ -23,13 +23,11 @@
 
 # 1.2.0
 - [TODO] Component Search
-- [TODO] Number Connection & Arithmetic Component
+- [DOING] Number Connection & Arithmetic Component
 - [TODO] Improve the wording of production order
 - [DONE] CC integration
 - [TODO] Crafter Filter
-- [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Filter Link model
-- [TBC] Fix gauge sound overload?
 - [DONE] Fix outline still appear for selected component
 - [DONE] Improve BP System: Handle missing component from compat
 - [DONE] Improve BP System: More info for ghost components
@@ -42,6 +40,8 @@
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
 - [Patch] Stock Link priority system is broken https://github.com/Creators-of-Create/Create/issues/9689
 - [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
+- [TBC] Fix gauge sound overload?
+- [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
 - [TODO] Crafting output filter

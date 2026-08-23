@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "item": "createfactorycontroller:polished_amethyst"
+    },
+    "I": {
+      "item": "create:iron_sheet"
+    }
+  },
+  "pattern": [
+    "P",
+    "I"
+  ],
+  "result": {
+    "count": 1,
+    "id": "createfactorycontroller:arithmetic_tube"
+  }
+}

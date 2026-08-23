@@ -12,6 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.component.operator.Arithm
 import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.content.component.operator.OperatorArity;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -117,7 +118,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type() {
         @Override public String id() { return "ARITHMETIC_TUBE"; }
-        @Override public List<ResourceLocation> items() { return List.of(CreateFactoryController.ARITHMETIC_TUBE.getId()); }
+        @Override public List<ResourceLocation> items() { return List.of(CFCItems.ARITHMETIC_TUBE.getId()); }
         @Override public int color() { return NumberConnection.COLOR; }   // purple, matching its wire
         @Override public boolean isRequireNetwork() { return false; }
 

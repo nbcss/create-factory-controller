@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.item;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -34,7 +35,7 @@ public class ProductionPatternItem extends Item {
 
     /** Builds a blueprint stack bound to {@code target}. */
     public static ItemStack of(ProductionTarget target) {
-        ItemStack stack = new ItemStack(CreateFactoryController.PRODUCTION_PATTERN.get());
+        ItemStack stack = new ItemStack(CFCItems.PRODUCTION_PATTERN.get());
         stack.set(CreateFactoryController.PRODUCTION_TARGET.get(), target);
         return stack;
     }

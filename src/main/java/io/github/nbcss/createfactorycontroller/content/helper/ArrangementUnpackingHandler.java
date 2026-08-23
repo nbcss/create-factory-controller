@@ -3,7 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.helper;
 import com.simibubi.create.api.packager.unpacking.UnpackingHandler;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
-import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
@@ -29,13 +29,13 @@ public enum ArrangementUnpackingHandler implements UnpackingHandler {
 
     /** The sentinel entry flagging an order as a Custom Arrangement */
     public static BigItemStack marker() {
-        return new BigItemStack(new ItemStack(CreateFactoryController.ARRANGEMENT_MARKER_ITEM.get()), 0);
+        return new BigItemStack(new ItemStack(CFCItems.ARRANGEMENT_MARKER.get()), 0);
     }
 
     /** O(1): whether this plain order ends with the arrangement marker. */
     public static boolean isMarked(List<BigItemStack> order) {
         if (order.isEmpty()) return false;
-        return order.get(order.size() - 1).stack.is(CreateFactoryController.ARRANGEMENT_MARKER_ITEM.get());
+        return order.get(order.size() - 1).stack.is(CFCItems.ARRANGEMENT_MARKER.get());
     }
 
     @Override

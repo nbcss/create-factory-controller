@@ -6,6 +6,7 @@ import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersTab;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
@@ -89,7 +90,7 @@ public class CreateFactoryControllerClient {
             // Deployer is optional: only register the keeper TAB when it's present
             if (DeployerCompat.isLoaded())
                 ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
-            Item controllerItem = CreateFactoryController.FACTORY_CONTROLLER_ITEM.get();
+            Item controllerItem = CFCItems.FACTORY_CONTROLLER.get();
             TooltipModifier.REGISTRY.register(controllerItem,
                 new ItemDescription.Modifier(controllerItem, FontHelper.Palette.STANDARD_CREATE));
         });
@@ -121,6 +122,6 @@ public class CreateFactoryControllerClient {
             public @NotNull BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 return renderer;
             }
-        }, CreateFactoryController.PRODUCTION_PATTERN.get());
+        }, CFCItems.PRODUCTION_PATTERN.get());
     }
 }

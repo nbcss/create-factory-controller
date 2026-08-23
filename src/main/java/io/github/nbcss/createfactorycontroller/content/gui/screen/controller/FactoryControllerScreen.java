@@ -49,6 +49,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationMode
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
@@ -479,7 +480,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         // Decorative controller block model anchored in the bottom-left corner, drawn over the board.
         RenderSystem.enableBlend();
-        GuiGameElement.of(new ItemStack(CreateFactoryController.FACTORY_CONTROLLER_ITEM.get()))
+        GuiGameElement.of(new ItemStack(CFCItems.FACTORY_CONTROLLER.get()))
                 .scale(CONTROLLER_MODEL_SCALE)
                 .render(graphics, leftPos - 74, topPos + imageHeight - 80);
         graphics.flush();

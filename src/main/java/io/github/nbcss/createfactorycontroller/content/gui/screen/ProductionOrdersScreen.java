@@ -27,6 +27,7 @@ import io.github.nbcss.createfactorycontroller.content.production.ProductionOrde
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
+import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.animation.LerpedFloat;
@@ -156,7 +157,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
 
     // ── Gutter button (Deployer-absent navigation) ───────────────────────────
 
-    private static final ItemStack GUTTER_ICON = new ItemStack(CreateFactoryController.PRODUCTION_PATTERN.get());
+    private static final ItemStack GUTTER_ICON = new ItemStack(CFCItems.PRODUCTION_PATTERN.get());
     /** The Production Pattern item drawn as a Create IconButton icon (16×16). */
     public static final ScreenElement PRODUCTION_ORDER_ICON = (gfx, x, y) -> gfx.renderItem(GUTTER_ICON, x, y);
 

@@ -4,6 +4,7 @@ import com.mojang.serialization.MapCodec;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.registry.CFCBlockEntityTypes;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import net.minecraft.core.BlockPos;
@@ -216,6 +217,6 @@ public class FactoryControllerBlock extends HorizontalDirectionalBlock
 
     @Override
     public BlockEntityType<? extends FactoryControllerBlockEntity> getBlockEntityType() {
-        return CreateFactoryController.FACTORY_CONTROLLER_BE.get();
+        return CFCBlockEntityTypes.FACTORY_CONTROLLER.get();
     }
 }
