@@ -68,6 +68,7 @@ jobs:
         run: |
           mkdir -p _site/manual
           cp -a manual/build/. _site/manual/
+          cp manual/build/404.html _site/404.html
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
