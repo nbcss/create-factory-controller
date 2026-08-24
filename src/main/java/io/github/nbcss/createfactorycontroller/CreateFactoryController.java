@@ -9,6 +9,8 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBl
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTweakedCompat;
+import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTweakedIntegration;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource;
@@ -170,6 +172,11 @@ public class CreateFactoryController {
         OrderableGaugeRegistry.registerEvents();
 
         ArrangementUnpackingHandler.register();
+
+        // CC: Tweaked (soft dependency — a read-only peripheral on the factory controller; see CcTweakedCompat).
+        if (CcTweakedCompat.isLoaded()) {
+            CcTweakedIntegration.register(modEventBus);
+        }
 
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
 

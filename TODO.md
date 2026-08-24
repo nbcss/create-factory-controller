@@ -25,7 +25,7 @@
 - [TODO] Component Search
 - [TODO] Number Connection & Arithmetic Component
 - [TODO] Improve the wording of production order
-- [TODO] CC integration
+- [DONE] CC integration
 - [TODO] Crafter Filter
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Filter Link model
