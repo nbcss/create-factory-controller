@@ -55,7 +55,7 @@ module Util
   # Get the endonym of a langauge.
   def self.lang_name(lang)
     locale = ICU::Locale.new(lang)
-    locale.with_locale_display_name(lang, [1]) do |names|
+    locale.with_locale_display_name(lang.to_s, [1]) do |names|
       ICU::Lib::Util.read_uchar_buffer(256) do |buffer, status|
         ICU::Lib.uldn_localeDisplayName(names, locale.id, buffer, buffer.size, status)
       end

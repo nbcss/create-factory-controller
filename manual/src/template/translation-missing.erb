@@ -1,0 +1,17 @@
+<% self.title = t 'no-translation.title' %>
+
+<div>
+  <h1><%= h t 'no-translation.title' %></h1>
+  <p><%= h t 'no-translation.content' %></p>
+  <ul class="action-list">
+    <li><a id="read-source-lang" href="../<%= languages.default %>/"><%= h t 'no-translation.read-source-lang' %></a></li>
+    <li><a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'no-translation.help-translate' %></a></li>
+  </ul>
+</div>
+
+<script>
+const sourceLangUrl = new URLSearchParams(document.location.search).get('source-lang-url');
+if (sourceLangUrl) {
+  document.getElementById('read-source-lang').href = sourceLangUrl;
+}
+</script>
