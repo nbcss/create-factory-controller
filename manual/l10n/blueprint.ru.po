@@ -3,25 +3,26 @@
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # Automatically generated, 2026.
 #
+# Zif_Tech <lord_vampirion_tech@mail.ru>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-08-20 11:30+1000\n"
-"PO-Revision-Date: 2026-08-20 11:30+1000\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-08-24 21:49+0000\n"
+"Last-Translator: Zif_Tech <lord_vampirion_tech@mail.ru>\n"
+"Language-Team: Russian <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/blueprint/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Weblate 2026.7.1\n"
 
 #. type: Title =
 #: ../src/blueprint.adoc:1
 #, no-wrap
 msgid "Blueprint"
-msgstr ""
+msgstr "Чертёж"
 
 #. type: Plain text
 #: ../src/blueprint.adoc:6
@@ -32,13 +33,13 @@ msgid ""
 "connections between them, are saved into the blueprint. It can then be "
 "reused at another location on the virtual board, or in another factory "
 "controller."
-msgstr ""
+msgstr "В фабричном контроллере вы можете выбрать любое количество xref:components.adoc[компонентов] и сохранить их в чертеж. Конфигурация и относительное положение каждого компонента, а также соединения между ними сохраняются в чертеже. Затем его можно повторно использовать в другом месте на виртуальной доске или в другом фабричном контроллере."
 
 #. type: Title ==
 #: ../src/blueprint.adoc:8
 #, no-wrap
 msgid "Creating Blueprints"
-msgstr ""
+msgstr "Создание Чертежей"
 
 #. type: #create
 #: ../src/blueprint.adoc:11
@@ -47,19 +48,19 @@ msgid ""
 "components in the dashboard UI. A save button will subsequently appear in "
 "the top-right corner, clicking it directs you to the \"New Blueprint\" "
 "screen."
-msgstr ""
+msgstr "Чтобы создать чертеж, xref:dashboard.adoc#selecting[выберите] нужные компоненты в интерфейсе панели управления. После этого в правом верхнем углу появится кнопка сохранения; нажатие на нее перенаправит вас на экран \"Новый чертеж\"."
 
 #. type: Block title
 #: ../src/blueprint.adoc:13
 #, no-wrap
 msgid "\"Save as Blueprint\" button"
-msgstr ""
+msgstr "Кнопка \"Сохранить как чертеж\""
 
 #. type: Block title
 #: ../src/blueprint.adoc:17
 #, no-wrap
 msgid "\"New Blueprint\" screen"
-msgstr ""
+msgstr "Экран \"Новый чертеж\""
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:24
@@ -69,20 +70,23 @@ msgid ""
 "Must be a valid file name for your operating system.\n"
 "If a blueprint of the same name exists, it will be overwritten upon saving. This will be indicated by a image:icon-warning.png[,16,16]."
 msgstr ""
+"❶ Название чертежа:: Введите название нового чертежа. Обязательно для заполнения.\n"
+"Должно быть допустимым именем файла для вашей операционной системы.\n"
+"Если чертеж с таким названием уже существует, он будет перезаписан при сохранении. На это будет указывать значок image:icon-warning.png[,16,16]."
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:27
 msgid ""
 "❷ Blueprint description:: Enter an arbitrary description attached to the "
 "blueprint. Optional."
-msgstr ""
+msgstr "❷ Описание чертежа:: Введите произвольное описание, прилагаемое к чертежу. Необязательно."
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:30
 msgid ""
 "❸ Components:: Shows the type and number of components included in the "
 "blueprint."
-msgstr ""
+msgstr "❸ Компоненты:: Показывает тип и количество компонентов, включенных в чертеж."
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:33
@@ -90,25 +94,25 @@ msgid ""
 "❹ Networks:: Shows the networks the selected components are tuned to, and "
 "the indices they are saved as. See <<network-mapping>>. Drag an icon to "
 "reorder."
-msgstr ""
+msgstr "❹ Сети:: Показывает сети, на которые настроены выбранные компоненты, и индексы, под которыми они сохранены. См. <<network-mapping>>. Перетащите значок, чтобы изменить порядок."
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:36
 msgid "❺ Discard button:: Click to cancel blueprint creation."
-msgstr ""
+msgstr "❺ Кнопка Отмены:: Нажмите, чтобы отменить создание чертежа."
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:39
 msgid ""
 "❻ Save button:: Click to save the new blueprint. Enabled when a valid name "
 "is entered."
-msgstr ""
+msgstr "❻ Кнопка Сохранения:: Нажмите, чтобы сохранить новый чертеж. Становится активной после ввода допустимого имени."
 
 #. type: Title ===
 #: ../src/blueprint.adoc:41
 #, no-wrap
 msgid "Networks in Blueprints"
-msgstr ""
+msgstr "Сети в Чертежах"
 
 #. type: #network-mapping
 #: ../src/blueprint.adoc:44
@@ -119,75 +123,75 @@ msgid ""
 "component within the blueprint remembers only the index (e.g. whether it is "
 "connected to the 1st, 2nd, ... network). When <<place,placing>>, you will "
 "then be asked to fill in each index with an actual network."
-msgstr ""
+msgstr "Чертежи не сохраняют сети, к которым настроены компоненты. Вместо этого сети заносятся в список (<<figure-blueprint-new>> ❹), где каждой сети присваивается индекс в списке (1, 2, ...). Каждый компонент в чертеже запоминает только индекс (например, подключен ли он к 1-й, 2-й, ... сети). При <<place,размещении>> вас попросят заполнить каждый индекс конкретной сетью."
 
 #. type: #network-mapping
 #: ../src/blueprint.adoc:46
 msgid ""
 "This design allows blueprints to be shared across game saves, where the "
 "networks you want to use the components on are different."
-msgstr ""
+msgstr "Эта конструкция позволяет использовать чертежи в разных сохранениях игры, где сети, в которых вы хотите использовать компоненты, различаются."
 
 #. type: Title ==
 #: ../src/blueprint.adoc:48
 #, no-wrap
 msgid "Managing Blueprints"
-msgstr ""
+msgstr "Управление Чертежами"
 
 #. type: #manage
 #: ../src/blueprint.adoc:51
 msgid ""
 "Saved blueprints can be seen in the blueprint library, opened by clicking "
 "the \"Blueprints\" button on the top-right corner."
-msgstr ""
+msgstr "Сохранённые чертежи можно найти в библиотеке чертежей, которая открывается нажатием кнопки \"Чертежи\" в правом верхнем углу."
 
 #. type: Block title
 #: ../src/blueprint.adoc:53
 #, no-wrap
 msgid "\"Open Blueprints\" button"
-msgstr ""
+msgstr "Кнопка \"Открыть чертежи\""
 
 #. type: Block title
 #: ../src/blueprint.adoc:57
 #, no-wrap
 msgid "The blueprint library, showing 4 existing blueprints"
-msgstr ""
+msgstr "Библиотека чертежей, отображающая 4 существующих чертежа"
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:62
 msgid "❶ Name:: Shows the name of the blueprint."
-msgstr ""
+msgstr "❶ Имя:: Отображает имя чертежа."
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:65
 msgid ""
 "❷ Components:: Shows the type and number of components in the blueprint, and "
 "whether you have enough of them in your inventory."
-msgstr ""
+msgstr "❷ Компоненты:: Показывает тип и количество компонентов в чертеже, а также наличие их достаточного количества в вашем инвентаре."
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:68
 msgid ""
 "❸ Place button:: Click to start placing the blueprint. Enabled only when the "
 "blueprint can be placed. See <<place>>."
-msgstr ""
+msgstr "❸ Кнопка Разместить:: Нажмите, чтобы начать размещение чертежа. Активна только тогда, когда чертеж можно разместить. См. <<place>>."
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:71
 msgid "❹ Edit button:: Click to edit the blueprint."
-msgstr ""
+msgstr "❹ Кнопка Редактирования:: Нажмите, чтобы изменить чертеж."
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:74
 msgid "❺ Importing hint:: Hints about the existence of <<import-world>>."
-msgstr ""
+msgstr "❺ Подсказка по импорту:: Подсказки о существовании < <import-world>>."
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:77
 msgid ""
 "❻ Open folder button:: Click to open the directory the blueprints are stored "
 "in with the operating system's file manager."
-msgstr ""
+msgstr "❻ Кнопка открытия папки:: Нажмите, чтобы открыть каталог, в котором хранятся чертежи, с помощью файлового менеджера операционной системы."
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:79
@@ -197,13 +201,13 @@ msgid ""
 "the system file manager, they will be recognized by the blueprint library "
 "upon closing and re-opening. Deletion is only possible through the system "
 "file manager."
-msgstr ""
+msgstr "Чертежи хранятся в виде файлов `.nbt` в папке `controller_blueprints` вашего клиента Minecraft. Вы можете копировать и переименовывать файлы с помощью системного файлового менеджера, они будут распознаны библиотекой чертежей после закрытия и повторного открытия игры. Удаление возможно только через системный файловый менеджер."
 
 #. type: Title ===
 #: ../src/blueprint.adoc:81
 #, no-wrap
 msgid "Editing Blueprints"
-msgstr ""
+msgstr "Редактирование Чертежей"
 
 #. type: #edit
 #: ../src/blueprint.adoc:84
@@ -211,40 +215,40 @@ msgid ""
 "Clicking <<figure-blueprint-library>> ❹ opens the blueprint editing screen. "
 "This is very similar to the <<figure-blueprint-new,\"New Blueprint\" "
 "screen>>, however, you may only edit the name and the description here."
-msgstr ""
+msgstr "Нажатие на <<figure-blueprint-library>> ❹ открывает экран редактирования чертежа. Он очень похож на экран <<figure-blueprint-new,\"Новый чертеж\">>, однако здесь можно редактировать только название и описание."
 
 #. type: Block title
 #: ../src/blueprint.adoc:86
 #, no-wrap
 msgid "\"Edit Blueprint\" screen"
-msgstr ""
+msgstr "Экран \"Редактировать чертеж\""
 
 #. type: #figure-blueprint-edit
 #: ../src/blueprint.adoc:91
 msgid "❶ Blueprint name:: Edit to rename the blueprint."
-msgstr ""
+msgstr "❶ Название чертежа:: Отредактируйте, чтобы переименовать чертеж."
 
 #. type: #figure-blueprint-edit
 #: ../src/blueprint.adoc:94
 msgid ""
 "❷ Blueprint description:: Edit to change the description of the blueprint."
-msgstr ""
+msgstr "❷ Описание чертежа:: Отредактируйте, чтобы изменить описание чертежа."
 
 #. type: #figure-blueprint-edit
 #: ../src/blueprint.adoc:97
 msgid "❺ Cancel button:: Click to discard the changes."
-msgstr ""
+msgstr "❺ Кнопка Отмены:: Нажмите, чтобы отменить изменения."
 
 #. type: #figure-blueprint-edit
 #: ../src/blueprint.adoc:100
 msgid "❻ Save button:: Click to save the changes."
-msgstr ""
+msgstr "❻ Кнопка Сохранения:: Нажмите, чтобы сохранить изменения."
 
 #. type: Title ==
 #: ../src/blueprint.adoc:102
 #, no-wrap
 msgid "Placing Blueprints"
-msgstr ""
+msgstr "Размещение Чертежей"
 
 #. type: #place
 #: ../src/blueprint.adoc:105
@@ -254,7 +258,7 @@ msgid ""
 "button. For the blueprint to be placeable, there must be enough items in "
 "your inventory to create all the included components, and enough remaining "
 "xref:dashboard.adoc#capacity[capacity] in the factory controller."
-msgstr ""
+msgstr "Чтобы разместить сохраненный чертеж, откройте <<figure-blueprint-library,библиотеку чертежей>> и нажмите кнопку image:btn-place-blueprint.png[,18,18] \"Разместить\". Для того чтобы чертеж можно было разместить, в вашем инвентаре должно быть достаточно предметов для создания всех входящих в него компонентов, а в контроллере завода - достаточно оставшейся xref:dashboard.adoc#capacity[емкости]."
 
 #. type: #place
 #: ../src/blueprint.adoc:107
@@ -262,52 +266,52 @@ msgid ""
 "You can then xref:dashboard.adoc#navigation[navigate the dashboard] and "
 "click an empty space to select where the new components will be placed. A "
 "screen will then pop up for you to configure the new components."
-msgstr ""
+msgstr "Затем вы можете xref:dashboard.adoc#navigation[перейти к панели управления] и щелкнуть по пустому месту, чтобы выбрать, где будут размещены новые компоненты. После этого появится экран, на котором вы сможете настроить новые компоненты."
 
 #. type: Block title
 #: ../src/blueprint.adoc:109
 #, no-wrap
 msgid "\"Place Blueprint\" screen"
-msgstr ""
+msgstr "Экран \"Разместить чертеж\""
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:113
 msgid ""
 "This is very similar to the <<figure-blueprint-new,\"New Blueprint\" "
 "screen>>, however, ❶ and ❷ may not be edited here."
-msgstr ""
+msgstr "Это очень похоже на <<figure-blueprint-new,экран \"Новый чертеж\">>, однако ❶ и ❷ здесь нельзя редактировать."
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:116
 msgid ""
 "❹ Networks:: Scroll on each slot to assign an existing network to an index. "
 "See <<network-mapping>>."
-msgstr ""
+msgstr "❹ Сети:: Прокручивайте каждый слот, чтобы назначить существующую сеть индексу. См. <<network-mapping>>."
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:119
 msgid "❺ Cancel button:: Click to cancel blueprint placement."
-msgstr ""
+msgstr "❺ Кнопка отмены:: Нажмите, чтобы отменить размещение чертежа."
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:122
 msgid ""
 "❻ Place button:: Click to confirm blueprint placement. Enabled when all "
 "networks are assigned."
-msgstr ""
+msgstr "❻ Кнопка размещения:: Нажмите для подтверждения размещения чертежа. Включено, когда назначены все сети."
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:124
 msgid ""
 "Upon confirming, the items in your inventory are automatically taken to be "
 "placed into the factory controller."
-msgstr ""
+msgstr "После подтверждения предметы в вашем инвентаре автоматически перемещаются в контроллер фабрики."
 
 #. type: Title ==
 #: ../src/blueprint.adoc:126
 #, no-wrap
 msgid "Importing Existing Setups from Game World"
-msgstr ""
+msgstr "Импорт существующих настроек из игрового мира"
 
 #. type: #import-world
 #: ../src/blueprint.adoc:129
@@ -315,44 +319,44 @@ msgid ""
 "Existing walls of components placed in the game world may be imported into "
 "factory controllers, or saved as blueprints. To do so, use a schematic and "
 "quill to select an area, without saving the area as a schematic."
-msgstr ""
+msgstr "Существующие стены из компонентов, размещенные в игровом мире, могут быть импортированы в контроллеры фабрик или сохранены как чертежи. Чтобы сделать это, используйте \"Схематику и перо\" для выбора области, не сохраняя ее как схему."
 
 #. type: Block title
 #: ../src/blueprint.adoc:131
 #, no-wrap
 msgid "Selecting an area for importing with a schematic and quill"
-msgstr ""
+msgstr "Выбор области для импорта с помощью схемы и пера"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:135
 msgid "Note that:"
-msgstr ""
+msgstr "Обратите внимание, что:"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:137
 msgid ""
 "The selected area must be 2-dimensional, i.e. 1 of the 3 dimensions must "
 "have a size of 1."
-msgstr ""
+msgstr "Выбранная область должна быть двумерной, т.е. 1 из 3 измерений должно иметь размер 1."
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:138
 msgid "The other 2 dimensions must have a size smaller than or equal to 128."
-msgstr ""
+msgstr "Остальные 2 измерения должны иметь размер меньше или равный 128."
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:139
 msgid ""
 "Components must be facing the same direction and have the same orientation. "
 "The behaviour is otherwise undefined."
-msgstr ""
+msgstr "Компоненты должны быть обращены в одном направлении и иметь одинаковую ориентацию. В остальном поведение не определено."
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:140
 msgid ""
 "Only xref:components.adoc[some components] may be imported. Unsupported "
 "blocks are skipped."
-msgstr ""
+msgstr "Только xref:components.adoc[некоторые компоненты] могут быть импортированы. Неподдерживаемые блоки пропускаются."
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:142
@@ -361,18 +365,18 @@ msgid ""
 "interact with a factory controller. The blueprint library will display a "
 "special entry at the top, representing the area selected by the schematic "
 "and quill."
-msgstr ""
+msgstr "После выбора перестаньте держать \"Схематику и перо\" в руке и взаимодействуйте с контроллером фабрики. Библиотека чертежей отобразит специальную запись вверху, представляющую область, выбранную схематикой и пером."
 
 #. type: Block title
 #: ../src/blueprint.adoc:143
 #, no-wrap
 msgid "The blueprint library while a valid area in the world is selected by a schematic and quill"
-msgstr ""
+msgstr "Библиотека чертежей, хотя и является допустимой областью в мире, выбирается с помощью схематики и пера"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:148
 msgid "❶ Components:: Shows the recognized components in the selected area."
-msgstr ""
+msgstr "❶ Компоненты:: Показывает распознанные компоненты в выбранной области."
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:151
@@ -380,15 +384,15 @@ msgid ""
 "❷ Place button:: Click to place the selected components into the factory "
 "controller. Similar to placing a blueprint, except the networks are not "
 "<<network-mapping,mapped>>."
-msgstr ""
+msgstr "❷ Кнопка размещения:: Нажмите, чтобы разместить выбранные компоненты в контроллере фабрики. Похоже на размещение чертежа, за исключением того, что сети не <<network-mapping,не отображаются>>."
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:154
 msgid "❸ Save button:: Click to save the selected components as a blueprint."
-msgstr ""
+msgstr "❸ Кнопка сохранения:: Нажмите, чтобы сохранить выбранные компоненты в виде чертежа."
 
 #. type: Block title
 #: ../src/blueprint.adoc:155
 #, no-wrap
 msgid "The selected components of <<figure-import-world-select>> imported into a factory controller"
-msgstr ""
+msgstr "Выбранные компоненты <<figure-import-world-select>> импортированы в контроллер фабрики"
