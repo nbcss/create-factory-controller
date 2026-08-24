@@ -3,13 +3,12 @@ package io.github.nbcss.createfactorycontroller.content.component.connection;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 /**
@@ -65,7 +64,7 @@ public class NumberConnection extends Connection {
     @Override
     public List<Component> getInfoTooltip(ComponentHolder holder) {
         return List.of(Component.translatable("createfactorycontroller.connection.info.value",
-                        Component.literal(formatValue(value)).withStyle(ChatFormatting.WHITE))
+                        Component.literal(NumberFormatter.format(value)).withStyle(ChatFormatting.WHITE))
                 .withStyle(ChatFormatting.GRAY));
     }
 
@@ -106,12 +105,6 @@ public class NumberConnection extends Connection {
 
     public static NumberConnection fromNBT(CompoundTag tag) {
         return new NumberConnection(tag);
-    }
-
-    /** Compact display of {@code v}: at most 3 fractional digits, trailing zeros trimmed ({@code 5.0 → "5"},
-     *  {@code 1.513 → "1.513"}). */
-    private static String formatValue(double v) {
-        return BigDecimal.valueOf(v).setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
     }
 
     // ── Float precision ────────────────────────────────────────────────────────

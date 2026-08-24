@@ -1,15 +1,16 @@
 ## 1.2.0
 
 Features:
-- Added a read-only CC: Tweaked peripheral to the factory controller (optional): gauges, logic tubes, networks,
-  production orders and promise counts are readable from a computer; the controller cannot be driven by one.
+- Added number connection and Arithmetic Tube.
+- Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 - Allow Ctrl-Click to exclude ingredient from request multiplier.
 - Follow Demand mode allow to set minimum target stock amount now.
 - Render colored outline to connected components when hover over a component (configurable).
-- Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 - Added a client configuration to upscale background texture (default disabled).
 - Ghost placement preview would now render connections and monitoring items.
 - Connection tooltip will now display current state, and display delay is configurable now.
+- Added fade-out animation for targets (configurable)
+- Added a client configuration to show Redstone Link signal strength label (default disabled)
 
 Optimization:
 - Improve the performance of controller GUI.

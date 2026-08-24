@@ -7,12 +7,10 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-15 11:43+1000\n"
-"PO-Revision-Date: 2026-07-25 22:49+0000\n"
+"POT-Creation-Date: 2026-08-20 15:51+1000\n"
+"PO-Revision-Date: 2026-08-20 06:35+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
-"Language-Team: Chinese (Simplified Han script) <https://"
-"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
-"home/zh_Hans/>\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/home/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -28,79 +26,73 @@ msgstr "机械动力：工厂控制台手册"
 
 #. type: Plain text
 #: ../src/index.adoc:4
-#, fuzzy
-#| msgid ""
-#| "Create: Factory Controller introduces a new block, the \"Factory "
-#| "Controller\". It allows you to place factory gauges on a virtual board "
-#| "stored in a single block, instead of having a wall of gauges in the game "
-#| "world. The factory gauges are managed via a GUI. The mod adds many "
-#| "enhancements to factory gauges, and some other components may also be "
-#| "placed in factory controllers."
 msgid ""
 "Create: Factory Controller provides a block called the \"`factory "
 "controller`\", which allows you to place factory gauges and other components "
 "on a virtual board stored inside the block. Factory gauges placed in factory "
 "controllers also receive many functional enhancements."
-msgstr ""
-"机械动力：工厂控制台附属添加了新方块“工厂控制台”。它能够将工厂仪表放置在同一"
-"个方块所保存的虚拟面板中，并通过图形界面统一管理，而无需在世界中搭建仪表墙。"
-"模组还扩展了工厂仪表的功能，并支持在工厂控制台内使用一些额外组件。"
+msgstr "机械动力：工厂控制台提供了一个名叫“工厂控制台”的方块，使你能够将工厂仪表和其它组件放置在方块内的一个虚拟面板中。模组同时也对工厂仪表进添加了许多扩展功能。"
 
 #. type: Plain text
 #: ../src/index.adoc:6
 msgid ""
-"This manual provides a reference to the features of the mod, some of which "
-"are difficult to explain fully in the UI. You do not need to read the manual "
-"in full to use the mod."
-msgstr ""
+"You do not need to read this manual in full to use the mod. The manual "
+"serves to provide a reference to the features of the mod, especially to "
+"those that are difficult to explain fully in the UI."
+msgstr "你无需完整阅读本手册即可使用此模组。本手册旨在提供模组功能的参考信息，特别是那些在界面中难以完全解释的功能。"
+
+#. type: Plain text
+#: ../src/index.adoc:10
+msgid ""
+"This manual corresponds to version {mod-version} of the mod. Information may "
+"be incorrect for other versions."
+msgstr "本手册适用于 {mod-version} 版本的模组，信息对其他版本可能不准确。"
 
 #. type: Title ==
-#: ../src/index.adoc:8
+#: ../src/index.adoc:12
 #, no-wrap
 msgid "{toc-title}"
 msgstr "{toc-title}"
 
 #. type: #manual-toc
-#: ../src/index.adoc:12
+#: ../src/index.adoc:16
 msgid "xref:dashboard.adoc[Dashboard]"
 msgstr "xref:dashboard.adoc[控制台界面]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:13
+#: ../src/index.adoc:17
 msgid "xref:components.adoc[Components]"
 msgstr "xref:components.adoc[可放置组件]"
 
 #. type: Table
-#: ../src/index.adoc:14 ../src/components.adoc:14
+#: ../src/index.adoc:18 ../src/components.adoc:14
 #, no-wrap
 msgid "xref:factory-gauge.adoc[Factory Gauge]"
 msgstr "xref:factory-gauge.adoc[工厂仪表]"
 
 #. type: Table
-#: ../src/index.adoc:15 ../src/components.adoc:29
+#: ../src/index.adoc:19 ../src/components.adoc:29
 #, no-wrap
 msgid "xref:electron-tube.adoc[Electron Tube]"
 msgstr "xref:electron-tube.adoc[电子管]"
 
 #. type: Table
-#: ../src/index.adoc:16 ../src/components.adoc:24
+#: ../src/index.adoc:20 ../src/components.adoc:24
 #, no-wrap
 msgid "xref:redstone-link.adoc[Redstone Link]"
 msgstr "xref:redstone-link.adoc[无线红石信号终端]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:17
+#: ../src/index.adoc:21
 msgid "xref:display-link.adoc[Display Link]"
 msgstr "xref:display-link.adoc[显示链接器]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:18
-#, fuzzy
-#| msgid "xref:electron-tube.adoc[Electron Tube]"
+#: ../src/index.adoc:22
 msgid "xref:blueprint.adoc[Blueprint]"
-msgstr "xref:electron-tube.adoc[电子管]"
+msgstr "xref:blueprint.adoc[蓝图]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:18
+#: ../src/index.adoc:22
 msgid "xref:production-orders.adoc[Production Orders]"
 msgstr "xref:production-orders.adoc[生产订单]"

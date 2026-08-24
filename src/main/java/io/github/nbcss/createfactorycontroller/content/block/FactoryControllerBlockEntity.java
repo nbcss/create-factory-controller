@@ -64,6 +64,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider, ComponentHolder {
 
@@ -308,9 +309,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // Amounts are per request, so scale the per-craft connection amount by the crafter batch (as tickRequests does).
         int batch = g.effectiveBatch();
         List<ItemStack> ingredients = new ArrayList<>();
-        for (Map.Entry<VirtualComponentPosition, Connection> e : g.targetedBy().entrySet()) {
-            if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
-            if (!(components.get(e.getKey()) instanceof VirtualGaugeBehaviour source)) continue;
+        for (Connection c : g.incomingConnections()) {
+            if (!(c instanceof LogisticsConnection conn)) continue;
+            if (!(components.get(c.from) instanceof VirtualGaugeBehaviour source)) continue;
             ItemStack item = source.filter;
             if (item.isEmpty()) continue;
             int amount = conn.amount() * batch;
@@ -500,6 +501,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Set<UUID> newNetworks = new LinkedHashSet<>();
         List<VirtualComponentBehaviour> placed = new ArrayList<>();
         Set<VirtualComponentPosition> placedCells = new LinkedHashSet<>();
+        UnaryOperator<VirtualComponentPosition> remap = local -> offsetBy(local, anchor);
         for (int i = 0; i < componentList.size(); i++) {
             CompoundTag component = componentList.getCompound(i).copy();
             VirtualComponentPosition target = offsetBy(
@@ -511,11 +513,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 component.putUUID("Network", network);
                 if (!networks.contains(network)) newNetworks.add(network);
             }
-            offsetRecipeSources(component, anchor);
-
             VirtualComponentBehaviour behaviour = ComponentRegistry.fromNBT(this, component,
                     level.registryAccess());
             if (behaviour == null) continue;   // a type from a mod no longer present; the rest still places
+            behaviour.onComponentsRelocated(remap);
             components.put(target, behaviour);
             placed.add(behaviour);
             placedCells.add(target);
@@ -569,18 +570,6 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (placeholder < 0 || placeholder >= assignments.size()) return null;
         UUID network = assignments.get(placeholder);
         return network != null && bindable.contains(network) ? network : null;
-    }
-
-    /** CUSTOM arrangements reference their source component by position — follow the placement offset. */
-    private static void offsetRecipeSources(CompoundTag component, VirtualComponentPosition anchor) {
-        ListTag slots = component.getList("RecipeSlots", Tag.TAG_COMPOUND);
-        for (int i = 0; i < slots.size(); i++) {
-            CompoundTag slot = slots.getCompound(i);
-            if (!slot.contains("Source", Tag.TAG_COMPOUND)) continue;
-            CompoundTag source = slot.getCompound("Source");
-            source.putInt("X", source.getInt("X") + anchor.x());
-            source.putInt("Y", source.getInt("Y") + anchor.y());
-        }
     }
 
     /** Networks carried on tuned component items in the player's inventory. */
@@ -669,9 +658,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         connectionGraph.rename(from, to);   // re-key every wire touching `from` (both indexes + payload endpoints)
         behaviour.setPosition(to);
         components.put(to, behaviour);
-        // CUSTOM arrangements reference sources by position — follow the rename or their cells go stale.
-        for (VirtualComponentBehaviour c : components.values())
-            if (c instanceof VirtualGaugeBehaviour g) g.remapRecipeSlots(p -> p.equals(from) ? to : p);
+        UnaryOperator<VirtualComponentPosition> remap = p -> p.equals(from) ? to : p;
+        for (VirtualComponentBehaviour c : components.values()) c.onComponentsRelocated(remap);
 
         playSound(SoundEvents.COPPER_BREAK, 1f, 1f);
         markOrderableDirty();
@@ -704,14 +692,12 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             }
         }
 
-        java.util.function.Function<VirtualComponentPosition, VirtualComponentPosition> remap = p ->
+        UnaryOperator<VirtualComponentPosition> remap = p ->
             moving.contains(p) ? new VirtualComponentPosition(p.x() + dx, p.y() + dy) : p;
 
         // Rewire every connection reference (owner/source keys + payload endpoints) in one atomic pass.
         connectionGraph.remap(remap);
-        // CUSTOM arrangements reference sources by position — follow the remap or their cells go stale.
-        for (VirtualComponentBehaviour c : components.values())
-            if (c instanceof VirtualGaugeBehaviour g) g.remapRecipeSlots(remap);
+        for (VirtualComponentBehaviour c : components.values()) c.onComponentsRelocated(remap);
 
         // Move the components themselves: re-key the map and update each stored position.
         List<VirtualComponentBehaviour> movers = new ArrayList<>();
@@ -837,7 +823,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         // create-time check enforces one wire at a time. Reject the whole amount set on overflow (other config stands).
         if (gauge.projectedInputSlots(inputAmounts) <= VirtualGaugeBehaviour.MAX_INGREDIENTS)
             for (Map.Entry<VirtualComponentPosition, Integer> e : inputAmounts.entrySet())
-                if (gauge.targetedBy().get(e.getKey()) instanceof LogisticsConnection conn) {
+                if (gauge.incomingConnection(e.getKey(), LogisticsConnection.TYPE) instanceof LogisticsConnection conn) {
                     int amount = Math.max(1, e.getValue());
                     if (conn.amount != amount) {
                         conn.amount = amount;
@@ -846,10 +832,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 }
         // Exclusions are meaningful only outside mechanical-crafting mode. Iterate every live input so a stale or
         // omitted client entry clears safely instead of retaining hidden state.
-        for (Map.Entry<VirtualComponentPosition, Connection> e : gauge.targetedBy().entrySet()) {
-            if (!(e.getValue() instanceof LogisticsConnection conn)) continue;
+        for (Connection c : gauge.incomingConnections(LogisticsConnection.TYPE)) {
+            if (!(c instanceof LogisticsConnection conn)) continue;
             boolean excluded = workMode != GaugeWorkMode.CRAFTING
-                && inputMultiplierExclusions.getOrDefault(e.getKey(), false);
+                && inputMultiplierExclusions.getOrDefault(c.from, false);
             if (conn.excludeFromRequestMultiplier != excluded) {
                 conn.excludeFromRequestMultiplier = excluded;
                 syncConnection(ConnectionKey.of(conn));
@@ -891,10 +877,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         conn.arrowBendMode = arrowBendMode < 0 ? -1 : arrowBendMode % 4;   // client-chosen preview bend (or -1 = auto)
         connectionGraph.add(conn);
         syncConnection(ConnectionKey.of(conn));
-        if (sink instanceof VirtualGaugeBehaviour g) {
-            g.reconcileRecipeSlots();   // CUSTOM: new wire → first empty cell
-            if (g.mode == GaugeWorkMode.CUSTOM) syncComponentFull(sinkPos);   // its recipe slots may have changed
-        }
+        if (sink.onConnectionSetChanged(type)) syncComponentFull(sinkPos);
         source.publish(type);          // write the new edge's value + flag the sink (new edge enters at fold identity)
         settleConnections();           // fold the sink once
         playSound(SoundEvents.AMETHYST_BLOCK_PLACE, 0.5f, 0.5f);
@@ -912,15 +895,17 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         }
     }
 
-    public void removeConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
-        Connection conn = connectionGraph.get(from, to);
+    public void connectionSetChanged(VirtualComponentPosition sinkPos, Connection.Type type) {
+        VirtualComponentBehaviour sink = components.get(sinkPos);
+        if (sink != null && sink.onConnectionSetChanged(type)) syncComponentFull(sinkPos);
+    }
+
+    public void removeConnection(VirtualComponentPosition from, VirtualComponentPosition to, Connection.Type type) {
+        Connection conn = connectionGraph.get(from, to, type);
         if (conn == null) return;
-        connectionGraph.remove(to, from);
-        syncConnectionRemoved(new ConnectionKey(from, to));
-        if (components.get(to) instanceof VirtualGaugeBehaviour g) {
-            g.reconcileRecipeSlots();   // CUSTOM: clear its cells
-            if (g.mode == GaugeWorkMode.CUSTOM) syncComponentFull(to);
-        }
+        connectionGraph.remove(to, from, type);
+        syncConnectionRemoved(new ConnectionKey(from, to, type));
+        connectionSetChanged(to, type);
         markSinkDirty(to, conn.type);   // re-fold without the removed edge (the source is unaffected)
         settleConnections();
         setChanged();
@@ -928,8 +913,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** Cycles one specific wire's arrow-bend mode through the four fixed bends (0 → 1 → 2 → 3 → 0; auto excluded, and
      *  exited on the first press). Purely visual, so (like {@link #cycleArrowMode}) it only re-syncs — no re-fold/settle. */
-    public void cycleConnectionArrowMode(VirtualComponentPosition from, VirtualComponentPosition to) {
-        Connection conn = connectionGraph.get(from, to);
+    public void cycleConnectionArrowMode(VirtualComponentPosition from, VirtualComponentPosition to, Connection.Type type) {
+        Connection conn = connectionGraph.get(from, to, type);
         if (conn == null) return;
         conn.arrowBendMode = (conn.arrowBendMode + 1) % 4;   // auto (-1) → 0 on the first press
         setChanged();
@@ -939,16 +924,18 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /** Swaps the direction of the wire {@code from → to} (→ {@code to → from}), if the reversed orientation is legal
      *  (rejected for a redstone link, whose role fixes direction) and doesn't collide with an existing {@code to → from}
      *  edge. {@code connectionGraph.reverse} keeps the rendered path shape stable (only the arrow flips). */
-    public void reverseConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
-        Connection conn = connectionGraph.get(from, to);
+    public void reverseConnection(VirtualComponentPosition from, VirtualComponentPosition to, Connection.Type type) {
+        Connection conn = connectionGraph.get(from, to, type);
         if (conn == null) return;
         if (!conn.canReverse(this)) {   // one authority (shared with the UI): kind is reversible + reversed edge is legal
             playDenySound();
             return;
         }
         connectionGraph.reverse(conn);
-        syncConnectionRemoved(new ConnectionKey(from, to));   // reversing re-keys the wire
+        syncConnectionRemoved(new ConnectionKey(from, to, type));   // reversing re-keys the wire
         syncConnection(ConnectionKey.of(conn));
+        connectionSetChanged(to, type);
+        connectionSetChanged(from, type);
         // Re-evaluate both endpoints in their new roles (publish output + re-fold input), then settle once.
         for (VirtualComponentPosition p : List.of(from, to)) {
             VirtualComponentBehaviour c = components.get(p);
@@ -970,8 +957,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         for (Connection conn : connectionGraph.outgoingConnections(gaugePos))
             if (!LogisticsConnection.TYPE.equals(conn.type)) toRemove.add(conn);
         for (Connection conn : toRemove) {
-            connectionGraph.remove(conn.to, conn.from);
+            connectionGraph.remove(conn.to, conn.from, conn.type);
             syncConnectionRemoved(ConnectionKey.of(conn));
+            connectionSetChanged(conn.to, conn.type);
             markSinkDirty(conn.to, conn.type);   // the gauge (its gate) or the wire's sink re-folds
         }
         settleConnections();
@@ -1112,7 +1100,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<ConnectionKey> connRemovals = new ArrayList<>(deltaTracker.removedConnections());
         List<byte[]> connUpserts = new ArrayList<>();
         for (ConnectionKey key : deltaTracker.connections()) {
-            Connection conn = connectionGraph.get(key.from(), key.to());
+            Connection conn = key.type() == null ? null : connectionGraph.get(key.from(), key.to(), key.type());
             if (conn == null) connRemovals.add(key);
             else connUpserts.add(SyncCodecs.capture(registries, conn::writeClient));
         }

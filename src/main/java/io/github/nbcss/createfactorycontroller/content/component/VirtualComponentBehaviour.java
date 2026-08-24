@@ -10,13 +10,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * A component that can be placed in the controller's virtual panel.
@@ -140,16 +139,40 @@ public interface VirtualComponentBehaviour {
     /** The controller block entity unloaded (chunk unload / block break). */
     default void onUnload() {}
 
+    /** Updates component-owned position references after one or more board components move. */
+    default void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {}
+
     // ── Connection graph (shared by all component kinds) ─────────────────────
 
-    /** Incoming connections, keyed by the source component's position. */
-    Map<VirtualComponentPosition, Connection> targetedBy();
+    /** Incoming connections (this component as sink), across every source and type. */
+    Collection<Connection> incomingConnections();
 
-    /** Positions this component points at. */
-    Set<VirtualComponentPosition> targeting();
+    /** Incoming connections, filtered by given type. */
+    default Collection<Connection> incomingConnections(Connection.Type type) {
+        return incomingConnections().stream().filter(c -> c.type == type).toList();
+    }
 
-    /** Outgoing connections (this component as source). Symmetric to {@link #targetedBy()}, but as a value collection. */
+    /** The single incoming wire from {@code source} of {@code type} (this component as sink), or {@code null}. */
+    @Nullable
+    Connection incomingConnection(VirtualComponentPosition source, Connection.Type type);
+
+    /** Outgoing connections (this component as source). Symmetric to {@link #incomingConnections()}. */
     Collection<Connection> outgoingConnections();
+
+    /** Outgoing connections, filtered by given type. */
+    default Collection<Connection> outgoingConnections(Connection.Type type) {
+        return outgoingConnections().stream().filter(c -> c.type == type).toList();
+    }
+
+    /** The single outgoing wire to {@code sink} of {@code type} (this component as source), or {@code null}. */
+    @Nullable
+    Connection outgoingConnection(VirtualComponentPosition sink, Connection.Type type);
+
+    /** Reconciles component-owned assignments after an edge is added or removed. Returns whether a full component sync
+     *  is required. */
+    default boolean onConnectionSetChanged(Connection.Type type) {
+        return false;
+    }
 
     /** The connection {@link ConnectionCapability types} this component participates in (its static capabilities). Read by
      *  {@link ConnectionResolver} to decide whether a wire is possible — no {@code instanceof} pair matrix. */
@@ -162,6 +185,12 @@ public interface VirtualComponentBehaviour {
     /** Validates this component acting as the SINK of a {@code type} wire from {@code source}. (E.g. a gauge sink
      *  caps its ingredient slots; a link rejects a link partner.) */
     ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source);
+
+    /** Whether this component can still take another input (used to gate entering connection mode from it). Most
+     *  components have no fixed input cap; the Arithmetic Tube overrides this with its operator's arity. */
+    default boolean canAcceptMoreInput() {
+        return true;
+    }
 
     /** For component to look up other components. */
     void setHolder(ComponentHolder holder);

@@ -183,7 +183,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     private List<Connection> inputs() {
         LogicalTubeBehaviour t = tube();
         if (t == null) return List.of();
-        List<Connection> l = new ArrayList<>(t.targetedBy().values());
+        List<Connection> l = new ArrayList<>(t.incomingConnections());
         l.sort(Comparator.comparingInt((Connection c) -> c.from.x()).thenComparingInt(c -> c.from.y()));
         return l;
     }
@@ -250,8 +250,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
         gfx.pose().pushPose();
         gfx.pose().translate(gridX(), gridY(), 0);
-        for (Wire w : wires) VirtualConnectionRenderer.create(w.path(), w.color(), false).drawPath(gfx);
+        for (Wire w : wires) VirtualConnectionRenderer.create(w.path(), w.color(), false).drawPath(gfx.bufferSource(), gfx.pose());
         gfx.pose().popPose();
+        gfx.flush();
     }
 
     /** Render order */
@@ -391,9 +392,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         Connection c = slotConnectionAt(mouseX, mouseY);
         if (c != null) {
             if (hasShiftDown())
-                PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos, c.from, c.to));
+                PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos, c.from, c.to, c.type.name()));
             else
-                PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, c.from, c.to));
+                PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, c.from, c.to, c.type.name()));
             playClickSound();
             return true;
         }

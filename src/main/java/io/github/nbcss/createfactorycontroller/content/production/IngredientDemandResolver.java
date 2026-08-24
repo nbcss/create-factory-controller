@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.production;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
@@ -140,16 +141,16 @@ public final class IngredientDemandResolver {
             if (explored.get(id)) return;
             explored.set(id, true);
 
-            boolean producible = root || (source != null && source.requestMode.isPassive() && !source.targetedBy().isEmpty());
+            boolean producible = root || (source != null && source.requestMode.isPassive() && !source.incomingConnections().isEmpty());
             if (!producible) return;   // leaf — stays producer=null
 
             int batch = source.mode == GaugeWorkMode.CRAFTING ? Math.max(1, source.craftBatch) : 1;
             producer.set(id, source);
             outputPerCraft.set(id, Math.max(1, source.recipeOutput) * batch);
 
-            for (var e : source.targetedBy().entrySet()) {
-                if (!(e.getValue() instanceof LogisticsConnection conn)) continue;   // ingredient wires only
-                VirtualGaugeBehaviour src = controller.components.get(e.getKey()) instanceof VirtualGaugeBehaviour gg ? gg : null;
+            for (Connection c : source.incomingConnections()) {
+                if (!(c instanceof LogisticsConnection conn)) continue;   // ingredient wires only
+                VirtualGaugeBehaviour src = controller.components.get(c.from) instanceof VirtualGaugeBehaviour gg ? gg : null;
                 ItemStack ingredient = src == null ? ItemStack.EMPTY : src.filter;
                 if (ingredient.isEmpty()) continue;
                 int childId = intern(ingredient);

@@ -6,6 +6,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
@@ -158,8 +159,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
         GuiGraphics gfx = params.graphics();
         Minecraft.getInstance().getProfiler().push("VirtualGaugeWidget");
 
-        Component label = ClientConfig.alwaysShowLabel() || params.mouseOver() ?
-                behaviour.getCountLabel() : Component.empty();
+        Component label = params.renderOverlay() ? behaviour.getCountLabel() : Component.empty();
         if (label.getString().isEmpty()) {
             Minecraft.getInstance().getProfiler().pop();
             return;
@@ -249,7 +249,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
                 .withStyle(ChatFormatting.DARK_GRAY));
         if (behaviour.waitingForNetwork) {
             lines.add(CreateLang.translate("factory_panel.some_links_unloaded").style(ChatFormatting.RED).component());
-        }else if (!behaviour.targetedBy().isEmpty() && !behaviour.isActive())
+        }else if (!behaviour.incomingConnections(LogisticsConnection.TYPE).isEmpty() && !behaviour.isActive())
             lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
             lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());

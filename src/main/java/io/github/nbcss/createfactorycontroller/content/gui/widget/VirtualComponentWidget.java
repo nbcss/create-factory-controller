@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -47,6 +48,11 @@ public interface VirtualComponentWidget {
     /** Advances widget animation state. */
     default void tick() {}
 
+    default int connectedTargetColor(ConnectedTargetRole role, VirtualComponentPosition neighbour,
+                                     List<Connection> connections) {
+        return role.defaultColor();
+    }
+
     /** Back layer, drawn before the connection arrows. Implementations may enqueue batched blits, so callers
      *  must flush after rendering the layer. The Logical Tube settings screen reuses this (and {@link #renderFront})
      *  for its slots via a pose translation — see {@code LogicalTubeSettingsScreen#atSlot}. */
@@ -89,7 +95,11 @@ public interface VirtualComponentWidget {
         /** Mouse XY in pixels. NaN if irrelevant or unknown. */
         @Pure Vector2d mousePosition();
         /** Whether the mouse is hovering over this componen. */
-        @Pure boolean mouseOver();
+        @Pure boolean renderOverlay();
+
+        /** Positions of all placed components this frame — canvas context for resolving connection paths
+         *  (e.g. the Arithmetic Tube resolves each incoming wire's entry face to draw its connection strips). */
+        @Pure java.util.Set<VirtualComponentPosition> occupiedCells();
 
         /** Queues an item or fluid icon to be rendered in batch. */
         void addBatchRenderedItem(ItemStack stack, int x, int y);

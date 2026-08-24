@@ -4,7 +4,7 @@
 Factory gauges are used for automating logistic requests and production. For their conventional usage and the foundational concepts of higher logistics, see the in-game ponder. When placed in a factory controller, they operate in recipe mode.
 
 .A new factory gauge placed in a factory controller
-image::gauge-empty.png[,70,67]
+image::gauge-empty.png[ ,70,67]
 
 [#place-set-item]
 == Place and Monitor Item
@@ -15,12 +15,12 @@ Once placed, the new factory gauge needs to be configured with a [#term-monitore
 
 [#figure-set-item]
 ."Set item" screen
-image::gauge-set-item-screen.png[,344,174]
+image::gauge-set-item-screen.png[ ,344,174]
 
 Once an item is set, the gauge starts monitoring the number of items stored in the tuned logistic network that match the monitored item. This number is referred to as the [#term-storage-amount]_storage amount_. It is displayed as a label in the dashboard.
 
 .A factory gauge monitoring iron ingots, for which there are 6
-image::gauge-monitoring-item.png[,68,68]
+image::gauge-monitoring-item.png[ ,68,68]
 
 By default, the NBT data of the monitored item is respected image:btn-respect-nbt.png[,18,18] when calculating the storage amount. You can choose to ignore image:btn-ignore-nbt.png[,18,18] them in the "set item" screen. <<ignore-data,Caveats apply>> when NBT data is ignored.
 
@@ -31,7 +31,7 @@ Clicking on a factory gauge with a monitored item set opens its recipe settings 
 
 [#figure-recipe-settings]
 .Recipe settings screen for a gauge monitoring iron ingots
-image::gauge-recipe-settings.svg[,384,368]
+image::gauge-recipe-settings.svg[ ,384,368]
 
 ❶ Output::
 The type and number of items this gauge is expected to produce. See <<basic-production>>.
@@ -86,11 +86,11 @@ Beyond monitoring storage, the most basic usage of a factory gauge is to represe
 Click "add connection" (<<figure-iron-smelting-recipe>> ❹) and then the ingredient gauge to connect to it. Each ingredient is shown as an item icon in ❷, on which clicking while holding shift disconnects the ingredient gauge.
 
 .A gauge monitoring raw iron is connected to a gauge set to produce iron ingots
-image::gauge-ingredient-connection.png[,200,68]
+image::gauge-ingredient-connection.png[ ,200,68]
 
 [#figure-iron-smelting-recipe]
 .Recipe settings of a gauge smelting 1 raw iron to 1 iron ingot
-image::gauge-iron-smelting-recipe.svg[,384,368]
+image::gauge-iron-smelting-recipe.svg[ ,384,368]
 
 In its default mode (⓬), a factory gauge repeatedly checks whether its <<term-storage-amount,storage amount>> (❾) is less than the configured target amount (❿⓫). If so, it makes a [#term-request]_request_ for a set of ingredients (❷) to be sent from the networks of the ingredient gauges to the destination address (❽), expecting the output (❶) to later arrive in storage (❾).
 
@@ -117,12 +117,12 @@ When the configured recipe in a factory gauge matches the item types of a mechan
 
 [#figure-crafting-1]
 .Crafting 1 iron sword
-image::gauge-crafting-iron-sword.svg[,340,154]
+image::gauge-crafting-iron-sword.svg[ ,340,154]
 
 The crafting recipe may be at most 10×10 in size. However, when it is larger than 3×3, ❷ no longer previews the pattern. Instead, hold ctrl while hovering to reveal a preview tooltip. Factory gauges that ignore NBT data may not be used as ingredients for crafting recipes larger than 3×3. If the ingredients of a large crafting recipe cannot be packed within 9 stacks, ❶ is not shown.
 
 .Crafting crushing wheels
-image::gauge-crafting-crushing-wheels.png[,340,154]
+image::gauge-crafting-crushing-wheels.png[ ,340,154]
 
 The mechanical crafters must be connected using a wrench and arranged in a square grid between 3×3 and 10×10 in size. Smaller recipes may be sent to larger mechanical crafter arrangements. Hold ctrl and scroll on the ingredients to adjust the crafting grid size to match the crafter arrangement they will be sent to.
 
@@ -135,14 +135,14 @@ A factory gauge may be configured with a <<term-recipe,recipe>> whose amounts ar
 
 [#figure-crafting-batch]
 .Crafting iron swords in 64-item batches
-image::gauge-crafting-batch.svg[,340,154]
+image::gauge-crafting-batch.svg[ ,340,154]
 
 Using a repackager is mandatory when batch crafting is used. When a repackager receives all packages created from a <<term-request,request>>, the contents are repackaged into multiple smaller packages, each containing ingredients to craft one time, which may then be unpacked onto mechanical crafters.
 
 The maximum batch size is 64, regardless of the stack size of the output item. The maximum number of output items is consequently 64 × the number of outputs in the crafting recipe.
 
 .Crafting crushing wheels in batches of 64, producing 128 items per batch
-image::gauge-crafting-batch-crushing-wheels.png[,340,154]
+image::gauge-crafting-batch-crushing-wheels.png[ ,340,154]
 
 When using batch crafting, the total number of ingredients in a recipe may exceed 9 stacks, in which case the ingredients are split into multiple packages. This is allowed because the repackager outputs only packages containing ingredients to craft one time, not the entire recipe.
 
@@ -153,14 +153,14 @@ By default, when packages created by factory gauges are unpacked, the contents a
 
 [#figure-arrange-deployer]
 .Using a custom arrangement to represent a deploying recipe
-image::gauge-arrange-deployer.svg[,340,154]
+image::gauge-arrange-deployer.svg[ ,340,154]
 
 When custom arrangement is enabled, each ingredient in the recipe (❷) may be dragged with the left mouse button to be moved to another slot, or dragged with the right mouse button to be duplicated. The number of each duplicated item stack of one ingredient can be adjusted independently.
 
 Using a repackager is required for the custom arrangement to take effect, even if one package already contains all the ingredients of a recipe. The ingredients are repackaged into one package, which can then be unpacked into any container block. Ingredients are unpacked into their assigned slot(s). In the example given by <<figure-arrange-deployer>>, the sandpapers are unpacked into the 1st-3rd slots of the container, and the rose quartz are unpack into the 9th slot. The receiving end may then be set up to transfer the items in the 1st-3rd slots onto a deployer, and the items in the 9th slot under the deployer.
 
 .Contents of a package created by <<figure-arrange-deployer>> unpacked into an empty chest
-image::gauge-arrange-deployer-unpacked.png[,352,76]
+image::gauge-arrange-deployer-unpacked.png[ ,352,76]
 
 For unpacking to be possible, each item stack specified in ❷ must be unpacked into each of the first 9 slots of the target container. It may stack with existing items in the slot, if they are stackable and do not exceed the stack size. Item stacks do not overflow to another slot. The target container may have fewer than 9 slots, if the custom arrangement does not make use of the slots beyond what is available in the container.
 
@@ -173,12 +173,12 @@ By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] "mai
 
 [#figure-follow-demand]
 .A gauge producing oak planks in "follow demand" mode
-image::gauge-follow-demand-mode.svg[,296,48]
+image::gauge-follow-demand-mode.svg[ ,296,48]
 
 In this mode, the target amount (❶) cannot be modified manually. It is automatically set according to downstream [#term-demand]_demand_, that is, the total quantity of the items produced by this gauge defined in the <<term-recipe,recipes>> of all currently <<term-active,active>> consumer gauges.
 
 .An example setup to produce barrels from oak logs
-image::gauge-follow-demand-barrel-example.png[,329,198]
+image::gauge-follow-demand-barrel-example.png[ ,329,198]
 
 For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 slabs may be crafted from 3 planks, and 4 planks may be crafted from 1 log. The planks and slabs can be produced with gauges in "follow demand" mode:
 
@@ -193,7 +193,7 @@ For example, to produce barrels, one may use 6 oak planks and 2 oak slabs. 6 sla
 Another mode of the factory gauge, image:btn-follow-demand-and-order.png[,18,18] "follow demand and order", additionally allows the item produceable by a gauge to be manually ordered from a stock keeper tuned to the same network. In the stock keeper UI, the <<term-recipe,recipe>> of each gauge in this mode appears as a production task, signified by a blueprint background.
 
 .A production task of oak planks
-image::production-task.png[,310,154]
+image::production-task.png[ ,310,154]
 
 See xref:production-orders.adoc[Production Orders] for details.
 
@@ -204,7 +204,7 @@ Normally, the amount of ingredients a factory gauge sends per <<term-request,req
 
 [#figure-multiplier]
 .A factory gauge with a request multiplier set
-image::gauge-multiplier.svg[,340,154]
+image::gauge-multiplier.svg[ ,340,154]
 
 Scroll on ❶ to adjust its value. Left-click to set to the maximum allowed value, right-click to reset back to ×1.
 
@@ -249,12 +249,12 @@ When the recipe is modified, the maximum allowed request multiplier may decrease
 A factory gauge waits for a fixed amount of time after making a <<term-request,request>> before it can make the next one. This interval is generally controlled with a server setting of Create, and defaults to 5 seconds (❶).
 
 .A factory gauge with a default request interval
-image::gauge-request-interval-unset.svg[,250,154]
+image::gauge-request-interval-unset.svg[ ,250,154]
 
 You may scroll on ❶ to override the request interval of this factory gauge. It can be set to a value between 1 and 60 seconds. Click to reset the override and let this gauge follow the server setting.
 
 .A factory gauge with the request interval overridden to 2 seconds
-image::gauge-request-interval-set.png[,250,154]
+image::gauge-request-interval-set.png[ ,250,154]
 
 While the request interval server setting is measured in ticks, the per-gauge override can only be set with the granularity of 1 second. Without an override, ❶ displays the server setting rounded to the nearest integer seconds.
 
@@ -264,7 +264,7 @@ While the request interval server setting is measured in ticks, the per-gauge ov
 Each time a factory gauge makes a <<term-request,request>>, a [#term-promise]_promise_ is created (also referred to as a [#term-pending-request]_pending request_). Each promise records the number of outputs expected to be produced, but have yet to arrive in storage. Before comparing the <<term-storage-amount,storage amount>> with the target amount, the number of items recorded in promises is added to the actual storage amount. Doing so stops the factory gauge from excessively sending ingredients before the outputs of previous requests arrive.
 
 .UI elements related to promises
-image::gauge-promise-ui.svg[,266,52]
+image::gauge-promise-ui.svg[ ,266,52]
 
 ❶ Promised items::
 Displays the total number of items recorded in promises created by all gauges in the same network producing the same item. Click to void all promises of the same item type.
@@ -283,7 +283,7 @@ Limiting pending requests is useful for preventing excessive packages from overl
 A factory gauge can be connected to some other components, such as xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links], via redstone connections. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone.
 
 .A factory gauge disabled by an incoming redstone signal, and outputting a redstone signal
-image::gauge-redstone-io.png[,167,203]
+image::gauge-redstone-io.png[ ,167,203]
 
 Additionally, when a factory controller block is redstone-powered, all factory gauges inside are disabled.
 

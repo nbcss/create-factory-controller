@@ -26,7 +26,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A Redstone Link placed on the controller board. It carries two frequency keys (Red/Blue, like Create's
@@ -259,8 +264,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     @Override
     public List<Connection> connectionsToCycle() {
         List<Connection> result = super.connectionsToCycle();
-        for (Connection conn : targetedBy().values())
-            if (conn != null) result.add(conn);
+        result.addAll(incomingConnections());
         return result;
     }
 
@@ -326,29 +330,35 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     }
 
     private void reorientConnections() {
-        java.util.List<Connection> connections = new java.util.ArrayList<>();
+        List<Connection> connections = new ArrayList<>();
         connections.addAll(graph().incomingConnections(position));
         connections.addAll(graph().outgoingConnections(position));
-        java.util.Map<Connection.Type, java.util.Set<VirtualComponentPosition>> affected = new java.util.LinkedHashMap<>();
+        Map<Connection.Type, Set<VirtualComponentPosition>> affected = new LinkedHashMap<>();
         for (Connection conn : connections) {
-            java.util.Set<VirtualComponentPosition> affectedForType =
-                    affected.computeIfAbsent(conn.type, ignored -> new java.util.LinkedHashSet<>());
+            Set<VirtualComponentPosition> affectedForType =
+                    affected.computeIfAbsent(conn.type, ignored -> new LinkedHashSet<>());
             affectedForType.add(conn.from);
             affectedForType.add(conn.to);                            // both endpoints (same set after the reverse)
             if (position.equals(conn.from) == receive) continue;    // already oriented for the new mode
+            VirtualComponentPosition oldFrom = conn.from;
+            VirtualComponentPosition oldTo = conn.to;
             VirtualComponentBehaviour newSource = siblingAt(conn.to);
             VirtualComponentBehaviour newSink = siblingAt(conn.from);
             if (!ConnectionResolver.validate(conn.type, newSource, newSink).isSuccess()) {
                 if (controller != null)
                     controller.syncConnectionRemoved(ConnectionKey.of(conn));
-                graph().remove(conn.to, conn.from);
+                graph().remove(conn.to, conn.from, conn.type);
+                if (controller != null) controller.connectionSetChanged(oldTo, conn.type);
                 continue;
             }
             if (controller != null)
                 controller.syncConnectionRemoved(ConnectionKey.of(conn));   // reversing re-keys the wire
             graph().reverse(conn);
-            if (controller != null)
+            if (controller != null) {
                 controller.syncConnection(ConnectionKey.of(conn));
+                controller.connectionSetChanged(oldTo, conn.type);
+                controller.connectionSetChanged(oldFrom, conn.type);
+            }
         }
         // Every affected component's incoming AND outgoing set may have changed: re-publish its output (writes edges +
         // flags its sinks) and flag itself so it re-folds its own inputs. settleConnections (in configure) folds once.

@@ -6,6 +6,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -40,27 +42,79 @@ public final class ConnectionResolver {
         for (Connection.Type type : Connection.Type.values()) {
             ConnectionCapability.Role ca = capabilityOf(a, type);
             ConnectionCapability.Role cb = capabilityOf(b, type);
-            if (ca == null || cb == null) continue;   // not a shared type — try the next
-
-            boolean abValid = ca.canSource() && cb.canSink();   // a → b
-            boolean baValid = cb.canSource() && ca.canSink();   // b → a
-            if (!abValid && !baValid) return Result.fail(() -> cannotConnect(a, b));
-
-            if (abValid && !baValid) return result(type, a, b);
-            if (!abValid) return result(type, b, a);
-            return creationSink == a ? result(type, b, a) : result(type, a, b);
+            if (ca == null || cb == null) continue;             // not a shared type — try the next
+            return orientShared(type, ca, cb, a, b, creationSink, true);   // first shared type decides (short-circuit)
         }
         return Result.fail(() -> cannotConnect(a, b));   // no shared type
     }
 
-    private static Result result(Connection.Type type, VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
-        return new Result(type, source.position(), sink.position(), validate(type, source, sink));
+    /**
+     * Resolves wiring {@code a} and {@code b} constrained to one explicit {@code type} (the type-override UI). Considers
+     * only that type — a failure here never falls through to another type. Its orientation and validation match the
+     * server's {@link #validate}, so a picked type that {@link Result#ok()}s here will pass the server re-check.
+     */
+    public static Result resolveAs(@Nullable VirtualComponentBehaviour a,
+                                   @Nullable VirtualComponentBehaviour b,
+                                   @Nullable VirtualComponentBehaviour creationSink,
+                                   Connection.Type type) {
+        return resolveAs(a, b, creationSink, type, true);
+    }
+
+    private static Result resolveAs(@Nullable VirtualComponentBehaviour a,
+                                    @Nullable VirtualComponentBehaviour b,
+                                    @Nullable VirtualComponentBehaviour creationSink,
+                                    Connection.Type type,
+                                    boolean rejectExisting) {
+        if (a == null || b == null || a.position().equals(b.position())) return Result.fail(ConnectionResolver::aborted);
+        ConnectionCapability.Role ca = capabilityOf(a, type);
+        ConnectionCapability.Role cb = capabilityOf(b, type);
+        if (ca == null || cb == null) return Result.fail(() -> cannotConnect(a, b));
+        return orientShared(type, ca, cb, a, b, creationSink, rejectExisting);
+    }
+
+    /** Every possible type for this pair in registry (priority) order, including types already connected. */
+    public static List<Connection.Type> possibleTypes(@Nullable VirtualComponentBehaviour a,
+                                                      @Nullable VirtualComponentBehaviour b,
+                                                      @Nullable VirtualComponentBehaviour creationSink) {
+        List<Connection.Type> out = new ArrayList<>();
+        for (Connection.Type type : Connection.Type.values())
+            if (resolveAs(a, b, creationSink, type, false).ok()) out.add(type);
+        return out;
+    }
+
+    /** Orients a KNOWN-shared {@code type} (both roles non-null): picks the legal direction — a decisive role wins,
+     *  else the {@code creationSink} tiebreak — and validates. Fails if neither direction's capabilities line up. */
+    private static Result orientShared(Connection.Type type,
+                                       ConnectionCapability.Role ca, ConnectionCapability.Role cb,
+                                       VirtualComponentBehaviour a, VirtualComponentBehaviour b,
+                                       @Nullable VirtualComponentBehaviour creationSink,
+                                       boolean rejectExisting) {
+        boolean abValid = ca.canSource() && cb.canSink();   // a → b
+        boolean baValid = cb.canSource() && ca.canSink();   // b → a
+        if (!abValid && !baValid) return Result.fail(() -> cannotConnect(a, b));
+        if (abValid && !baValid) return result(type, a, b, rejectExisting);
+        if (!abValid) return result(type, b, a, rejectExisting);
+        return creationSink == a
+                ? result(type, b, a, rejectExisting)
+                : result(type, a, b, rejectExisting);
+    }
+
+    private static Result result(Connection.Type type, VirtualComponentBehaviour source,
+                                 VirtualComponentBehaviour sink, boolean rejectExisting) {
+        return new Result(type, source.position(), sink.position(), validate(type, source, sink, rejectExisting));
     }
 
     /** Validates that the explicit {@code type/source/sink} setup is still legal. Does not resolve alternatives. */
     public static ValidationResult validate(@Nullable Connection.Type type,
                                             @Nullable VirtualComponentBehaviour source,
                                             @Nullable VirtualComponentBehaviour sink) {
+        return validate(type, source, sink, true);
+    }
+
+    private static ValidationResult validate(@Nullable Connection.Type type,
+                                             @Nullable VirtualComponentBehaviour source,
+                                             @Nullable VirtualComponentBehaviour sink,
+                                             boolean rejectExisting) {
         if (type == null || source == null || sink == null || source.position().equals(sink.position()))
             return ValidationResult.fail(ConnectionResolver::aborted);
         ConnectionCapability.Role sourceCap = capabilityOf(source, type);
@@ -69,17 +123,18 @@ public final class ConnectionResolver {
             return ValidationResult.fail(() -> cannotConnect(source, sink));
         ValidationResult vr = source.validateAsSource(type, sink);
         if (vr.isSuccess()) vr = sink.validateAsSink(type, source);
-        if (vr.isSuccess() && alreadyConnected(source, sink))
+        if (vr.isSuccess() && rejectExisting && alreadyConnected(source, sink, type))
             vr = ValidationResult.fail(() -> Component.translatable("createfactorycontroller.connection.already_connected")
                     .withStyle(ChatFormatting.RED));
         return vr.isSuccess() ? new ValidationResult(true, () -> type.successMessage(source, sink)) : vr;
     }
 
-    /** Whether the exact directed edge {@code source → sink} already exists. The reverse {@code sink → source} is a
-     *  separate, independently-allowed wire (so two tubes can point at each other) — the single direction a redstone
-     *  link permits is enforced by its decisive capability role, not here. */
-    private static boolean alreadyConnected(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
-        return sink.targetedBy().containsKey(source.position());
+    /** Whether the exact directed edge {@code source → sink} of {@code type} already exists. A wire of a <b>different</b>
+     *  type on the same pair is allowed (a gauge can feed items and drive a count at once), and the reverse
+     *  {@code sink → source} is a separate, independently-allowed wire (so two tubes can point at each other) — the
+     *  single direction a redstone link permits is enforced by its decisive capability role, not here. */
+    private static boolean alreadyConnected(VirtualComponentBehaviour source, VirtualComponentBehaviour sink, Connection.Type type) {
+        return sink.incomingConnection(source.position(), type) != null;
     }
 
     /** {@code c}'s role for {@code type}, or null if it has no such port. */

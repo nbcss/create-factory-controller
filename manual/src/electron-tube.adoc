@@ -3,10 +3,10 @@
 Electron tubes may be placed inside factory controllers, in which they function as boolean logic operators for redstone connections. When placed, they are referred to as "logical tubes".
 
 .Logical tubes in each of the 4 modes, powered on and off
-image::logical-tube-modes.png[,256,64]
+image::logical-tube-modes.png[ ,256,64]
 
 .A logical OR operator taking inputs from xref:factory-gauge.adoc[factory gauges] and outputting to a xref:redstone-link.adoc[redstone link]
-image::logical-tube-or-example.png[,294,209]
+image::logical-tube-or-example.png[ ,294,209]
 
 [#logical-operators]
 == Logical Operators
@@ -33,7 +33,7 @@ Inverse of AND.
 Clicking on the placed logical tube opens its settings screen.
 
 .Logical tube settings
-image::logical-tube-settings.png[,386,205]
+image::logical-tube-settings.png[ ,386,205]
 
 ❶ Inputs::
 Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect.

@@ -8,11 +8,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-08-15 11:43+1000\n"
-"PO-Revision-Date: 2026-08-01 14:35+0000\n"
+"PO-Revision-Date: 2026-08-20 06:35+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
-"Language-Team: Chinese (Simplified Han script) <https://"
-"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
-"dashboard/zh_Hans/>\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/dashboard/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -130,7 +128,7 @@ msgstr "界面概览"
 msgid ""
 "❶ Title bar:: Shows the name of this factory controller. Name can be edited "
 "by clicking on it."
-msgstr "❶ 标题栏:: 显示当前工厂控制台的名称。单击名称可进行修改。"
+msgstr "❶ 标题栏:: 显示当前工厂控制台的名称，单击名称可进行修改。"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:39
@@ -150,15 +148,12 @@ msgstr ""
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:46
-#, fuzzy, no-wrap
-#| msgid ""
-#| "❹ Capacity indicator:: Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up.\n"
-#| "The capacity may be modified by the \"Controller Capacity\" server setting."
+#, no-wrap
 msgid ""
 "❹ Capacity indicator:: [[capacity]] Shows the maximum number of components that may be placed in this factory controller, as well as how much of this capacity has been taken up.\n"
 "The capacity may be modified by the \"Controller Capacity\" server setting."
 msgstr ""
-"❹ 容量指示:: 显示控制台最多能够容纳的组件数量及当前已使用的容量。\n"
+"❹ 容量指示:: [[capacity]] 显示控制台最多能够容纳的组件数量及当前已使用的容量。\n"
 "最大容量可通过服务端的“控制台最大组件数量”配置修改。"
 
 #. type: #ui-overview
@@ -176,20 +171,14 @@ msgstr "❻ 设置按钮:: 打开设置界面。"
 msgid ""
 "❼ Blueprints button:: Opens the blueprint library. See "
 "xref:blueprint.adoc[Blueprint]."
-msgstr ""
+msgstr "❼ 蓝图按钮:: 打开蓝图库，参见xref:blueprint.adoc[蓝图]。"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:58
-#, fuzzy
-#| msgid ""
-#| "❼ Player inventory:: Shows the player inventory. Only the 9 hotbar slots "
-#| "are shown by default. Click the \"+\" button to expand the other 27 slots."
 msgid ""
 "❽ Player inventory:: Shows the player inventory. Only the 9 hotbar slots are "
 "shown by default. Click the \"+\" button to expand the other 27 slots."
-msgstr ""
-"❼ 玩家物品栏:: 显示玩家持有的物品。默认只显示快捷栏的 9 个槽位，单击“+”可展开"
-"其余 27 个槽位。"
+msgstr "❽ 玩家物品栏:: 显示玩家持有的物品。默认只显示快捷栏的 9 个槽位，单击“+”可展开其余 27 个槽位。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:60
@@ -283,19 +272,12 @@ msgstr "框选多个组件"
 
 #. type: #selecting
 #: ../src/dashboard.adoc:88
-#, fuzzy
-#| msgid ""
-#| "When components are selected, drag on any of them to move all selected "
-#| "components. Likewise, shift-clicking on any of them removes all selected "
-#| "components from the board."
 msgid ""
 "When components are selected, drag on any of them to move all selected "
 "components. Likewise, shift-clicking on any of them removes all selected "
 "components from the board. Selected components can be saved as "
 "xref:blueprint.adoc[blueprints]."
-msgstr ""
-"选中多个组件后，拖动其中任意一个即可一起移动所有选中组件；同样地，如果按住 "
-"Shift 单击其中任意一个组建，则会从面板中移除所有选中组件。"
+msgstr "选中多个组件后，拖动其中任意一个即可一起移动所有选中组件；同样地，如果按住 Shift 单击其中任意一个组建，则会从面板中移除所有选中组件。被选中的组件可以被保存为xref:blueprint.adoc[蓝图]。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:90

@@ -45,8 +45,8 @@ import java.util.UUID;
  * <p>Because components are reconstructed <em>whole</em> (through the ordinary {@link ComponentRegistry#fromNBT}),
  * their configured content — a gauge's filter, a link's frequencies, a tube's mode — renders through the normal
  * widget path, with no ghost-specific hooks on the component types. The layer is a {@link ComponentHolder} over its
- * own {@link ConnectionGraph} so a reconstructed component's {@code targetedBy()} resolves (an active gauge reads it
- * while rendering).</p>
+ * own {@link ConnectionGraph} so a reconstructed component's {@code incomingConnections()} resolves (an active gauge
+ * reads it while rendering).</p>
  */
 @OnlyIn(Dist.CLIENT)
 public final class GhostPreview implements ComponentHolder {
@@ -117,7 +117,7 @@ public final class GhostPreview implements ComponentHolder {
             preview.addGhost(reconstruct(b.toNBT(registries, VirtualComponentBehaviour.NbtProfile.EXPORT), registries));
         Set<String> seen = new HashSet<>();
         for (VirtualComponentBehaviour b : moving) {
-            List<Connection> touching = new ArrayList<>(b.targetedBy().values());
+            List<Connection> touching = new ArrayList<>(b.incomingConnections());
             touching.addAll(b.outgoingConnections());
             for (Connection conn : touching) {
                 if (!seen.add(conn.type.name() + ":" + conn.from + "->" + conn.to)) continue;
@@ -171,7 +171,7 @@ public final class GhostPreview implements ComponentHolder {
                 List<Vector2i> path = ConnectionPathResolver.resolvePath(from, to, wire.arrowBendMode(), occupied);
                 if (path != null)
                     VirtualConnectionRenderer.create(path, (GHOST_ALPHA << 24) | (wire.color() & 0xFFFFFF), false)
-                            .drawPath(graphics);
+                            .drawPath(graphics.bufferSource(), graphics.pose());
             }
             graphics.flush();   // composite the wire strips before the sprites draw over them
         }

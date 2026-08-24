@@ -9,9 +9,12 @@ Directory structure:
 
 * `src/`
 ** `\*.adoc`: Source documents, translated and built to `build/$lang/*.html`. Written in English.
-** `_layout.erb`: HTML template for all documents.
-** `_lang_selector.erb`: Placeholder index page built to `build/index.html`.
-** `style.scss`: Stylesheet source, compiled to `build/style.css`.
+** `template/`
+*** `_layout.erb`: HTML template for all documents.
+*** `index.erb`: Placeholder index page built to `build/index.html`.
+*** `translation-missing.erb`: Page redirected to when no translation is available for a page.
+*** `404.erb`
+*** `style.scss`: Stylesheet source, compiled to `build/style.css`.
 ** `images/`: Static assets, copied to `build/`.
 
 * `l10n/`

@@ -9,6 +9,7 @@ import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import io.github.nbcss.createfactorycontroller.content.render.ComponentRenderingHelper;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
@@ -29,9 +30,12 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.Blue
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintPlaceScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint.BlueprintSaveScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.BatchMoveState;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.ConnectionModeState;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.DragSelectionState;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.states.TargetAnimationState;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.CollapsiblePlayerInventory;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ComponentWidgetRegistry;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectedTargetRole;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ConnectionWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.IndicatorColumnWidget;
@@ -160,7 +164,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final ResourceLocation BACKGROUND_TEXTURE_PATH = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/controller_background/");
     private static final ResourceLocation FRAME_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/frame");
     // Reticle drawn over the gauge being acted on (connect/relocate). White 16×16 source, tinted.
-    private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target");
+    private static final ResourceLocation TARGET_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/regular");
+    private static final ResourceLocation TARGET_HALF_1_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/half_1");
+    private static final ResourceLocation TARGET_HALF_2_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/target/half_2");
     // Edit-name cue drawn after the controller name when idle (indicator only). 9×9 sprite.
     private static final ResourceLocation RENAME_BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/rename_button");
     private static final int RENAME_BUTTON_SIZE = 9;
@@ -182,17 +188,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private int lastMouseX, lastMouseY;
 
     private final ComponentRenderingHelper componentRenderingHelper = new ComponentRenderingHelper();
+    private final TargetAnimationState targetAnimations = new TargetAnimationState();
 
     private final Map<VirtualComponentPosition, VirtualComponentWidget> componentWidgets = new LinkedHashMap<>();
     private final List<VirtualComponentWidget> visibleComponents = new ArrayList<>();
 
-    // Board action mode (e.g. connecting).
-    @Nullable private VirtualComponentPosition pendingConnectionTarget = null;
+    private final ConnectionModeState connectionMode = new ConnectionModeState();
     @Nullable private VirtualComponentPosition pendingRelocateTarget = null;
     @Nullable private BlueprintPlacement pendingPlacement = null;
-    /** Connection-mode preview bend override */
-    private int previewArrowMode = -1;
-    @Nullable private VirtualComponentPosition previewArrowTarget = null;
     /** Long-lived mode prompt (connect / relocate). */
     @Nullable private Component persistentActionPrompt = null;
     /** Most recent transient result/chime. */
@@ -439,7 +442,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
         // No hover tooltips while a drag selection or batch relocate is in progress.
         boolean selectionDragging = dragSelection != null || batchMove.isActive();
-        if (pendingConnectionTarget == null && pendingRelocateTarget == null && pendingPlacement == null
+        if (!connectionMode.isActive() && pendingRelocateTarget == null && pendingPlacement == null
                 && !selectionDragging) {
             if (hoveredConn != null) {
                 // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
@@ -581,6 +584,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         profiler.push("cull");
         updateVisibleComponents(visibleArea);
         List<ConnectionWidget> connWidgets = buildConnectionWidgets(visibleArea);
+        componentRenderingHelper.setOccupiedCells(occupiedCells());
 
         profiler.popPush("back");
         // Cull components and connections that fall outside the visible canvas rectangle
@@ -594,7 +598,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         boolean overComponent = componentWidgetAt(hoveredPosition) != null;
         // No connection hover while dragging a selection rectangle or a batch relocate.
         if (isInCanvasArea(mouseX, mouseY) && !carrying && dragSelection == null && !batchMove.isActive()
-                && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+                && !connectionMode.isActive() && pendingRelocateTarget == null) {
             for (ConnectionWidget w : connWidgets) {
                 if (overComponent && !hoveredPosition.equals(w.connection.from)
                                   && !hoveredPosition.equals(w.connection.to)) continue;
@@ -619,6 +623,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         componentRenderingHelper.flushBuffers(graphics);
 
         profiler.pop();
+        targetAnimations.beginFrame(Util.getMillis());
         renderSelectedNetworkMask(graphics);
         // The blueprint ghost owns the cursor cell while placing; the normal hover reticle would fight it.
         if (hoveredConn == null && pendingPlacement == null) renderHoverTarget(graphics);
@@ -626,11 +631,34 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         profiler.push("ghost");
         renderPlacementGhost(graphics);
+        renderFadingTargets(graphics);
+        graphics.flush();
 
         profiler.popPush("overlay");
-        // Count labels last, on top of the hover/selection target marks so the reticle never covers the number.
+
+        // label to show
+        boolean alwaysShowLabel = ClientConfig.alwaysShowLabel();
+        Set<VirtualComponentPosition> shouldShowLabel;
+        if (hoveredPosition == null) {
+            shouldShowLabel = Set.of();
+        } else {
+            shouldShowLabel = new HashSet<>();
+            shouldShowLabel.add(hoveredPosition);
+            if (!alwaysShowLabel && hoveredConn == null && pendingPlacement == null
+                    && !connectionMode.isActive() && pendingRelocateTarget == null && menu.getCarried().isEmpty()
+                    && dragSelection == null && !batchMove.isActive()) {
+                VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
+                if (hovered != null) {
+                    for (Connection connection : hovered.incomingConnections())
+                        shouldShowLabel.add(connection.from);
+                    for (Connection connection : hovered.outgoingConnections())
+                        shouldShowLabel.add(connection.to);
+                }
+            }
+        }
         for (VirtualComponentWidget component : visibleComponents)
-            component.renderOverlay(componentRenderingHelper.params(graphics, worldMouse, component.position().equals(hoveredPosition)));
+            component.renderOverlay(componentRenderingHelper.params(
+                    graphics, worldMouse, alwaysShowLabel || shouldShowLabel.contains(component.position())));
         componentRenderingHelper.flushBuffers(graphics);
 
         profiler.pop();
@@ -782,10 +810,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private static final int TARGET_RED   = 0xFF3333;
     private static final int TARGET_GREEN = 0x33CC33;   // also the selected-component mark
     private static final int TARGET_BLUE  = 0x55AAFF;
-    // Connection-neighbour tints
-    private static final int TARGET_SOURCE      = 0x61d6f2;
-    private static final int TARGET_SINK        = 0xfcd860;
-    private static final int TARGET_SOURCE_SINK = 0xb7ed9f;
     private static final long PREVIEW_FLASH_MS = 900;
 
     /** Blue reticle over every component on the network currently selected in the network selector. */
@@ -798,31 +822,27 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private void renderHoverTarget(GuiGraphics graphics) {
-        VirtualComponentPosition source = pendingConnectionTarget != null ? pendingConnectionTarget : pendingRelocateTarget;
+        VirtualComponentPosition source = connectionMode.isActive() ? connectionMode.initiator() : pendingRelocateTarget;
         if (source != null) renderTarget(graphics, source, TARGET_GREEN);
 
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
-        final VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
+        final VirtualComponentWidget hoveredWidget = componentWidgetAt(hoveredPosition);
+        final VirtualComponentBehaviour hovered = hoveredWidget == null ? null : hoveredWidget.behaviour();
         ItemStack carried = menu.getCarried();
 
-        if (pendingConnectionTarget != null) {
-            // The preview bend override only holds while hovering the same target; a change resets it to auto.
-            if (!java.util.Objects.equals(hoveredPosition, previewArrowTarget)) {
-                previewArrowTarget = hoveredPosition;
-                previewArrowMode = -1;
-            }
+        if (connectionMode.isActive()) {
             // Connect mode: hovering another component shows white if it can be wired
-            ConnectionResolver.Result result = connectionHoverResult();
+            ConnectionResolver.Result result = connectionMode.resolve(menu, hoveredPosition);
             if (result != null) {
                 if (result.ok()) {
                     assert result.source() != null;
                     List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(
-                            result.source(), result.sink(), previewArrowMode, occupiedCells());
+                            result.source(), result.sink(), connectionMode.previewBendMode(), occupiedCells());
                     if (path != null) {
                         float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
                         float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);   // 1.0 at phase 0, 0.6 at half
                         int color = Math.round(alpha * 255) << 24 | (result.type().color() & 0xFFFFFF);
-                        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics);
+                        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics.bufferSource(), graphics.pose());
                     }
                 }
                 renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
@@ -836,14 +856,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                                 hoveredPosition.x() - pendingRelocateTarget.x(),
                                 hoveredPosition.y() - pendingRelocateTarget.y()),
                         componentRenderingHelper, occupiedCells());
-            renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            renderTransientTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (ComponentRegistry.containsItem(carried)) {
             // Holding a component
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
             boolean valid = hovered == null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
             if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
-            renderTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
+            renderTransientTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
             // Holding a non-component item
             if (componentAt(hoveredPosition) instanceof VirtualGaugeBehaviour g && g.filter.isEmpty())
@@ -852,38 +872,43 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
         } else {
             // Empty cursor
-            if (hovered != null) {
-                if (ClientConfig.coloredConnectedComponentOutlines())
-                    renderConnectionNeighbours(graphics, hovered);
+            if (hoveredWidget != null) {
+                if (dragSelection == null && ClientConfig.coloredConnectedComponentOutlines())
+                    renderConnectionNeighbours(graphics, hoveredWidget);
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
             }
         }
+        graphics.flush();
     }
 
-    private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentBehaviour hovered) {
-        Set<VirtualComponentPosition> sources = new LinkedHashSet<>();
-        for (Connection conn : hovered.targetedBy().values())
-            sources.add(conn.from);
-        Set<VirtualComponentPosition> sinks = new LinkedHashSet<>();
-        for (Connection conn : hovered.outgoingConnections())
-            sinks.add(conn.to);
-        for (VirtualComponentPosition p : sources)
-            renderTarget(graphics, p, sinks.contains(p) ? TARGET_SOURCE_SINK : TARGET_SOURCE);
-        for (VirtualComponentPosition p : sinks)
-            if (!sources.contains(p)) renderTarget(graphics, p, TARGET_SINK);
-    }
+    private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentWidget hovered) {
+        Map<VirtualComponentPosition, List<Connection>> inputs = new LinkedHashMap<>();
+        for (Connection conn : hovered.behaviour().incomingConnections())
+            inputs.computeIfAbsent(conn.from, ignored -> new ArrayList<>()).add(conn);
 
-    /** In connection mode, the resolver result for wiring the currently-hovered component to the pending target, or
-     *  {@code null} when the hover isn't a wireable partner (empty cell, or the initiator itself). {@code ok()}
-     *  distinguishes a valid target from an invalid one. */
-    @Nullable
-    private ConnectionResolver.Result connectionHoverResult() {
-        if (pendingConnectionTarget == null || hoveredPosition == null
-                || hoveredPosition.equals(pendingConnectionTarget)) return null;
-        VirtualComponentBehaviour initiator = componentAt(pendingConnectionTarget);
-        VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
-        if (initiator == null || hovered == null) return null;
-        return ConnectionResolver.resolve(hovered, initiator, initiator);
+        Map<VirtualComponentPosition, List<Connection>> outputs = new LinkedHashMap<>();
+        for (Connection conn : hovered.behaviour().outgoingConnections())
+            outputs.computeIfAbsent(conn.to, ignored -> new ArrayList<>()).add(conn);
+
+        Set<VirtualComponentPosition> neighbours = new LinkedHashSet<>(inputs.keySet());
+        neighbours.addAll(outputs.keySet());
+        for (VirtualComponentPosition neighbour : neighbours) {
+            List<Connection> inputConnections = inputs.get(neighbour);
+            List<Connection> outputConnections = outputs.get(neighbour);
+            if (inputConnections != null && outputConnections != null) {
+                int inputColor = hovered.connectedTargetColor(
+                        ConnectedTargetRole.INPUT, neighbour, inputConnections);
+                int outputColor = hovered.connectedTargetColor(
+                        ConnectedTargetRole.OUTPUT, neighbour, outputConnections);
+                renderSplitTarget(graphics, neighbour, inputColor, outputColor);
+            } else if (inputConnections != null) {
+                renderTarget(graphics, neighbour, hovered.connectedTargetColor(
+                        ConnectedTargetRole.INPUT, neighbour, inputConnections));
+            } else if (outputConnections != null) {
+                renderTarget(graphics, neighbour, hovered.connectedTargetColor(
+                        ConnectedTargetRole.OUTPUT, neighbour, outputConnections));
+            }
+        }
     }
 
     /** Draws a translucent single-component preview from a cursor item — a fresh component, so no configured state
@@ -935,20 +960,45 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
     private void renderTarget(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
-        int x0 = pos.x() * CANVAS_COMPONENT_SIZE;
-        int y0 = pos.y() * CANVAS_COMPONENT_SIZE;
-        RenderSystem.enableBlend();
-        graphics.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-        graphics.blitSprite(TARGET_SPRITE, x0, y0, CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE);
-        graphics.setColor(1f, 1f, 1f, 1f);
-        RenderSystem.disableBlend();
+        renderTargetSprite(graphics, pos, TARGET_SPRITE, rgb, false);
     }
 
-    private void renderTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
+    private void renderSplitTarget(GuiGraphics graphics, VirtualComponentPosition pos, int inputColor, int outputColor) {
+        renderTargetSprite(graphics, pos, TARGET_HALF_1_SPRITE, inputColor, false);
+        renderTargetSprite(graphics, pos, TARGET_HALF_2_SPRITE, outputColor, false);
+    }
+
+    private void renderTargetSprite(GuiGraphics graphics, VirtualComponentPosition pos, ResourceLocation sprite,
+                                    int rgb, boolean raised) {
+        targetAnimations.track(pos, sprite, rgb, raised);
+        drawTargetSprite(graphics, pos, sprite, rgb, raised, 1, 1);
+    }
+
+    private void drawTargetSprite(GuiGraphics graphics, VirtualComponentPosition pos, ResourceLocation sprite,
+                                  int rgb, boolean raised, float alpha, float scale) {
+        int x0 = pos.x() * CANVAS_COMPONENT_SIZE;
+        int y0 = pos.y() * CANVAS_COMPONENT_SIZE;
         graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 200);
-        renderTarget(graphics, pos, rgb);
+        graphics.pose().translate(x0 + CANVAS_COMPONENT_SIZE / 2f, y0 + CANVAS_COMPONENT_SIZE / 2f, raised ? 200 : 0);
+        graphics.pose().scale(scale, scale, 1);
+        graphics.pose().translate(-x0 - CANVAS_COMPONENT_SIZE / 2f, -y0 - CANVAS_COMPONENT_SIZE / 2f, 0);
+        int argb = Math.round(alpha * 255) << 24 | (rgb & 0xFFFFFF);
+        BatchedBlitter.forSprite(sprite).setColorARGB(argb)
+                .blit(graphics.bufferSource(), graphics.pose(), x0, y0,
+                        CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE);
         graphics.pose().popPose();
+    }
+
+    private void renderFadingTargets(GuiGraphics graphics) {
+        for (TargetAnimationState.AnimatedTarget target :
+                targetAnimations.fadingTargets(ClientConfig.enableSmoothAnimation()))
+            drawTargetSprite(graphics, target.position(), target.sprite(), target.color(), target.raised(),
+                    target.alpha(), target.scale());
+    }
+
+    private void renderTransientTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
+        targetAnimations.discard(pos, TARGET_SPRITE);
+        drawTargetSprite(graphics, pos, TARGET_SPRITE, rgb, true, 1, 1);
     }
 
     // ── Selection mode ───────────────────────────────────────────────────────
@@ -1001,7 +1051,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             for (VirtualComponentPosition p : movingCells) {                        // reticle on top of each ghost
                 VirtualComponentPosition to = batchMove.destinationOf(p);
                 boolean valid = batchMove.destinationValid(to, selected, componentWidgets.keySet());
-                renderTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
+                renderTransientTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
             }
             graphics.flush();
         }
@@ -1046,9 +1096,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
     public void beginConnectionMode(VirtualComponentPosition target) {
-        pendingConnectionTarget = target;
-        previewArrowMode = -1;             // fresh mode: preview starts on auto bend
-        previewArrowTarget = null;
+        connectionMode.begin(target);
+
         setPersistentPrompt(Component.translatable("createfactorycontroller.connection.mode_prompt")
                 .withStyle(ChatFormatting.WHITE));
     }
@@ -1064,7 +1113,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     public void beginBlueprintPlacement(BlueprintPlacement placement) {
         clearSelection();
-        pendingConnectionTarget = null;
+        connectionMode.clear();
         pendingRelocateTarget = null;
         pendingPlacement = placement;
         PacketDistributor.sendToServer(new ReturnCarriedPacket());
@@ -1092,7 +1141,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         pendingPlacement.ghostPreview().render(graphics, anchor, componentRenderingHelper, occupiedCells());
         for (BlueprintStorage.Placement placement : pendingPlacement.info().placements()) {
             VirtualComponentPosition cell = BlueprintPlacement.cellFor(placement, anchor);
-            renderTargetAboveGhost(graphics, cell, pendingPlacement.cellFree(cell, menu) ? TARGET_WHITE : TARGET_RED);
+            renderTransientTargetAboveGhost(graphics, cell,
+                    pendingPlacement.cellFree(cell, menu) ? TARGET_WHITE : TARGET_RED);
         }
         graphics.flush();
     }
@@ -1158,31 +1208,28 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void completeConnection(VirtualComponentPosition clickedPos,
                                     @Nullable VirtualComponentWidget clickedWidget) {
-        VirtualComponentPosition targetPos = pendingConnectionTarget;
-        pendingConnectionTarget = null;
+        ConnectionModeState.Completion completion = connectionMode.finish(
+                menu, clickedPos, clickedWidget == null ? null : clickedWidget.behaviour());
         persistentActionPrompt = null;
-        if (clickedWidget == null || clickedPos.equals(targetPos)) {
+        if (completion.status() == ConnectionModeState.CompletionStatus.ABORTED) {
             setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
                     .style(ChatFormatting.WHITE).component(), 3000);
             return;
         }
-        VirtualComponentBehaviour clicked = clickedWidget.behaviour();    // the clickedPos component
-        VirtualComponentBehaviour initiator = componentAt(targetPos);    // the component that started the mode (= sink)
-        if (initiator == null) {   // vanished mid-mode (removed/relocated) — a real failure, not a user abort
+        if (completion.status() == ConnectionModeState.CompletionStatus.INVALID) {
             playDenySound();
             return;
         }
 
-        ConnectionResolver.Result result = ConnectionResolver.resolve(clicked, initiator, initiator);
+        ConnectionResolver.Result result = completion.result();
+        assert result != null;
         if (!result.ok()) {
             showConnectionMessage(result);
             playDenySound();
             return;
         }
-        // Apply the previewed bend override, but only if it still belongs to this target (auto otherwise).
-        int bendMode = clickedPos.equals(previewArrowTarget) ? previewArrowMode : -1;
         PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, result.type().name(),
-                result.source(), result.sink(), bendMode));
+                result.source(), result.sink(), completion.bendMode()));
         showConnectionMessage(result);
     }
 
@@ -1257,7 +1304,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (hoveredConn != null && leftOrRight && hasShiftDown()) {
                 revealConnectionTooltip();
                 PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos,
-                        hoveredConn.connection.from, hoveredConn.connection.to));
+                        hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name()));
                 selectedConnection = null;   // it's gone; let the hover re-resolve next frame
                 playWrenchSound();
                 return true;
@@ -1265,13 +1312,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
             boolean isPreserved = isKeyHeld(CreateFactoryControllerClient.SELECTION_MODE);
             if (isPreserved && CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && carried.isEmpty()
-                    && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+                    && !connectionMode.isActive() && pendingRelocateTarget == null) {
                 beginDragSelection(mouseX, mouseY, true);
                 return true;
             }
 
             if (leftOrRight && widget == null && carried.isEmpty() && !selected.isEmpty()
-                    && pendingConnectionTarget == null && pendingRelocateTarget == null && !isPreserved) {
+                    && !connectionMode.isActive() && pendingRelocateTarget == null && !isPreserved) {
                 if (CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button))
                     beginPan(mouseX, mouseY, true);
                 else
@@ -1280,21 +1327,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
             if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button)
                     && !CreateFactoryControllerClient.PAN_VIEW.matchesMouse(button) && carried.isEmpty()
-                    && pendingConnectionTarget == null && pendingRelocateTarget == null
+                    && !connectionMode.isActive() && pendingRelocateTarget == null
                     && (isPreserved || widget == null)) {
                 beginDragSelection(mouseX, mouseY, isPreserved);
                 return true;
             }
 
             if (button == 0 && !carried.isEmpty() && widget == null
-                    && pendingConnectionTarget == null && pendingRelocateTarget == null) {
+                    && !connectionMode.isActive() && pendingRelocateTarget == null) {
                 clearSelection();
                 attachCarriedAt(clicked, carried);
                 return true;
             }
 
             // Connection mode: the clicked cell is the other end of the pending wire (handled in completeConnection).
-            if (pendingConnectionTarget != null && leftOrRight) {
+            if (connectionMode.isActive() && leftOrRight) {
                 completeConnection(clicked, widget);
                 return true;
             }
@@ -1411,6 +1458,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerY = canvas.minY() + canvas.h() / 2;
 
             if (hasShiftDown()) {
+                // In connection mode shift+scroll is reserved for the wire-type picker: change the type when the
+                // hovered partner offers a choice, and consume the scroll either way — so it never falls through to
+                // the network selector, even over an empty cell or a single-type / unconnectable target.
+                if (connectionMode.isActive()) {
+                    connectionMode.cycleType(menu, hoveredPosition, (int) Math.signum(-scrollY));
+                    return true;
+                }
                 // A scroll releases the arrow-mode lock; reconcile then resolves the tooltip to the hovered wire.
                 if (connArrowLocked) {
                     revealConnectionTooltip();
@@ -1690,13 +1744,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentBehaviour hover = componentAt(hoveredPosition);
 
         if (CreateFactoryControllerClient.START_CONNECTION.matches(keyCode, scanCode) && hover != null
-                && pendingConnectionTarget == null && pendingRelocateTarget == null && selected.isEmpty()) {
+                && !connectionMode.isActive() && pendingRelocateTarget == null && selected.isEmpty()) {
+            if (!hover.canAcceptMoreInput()) {
+                playDenySound();
+                setTimedPrompt(Component.translatable("createfactorycontroller.arithmetic_tube.inputs_full")
+                        .withStyle(ChatFormatting.RED), 3000);
+                return true;
+            }
             beginConnectionMode(hoveredPosition);
             return true;
         }
 
         if (CreateFactoryControllerClient.RELOCATE_COMPONENT.matches(keyCode, scanCode) && hover != null
-                && pendingConnectionTarget == null && pendingRelocateTarget == null && selected.isEmpty()) {
+                && !connectionMode.isActive() && pendingRelocateTarget == null && selected.isEmpty()) {
             beginRelocateMode(hoveredPosition);
             return true;
         }
@@ -1715,20 +1775,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 connArrowLocked = true;
                 playWrenchSound();
                 PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
-                        hoveredConn.connection.from, hoveredConn.connection.to));
+                        hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name()));
                 return true;
             }
 
-            if (pendingConnectionTarget != null) {
-                ConnectionResolver.Result result = connectionHoverResult();
-                if (result != null && result.ok()) {
-                    if (!java.util.Objects.equals(hoveredPosition, previewArrowTarget)) {
-                        previewArrowTarget = hoveredPosition;
-                        previewArrowMode = -1;
-                    }
-                    previewArrowMode = (previewArrowMode + 1) % 4;   // auto(-1) → 0 → 1 → 2 → 3 → 0
-                    playWrenchSound();
-                }
+            if (connectionMode.isActive()) {
+                if (connectionMode.cycleBend(menu, hoveredPosition)) playWrenchSound();
                 return true;
             }
 
@@ -1752,7 +1804,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 Connection conn = hoveredConn.connection;
                 if (conn.canReverse(this::componentAt)) {
                     playWrenchSound();
-                    PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, conn.from, conn.to));
+                    PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, conn.from, conn.to, conn.type.name()));
                 } else {
                     playDenySound();
                 }
@@ -1794,7 +1846,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         List<ConnectionWidget> result = new ArrayList<>();
         for (VirtualComponentWidget sink : componentWidgets.values()) {
-            for (var conn : sink.behaviour().targetedBy().values()) {
+            for (var conn : sink.behaviour().incomingConnections()) {
                 if (!ConnectionPathResolver.spanVisible(conn.from, conn.to, visibleArea)) continue;
                 List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(conn, occupied);
                 if (path != null) result.add(new ConnectionWidget(conn, path));

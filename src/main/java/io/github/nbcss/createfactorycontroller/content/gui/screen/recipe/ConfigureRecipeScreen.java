@@ -768,7 +768,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (fluidMode && !mode.isFluid()) mode = ThresholdUnit.FLUID_BUCKET;
         if (!fluidMode && mode.isFluid()) mode = ThresholdUnit.ITEMS;
         if (fluidMode && outputCount <= 1) outputCount = 1000;
-        for (Connection conn : g.targetedBy().values()) {
+        for (Connection conn : g.incomingConnections()) {
             if (!(conn instanceof LogisticsConnection lc)) continue;
             int total = lc.amount();
             inputConnections.add(conn.from);
@@ -1658,7 +1658,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private boolean hasLinkConnections() {
         VirtualComponentBehaviour gauge = menu.componentAt(gaugePos);
         if (gauge == null) return false;
-        return hasNonLogistics(gauge.targetedBy().values()) || hasNonLogistics(gauge.outgoingConnections());
+        return hasNonLogistics(gauge.incomingConnections()) || hasNonLogistics(gauge.outgoingConnections());
     }
 
     private static boolean hasNonLogistics(java.util.Collection<Connection> connections) {

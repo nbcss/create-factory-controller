@@ -40,7 +40,7 @@ Redstone links are distinguished by channels, which consist of 2 item types. Eac
 After placing a redstone link on the virtual board, clicking the component opens its configuration screen.
 
 .Redstone link settings
-image::redstone-link-settings.png[,384,207]
+image::redstone-link-settings.png[ ,384,207]
 
 ❶ ❷ Channel::
 Place an item, or drag a ghost item from JEI, to set the channel of the redstone link.

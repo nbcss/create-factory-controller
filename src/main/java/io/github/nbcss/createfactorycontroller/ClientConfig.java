@@ -11,12 +11,14 @@ public final class ClientConfig {
     public static final ModConfigSpec.ConfigValue<String> CONTROLLER_BACKGROUND;
     public static final ModConfigSpec.BooleanValue UPSCALE_BACKGROUND_TEXTURE;
     public static final ModConfigSpec.BooleanValue ALWAYS_SHOW_LABEL;
+    public static final ModConfigSpec.BooleanValue SHOW_REDSTONE_LINK_SIGNAL_STRENGTH_LABEL;
     public static final ModConfigSpec.BooleanValue DYNAMIC_LABEL_SCALING;
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
     public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
     public static final ModConfigSpec.BooleanValue HIDE_MISSING_LINK_WARNING;
     public static final ModConfigSpec.BooleanValue COLORED_CONNECTED_COMPONENT_OUTLINES;
+    public static final ModConfigSpec.BooleanValue ENABLE_SMOOTH_ANIMATION;
     public static final ModConfigSpec.IntValue CONNECTION_TOOLTIP_DELAY;
 
     static {
@@ -33,6 +35,10 @@ public final class ClientConfig {
                 .comment("Show the count label on every gauge in the controller interface, instead of only the hovered gauge.")
                 .translation("createfactorycontroller.config.always_show_label")
                 .define("alwaysShowLabel", true);
+        SHOW_REDSTONE_LINK_SIGNAL_STRENGTH_LABEL = builder
+                .comment("Show the current signal strength on Redstone Link components in the Controller GUI.")
+                .translation("createfactorycontroller.config.show_redstone_link_signal_strength_label")
+                .define("showRedstoneLinkSignalStrengthLabel", false);
         DYNAMIC_LABEL_SCALING = builder
                 .comment("Shrink a gauge's count label when it is too wide for the gauge.")
                 .translation("createfactorycontroller.config.dynamic_label_scaling")
@@ -61,6 +67,10 @@ public final class ClientConfig {
                 .comment("Show colored outlines on components connected to the hovered component in the Controller GUI.")
                 .translation("createfactorycontroller.config.colored_connected_component_outlines")
                 .define("coloredConnectedComponentOutlines", true);
+        ENABLE_SMOOTH_ANIMATION = builder
+                .comment("Enable smooth animations in the Controller GUI.")
+                .translation("createfactorycontroller.config.enable_smooth_animation")
+                .define("enableSmoothAnimation", true);
         CONNECTION_TOOLTIP_DELAY = builder
                 .comment("Delay in milliseconds before a hovered connection's tooltip appears.")
                 .translation("createfactorycontroller.config.connection_tooltip_delay")
@@ -72,6 +82,10 @@ public final class ClientConfig {
 
     public static boolean alwaysShowLabel() {
         return ALWAYS_SHOW_LABEL.get();
+    }
+
+    public static boolean showRedstoneLinkSignalStrengthLabel() {
+        return SHOW_REDSTONE_LINK_SIGNAL_STRENGTH_LABEL.get();
     }
 
     public static boolean upscaleBackgroundTexture() {
@@ -100,6 +114,10 @@ public final class ClientConfig {
 
     public static boolean coloredConnectedComponentOutlines() {
         return COLORED_CONNECTED_COMPONENT_OUTLINES.get();
+    }
+
+    public static boolean enableSmoothAnimation() {
+        return ENABLE_SMOOTH_ANIMATION.get();
     }
 
     public static int connectionTooltipDelay() {

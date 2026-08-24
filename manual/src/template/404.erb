@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Page not found</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  </head>
+  <body>
+    <h1>Page not found</h1>
+    <script>
+      // If it is a manual page, redirect to translation-missing.html of the respective language
+      const languages = [<%= languages[1..-1].map{|l| %("#{l}") }.join(',') %>];
+      const defaultLanguage = "<%= languages.default %>";
+
+      const matchedLanguage = languages.find((language) =>
+        window.location.pathname.includes(`/${language}/`)
+      );
+      if (matchedLanguage) {
+        const path = window.location.pathname;
+
+        const defaultLangPage = path.replace(`/${matchedLanguage}/`, `/${defaultLanguage}/`);
+        const missingTranslationPage = path.substring(0, path.search(`/${matchedLanguage}/`)) + `/${matchedLanguage}/translation-missing.html`;
+
+        Promise.all([
+          fetch(defaultLangPage, { method: 'HEAD' }),
+          fetch(missingTranslationPage, { method: 'HEAD' })
+        ]).then((responses) => {
+          if (responses.every((res) => res.ok)) {
+            window.location.replace(missingTranslationPage + '?source-lang-url=' + encodeURIComponent(defaultLangPage));
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

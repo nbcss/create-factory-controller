@@ -269,20 +269,14 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
         connectionGraph.disconnect(pos);
     }
 
-    /** The wire currently held for {@code from → to}, or null. Lets the delta handler learn the type of a
-     *  wire it is about to remove (for the sink re-fold). */
-    public Connection connectionAt(VirtualComponentPosition from, VirtualComponentPosition to) {
-        return connectionGraph.get(from, to);
-    }
-
-    /** Delta apply: add-or-replace one wire (the graph keeps one wire per endpoint pair). */
+    /** Delta apply: add-or-replace one wire (the graph keeps one wire per endpoint pair per type). */
     public void putConnection(Connection conn) {
         connectionGraph.add(conn);
     }
 
-    /** Delta apply: remove the wire {@code from → to}, if present. */
-    public void removeConnectionAt(VirtualComponentPosition from, VirtualComponentPosition to) {
-        connectionGraph.remove(to, from);
+    /** Delta apply: remove the {@code type} wire {@code from → to}, if present. */
+    public void removeConnectionAt(VirtualComponentPosition from, VirtualComponentPosition to, Connection.Type type) {
+        connectionGraph.remove(to, from, type);
     }
 
     /** Re-folds one sink after its incoming wires changed (the client-side mirror of the server's settle). */

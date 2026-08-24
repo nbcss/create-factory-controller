@@ -8,169 +8,104 @@ require 'sass-embedded'
 require 'font-awesome-sass'
 require_relative 'lib/replacements'
 require_relative 'lib/util'
+require_relative 'lib/manual-builder'
 
-CLOBBER << 'build'
 
-# Get languages from po4a config
-LANGS = File.readlines("l10n/po4a.cfg")
-  .find{|x| x =~ /^\[po4a_langs\]/ }
-  .split(?])[1].scan(/[\w_-]+/)
+# Get languages from existing localisation file names
+LANGS = Dir.entries('l10n')
+.map{|x| x.split '.' }.filter{|x| x.length >= 3 }.map{|x| x[-2] }
+.uniq.map(&:to_sym)
 
-LANGS.prepend 'en'
+LANGS.prepend :en
 def LANGS.default() first end
+def LANGS.default?(x) x == first end
 
 
-# Define tasks to build each and all languages
+# Define tasks to build manual pages
 task default: :build
 desc "Build HTML for all languages"
-task :build
+task :build => [:assets]
+
+manual_builder = ManualBuilder.new(
+  layout_path: 'src/template/_layout.erb',
+  source_path_tmpl: proc do |arg|
+    (LANGS.default?(arg[:lang]) ? 'src/%{name}.adoc' : 'translated/%{lang}/%{name}.adoc') % arg
+  end,
+  attributes_path_tmpl: proc do |arg|
+    (LANGS.default?(arg[:lang]) ? 'l10n/attributes.yaml' : 'l10n/attributes.%{lang}.yaml') % arg
+  end,
+  po_path_tmpl: proc {|arg| 'l10n/%{name}.%{lang}.po' % arg },
+  output_path_tmpl: proc {|arg| 'build/%{lang}/%{name}.html' % arg },
+  languages: LANGS
+)
+
+doc_names = Dir.glob('[^_]*.adoc', base: 'src')
+.map{|f| File.basename f, '.adoc' }
 
 LANGS.each do |lang|
-  task :build => :"build_#{lang.gsub '-', '_'}"
+  build_lang_task = :"build_#{lang.to_s.gsub '-', '_'}"
+  task :build => build_lang_task
+
   desc "Build HTML of language #{lang}"
-  task :"build_#{lang.gsub '-', '_'}" => %i(assets po4a:translate) do
-    build_lang(lang)
+  task build_lang_task
+
+  doc_names.each do |name|
+    doc = manual_builder.document(name: name, lang: lang)
+    task build_lang_task => doc.output_path
+
+    file doc.output_path =>
+    doc.dependency_files + [:assets] do
+      puts "Generate page #{doc.output_path}" if verbose
+      doc.build
+    end
+  end
+
+  tm_page = manual_builder.page(output_path: "build/#{lang}/translation-missing.html", source_path: "src/template/translation-missing.erb", lang: lang)
+  task build_lang_task => tm_page.output_path
+  file tm_page.output_path => tm_page.dependency_files do
+    puts "Generate page #{tm_page.output_path}" if verbose
+    tm_page.build
   end
 end
 
+
+rule /^translated\/.*\.adoc$/ => 'po4a:translate'
+
 namespace 'po4a' do
+
+  desc "Update po4a config"
+  task :config do
+    orig = File.read('l10n/po4a.cfg')
+    changed = orig.sub(/(?<=\[po4a_langs\] ).*$/) do
+      LANGS[1..-1].join(' ')
+    end
+    if orig != changed
+      puts "Write po4a.cfg" if verbose
+      File.write 'l10n/po4a.cfg', changed
+    end
+  end
+
   desc "Update translation files"
-  task :update do
+  task :update => :config do
     cd 'l10n' do
       sh *%W(po4a --no-translations po4a.cfg)
     end
   end
 
-  desc "Generated translated documents"
-  task :translate do
+  desc "Generate translated documents"
+  task :translate => :config do
     cd 'l10n' do
       sh *%W(po4a --no-update po4a.cfg)
     end
   end
+
 end
 
 
-# Memoized variables
-layout = nil
-lang_attributes = nil
-lang_manual_toc = nil
-
-# Build HTML of a language
-def build_lang(lang)
-  layout ||= ERB.new File.read 'src/_layout.erb'
-
-  # Translatable attributes
-  lang_attributes ||= Hash.new do |hash, lang|
-    local = Util.flatten_hash YAML.load_file "l10n/attributes.#{lang}.yaml" rescue nil if lang != LANGS.default
-    fallback = Util.flatten_hash YAML.load_file "l10n/attributes.yaml"
-    lang_attributes[lang] = fallback.merge local || {}
-  end
-  attributes = lang_attributes[lang]
-
-  adoc_options = {
-    safe: :safe,
-    backend: 'html5s',
-    parse: true,
-    standalone: false,
-    attributes: {
-      'imagesdir' => '../images',
-    }.merge(attributes.map{|k, v| ["#{k}@", v]}.to_h),
-  }
-
-  # Read index.adoc for a TOC of the entire manual
-  lang_manual_toc ||= Hash.new do |hash, lang|
-    source_path = ["translated/#{lang}/index.adoc", 'src/index.adoc'].find(&File.method(:exist?))
-    doc = Asciidoctor.load_file source_path, adoc_options
-    toc = doc.find_by(id: 'manual-toc')[0].convert
-    lang_manual_toc[lang] = Util.html_strip toc, layers: 2
-  end
-  manual_toc = lang_manual_toc[lang]
-
-  verbose(false) { mkdir_p "build/#{lang}" }
-
-  Dir.glob('[^_]*.adoc', base: 'src').each do |source|
-    source_path = lang == LANGS.default ? "src/#{source}" : "translated/#{lang}/#{source}"
-    source_basename = source.sub(/\.adoc$/, '')
-    output_path = "build/#{lang}/#{source_basename}.html"
-
-    authors = Util.git_file_authors("src/#{source}")
-    translators = lang == LANGS.default ? [] :
-      Util.git_file_authors("l10n/#{source_basename}.#{lang}.po") - authors
-
-    title = nil
-    content = nil
-    page_toc = nil
-    no_translation = false
-
-    if File.exist? source_path
-      puts "Generate page #{output_path}" if verbose
-      document = Asciidoctor.load_file source_path, adoc_options
-
-      title = document.title
-      content = Util.cache_id_images(document.convert, output_path)
-
-      page_toc = document.converter.convert document, 'outline', toclevels: 2
-      page_toc = Util.html_strip page_toc, strip_class: true
-
-    else
-      puts "Generate missing translation page #{output_path}" if verbose
-      no_translation = true
-    end
-
-    html = layout.result LayoutContext.new(
-      title: title,
-      content: content,
-      authors: authors,
-      translators: translators,
-      attributes: attributes,
-      language: lang,
-      languages: LANGS,
-      manual_toc: manual_toc,
-      page_toc: page_toc,
-      no_translation: no_translation,
-      output_filename: "#{source_basename}.html",
-      output_path: output_path,
-    ).binding
-
-    File.write output_path, html
-  end
-end
-
-# Task to build a language selector page
-task :build => :'build_lang_selector'
-task :'build_lang_selector' do
-  output_path = 'build/index.html'
-  verbose(false) { mkdir_p 'build' }
-  puts "Generate #{output_path}"
-  template = ERB.new File.read 'src/_lang_selector.erb'
-  html = template.result LayoutContext.new(
-    languages: LANGS,
-    output_path: output_path,
-  ).binding
-  File.write output_path, html
-end
-
-# Context object to provide variables and methods to the ERB template
-LayoutContext = Struct.new *%i(
-  title content attributes
-  authors translators
-  language languages
-  manual_toc page_toc
-  no_translation
-  output_filename output_path
-) do
-  def binding() Kernel.binding end
-  def h(value) ERB::Util.html_escape(value) end
-  def t(key) attributes[key] || key end
-  def lang_name(lang) Util.lang_name(lang) end
-  def attach_cache_id(path) Util.add_cache_id(path, output_path) end
-end
-
-
-# Define assets to be copied to `build`
-desc 'Copy static assets'
+desc 'Build static assets'
 task :assets
 
+# Define assets to be copied to `build`
 {
   'build/images' => 'src/images',
   'build/fonts/fa-solit-900.woff2' => "#{FontAwesome::Sass.fonts_path}/font-awesome/fa-solid-900.woff2",
@@ -189,7 +124,7 @@ end
 
 # Compile SCSS
 task :assets => 'build/style.css'
-file 'build/style.css' => 'src/style.scss' do |task|
+file 'build/style.css' => 'src/template/style.scss' do |task|
   verbose(false) { mkdir_p 'build' }
   dest, src = task.name, task.prereqs[0]
   puts "sass #{src} > #{dest}" if verbose
@@ -197,3 +132,23 @@ file 'build/style.css' => 'src/style.scss' do |task|
   File.write dest, result.css + "\n/*# sourceMappingURL=#{File.basename dest}.map */"
   File.write "#{dest}.map", result.source_map
 end
+
+
+# Misc HTML
+%w(index 404).each do |name|
+  task :build => "build/#{name}.html"
+  file "build/#{name}.html" => "src/template/#{name}.erb" do |task|
+    puts "Generate page #{task.name}" if verbose
+    template = ERB.new File.read task.prereqs[0]
+    html = template.result ERBContext.new(
+      output_path: task.name,
+      languages: LANGS,
+    ).binding
+    verbose(false) { mkdir_p File.dirname task.name }
+    File.write task.name, html
+  end
+end
+
+
+CLEAN << 'translated'
+CLOBBER << 'build'

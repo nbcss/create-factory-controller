@@ -3,21 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <% if content %>
     <title><%= h title %></title>
-    <% elsif no_translation %>
+    <% if not document %>
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-    <title><%= h t 'no-translation.title' %></title>
     <% end %>
     <link rel="stylesheet" href="<%= h attach_cache_id '../style.css' %>">
   </head>
+
   <body>
     <header>
       <div class="header-inner">
         <div class="site-name"><%= h t 'site-name' %></div>
         <nav>
           <ol>
+            <% if manual_toc %>
             <li class="nav-item nav-project-toc">
               <button><%= h t 'site-nav-manual' %></button>
               <div class="nav-menu-container">
@@ -30,6 +30,7 @@
                 </ol>
               </div>
             </li>
+            <% end %>
             <% if page_toc %>
             <li class="nav-item nav-page-toc">
               <button title="<%= h t 'toc-title' %>"><i class="fa-solid">&#xf03a;</i></button>
@@ -48,7 +49,7 @@
               <div class="nav-menu-container">
                 <ol class="nav-menu">
                   <% languages.each do |lang| %>
-                  <li><a lang="<%= lang %>" href="../<%= lang %>/<%= output_filename.sub(/index\.html$/, '') %>">
+                  <li><a lang="<%= lang %>" href="../<%= lang %>/<%= flat_url_for output_path %>">
                     <%= lang_name lang %>
                   </a></li>
                   <% end %>
@@ -59,29 +60,24 @@
         </nav>
       </div>
     </header>
+
     <main>
-      <% if content %>
+      <% if document %>
       <article>
         <h1><%= h title %></h1>
         <%= content %>
       </article>
-      <% elsif no_translation %>
-      <div>
-        <h1><%= h t 'no-translation.title' %></h1>
-        <p><%= h t 'no-translation.content' %></p>
-        <ul class="action-list">
-          <li><a href="../<%= languages.default %>/<%= output_filename.sub(/index\.html$/, '') %>"><%= h t 'no-translation.read-source-lang' %></a></li>
-          <li><a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'no-translation.help-translate' %></a></li>
-        </ul>
-      </div>
+      <% elsif content %>
+      <%= content %>
       <% end %>
     </main>
+
     <footer>
       <div class="footer-inner">
-        <% if authors.any? %>
+        <% if authors && authors.any? %>
         <div><%= h t 'site-credit-authors-leadin' %> <%= h authors.join(', ') %></div>
         <% end %>
-        <% if translators.any? %>
+        <% if translators && translators.any? %>
         <div><%= h t 'site-credit-translators-leadin' %> <%= h translators.join(', ') %></div>
         <% end %>
         <div><a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'site-nav-help-translate' %></a></div>
