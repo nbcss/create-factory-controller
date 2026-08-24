@@ -17,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -38,7 +39,7 @@ public class FactoryControllerPeripheral implements IPeripheral {
     }
 
     @Override
-    public String getType() {
+    public @NonNull String getType() {
         return "factory_controller";
     }
 
@@ -122,18 +123,19 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return result;
     }
 
-    /** Production orders for one of this controller's networks (get the id from {@link #getNetworks()}). Empty
-     *  list for an unknown/invalid id -- never throws back into Lua for a bad handle. */
-    @LuaFunction(mainThread = true)
-    public final List<Map<String, Object>> getProductionOrders(String network) {
-        Level level = controller.getLevel();
-        UUID net = tryParseUuid(network);
-        if (level == null || net == null) return List.of();
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (ProductionOrderView view : ProductionOrderManager.get(level).viewsForNetwork(net, level.getGameTime()))
-            result.add(orderSummary(view));
-        return result;
-    }
+    // Removed -- Production order is not bound by controller but a global state, so API endpoint should not be here.
+    //    /** Production orders for one of this controller's networks (get the id from {@link #getNetworks()}). Empty
+    //     *  list for an unknown/invalid id -- never throws back into Lua for a bad handle. */
+    //    @LuaFunction(mainThread = true)
+    //    public final List<Map<String, Object>> getProductionOrders(String network) {
+    //        Level level = controller.getLevel();
+    //        UUID net = tryParseUuid(network);
+    //        if (level == null || net == null) return List.of();
+    //        List<Map<String, Object>> result = new ArrayList<>();
+    //        for (ProductionOrderView view : ProductionOrderManager.get(level).viewsForNetwork(net, level.getGameTime()))
+    //            result.add(orderSummary(view));
+    //        return result;
+    //    }
 
     /** Active promises minted by one gauge (its {@code gaugeId}, from {@link #getGauges()}) on a network. */
     @LuaFunction(mainThread = true)
@@ -159,8 +161,6 @@ public class FactoryControllerPeripheral implements IPeripheral {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("pos", posKey(c.position()));
         map.put("type", c.typeId());
-        map.put("item", c.getItemId().toString());
-        map.put("name", c.getName().getString());
         return map;
     }
 

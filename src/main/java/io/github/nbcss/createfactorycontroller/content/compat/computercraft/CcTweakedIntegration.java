@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.compat.computercraft;
 import dan200.computercraft.api.peripheral.PeripheralCapability;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.registry.CFCBlockEntityTypes;
 import net.minecraft.core.Direction;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -26,7 +27,7 @@ public final class CcTweakedIntegration {
      *  brewing stand the same way). */
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(PeripheralCapability.get(),
-            CreateFactoryController.FACTORY_CONTROLLER_BE.get(),
+            CFCBlockEntityTypes.FACTORY_CONTROLLER.get(),
             (FactoryControllerBlockEntity controller, Direction side) -> new FactoryControllerPeripheral(controller));
     }
 }
