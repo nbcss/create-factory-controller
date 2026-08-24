@@ -675,7 +675,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         // Draw the drag-selection rectangle above board contents but below the frame and top-level controls.
         if (dragSelection != null && dragSelection.hasMoved()) {
             Vector2d startScreen = screenAt(
-                    dragSelection.startWorldX(), dragSelection.startWorldY(), centerX, centerY);
+                    dragSelection.startBoardX(), dragSelection.startBoardY(), centerX, centerY);
             int rx0 = (int) Math.min(startScreen.x, mouseX);
             int ry0 = (int) Math.min(startScreen.y, mouseY);
             int rx1 = (int) Math.max(startScreen.x, mouseX);
@@ -1027,7 +1027,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void updateDragSelectionMovement(double mouseX, double mouseY) {
         if (dragSelection == null) return;
-        Vector2d startScreen = screenAt(dragSelection.startWorldX(), dragSelection.startWorldY());
+        Vector2d startScreen = screenAt(dragSelection.startBoardX(), dragSelection.startBoardY());
         dragSelection.updateMovement(startScreen, mouseX, mouseY);
     }
 

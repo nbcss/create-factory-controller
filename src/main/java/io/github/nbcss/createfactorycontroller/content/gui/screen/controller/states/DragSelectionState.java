@@ -15,23 +15,23 @@ import java.util.Set;
 public final class DragSelectionState {
     private static final double DRAG_THRESHOLD = 3;
 
-    private final double startWorldX;
-    private final double startWorldY;
+    private final double startBoardX;
+    private final double startBoardY;
     private final boolean preserved;
     private boolean moved;
 
-    public DragSelectionState(double startWorldX, double startWorldY, boolean preserved) {
-        this.startWorldX = startWorldX;
-        this.startWorldY = startWorldY;
+    public DragSelectionState(double startBoardX, double startBoardY, boolean preserved) {
+        this.startBoardX = startBoardX;
+        this.startBoardY = startBoardY;
         this.preserved = preserved;
     }
 
-    public double startWorldX() {
-        return startWorldX;
+    public double startBoardX() {
+        return startBoardX;
     }
 
-    public double startWorldY() {
-        return startWorldY;
+    public double startBoardY() {
+        return startBoardY;
     }
 
     public boolean isPreserved() {
@@ -52,7 +52,7 @@ public final class DragSelectionState {
 
     /** The inclusive board-cell box between the anchored origin and the current cursor. */
     public Rect2i cellBox(Vector2d currentWorld, int cellSize) {
-        VirtualComponentPosition a = cellAt(startWorldX, startWorldY, cellSize);
+        VirtualComponentPosition a = cellAt(startBoardX, startBoardY, cellSize);
         VirtualComponentPosition b = cellAt(currentWorld.x, currentWorld.y, cellSize);
         return Rect2i.fromBounds(
                 Math.min(a.x(), b.x()),
