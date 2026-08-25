@@ -25,9 +25,9 @@
 - [TODO] Component Search
 - [DOING] Number Connection & Arithmetic Component
 - [TODO] Improve the wording of production order
-- [DONE] CC integration
 - [TODO] Crafter Filter
 - [TODO] Filter Link model
+- [DONE] CC integration
 - [DONE] Fix outline still appear for selected component
 - [DONE] Improve BP System: Handle missing component from compat
 - [DONE] Improve BP System: More info for ghost components

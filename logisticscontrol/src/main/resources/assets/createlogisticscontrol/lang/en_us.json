@@ -2,6 +2,8 @@
   "block.createlogisticscontrol.filter_link": "Filter Link",
   "createlogisticscontrol.filter_link.linked": "Linked to %1$s targets",
   "createlogisticscontrol.filter_link.not_packager": "Filter Link must be placed on a packager",
+  "createlogisticscontrol.config.enable_filter_link": "Enable Filter Link (require reload game).",
+  "createlogisticscontrol.config.enable_filter_link.tooltip": "Enable recipe of Filter Link.",
   "createlogisticscontrol.config.filter_link_range": "Filter Link Target Range",
   "createlogisticscontrol.config.filter_link_range.tooltip": "Maximum distance (in blocks) a Filter Link may reach to select its filter target blocks.",
   "createlogisticscontrol.ponder.filter_link.header": "Using the Filter Link",

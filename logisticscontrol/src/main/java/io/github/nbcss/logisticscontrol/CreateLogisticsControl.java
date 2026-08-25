@@ -1,5 +1,6 @@
 package io.github.nbcss.logisticscontrol;
 
+import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllCreativeModeTabs;
 import io.github.nbcss.logisticscontrol.content.block.FilterLinkBlock;
 import io.github.nbcss.logisticscontrol.content.block.FilterLinkBlockEntity;
@@ -8,7 +9,11 @@ import io.github.nbcss.logisticscontrol.content.helper.PackageFilter;
 import io.github.nbcss.logisticscontrol.content.item.FilterLinkBlockItem;
 import io.github.nbcss.logisticscontrol.content.packet.NetworkHandler;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -18,12 +23,14 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 @Mod(CreateLogisticsControl.MODID)
 public class CreateLogisticsControl {
@@ -69,11 +76,18 @@ public class CreateLogisticsControl {
         BLOCK_ENTITY_TYPES.register("filter_link", () ->
             BlockEntityType.Builder.of(FilterLinkBlockEntity::new, FILTER_LINK.get()).build(null));
 
+    // ── Recipe Conditions ──────────────────────────────────────────────────
+    public static final DeferredRegister<MapCodec<? extends ICondition>> CONDITION_CODECS =
+        DeferredRegister.create(NeoForgeRegistries.Keys.CONDITION_CODECS, MODID);
+    public static final DeferredHolder<MapCodec<? extends ICondition>, MapCodec<FilterLinkEnabledCondition>> FILTER_LINK_ENABLED_CONDITION =
+        CONDITION_CODECS.register("filter_link_enabled", () -> FilterLinkEnabledCondition.CODEC);
+
     public CreateLogisticsControl(IEventBus modEventBus, ModContainer modContainer) {
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         DATA_COMPONENTS.register(modEventBus);
         BLOCK_ENTITY_TYPES.register(modEventBus);
+        CONDITION_CODECS.register(modEventBus);
 
         modEventBus.addListener((RegisterPayloadHandlersEvent event) ->
             NetworkHandler.register(event.registrar(MODID)));
@@ -83,7 +97,16 @@ public class CreateLogisticsControl {
     }
 
     private void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey())
+        if (ServerConfig.filterLinkEnabled() && event.getTabKey() == targetCreativeTab())
             event.accept(FILTER_LINK_ITEM);
+    }
+
+    /** CFC's own tab when it actually exists in the registry (so a standalone install, or an older CFC that predates the
+     *  tab, falls back to Create's base tab instead of stranding the item in a tab that never gets built). */
+    private static ResourceKey<CreativeModeTab> targetCreativeTab() {
+        ResourceLocation cfcTab = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller");
+        if (BuiltInRegistries.CREATIVE_MODE_TAB.containsKey(cfcTab))
+            return ResourceKey.create(Registries.CREATIVE_MODE_TAB, cfcTab);
+        return AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey();
     }
 }

@@ -1,6 +1,11 @@
 {
   "type": "minecraft:crafting_shaped",
   "category": "misc",
+  "neoforge:conditions": [
+    {
+      "type": "createlogisticscontrol:filter_link_enabled"
+    }
+  ],
   "pattern": [
     " T ",
     " F ",

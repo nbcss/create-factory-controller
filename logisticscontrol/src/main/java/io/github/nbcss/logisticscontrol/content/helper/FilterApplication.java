@@ -27,6 +27,7 @@ public final class FilterApplication {
     }
 
     public static void applyFromBox(PackagerBlockEntity packager, ItemStack box) {
+        if (!ServerConfig.filterLinkEnabled()) return;
         Level level = packager.getLevel();
         if (level == null || level.isClientSide) return;
         // apply links

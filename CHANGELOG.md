@@ -26,6 +26,9 @@ Changes:
 - Gauge output limit is increased to 64 stacks.
 - Bugfix mixins are extracted to bundled mod "Create: Higher Logistics Patch".
 
+Compatibility:
+- Added basic ComputerCraft integration (thanks Vinyl)
+
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
 - Fixed gauge timer animation is not properly rendered with some animation lib mods installed.
