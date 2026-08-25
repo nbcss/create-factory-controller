@@ -41,8 +41,8 @@ public abstract class TiledSpriteRenderer {
             .add("Position", VertexFormatElement.POSITION)
             .add("Color", VertexFormatElement.COLOR)
             .add("UV0", VertexFormatElement.UV0)
-            .add("UV1", VertexFormatElement.UV1)
-            .add("UV2", VertexFormatElement.UV2)
+            .add("SpriteMin", VertexFormatElement.UV1)
+            .add("SpriteMax", VertexFormatElement.UV2)
             .build();
 
     private static final ResourceLocation SHADER_LOCATION = ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "tiled_sprite");

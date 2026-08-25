@@ -3,8 +3,8 @@
 in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
-in ivec2 UV1;
-in ivec2 UV2;
+in ivec2 SpriteMin; // UV1
+in ivec2 SpriteMax; // UV2, Contraption Lights hooks variables named UV2 so it cannot be named that
 
 uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
@@ -19,6 +19,6 @@ void main() {
 
     targetCoord = UV0;
     vertexColor = Color;
-    spriteTopLeft = UV1;
-    spriteBottomRight = UV2;
+    spriteTopLeft = SpriteMin;
+    spriteBottomRight = SpriteMax;
 }

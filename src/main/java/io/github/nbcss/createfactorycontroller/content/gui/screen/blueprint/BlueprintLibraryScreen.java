@@ -129,7 +129,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         openFolderButton.setToolTip(Component.translatable("createfactorycontroller.gui.blueprint.open_folder"));
         addWidget(openFolderButton);
 
-        closeButton = new TooltipIconButton(0, 0, AllIcons.I_MTD_CLOSE);
+        closeButton = new TooltipIconButton(0, 0, AllIcons.I_DISABLE);
         closeButton.withCallback(this::closeLibrary);
         closeButton.setToolTip(Component.translatable("createfactorycontroller.gui.blueprint.close_library"));
         addWidget(closeButton);

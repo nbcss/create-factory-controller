@@ -31,6 +31,7 @@ Bugfixes:
 - Fixed gauge timer animation is not properly rendered with some animation lib mods installed.
 - Fixed controller GUI may not open in forge-1.20 if data is too large.
 - Fixed some redstone link control bugs.
+- Fixed controller GUI not render correctly with Contraption Lights mod installed.
 
 ## 1.1.1
 
