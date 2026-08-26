@@ -177,6 +177,7 @@ public final class GhostPreview implements ComponentHolder {
         }
 
         // Components: one pose translate carries them (and their batched filter/frequency icons) to the offset cell.
+        graphics.flush();
         graphics.pose().pushPose();
         graphics.pose().translate((float) offset.x() * CELL, (float) offset.y() * CELL, 0);
         RenderSystem.enableBlend();

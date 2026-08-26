@@ -918,6 +918,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentBehaviour ghost = ComponentRegistry.createFromItem(null, pos, item, null);
         VirtualComponentWidget widget = ghost == null ? null : ComponentWidgetRegistry.create(ghost);
         if (widget == null) return;
+        graphics.flush();
         RenderSystem.enableBlend();
         graphics.setColor(1f, 1f, 1f, 0.5f);
         widget.renderGhost(componentRenderingHelper.params(graphics, new Vector2d(Double.NaN, Double.NaN), false));
