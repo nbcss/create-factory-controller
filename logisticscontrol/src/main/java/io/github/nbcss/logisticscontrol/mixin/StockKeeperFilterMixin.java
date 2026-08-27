@@ -40,9 +40,13 @@ public abstract class StockKeeperFilterMixin {
         if (level == null) return order;
         List<PackageOrderWithCrafts.CraftingEntry> crafts = new ArrayList<>(order.orderedCrafts());
         List<ItemStack> nonCraftOutputs = new ArrayList<>();
+        List<ItemStack> craftOutputs = new ArrayList<>();
         for (CraftableBigItemStack cbis : recipesToOrder) {
-            if (cbis.stack == null || cbis.stack.isEmpty() || cbis.recipe instanceof CraftingRecipe
-                || FluidCompat.isFluidFilter(cbis.stack)) continue;   // a fluid output is not a valid filter
+            if (cbis.stack == null || cbis.stack.isEmpty() || FluidCompat.isFluidFilter(cbis.stack)) continue;   // a fluid output is not a valid filter
+            if (cbis.recipe instanceof CraftingRecipe) {
+                craftOutputs.add(cbis.stack.copyWithCount(1));   // the exact recipe the player picked — carry it so it isn't re-derived by first-match
+                continue;
+            }
             List<BigItemStack> pattern = clc$resolveNonCraftingPattern(cbis);
             if (pattern.stream().allMatch(b -> b.stack.isEmpty())) continue;
             int outputCount = Math.max(1, cbis.getOutputCount(level));
@@ -50,8 +54,11 @@ public abstract class StockKeeperFilterMixin {
             crafts.add(new PackageOrderWithCrafts.CraftingEntry(new PackageOrder(pattern), count));
             nonCraftOutputs.add(cbis.stack.copyWithCount(1));
         }
-        if (nonCraftOutputs.isEmpty()) return order;
-        return FilterOrderCodec.encodeList(new PackageOrderWithCrafts(order.orderedStacks(), crafts), nonCraftOutputs);
+        if (nonCraftOutputs.isEmpty() && craftOutputs.isEmpty()) return order;
+        PackageOrderWithCrafts result = new PackageOrderWithCrafts(order.orderedStacks(), crafts);
+        if (!nonCraftOutputs.isEmpty()) result = FilterOrderCodec.encodeList(result, nonCraftOutputs);
+        if (!craftOutputs.isEmpty()) result = FilterOrderCodec.encodeCraftOutputs(result, craftOutputs);
+        return result;
     }
 
     @Unique

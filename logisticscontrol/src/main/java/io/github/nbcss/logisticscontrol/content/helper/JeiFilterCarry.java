@@ -12,27 +12,35 @@ import java.util.List;
 public final class JeiFilterCarry {
     private JeiFilterCarry() {}
 
-    /** Decodes the carried non-crafting groups + a single-recipe whole-order filter into FilterDispatch and returns
-     *  the crafting-only order to dispatch, or null if there's nothing to carry (dispatch the original untouched).
-     *
-     *  <p>When the whole order is exactly one recipe (crafting or non-crafting), its output is also set as the single
-     *  filter, so the packager stamps PACKAGE_FILTER directly — the package then works without a re-packager, same as a
-     *  gauge order. Multi-recipe orders set only the groups and still need the re-packager to split per recipe. */
     @Nullable
     public static PackageOrderWithCrafts prepare(PackageOrderWithCrafts order, Level level) {
         List<ItemStack> outputs = FilterOrderCodec.decodeList(order);
+        List<ItemStack> craftOutputs = FilterOrderCodec.decodeCraftOutputs(order);
         int nonCrafting = outputs.size();
+        boolean carried = nonCrafting > 0 || !craftOutputs.isEmpty();
         PackageOrderWithCrafts cleaned = FilterOrderCodec.stripNonCrafting(order, nonCrafting);
-        int total = cleaned.orderedCrafts().size() + nonCrafting;
+        int craftEntries = cleaned.orderedCrafts().size();
 
         ItemStack single = ItemStack.EMPTY;
-        if (total == 1)
-            single = nonCrafting == 1 ? outputs.get(0)
-                : RecipeFilters.craftingResult(cleaned.orderedCrafts().get(0).pattern().stacks(), level);
+        if (craftEntries + nonCrafting == 1) {
+            single = nonCrafting == 1 ? outputs.getFirst()
+                : !craftOutputs.isEmpty() ? craftOutputs.getFirst()
+                : RecipeFilters.craftingResult(cleaned.orderedCrafts().getFirst().pattern().stacks(), level);
+        } else if (nonCrafting == 0 && craftEntries >= 1 && allSame(craftOutputs)) {
+            single = craftOutputs.getFirst();
+        }
 
-        if (nonCrafting == 0 && single.isEmpty()) return null;
+        if (!carried && single.isEmpty()) return null;
         if (nonCrafting > 0) FilterDispatch.setGroups(FilterOrderCodec.extractGroups(order, outputs));
+        if (!craftOutputs.isEmpty()) FilterDispatch.setCraftOutputs(craftOutputs);
         if (!single.isEmpty()) FilterDispatch.set(single);
         return cleaned;
+    }
+
+    private static boolean allSame(List<ItemStack> stacks) {
+        if (stacks.isEmpty() || stacks.getFirst().isEmpty()) return false;
+        for (ItemStack s : stacks)
+            if (s.isEmpty() || !ItemStack.isSameItem(stacks.getFirst(), s)) return false;
+        return true;
     }
 }

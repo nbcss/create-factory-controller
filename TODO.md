@@ -25,8 +25,8 @@
 - [TODO] Component Search
 - [DOING] Number Connection & Arithmetic Component
 - [TODO] Improve the wording of production order
-- [TODO] Crafter Filter
-- [TODO] Filter Link model
+- [TODO] Filter Link model, polished amethyst texture
+- [DONE] Crafter Filter
 - [DONE] CC integration
 - [DONE] Fix outline still appear for selected component
 - [DONE] Improve BP System: Handle missing component from compat

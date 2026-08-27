@@ -9,20 +9,28 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Carries side-data on a JEI order by appending sentinel {@link CraftingEntry}s, distinguished by their (never-crafted)
+ * count: {@code > 0} = a real craft to run; {@code 0} = the non-crafting outputs list; {@code -1} = the crafting-recipe
+ * outputs list (the exact items the player picked in JEI, so their recipe isn't re-derived by first-match downstream).
+ */
 public final class FilterOrderCodec {
     private FilterOrderCodec() {}
+
+    private static final int NONCRAFT_OUTPUTS = 0;
+    private static final int CRAFT_OUTPUTS = -1;
 
     public static PackageOrderWithCrafts encode(PackageOrderWithCrafts order, ItemStack filter) {
         if (filter == null || filter.isEmpty()) return order;
         List<CraftingEntry> crafts = new ArrayList<>(order.orderedCrafts());
-        crafts.add(new CraftingEntry(new PackageOrder(List.of(new BigItemStack(filter.copyWithCount(1)))), 0));
+        crafts.add(new CraftingEntry(new PackageOrder(List.of(new BigItemStack(filter.copyWithCount(1)))), NONCRAFT_OUTPUTS));
         return new PackageOrderWithCrafts(order.orderedStacks(), crafts);
     }
 
     public static ItemStack decode(PackageOrderWithCrafts order) {
         for (CraftingEntry e : order.orderedCrafts())
-            if (e.count() == 0 && !e.pattern().stacks().isEmpty()) {
-                ItemStack s = e.pattern().stacks().get(0).stack;
+            if (e.count() == NONCRAFT_OUTPUTS && !e.pattern().stacks().isEmpty()) {
+                ItemStack s = e.pattern().stacks().getFirst().stack;
                 if (!s.isEmpty()) return s;
             }
         return ItemStack.EMPTY;
@@ -30,19 +38,37 @@ public final class FilterOrderCodec {
 
     /** Carries the per-non-crafting-recipe output list as a single count-0 sentinel whose pattern holds the outputs. */
     public static PackageOrderWithCrafts encodeList(PackageOrderWithCrafts order, List<ItemStack> outputs) {
+        return appendSentinel(order, outputs, NONCRAFT_OUTPUTS);
+    }
+
+    public static List<ItemStack> decodeList(PackageOrderWithCrafts order) {
+        return readSentinel(order, NONCRAFT_OUTPUTS);
+    }
+
+    /** Carries the crafting recipes' chosen outputs so the re-packager and dispatch stamp the intended recipe's result
+     *  instead of re-deriving it (first-match) from the ambiguous ingredient pattern. */
+    public static PackageOrderWithCrafts encodeCraftOutputs(PackageOrderWithCrafts order, List<ItemStack> outputs) {
+        return appendSentinel(order, outputs, CRAFT_OUTPUTS);
+    }
+
+    public static List<ItemStack> decodeCraftOutputs(PackageOrderWithCrafts order) {
+        return readSentinel(order, CRAFT_OUTPUTS);
+    }
+
+    private static PackageOrderWithCrafts appendSentinel(PackageOrderWithCrafts order, List<ItemStack> outputs, int marker) {
         if (outputs == null || outputs.isEmpty()) return order;
         List<BigItemStack> payload = new ArrayList<>();
         for (ItemStack s : outputs)
             if (s != null && !s.isEmpty()) payload.add(new BigItemStack(s.copyWithCount(1)));
         if (payload.isEmpty()) return order;
         List<CraftingEntry> crafts = new ArrayList<>(order.orderedCrafts());
-        crafts.add(new CraftingEntry(new PackageOrder(payload), 0));
+        crafts.add(new CraftingEntry(new PackageOrder(payload), marker));
         return new PackageOrderWithCrafts(order.orderedStacks(), crafts);
     }
 
-    public static List<ItemStack> decodeList(PackageOrderWithCrafts order) {
+    private static List<ItemStack> readSentinel(PackageOrderWithCrafts order, int marker) {
         for (CraftingEntry e : order.orderedCrafts())
-            if (e.count() == 0) {
+            if (e.count() == marker) {
                 List<ItemStack> out = new ArrayList<>();
                 for (BigItemStack b : e.pattern().stacks())
                     if (!b.stack.isEmpty()) out.add(b.stack);
@@ -55,7 +81,7 @@ public final class FilterOrderCodec {
      *  [output, ...ingredient totals] groups, summing each ingredient over the recipe's cells × its craft count. */
     public static List<List<BigItemStack>> extractGroups(PackageOrderWithCrafts order, List<ItemStack> outputs) {
         List<CraftingEntry> real = new ArrayList<>();
-        for (CraftingEntry e : order.orderedCrafts()) if (e.count() != 0) real.add(e);
+        for (CraftingEntry e : order.orderedCrafts()) if (e.count() > 0) real.add(e);
         int craftingCount = real.size() - outputs.size();
         List<List<BigItemStack>> groups = new ArrayList<>();
         if (craftingCount < 0) return groups;
@@ -76,10 +102,10 @@ public final class FilterOrderCodec {
         return groups;
     }
 
-    /** Drops the outputs sentinel and the appended non-crafting entries, leaving only real crafting entries. */
+    /** Drops every sentinel (count &le; 0) and the appended non-crafting entries, leaving only real crafting entries. */
     public static PackageOrderWithCrafts stripNonCrafting(PackageOrderWithCrafts order, int nonCraftingCount) {
         List<CraftingEntry> real = new ArrayList<>();
-        for (CraftingEntry e : order.orderedCrafts()) if (e.count() != 0) real.add(e);
+        for (CraftingEntry e : order.orderedCrafts()) if (e.count() > 0) real.add(e);
         int craftingCount = real.size() - nonCraftingCount;
         List<CraftingEntry> kept = new ArrayList<>();
         for (int i = 0; i < craftingCount && i < real.size(); i++) kept.add(real.get(i));
@@ -89,7 +115,7 @@ public final class FilterOrderCodec {
     public static PackageOrderWithCrafts strip(PackageOrderWithCrafts order) {
         List<CraftingEntry> kept = new ArrayList<>();
         for (CraftingEntry e : order.orderedCrafts())
-            if (e.count() != 0) kept.add(e);
+            if (e.count() > 0) kept.add(e);
         if (kept.size() == order.orderedCrafts().size()) return order;
         return new PackageOrderWithCrafts(order.orderedStacks(), kept);
     }

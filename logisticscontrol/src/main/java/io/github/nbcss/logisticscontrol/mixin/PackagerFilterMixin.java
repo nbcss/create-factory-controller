@@ -4,6 +4,8 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import io.github.nbcss.logisticscontrol.CreateLogisticsControl;
+import io.github.nbcss.logisticscontrol.content.helper.CraftOutputs;
+import io.github.nbcss.logisticscontrol.content.helper.CrafterRecipeFilter;
 import io.github.nbcss.logisticscontrol.content.helper.FilterApplication;
 import io.github.nbcss.logisticscontrol.content.helper.FilterDispatch;
 import io.github.nbcss.logisticscontrol.content.helper.NonCraftGroups;
@@ -32,6 +34,9 @@ public abstract class PackagerFilterMixin {
         List<List<BigItemStack>> groups = FilterDispatch.getGroups();
         if (!groups.isEmpty())
             box.set(CreateLogisticsControl.NONCRAFT_GROUPS.get(), new NonCraftGroups(groups));
+        List<ItemStack> craftOutputs = FilterDispatch.getCraftOutputs();
+        if (!craftOutputs.isEmpty())
+            box.set(CreateLogisticsControl.CRAFT_OUTPUTS.get(), new CraftOutputs(craftOutputs));
         return box;
     }
 
@@ -42,5 +47,6 @@ public abstract class PackagerFilterMixin {
         Level level = self.getLevel();
         if (level == null || level.isClientSide) return;
         FilterApplication.applyFromBox(self, box);
+        CrafterRecipeFilter.applyOnUnwrap(self, box);
     }
 }

@@ -4,6 +4,8 @@ import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllCreativeModeTabs;
 import io.github.nbcss.logisticscontrol.content.block.FilterLinkBlock;
 import io.github.nbcss.logisticscontrol.content.block.FilterLinkBlockEntity;
+import io.github.nbcss.logisticscontrol.content.helper.CraftOutputs;
+import io.github.nbcss.logisticscontrol.content.helper.CrafterRecipeFilter;
 import io.github.nbcss.logisticscontrol.content.helper.NonCraftGroups;
 import io.github.nbcss.logisticscontrol.content.helper.PackageFilter;
 import io.github.nbcss.logisticscontrol.content.item.FilterLinkBlockItem;
@@ -23,6 +25,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -68,6 +71,12 @@ public class CreateLogisticsControl {
                 .persistent(NonCraftGroups.CODEC)
                 .networkSynchronized(NonCraftGroups.STREAM_CODEC)
                 .build());
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<CraftOutputs>> CRAFT_OUTPUTS =
+        DATA_COMPONENTS.register("craft_outputs", () ->
+            DataComponentType.<CraftOutputs>builder()
+                .persistent(CraftOutputs.CODEC)
+                .networkSynchronized(CraftOutputs.STREAM_CODEC)
+                .build());
 
     // ── Block Entity Types ─────────────────────────────────────────────────
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
@@ -92,6 +101,9 @@ public class CreateLogisticsControl {
         modEventBus.addListener((RegisterPayloadHandlersEvent event) ->
             NetworkHandler.register(event.registrar(MODID)));
         modEventBus.addListener(this::addCreativeTabContents);
+
+        // Pin the intended recipe on Mechanical Crafters fed by a Filter Link (game-bus event fired per block entity).
+        NeoForge.EVENT_BUS.addListener(CrafterRecipeFilter::onAttachBehaviours);
 
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
     }

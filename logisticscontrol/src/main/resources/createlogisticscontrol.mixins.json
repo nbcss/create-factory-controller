@@ -10,6 +10,7 @@
     "GenericOrderRequestPacketMixin",
     "PackagerBlockMixin",
     "PackagerFilterMixin",
+    "MechanicalCrafterFilterMixin",
     "FactoryPanelBehaviourMixin",
     "FluidRepackagerFilterMixin"
   ],

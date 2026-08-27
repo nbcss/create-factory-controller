@@ -9,6 +9,7 @@ import java.util.List;
 public final class FilterDispatch {
     private static final ThreadLocal<ItemStack> CURRENT = ThreadLocal.withInitial(() -> ItemStack.EMPTY);
     private static final ThreadLocal<List<List<BigItemStack>>> CURRENT_GROUPS = ThreadLocal.withInitial(List::of);
+    private static final ThreadLocal<List<ItemStack>> CURRENT_CRAFT_OUTPUTS = ThreadLocal.withInitial(List::of);
 
     private FilterDispatch() {}
 
@@ -29,8 +30,18 @@ public final class FilterDispatch {
         return CURRENT_GROUPS.get();
     }
 
+    /** The picked crafting outputs, aligned with the order's crafting entries (for multi-recipe disambiguation). */
+    public static void setCraftOutputs(List<ItemStack> outputs) {
+        CURRENT_CRAFT_OUTPUTS.set(outputs == null ? List.of() : outputs);
+    }
+
+    public static List<ItemStack> getCraftOutputs() {
+        return CURRENT_CRAFT_OUTPUTS.get();
+    }
+
     public static void clear() {
         CURRENT.set(ItemStack.EMPTY);
         CURRENT_GROUPS.set(List.of());
+        CURRENT_CRAFT_OUTPUTS.set(List.of());
     }
 }

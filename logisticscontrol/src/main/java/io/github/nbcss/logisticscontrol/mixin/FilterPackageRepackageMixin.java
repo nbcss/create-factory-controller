@@ -10,6 +10,7 @@ import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packager.repackager.PackageRepackageHelper;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import io.github.nbcss.logisticscontrol.CreateLogisticsControl;
+import io.github.nbcss.logisticscontrol.content.helper.CraftOutputs;
 import io.github.nbcss.logisticscontrol.content.helper.NonCraftGroups;
 import io.github.nbcss.logisticscontrol.content.helper.PackageFilter;
 import io.github.nbcss.logisticscontrol.content.helper.RecipeFilters;
@@ -40,6 +41,7 @@ public abstract class FilterPackageRepackageMixin {
             @Local(argsOnly = true) int orderId) {
         List<List<BigItemStack>> groups = null;
         PackageFilter single = null;
+        List<ItemStack> craftOutputs = List.of();
         List<ItemStack> inputs = collectedPackages.get(orderId);
         if (inputs != null)
             for (ItemStack box : inputs) {
@@ -48,6 +50,10 @@ public abstract class FilterPackageRepackageMixin {
                 if (single == null) {
                     PackageFilter f = box.get(CreateLogisticsControl.PACKAGE_FILTER.get());
                     if (f != null) single = f;
+                }
+                if (craftOutputs.isEmpty()) {
+                    CraftOutputs co = box.get(CreateLogisticsControl.CRAFT_OUTPUTS.get());
+                    if (co != null && !co.outputs().isEmpty()) craftOutputs = co.outputs();
                 }
             }
 
@@ -58,9 +64,13 @@ public abstract class FilterPackageRepackageMixin {
         for (int i = 0; i < result.size() && i < craftingCount; i++) {
             BigItemStack bis = result.get(i);
             if (bis == null || bis.stack.isEmpty()) continue;
+            // Per-craft output (aligned with orderedCrafts) wins; else the whole-order single filter.
+            ItemStack prefer = i < craftOutputs.size() && !craftOutputs.get(i).isEmpty() ? craftOutputs.get(i)
+                : single == null ? ItemStack.EMPTY : single.stack();
             ItemStack f = level == null ? ItemStack.EMPTY
-                : RecipeFilters.craftingResult(orderContext.orderedCrafts().get(i).pattern().stacks(), level);
-            if (f.isEmpty() && single != null) f = single.stack();
+                : RecipeFilters.craftingResult(orderContext.orderedCrafts().get(i).pattern().stacks(), prefer, level);
+            if (f.isEmpty() && !prefer.isEmpty()) f = prefer;
+            else if (f.isEmpty() && single != null) f = single.stack();
             if (!f.isEmpty()) bis.stack.set(CreateLogisticsControl.PACKAGE_FILTER.get(), PackageFilter.of(f));
         }
 
