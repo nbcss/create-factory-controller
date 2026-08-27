@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.display;
+package io.github.nbcss.createfactorycontroller.content.displaylink;
 
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.content.redstone.displayLink.DisplayLinkContext;

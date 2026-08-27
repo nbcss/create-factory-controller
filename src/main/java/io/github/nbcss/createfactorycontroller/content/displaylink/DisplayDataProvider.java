@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.display;
+package io.github.nbcss.createfactorycontroller.content.displaylink;
 
 import net.minecraft.network.chat.MutableComponent;
 

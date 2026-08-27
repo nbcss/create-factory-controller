@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.display;
+package io.github.nbcss.createfactorycontroller.content.displaylink;
 
 /**
  * A category of data the Factory Controller exposes to a Create Display Link. The selected mode is stored per-link in

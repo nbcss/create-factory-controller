@@ -10,7 +10,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTw
 import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTweakedIntegration;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
-import io.github.nbcss.createfactorycontroller.content.display.FactoryControllerDisplaySource;
+import io.github.nbcss.createfactorycontroller.content.displaylink.FactoryControllerDisplaySource;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
 import io.github.nbcss.createfactorycontroller.content.packet.NetworkHandler;

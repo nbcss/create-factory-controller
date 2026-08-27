@@ -33,8 +33,8 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Logi
 import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
-import io.github.nbcss.createfactorycontroller.content.display.DisplayDataProvider;
-import io.github.nbcss.createfactorycontroller.content.display.DisplayMode;
+import io.github.nbcss.createfactorycontroller.content.displaylink.DisplayDataProvider;
+import io.github.nbcss.createfactorycontroller.content.displaylink.DisplayMode;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import io.github.nbcss.createfactorycontroller.content.promise.ControllerPromise;
 import io.github.nbcss.createfactorycontroller.content.promise.PromiseCounts;
