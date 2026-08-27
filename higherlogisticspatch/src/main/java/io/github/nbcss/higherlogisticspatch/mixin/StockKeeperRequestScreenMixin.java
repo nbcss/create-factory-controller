@@ -1,8 +1,14 @@
 package io.github.nbcss.higherlogisticspatch.mixin;
 
 import com.simibubi.create.content.logistics.BigItemStack;
+import com.simibubi.create.content.logistics.packager.InventorySummary;
+import com.simibubi.create.content.logistics.stockTicker.CraftableBigItemStack;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
+import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
+import net.createmod.catnip.data.Pair;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -10,12 +16,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Bug Fix: https://github.com/Creators-of-Create/Create/issues/9937
  */
 @Mixin(value = StockKeeperRequestScreen.class, remap = false)
 public class StockKeeperRequestScreenMixin {
+
+    @Shadow StockTickerBlockEntity blockEntity;
 
     @Inject(method = "resolveIngredientAmounts", at = @At("HEAD"), cancellable = true)
     private void hlp$fastResolveIngredientAmounts(
@@ -75,5 +84,25 @@ public class StockKeeperRequestScreenMixin {
             resolved.add(resolvedList);
         }
         cir.setReturnValue(resolved);
+    }
+
+    @Inject(method = "maxCraftable", at = @At("RETURN"), cancellable = true)
+    private void hlp$saturateMaxCraftable(
+            CraftableBigItemStack cbis, InventorySummary summary,
+            Function<ItemStack, Integer> countModifier, int newTypeLimit,
+            CallbackInfoReturnable<Pair<Integer, List<List<BigItemStack>>>> cir) {
+        Pair<Integer, List<List<BigItemStack>>> ret = cir.getReturnValue();
+        List<List<BigItemStack>> resolved = ret.getSecond();
+        if (resolved.isEmpty()) return;   // no ingredients
+
+        long minCount = Long.MAX_VALUE;
+        for (List<BigItemStack> slot : resolved) {
+            long sum = 0;
+            for (BigItemStack entry : slot) sum += entry.count;
+            minCount = Math.min(minCount, sum);
+        }
+        long product = minCount * cbis.getOutputCount(blockEntity.getLevel());
+        int clamped = (int) Math.min(product, Integer.MAX_VALUE);
+        if (clamped != ret.getFirst()) cir.setReturnValue(Pair.of(clamped, resolved));
     }
 }
