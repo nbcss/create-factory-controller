@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller;
 
+import io.github.nbcss.createfactorycontroller.content.helper.ConfigDataFixer;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -14,6 +15,7 @@ public final class ServerConfig {
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue PRESERVE_CONTROLLER_DATA;
     public static final ModConfigSpec.BooleanValue PASSIVE_TOTAL_DEMAND;
+    private static final ModConfigSpec.IntValue CONFIG_VERSION;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -47,10 +49,21 @@ public final class ServerConfig {
                         "for deep production chains.")
                 .translation("createfactorycontroller.config.passive_total_demand")
                 .define("passiveTotalDemand", false);
+        CONFIG_VERSION = builder
+                .comment("Internal config migration version.")
+                .defineInRange("configVersion", 0, 0, ConfigDataFixer.DATA_VERSION);
         SPEC = builder.build();
     }
 
     private ServerConfig() {}
+
+    public static int configVersion() {
+        return CONFIG_VERSION.get();
+    }
+
+    public static void setConfigVersion(int version) {
+        CONFIG_VERSION.set(version);
+    }
 
     public static int maxComponents() {
         return MAX_COMPONENTS.get();

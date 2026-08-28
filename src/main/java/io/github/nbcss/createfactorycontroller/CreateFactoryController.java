@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
+import io.github.nbcss.createfactorycontroller.content.helper.ConfigDataFixer;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTweakedCompat;
@@ -130,6 +131,7 @@ public class CreateFactoryController {
             CcTweakedIntegration.register(modEventBus);
         }
 
+        modEventBus.addListener(ConfigDataFixer::migrate);
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
