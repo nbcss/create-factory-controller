@@ -119,13 +119,17 @@ public class VirtualConnectionRenderer {
             if (tail) lineStart.add(direction.vector(CELL/2));
             if (head)   lineEnd.sub(direction.vector(CELL/2));
 
-            Vector2i lineMin = new Vector2i(lineStart).min(lineEnd);
-            Vector2i lineSize = new Vector2i(lineStart).sub(lineEnd).absolute();
+            int lineLength = (lineEnd.x - lineStart.x) * direction.vector.x()
+                    + (lineEnd.y - lineStart.y) * direction.vector.y();
+            if (lineLength >= 0) {
+                Vector2i lineMin = new Vector2i(lineStart).min(lineEnd);
+                Vector2i lineSize = new Vector2i(lineStart).sub(lineEnd).absolute();
 
-            var lineSt = Subtexture.LINES.get(direction);
-            getSpriteRenderer(lineSt, frameIndex).render(bufferSource, pose,
-                    lineMin.x - lineSt.w/2, lineMin.y - lineSt.h/2,
-                    lineSize.x + lineSt.w, lineSize.y + lineSt.h);
+                var lineSt = Subtexture.LINES.get(direction);
+                getSpriteRenderer(lineSt, frameIndex).render(bufferSource, pose,
+                        lineMin.x - lineSt.w/2, lineMin.y - lineSt.h/2,
+                        lineSize.x + lineSt.w, lineSize.y + lineSt.h);
+            }
 
             // Draw tail and head
             if (tail) {
