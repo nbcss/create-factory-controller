@@ -255,7 +255,7 @@
   "item.createfactorycontroller.arrangement_marker": "Пользовательская схема",
   "item.createfactorycontroller.fluid_filter": "Фильтр жидкости",
   "item.createfactorycontroller.arithmetic_tube": "Арифметическая Лампа",
-  "item.createfactorycontroller.polished_amethyst": "Полированный аметист",
+  "item.createfactorycontroller.cut_amethyst": "Cut Amethyst",
   "itemGroup.createfactorycontroller.factory_controller": "Create: Factory Controller",
   "createfactorycontroller.network.default": "Сеть #%1$s",
   "createfactorycontroller.network.none": "Нет сети",
