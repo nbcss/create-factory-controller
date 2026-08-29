@@ -255,7 +255,7 @@
   "item.createfactorycontroller.arrangement_marker": "Własny schemat",
   "item.createfactorycontroller.fluid_filter": "Filtr płynu",
   "item.createfactorycontroller.arithmetic_tube": "Lampa arytmetyczna",
-  "item.createfactorycontroller.polished_amethyst": "Wypolerowany Ametyst",
+  "item.createfactorycontroller.cut_amethyst": "Cut Amethyst",
   "itemGroup.createfactorycontroller.factory_controller": "Create: Factory Controller",
   "createfactorycontroller.network.default": "Sieć #%1$s",
   "createfactorycontroller.network.none": "Brak sieci",
