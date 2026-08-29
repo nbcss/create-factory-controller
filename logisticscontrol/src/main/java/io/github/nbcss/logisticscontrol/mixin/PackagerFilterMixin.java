@@ -5,7 +5,6 @@ import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import io.github.nbcss.logisticscontrol.CreateLogisticsControl;
 import io.github.nbcss.logisticscontrol.content.helper.CraftOutputs;
-import io.github.nbcss.logisticscontrol.content.helper.CrafterRecipeFilter;
 import io.github.nbcss.logisticscontrol.content.helper.FilterApplication;
 import io.github.nbcss.logisticscontrol.content.helper.FilterDispatch;
 import io.github.nbcss.logisticscontrol.content.helper.NonCraftGroups;
@@ -47,6 +46,5 @@ public abstract class PackagerFilterMixin {
         Level level = self.getLevel();
         if (level == null || level.isClientSide) return;
         FilterApplication.applyFromBox(self, box);
-        CrafterRecipeFilter.applyOnUnwrap(self, box);
     }
 }

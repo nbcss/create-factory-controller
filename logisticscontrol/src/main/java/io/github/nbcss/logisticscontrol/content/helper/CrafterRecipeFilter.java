@@ -4,20 +4,13 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.AllBlockEntityTypes;
 import com.simibubi.create.AllRecipeTypes;
 import com.simibubi.create.api.event.BlockEntityBehaviourEvent;
-import com.simibubi.create.content.kinetics.crafter.MechanicalCrafterBlockEntity;
 import com.simibubi.create.content.kinetics.crafter.MechanicalCraftingInput;
 import com.simibubi.create.content.kinetics.crafter.MechanicalCraftingRecipe;
 import com.simibubi.create.content.kinetics.crafter.RecipeGridHandler;
-import com.simibubi.create.content.logistics.packager.PackagerBlock;
-import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
-import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.infrastructure.config.AllConfigs;
-import io.github.nbcss.logisticscontrol.CreateLogisticsControl;
-import io.github.nbcss.logisticscontrol.ServerConfig;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -30,13 +23,12 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.List;
-
 /**
  * Lets the Filter Link pin which recipe a Mechanical Crafter resolves. Every crafter carries an <b>inert</b>
  * {@link FilteringBehaviour}: it is never rendered and never captures a right-click (so a Deployer aimed at the crafter
- * still inserts items, and players can't hand-set it) — only the Filter Link writes it, via {@link #applyOnUnwrap}. The
- * crafter reads it when it resolves its recipe (see {@code MechanicalCrafterFilterMixin}).
+ * still inserts items, and players can't hand-set it) — only the Filter Link writes it, on the player-selected target
+ * crafter (see {@code FilterApplication}). The crafter reads it when it resolves its recipe (see
+ * {@code MechanicalCrafterFilterMixin}).
  */
 public final class CrafterRecipeFilter {
     private CrafterRecipeFilter() {}
@@ -45,25 +37,6 @@ public final class CrafterRecipeFilter {
     public static void onAttachBehaviours(BlockEntityBehaviourEvent event) {
         event.forType(AllBlockEntityTypes.MECHANICAL_CRAFTER.get(), crafter ->
             event.attach(new FilteringBehaviour(crafter, new HeadlessSlot()).onlyActiveWhen(() -> false)));
-    }
-
-    /** When a package is unwrapped into a crafter, pin its carried filter onto the chain's resolving crafter — the one
-     *  that actually looks the recipe up. Absent filter clears the pin (matches the Filter Link's clear-on-absent). */
-    public static void applyOnUnwrap(PackagerBlockEntity packager, ItemStack box) {
-        if (!ServerConfig.filterLinkEnabled()) return;
-        Level level = packager.getLevel();
-        if (level == null || level.isClientSide) return;
-        Direction facing = packager.getBlockState().getOptionalValue(PackagerBlock.FACING).orElse(Direction.UP);
-        BlockPos targetPos = packager.getBlockPos().relative(facing.getOpposite());
-        if (!(level.getBlockEntity(targetPos) instanceof MechanicalCrafterBlockEntity entry)) return;
-        PackageFilter pf = box.get(CreateLogisticsControl.PACKAGE_FILTER.get());
-        ItemStack toApply = pf == null || pf.stack().isEmpty() ? ItemStack.EMPTY : pf.stack().copyWithCount(1);
-        List<MechanicalCrafterBlockEntity> chain = RecipeGridHandler.getAllCraftersOfChain(entry);
-        if (chain == null) chain = List.of(entry);
-        for (MechanicalCrafterBlockEntity c : chain) {
-            FilteringBehaviour beh = BlockEntityBehaviour.get(level, c.getBlockPos(), FilteringBehaviour.TYPE);
-            if (beh != null) beh.setFilter(toApply);
-        }
     }
 
     /**

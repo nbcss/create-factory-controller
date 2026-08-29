@@ -64,13 +64,12 @@ public abstract class FilterPackageRepackageMixin {
         for (int i = 0; i < result.size() && i < craftingCount; i++) {
             BigItemStack bis = result.get(i);
             if (bis == null || bis.stack.isEmpty()) continue;
-            // Per-craft output (aligned with orderedCrafts) wins; else the whole-order single filter.
+
             ItemStack prefer = i < craftOutputs.size() && !craftOutputs.get(i).isEmpty() ? craftOutputs.get(i)
                 : single == null ? ItemStack.EMPTY : single.stack();
-            ItemStack f = level == null ? ItemStack.EMPTY
-                : RecipeFilters.craftingResult(orderContext.orderedCrafts().get(i).pattern().stacks(), prefer, level);
-            if (f.isEmpty() && !prefer.isEmpty()) f = prefer;
-            else if (f.isEmpty() && single != null) f = single.stack();
+            ItemStack f = !prefer.isEmpty() ? prefer
+                : level == null ? ItemStack.EMPTY
+                : RecipeFilters.craftingResult(orderContext.orderedCrafts().get(i).pattern().stacks(), level);
             if (!f.isEmpty()) bis.stack.set(CreateLogisticsControl.PACKAGE_FILTER.get(), PackageFilter.of(f));
         }
 

@@ -2,7 +2,7 @@ package io.github.nbcss.logisticscontrol.content.block;
 
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.simibubi.create.content.logistics.packager.repackager.RepackagerBlockEntity;
-import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.content.redstone.displayLink.LinkWithBulbBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import io.github.nbcss.logisticscontrol.CreateLogisticsControl;
 import net.minecraft.core.BlockPos;
@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FilterLinkBlockEntity extends SmartBlockEntity {
+public class FilterLinkBlockEntity extends LinkWithBulbBlockEntity {
     private final List<BlockPos> targets = new ArrayList<>();
 
     public FilterLinkBlockEntity(BlockPos pos, BlockState state) {
@@ -31,6 +31,16 @@ public class FilterLinkBlockEntity extends SmartBlockEntity {
     public void setTargets(List<BlockPos> newTargets) {
         targets.clear();
         for (BlockPos p : newTargets) targets.add(p.immutable());
+        notifyUpdate();
+    }
+
+    public void flash() {
+        if (level == null) return;
+        if (level.isClientSide) {
+            pulse();
+            return;
+        }
+        sendPulseNextSync();
         notifyUpdate();
     }
 

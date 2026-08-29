@@ -22,10 +22,10 @@
 - [DONE] Compat with stock keeper from different mods
 
 # 1.2.0
-- [TODO] Component Search
 - [DOING] Number Connection & Arithmetic Component
 - [TODO] Improve the wording of production order
-- [TODO] Filter Link model, polished amethyst texture
+- [TODO] Compat with fluid logistics again
+- [DONE] Filter Link model, polished amethyst texture
 - [DONE] Crafter Filter
 - [DONE] CC integration
 - [DONE] Fix outline still appear for selected component
@@ -40,6 +40,7 @@
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
 - [Patch] Stock Link priority system is broken https://github.com/Creators-of-Create/Create/issues/9689
 - [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
+- [TODO] Component Search
 - [TBC] Fix gauge sound overload?
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Color wire/bulb by limit blocked state

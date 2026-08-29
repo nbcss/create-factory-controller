@@ -3,6 +3,7 @@ package io.github.nbcss.logisticscontrol.content.helper;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
+import com.simibubi.create.foundation.blockEntity.behaviour.filtering.SidedFilteringBehaviour;
 import io.github.nbcss.logisticscontrol.CreateLogisticsControl;
 import io.github.nbcss.logisticscontrol.ServerConfig;
 import io.github.nbcss.logisticscontrol.content.block.FilterLinkBlock;
@@ -50,9 +51,21 @@ public final class FilterApplication {
 
     public static void apply(Level level, FilterLinkBlockEntity link, ItemStack filter) {
         ItemStack toApply = filter.isEmpty() ? ItemStack.EMPTY : filter.copyWithCount(1);
+        boolean applied = false;
         for (BlockPos target : link.getTargets()) {
             FilteringBehaviour beh = BlockEntityBehaviour.get(level, target, FilteringBehaviour.TYPE);
-            if (beh != null) beh.setFilter(toApply);
+            if (beh == null) continue;
+            if (!(beh instanceof SidedFilteringBehaviour sided)) {
+                applied |= beh.setFilter(toApply);
+                continue;
+            }
+            boolean faceApplied = false;
+            for (Direction direction : Direction.values()) {
+                FilteringBehaviour side = sided.get(direction);
+                if (side != null) faceApplied |= side.setFilter(toApply);
+            }
+            applied |= faceApplied;
         }
+        if (applied) link.flash();
     }
 }
