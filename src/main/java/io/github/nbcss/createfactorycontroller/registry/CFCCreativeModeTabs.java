@@ -26,7 +26,7 @@ public final class CFCCreativeModeTabs {
                 .displayItems((parameters, output) -> {
                     output.accept(CFCItems.FACTORY_CONTROLLER.get());
                     output.accept(CFCItems.ARITHMETIC_TUBE.get());
-                    output.accept(CFCItems.POLISHED_AMETHYST.get());
+                    output.accept(CFCItems.CUT_AMETHYST.get());
                 })
                 .build();
     }

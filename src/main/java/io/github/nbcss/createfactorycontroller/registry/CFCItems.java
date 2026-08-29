@@ -16,8 +16,8 @@ public final class CFCItems {
             ITEMS.register("factory_controller", () ->
                     new FactoryControllerBlockItem(CFCBlocks.FACTORY_CONTROLLER.get(), new Item.Properties()));
 
-    public static final DeferredItem<Item> POLISHED_AMETHYST =
-            ITEMS.register("polished_amethyst", () -> new Item(new Item.Properties()));
+    public static final DeferredItem<Item> CUT_AMETHYST =
+            ITEMS.register("cut_amethyst", () -> new Item(new Item.Properties()));
 
     public static final DeferredItem<Item> ARITHMETIC_TUBE =
             ITEMS.register("arithmetic_tube", () -> new Item(new Item.Properties()));

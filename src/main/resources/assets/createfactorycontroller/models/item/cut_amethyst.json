@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "createfactorycontroller:item/polished_amethyst"
+    "layer0": "createfactorycontroller:item/cut_amethyst"
   }
 }
