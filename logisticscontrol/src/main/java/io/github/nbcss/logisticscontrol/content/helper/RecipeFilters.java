@@ -28,7 +28,7 @@ public final class RecipeFilters {
             .map(h -> h.value().assemble(input, registries)).orElse(ItemStack.EMPTY);
         if (result.isEmpty())
             result = AllRecipeTypes.MECHANICAL_CRAFTING.find(input, level).map(h -> h.value().assemble(input, registries)).orElse(ItemStack.EMPTY);
-        return FluidCompat.isFluidFilter(result) ? ItemStack.EMPTY : result;   // a fluid is not a valid output filter
+        return FluidCompat.isFluidFilter(result) || !PackageFilter.canLabel(result) ? ItemStack.EMPTY : result;
     }
 
     private static CraftingInput buildInput(List<BigItemStack> pattern) {

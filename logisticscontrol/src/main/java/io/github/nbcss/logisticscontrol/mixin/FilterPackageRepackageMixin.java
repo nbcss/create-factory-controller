@@ -140,7 +140,8 @@ public abstract class FilterPackageRepackageMixin {
 
     private static BigItemStack clc$makeFilteredBox(ItemStackHandler target, ItemStack output) {
         ItemStack box = PackageItem.containing(target);
-        box.set(CreateLogisticsControl.PACKAGE_FILTER.get(), PackageFilter.of(output));
+        if (PackageFilter.canLabel(output))
+            box.set(CreateLogisticsControl.PACKAGE_FILTER.get(), PackageFilter.of(output));
         return new BigItemStack(box, 1);
     }
 }

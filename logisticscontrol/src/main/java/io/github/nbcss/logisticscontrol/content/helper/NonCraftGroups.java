@@ -7,6 +7,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Transient carry for non-crafting JEI orders: one group per recipe, laid out as [output, ...consolidated ingredient
@@ -14,6 +15,23 @@ import java.util.List;
  *  bundles each group's ingredients into its own filtered box. Keeps the recipe's ingredients off Create's orderedCrafts,
  *  so intermediate fragments don't carry a crafting-grid pattern. */
 public record NonCraftGroups(List<List<BigItemStack>> groups) {
+    public NonCraftGroups {
+        if (groups == null) {
+            groups = List.of();
+        } else {
+            List<List<BigItemStack>> sanitized = new ArrayList<>();
+            for (List<BigItemStack> group : groups) {
+                if (group == null || group.isEmpty()) continue;
+                List<BigItemStack> copy = new ArrayList<>(group);
+                BigItemStack output = copy.getFirst();
+                if (output == null || !PackageFilter.canLabel(output.stack))
+                    copy.set(0, new BigItemStack(ItemStack.EMPTY));
+                sanitized.add(copy);
+            }
+            groups = List.copyOf(sanitized);
+        }
+    }
+
     public static final Codec<NonCraftGroups> CODEC =
         BigItemStack.CODEC.listOf().listOf().xmap(NonCraftGroups::new, NonCraftGroups::groups);
 

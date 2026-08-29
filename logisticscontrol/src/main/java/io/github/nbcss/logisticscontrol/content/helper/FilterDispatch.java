@@ -13,9 +13,10 @@ public final class FilterDispatch {
 
     private FilterDispatch() {}
 
-    /** A fluid (carried as a virtual fluid-filter item) is not a valid output filter, so it never enters the system. */
+    /** Unsupported virtual fluids and physical Create filter items never enter the package-label flow. */
     public static void set(ItemStack filter) {
-        CURRENT.set(filter == null || FluidCompat.isFluidFilter(filter) ? ItemStack.EMPTY : filter);
+        CURRENT.set(filter == null || FluidCompat.isFluidFilter(filter) || !PackageFilter.canLabel(filter)
+            ? ItemStack.EMPTY : filter);
     }
 
     public static ItemStack get() {
@@ -23,7 +24,7 @@ public final class FilterDispatch {
     }
 
     public static void setGroups(List<List<BigItemStack>> groups) {
-        CURRENT_GROUPS.set(groups == null ? List.of() : groups);
+        CURRENT_GROUPS.set(new NonCraftGroups(groups).groups());
     }
 
     public static List<List<BigItemStack>> getGroups() {
@@ -32,7 +33,7 @@ public final class FilterDispatch {
 
     /** The picked crafting outputs, aligned with the order's crafting entries (for multi-recipe disambiguation). */
     public static void setCraftOutputs(List<ItemStack> outputs) {
-        CURRENT_CRAFT_OUTPUTS.set(outputs == null ? List.of() : outputs);
+        CURRENT_CRAFT_OUTPUTS.set(new CraftOutputs(outputs).outputs());
     }
 
     public static List<ItemStack> getCraftOutputs() {

@@ -28,7 +28,7 @@ public abstract class PackagerFilterMixin {
         target = "Lcom/simibubi/create/content/logistics/box/PackageItem;containing(Lnet/neoforged/neoforge/items/ItemStackHandler;)Lnet/minecraft/world/item/ItemStack;"))
     private ItemStack clc$stampFilterOnFreshBox(ItemStack box) {
         ItemStack filter = FilterDispatch.get();
-        if (!filter.isEmpty())
+        if (PackageFilter.canLabel(filter))
             box.set(CreateLogisticsControl.PACKAGE_FILTER.get(), PackageFilter.of(filter));
         List<List<BigItemStack>> groups = FilterDispatch.getGroups();
         if (!groups.isEmpty())

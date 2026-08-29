@@ -58,8 +58,10 @@ public final class FilterOrderCodec {
     private static PackageOrderWithCrafts appendSentinel(PackageOrderWithCrafts order, List<ItemStack> outputs, int marker) {
         if (outputs == null || outputs.isEmpty()) return order;
         List<BigItemStack> payload = new ArrayList<>();
-        for (ItemStack s : outputs)
+        for (ItemStack s : outputs) {
             if (s != null && !s.isEmpty()) payload.add(new BigItemStack(s.copyWithCount(1)));
+            else payload.add(new BigItemStack(ItemStack.EMPTY));
+        }
         if (payload.isEmpty()) return order;
         List<CraftingEntry> crafts = new ArrayList<>(order.orderedCrafts());
         crafts.add(new CraftingEntry(new PackageOrder(payload), marker));
@@ -71,7 +73,7 @@ public final class FilterOrderCodec {
             if (e.count() == marker) {
                 List<ItemStack> out = new ArrayList<>();
                 for (BigItemStack b : e.pattern().stacks())
-                    if (!b.stack.isEmpty()) out.add(b.stack);
+                    out.add(b.stack);
                 if (!out.isEmpty()) return out;
             }
         return List.of();

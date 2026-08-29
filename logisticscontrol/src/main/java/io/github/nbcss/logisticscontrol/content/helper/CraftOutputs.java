@@ -12,11 +12,17 @@ import java.util.List;
  *  in {@code orderedCrafts} order. Stamped on the packager's fragments so the re-packager pins each split box to the
  *  intended recipe (positionally) instead of first-matching an ambiguous ingredient pattern. */
 public record CraftOutputs(List<ItemStack> outputs) {
+    public CraftOutputs {
+        outputs = outputs == null ? List.of() : outputs.stream()
+            .map(s -> s != null && PackageFilter.canLabel(s) ? s : ItemStack.EMPTY)
+            .toList();
+    }
+
     public static final Codec<CraftOutputs> CODEC =
-        ItemStack.CODEC.listOf().xmap(CraftOutputs::new, CraftOutputs::outputs);
+        ItemStack.OPTIONAL_CODEC.listOf().xmap(CraftOutputs::new, CraftOutputs::outputs);
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CraftOutputs> STREAM_CODEC =
-        CatnipStreamCodecBuilders.list(ItemStack.STREAM_CODEC).map(CraftOutputs::new, CraftOutputs::outputs);
+        CatnipStreamCodecBuilders.list(ItemStack.OPTIONAL_STREAM_CODEC).map(CraftOutputs::new, CraftOutputs::outputs);
 
     @Override
     public boolean equals(Object o) {

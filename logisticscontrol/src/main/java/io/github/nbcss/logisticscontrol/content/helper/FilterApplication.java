@@ -42,7 +42,7 @@ public final class FilterApplication {
                     && level.getBlockEntity(adj) instanceof FilterLinkBlockEntity link) {
                 if (filter == null) {
                     PackageFilter pf = box.get(CreateLogisticsControl.PACKAGE_FILTER.get());
-                    filter = pf == null ? ItemStack.EMPTY : pf.stack();
+                    filter = pf == null || !PackageFilter.canLabel(pf.stack()) ? ItemStack.EMPTY : pf.stack();
                 }
                 apply(level, link, filter);
             }

@@ -7,6 +7,7 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
 import io.github.nbcss.logisticscontrol.content.compat.fluids.FluidCompat;
 import io.github.nbcss.logisticscontrol.content.helper.FilterOrderCodec;
+import io.github.nbcss.logisticscontrol.content.helper.PackageFilter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -42,17 +43,19 @@ public abstract class StockKeeperFilterMixin {
         List<ItemStack> nonCraftOutputs = new ArrayList<>();
         List<ItemStack> craftOutputs = new ArrayList<>();
         for (CraftableBigItemStack cbis : recipesToOrder) {
-            if (cbis.stack == null || cbis.stack.isEmpty() || FluidCompat.isFluidFilter(cbis.stack)) continue;   // a fluid output is not a valid filter
+            boolean canLabel = cbis.stack != null && !FluidCompat.isFluidFilter(cbis.stack)
+                && PackageFilter.canLabel(cbis.stack);
             if (cbis.recipe instanceof CraftingRecipe) {
-                craftOutputs.add(cbis.stack.copyWithCount(1));   // the exact recipe the player picked — carry it so it isn't re-derived by first-match
+                craftOutputs.add(canLabel ? cbis.stack.copyWithCount(1) : ItemStack.EMPTY);
                 continue;
             }
+            if (cbis.recipe == null) continue;
             List<BigItemStack> pattern = clc$resolveNonCraftingPattern(cbis);
             if (pattern.stream().allMatch(b -> b.stack.isEmpty())) continue;
             int outputCount = Math.max(1, cbis.getOutputCount(level));
             int count = Math.max(1, cbis.count / outputCount);
             crafts.add(new PackageOrderWithCrafts.CraftingEntry(new PackageOrder(pattern), count));
-            nonCraftOutputs.add(cbis.stack.copyWithCount(1));
+            nonCraftOutputs.add(canLabel ? cbis.stack.copyWithCount(1) : ItemStack.EMPTY);
         }
         if (nonCraftOutputs.isEmpty() && craftOutputs.isEmpty()) return order;
         PackageOrderWithCrafts result = new PackageOrderWithCrafts(order.orderedStacks(), crafts);
