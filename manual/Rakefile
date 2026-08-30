@@ -14,7 +14,7 @@ require_relative 'lib/manual-builder'
 # Get languages from existing localisation file names
 LANGS = Dir.entries('l10n')
 .map{|x| x.split '.' }.filter{|x| x.length >= 3 }.map{|x| x[-2] }
-.uniq.map(&:to_sym)
+.uniq.sort.map(&:to_sym)
 
 LANGS.prepend :en
 def LANGS.default() first end
@@ -55,8 +55,10 @@ LANGS.each do |lang|
 
     file doc.output_path =>
     doc.dependency_files + [:assets] do
-      puts "Generate page #{doc.output_path}" if verbose
-      doc.build
+      if File.exist? doc.source_path
+        puts "Generate page #{doc.output_path}" if verbose
+        doc.build
+      end
     end
   end
 

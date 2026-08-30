@@ -132,10 +132,6 @@ class ManualBuilder
     end
 
     def build
-      unless File.exist? source_path
-        return
-      end
-
       @document = Asciidoctor.load_file source_path, adoc_options
 
       @title = @document.title
