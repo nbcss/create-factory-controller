@@ -22,6 +22,8 @@ public abstract class PackagerBlockEntityMixin {
 
     @Inject(method = "getAvailableItems", at = @At("HEAD"), cancellable = true)
     private void hlp$preserveBaselineOnTransientCapLoss(CallbackInfoReturnable<InventorySummary> cir) {
+        // for prevent CFL mixin conflict
+        if (((Object) this).getClass() != PackagerBlockEntity.class) return;
         if (availableItems == null || targetInventory == null) return;
         if (!targetInventory.hasInventory())
             cir.setReturnValue(availableItems);
