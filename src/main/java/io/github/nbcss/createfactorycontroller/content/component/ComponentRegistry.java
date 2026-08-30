@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.component;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -39,12 +40,18 @@ public final class ComponentRegistry {
         registerType(LogicalTubeBehaviour.TYPE);
         registerType(ArithmeticTubeBehaviour.TYPE);
 
-        // Create: Repackaged's Fluid Gauge is registered only when the addon is present.
+        // Create: Repackaged's Fluid Gauge is registered only when the addon is present (ModList check — timing-safe).
         if (RepackagedCompat.isLoaded())
             registerType(FluidGaugeBehaviour.TYPE);
     }
 
-    /** Whether attaching {@code itemId} needs a controller logistics network (gauges do; redstone links don't). */
+    public static void init() {
+        // Create: Fluid Logistics' dedicated Fluid Factory Gauge (1.2.7+).
+        if (CflFluidGaugeBehaviour.isAvailable() && !TYPE_REGISTRY.containsKey(CflFluidGaugeBehaviour.TYPE.id()))
+            registerType(CflFluidGaugeBehaviour.TYPE);
+    }
+
+    /** Whether attaching {@code itemId} needs a controller logistics network */
     public static boolean needsNetwork(ResourceLocation itemId) {
         VirtualComponentBehaviour.Type type = ITEM_REGISTRY.get(itemId);
         return type != null && type.isRequireNetwork();
@@ -97,6 +104,7 @@ public final class ComponentRegistry {
     @Nullable
     public static VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                     CompoundTag tag, HolderLookup.Provider registries) {
+        tag = GaugeMigration.migrate(tag);   // conditional, idempotent (e.g. fluid gauge → fluid factory gauge)
         String typeId = tag.getString("Type");
         VirtualComponentBehaviour.Type type = TYPE_REGISTRY.get(typeId);
         return type == null ? null : type.fromNBT(controller, tag, registries);

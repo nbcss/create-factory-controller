@@ -1304,9 +1304,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     // ── Fluid mode helpers ──────────────────────────────────────────────────────
-
-    /** The fluid output slot is always capped at 10 B (10000 mB), independent of the threshold unit box. */
-    static final int FLUID_OUTPUT_CAP_MB = 10_000;
+    static final int FLUID_OUTPUT_CAP_MB = 64_000;
 
     static int adjustFluidAmount(int cur, int dir, boolean shift, boolean ctrl, int min, int max) {
         int next = cur + dir * (ctrl ? 1 : shift ? 10 : 1000);

@@ -23,6 +23,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixer;
+import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
@@ -465,6 +466,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             playDenySound();
             return;
         }
+        // Migrate blueprint gauges up front
+        for (int i = 0; i < componentList.size(); i++)
+            GaugeMigration.migrate(componentList.getCompound(i));
 
         // network
         Set<UUID> bindable = new LinkedHashSet<>(networks);

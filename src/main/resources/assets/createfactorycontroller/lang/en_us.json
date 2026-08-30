@@ -119,6 +119,7 @@
   "createfactorycontroller.gui.set_item.filter_tip": "Click with item to set",
   "createfactorycontroller.gui.set_item.filter_tip_item": "Left-Click to set item",
   "createfactorycontroller.gui.set_item.filter_tip_fluid": "Right-Click to set fluid",
+  "createfactorycontroller.gui.set_item.filter_tip_fluid_only": "Click with fluid container to set",
   "createfactorycontroller.gui.redstone_link.freq_index": "Freq #%1$s",
   "createfactorycontroller.gui.redstone_link.freq_tip": "Click with item to set",
   "createfactorycontroller.gui.info.none": "—",

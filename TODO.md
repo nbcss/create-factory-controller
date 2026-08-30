@@ -22,9 +22,13 @@
 - [DONE] Compat with stock keeper from different mods
 
 # 1.2.0
-- [DOING] Number Connection & Arithmetic Component
+- [TODO] Update Arithmetic tube GUI and connection target selection
+- [TODO] Connection type selection tooltip
+- [TODO] Redstone Control of Arithmetic Tube
+- [TODO] Redstone Output of Arithmetic Tube
 - [TODO] Improve the wording of production order
-- [TODO] Compat with fluid logistics again
+- [DONE] Compat with fluid logistics again
+- [DONE] Number Connection & Arithmetic Tube
 - [DONE] Filter Link model, polished amethyst texture
 - [DONE] Crafter Filter
 - [DONE] CC integration

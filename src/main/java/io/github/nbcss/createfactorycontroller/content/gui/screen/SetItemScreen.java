@@ -331,6 +331,10 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                     Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid")
                             .withStyle(net.minecraft.ChatFormatting.GRAY));
         }
+        // A fluid-only gauge (dedicated fluid factory gauge) takes a fluid, never an item.
+        if (behaviour.filterResolver().acceptsFluidDrop() && !behaviour.filterResolver().acceptsItemDrop())
+            return List.of(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid_only")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY));
         return List.of(Component.translatable("createfactorycontroller.gui.set_item.filter_tip")
                 .withStyle(net.minecraft.ChatFormatting.GRAY));
     }

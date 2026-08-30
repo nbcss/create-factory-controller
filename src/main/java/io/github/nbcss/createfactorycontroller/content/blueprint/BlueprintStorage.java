@@ -6,6 +6,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
+import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.HolderLookup;
@@ -90,7 +91,7 @@ public final class BlueprintStorage {
         Set<Integer> networks = new LinkedHashSet<>();
         List<Placement> placements = new ArrayList<>();
         for (int i = 0; i < components.size(); i++) {
-            CompoundTag component = components.getCompound(i);
+            CompoundTag component = GaugeMigration.migrate(components.getCompound(i));
             if (component.contains("Network", Tag.TAG_INT)) networks.add(component.getInt("Network"));
             if (!component.contains("Item", Tag.TAG_STRING)) continue;
             ResourceLocation item = ResourceLocation.tryParse(component.getString("Item"));

@@ -1,7 +1,7 @@
 ## 1.2.0
 
 Features:
-- Added number connection and Arithmetic Tube.
+- Added initial release of number connection and Arithmetic Tube.
 - Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 - Allow Ctrl-Click to exclude ingredient from request multiplier.
 - Follow Demand mode allow to set minimum target stock amount now.
@@ -24,18 +24,20 @@ Changes:
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
 - Redstone Link frequency item icon is larger now.
 - Request limit changed to 9999 to all units (Item/Stack/Fluid mB/Fluid B).
+- Output limit of fluid filter are increased to 64B.
 - Gauge output limit is increased to 64 stacks.
 - Bugfix mixins are extracted to bundled mod "Create: Higher Logistics Patch".
 
 Compatibility:
 - Added basic ComputerCraft integration (thanks Vinyl)
+- Added compatibility support with latest version of fluid logistics mod
+- Fixed controller GUI not render correctly with Contraption Lights mod installed.
 
 Bugfixes:
 - Fixed gauges may not save ingredient amount change if source gauge relocated.
 - Fixed gauge timer animation is not properly rendered with some animation lib mods installed.
 - Fixed controller GUI may not open in forge-1.20 if data is too large.
 - Fixed some redstone link control bugs.
-- Fixed controller GUI not render correctly with Contraption Lights mod installed.
 
 ## 1.1.1
 

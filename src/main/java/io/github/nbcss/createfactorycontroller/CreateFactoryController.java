@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller;
 import com.mojang.serialization.Codec;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
+import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
 import io.github.nbcss.createfactorycontroller.content.helper.ConfigDataFixer;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -146,6 +147,7 @@ public class CreateFactoryController {
         event.enqueueWork(() -> {
             DisplaySource.BY_BLOCK.add(CFCBlocks.FACTORY_CONTROLLER.get(), FACTORY_CONTROLLER_PENDING_ORDERS.get());
             FluidCompat.onRegistriesComplete();
+            ComponentRegistry.init();
         });
     }
 

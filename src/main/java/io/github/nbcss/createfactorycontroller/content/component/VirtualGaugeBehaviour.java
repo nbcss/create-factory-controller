@@ -115,11 +115,12 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         @Override public boolean acceptsFilter(ItemStack filter) { return true; }
         @Override public boolean supportsIgnoreData() { return true; }
         @Override public boolean acceptsItemDrop() { return true; }
-        @Override public boolean acceptsFluidDrop() { return FluidCompat.isLoaded(); }
+        // for CFL compat
+        @Override public boolean acceptsFluidDrop() { return FluidCompat.isLoaded() && !CflFluidGaugeBehaviour.isAvailable(); }
 
         @Override
         public ItemStack fromCarried(ItemStack carried, int mouseButton) {
-            if (FluidCompat.isLoaded() && mouseButton == 1) {
+            if (FluidCompat.isLoaded() && !CflFluidGaugeBehaviour.isAvailable() && mouseButton == 1) {
                 FluidStack fluid = FluidCompat.fluidInContainer(carried);
                 if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
             }
