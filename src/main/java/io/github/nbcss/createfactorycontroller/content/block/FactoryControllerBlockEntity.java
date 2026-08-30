@@ -15,6 +15,8 @@ import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorag
 import io.github.nbcss.createfactorycontroller.content.blueprint.SchematicImport;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
+import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
+import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionGraph;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
@@ -24,6 +26,7 @@ import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixe
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
+import io.github.nbcss.createfactorycontroller.content.packet.ConfigureArithmeticInputPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelDeltaPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
@@ -860,7 +863,9 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Connections ────────────────────────────────────────────────────────
 
-    public void addConnection(String typeName, VirtualComponentPosition sourcePos, VirtualComponentPosition sinkPos,
+    public void addConnection(String typeName,
+                              VirtualComponentPosition sourcePos,
+                              VirtualComponentPosition sinkPos,
                               int arrowBendMode) {
         Connection.Type type = Connection.Type.get(typeName);
         VirtualComponentBehaviour source = components.get(sourcePos);
@@ -978,6 +983,28 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void configureLogicalTube(VirtualComponentPosition pos, String modeName) {
         if (components.get(pos) instanceof LogicalTubeBehaviour tube)
             tube.setMode(LogicalTubeBehaviour.Mode.fromName(modeName));
+    }
+
+    /** Sets an Arithmetic Tube's operator (the operator picker). Ignored if the target operator can't hold the
+     *  current inputs — the picker disables those, so this only guards against a desynced request. */
+    public void configureArithmeticTube(VirtualComponentPosition pos, String operatorId) {
+        if (components.get(pos) instanceof ArithmeticTubeBehaviour tube) {
+            ArithmeticOperator op = BuiltinOperator.byId(operatorId);
+            if (tube.canSwitchTo(op)) tube.setOperator(op);
+        }
+    }
+
+    /** Applies an operator-tube input edit from the settings GUI (see {@code ConfigureArithmeticInputPacket}). */
+    public void configureArithmeticInput(VirtualComponentPosition pos, int op, boolean primary, int index, double value) {
+        if (!(components.get(pos) instanceof ArithmeticTubeBehaviour tube)) return;
+        switch (op) {
+            case ConfigureArithmeticInputPacket.ADD_CONSTANT -> tube.addConstant(primary, value);
+            case ConfigureArithmeticInputPacket.SET_CONSTANT -> tube.setConstant(primary, index, value);
+            case ConfigureArithmeticInputPacket.REMOVE -> tube.removeInput(primary, index);
+            case ConfigureArithmeticInputPacket.PREPARE_WIRE -> tube.prepareWire(primary);
+            case ConfigureArithmeticInputPacket.SWAP -> tube.swapInputs();
+            case ConfigureArithmeticInputPacket.LOOP -> tube.setLoopEnabled(value != 0);
+        }
     }
 
     /** Cycles a component's connection arrow-bend mode. */

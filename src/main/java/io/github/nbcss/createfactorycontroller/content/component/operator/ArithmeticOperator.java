@@ -12,30 +12,26 @@ import java.util.OptionalDouble;
  */
 public interface ArithmeticOperator {
 
-    /** Stable identifier used for NBT/sync and lang-key derivation (e.g. {@code "SUM"}). */
+    /** Stable identifier used for NBT/sync and lang-key derivation */
     String id();
 
-    /** Human-readable name (lang key {@code createfactorycontroller.arithmetic_tube.operator.<id-lower>}). */
+    /** Human-readable name */
     Component displayName();
 
-    /** Short glyph rendered on the component while there is no icon (see {@link #icon()}). Placeholder text for now. */
-    String symbol();
+    /** Sprite base name under {@code arithmetic_tube/operators/} */
+    String iconName();
 
-    /** Input-shape group — decides input capacity and routing. */
+    /** Input-shape group */
     OperatorArity arity();
 
-    /** Icon sprite, or {@code null} until art exists → the widget renders {@link #symbol()} text instead. Declared
-     *  now per the interface contract; unused this stage. */
+    /** Icon sprite */
     @Nullable
     default ResourceLocation icon() {
         return null;
     }
 
     /**
-     * Computes the result from the resolved operand values. {@code primaries} holds the current values of the tube's
-     * {@code primaryInputs} (in order); {@code secondary} is present only for {@link OperatorArity#BINARY}. The tube
-     * guards the all-empty case (→ 0) before calling this, and passes an absent operand as this operator's identity,
-     * so N-group folds and unary reads always see at least one value here.
+     * Computes the result from the resolved operand values.
      */
     double apply(double[] primaries, OptionalDouble secondary);
 }

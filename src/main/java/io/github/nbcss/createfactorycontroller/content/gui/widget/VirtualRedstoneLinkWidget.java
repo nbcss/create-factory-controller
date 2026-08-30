@@ -97,8 +97,7 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
 
     @Override
     public void renderOverlay(RenderingParameters params) {
-        if (!ClientConfig.showRedstoneLinkSignalStrengthLabel() || behaviour.strength <= 0
-                || !params.renderOverlay()) return;
+        if (!ClientConfig.showRedstoneLinkSignalStrengthLabel() || !params.renderOverlay()) return;
 
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;

@@ -12,13 +12,9 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * A number connection carrying a single {@link #value} pushed by the source component and read by the sink. The
- * lowest-priority connection kind: because {@link ConnectionResolver} resolves the first shared type and every
- * gauge/link pair already shares a higher one, a NUMBER edge is only ever chosen for a component that speaks
- * <i>only</i> NUMBER — none exists yet, so this is dormant scaffolding until such a component is added.
+ * A number connection carrying a double {@link #value}.
  */
 public class NumberConnection extends Connection {
-    /** Purple. */
     public static final int COLOR = 0xB265E6;
 
     public static final Type TYPE = new Type("NUMBER", COLOR) {
@@ -116,6 +112,9 @@ public class NumberConnection extends Connection {
      * magnitudes without growing enough to swallow a real fractional base unit.
      */
     public static long floorTolerant(double x) {
+        if (Double.isNaN(x)) return 0;                                  // undefined → 0
+        if (x == Double.POSITIVE_INFINITY) return Long.MAX_VALUE;       // saturated ±∞ → the long bound (sinks clamp)
+        if (x == Double.NEGATIVE_INFINITY) return Long.MIN_VALUE;
         double eps = Math.max(1e-6, Math.ulp(x) * 8);
         return (long) Math.floor(x + eps);
     }

@@ -32,22 +32,16 @@ import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 /**
- * An Arithmetic Tube on the controller board. A networkless, NUMBER-only component: it reads its incoming NUMBER
- * wires (and constants), applies a selectable {@link ArithmeticOperator}, and drives its outgoing NUMBER wires with
- * the result — with a one-tick delay (same {@code nextOutput}→{@link #preTick}→{@code output} indirection the
- * {@link LogicalTubeBehaviour} uses). Being NUMBER-only, a gauge/link/tube pair shares only NUMBER, so the resolver
- * selects it directly (no type picker needed).
- *
- * <p>Inputs are ordered: a {@code primaryInputs} list plus a single optional {@code secondaryInput}. Each is a
- * {@link WireInput} (value read from the incoming NUMBER edge) or a {@link ConstantInput} (literal — no GUI to create
- * one yet). The operator's {@link OperatorArity} governs how many of each are allowed and how a new wire is routed.</p>
+ * An Arithmetic Tube on the controller board.
  */
 public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     // ── Input model ─────────────────────────────────────────────────────────────
 
-    /** One operand of the tube: a live NUMBER wire or a user-entered constant. */
-    public sealed interface InputRef permits WireInput, ConstantInput {
+    public sealed interface NumberInput permits ConnectionInput, ConstantInput, LoopInput {
+        /** Client-sync discriminators, kept in step with the NBT {@code "Kind"} strings. */
+        byte TAG_CONNECTION = 0, TAG_CONSTANT = 1, TAG_LOOP = 2;
+
         /** This operand's current value for {@code tube}. */
         double getValue(ArithmeticTubeBehaviour tube);
 
@@ -55,22 +49,25 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
         void writeClient(RegistryFriendlyByteBuf buf);
 
-        static InputRef fromNBT(CompoundTag tag) {
-            return "C".equals(tag.getString("K"))
-                    ? new ConstantInput(tag.getDouble("Val"))
-                    : new WireInput(VirtualComponentPosition.fromNBT(tag.getCompound("Src")));
+        static NumberInput fromNBT(CompoundTag tag) {
+            return switch (tag.getString("Kind")) {
+                case "constant" -> new ConstantInput(tag.getDouble("Value"));
+                case "loop" -> new LoopInput();
+                default -> new ConnectionInput(VirtualComponentPosition.fromNBT(tag.getCompound("Source")));
+            };
         }
 
-        static InputRef fromClient(RegistryFriendlyByteBuf buf) {
-            return buf.readByte() == 1
-                    ? new ConstantInput(buf.readDouble())
-                    : new WireInput(SyncCodecs.readPos(buf));
+        static NumberInput fromClient(RegistryFriendlyByteBuf buf) {
+            return switch (buf.readByte()) {
+                case TAG_CONSTANT -> new ConstantInput(buf.readDouble());
+                case TAG_LOOP -> new LoopInput();
+                default -> new ConnectionInput(SyncCodecs.readPos(buf));
+            };
         }
     }
 
-    /** An operand read from the incoming NUMBER edge from {@code source}; a missing edge reads 0 (self-heals on the
-     *  next {@link #reconcileInputs}). */
-    public record WireInput(VirtualComponentPosition source) implements InputRef {
+    /** An operand read from the incoming NUMBER edge from {@code source} */
+    public record ConnectionInput(VirtualComponentPosition source) implements NumberInput {
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             Connection e = tube.incomingConnection(source, NumberConnection.TYPE);
@@ -80,20 +77,20 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public CompoundTag toNBT() {
             CompoundTag t = new CompoundTag();
-            t.putString("K", "W");
-            t.put("Src", source.toNBT());
+            t.putString("Kind", "connection");
+            t.put("Source", source.toNBT());
             return t;
         }
 
         @Override
         public void writeClient(RegistryFriendlyByteBuf buf) {
-            buf.writeByte(0);
+            buf.writeByte(TAG_CONNECTION);
             SyncCodecs.writePos(buf, source);
         }
     }
 
     /** A literal operand. No GUI creates these yet — scaffolding for the deferred configuration screen. */
-    public record ConstantInput(double value) implements InputRef {
+    public record ConstantInput(double value) implements NumberInput {
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             return value;
@@ -102,15 +99,36 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public CompoundTag toNBT() {
             CompoundTag t = new CompoundTag();
-            t.putString("K", "C");
-            t.putDouble("Val", value);
+            t.putString("Kind", "constant");
+            t.putDouble("Value", value);
             return t;
         }
 
         @Override
         public void writeClient(RegistryFriendlyByteBuf buf) {
-            buf.writeByte(1);
+            buf.writeByte(TAG_CONSTANT);
             buf.writeDouble(value);
+        }
+    }
+
+    /** The self-feedback operand: reads the tube's own output — from the PREVIOUS tick, thanks to the one-tick output
+     *  delay, so it forms a stable feedback loop. Valid only on a multi-input operator; at most one per tube. */
+    public record LoopInput() implements NumberInput {
+        @Override
+        public double getValue(ArithmeticTubeBehaviour tube) {
+            return tube.output;
+        }
+
+        @Override
+        public CompoundTag toNBT() {
+            CompoundTag t = new CompoundTag();
+            t.putString("Kind", "loop");
+            return t;
+        }
+
+        @Override
+        public void writeClient(RegistryFriendlyByteBuf buf) {
+            buf.writeByte(TAG_LOOP);
         }
     }
 
@@ -141,8 +159,8 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
             ArithmeticTubeBehaviour t = new ArithmeticTubeBehaviour(null, pos, item);
             t.operator = BuiltinOperator.byId(buf.readUtf());
             int n = buf.readVarInt();
-            for (int i = 0; i < n; i++) t.primaryInputs.add(InputRef.fromClient(buf));
-            if (buf.readBoolean()) t.secondaryInput = InputRef.fromClient(buf);
+            for (int i = 0; i < n; i++) t.primaryInputs.add(NumberInput.fromClient(buf));
+            if (buf.readBoolean()) t.secondaryInput = NumberInput.fromClient(buf);
             t.readClientState(buf);
             return t;
         }
@@ -153,13 +171,13 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     // ── State ──────────────────────────────────────────────────────────────────
 
     private ArithmeticOperator operator = BuiltinOperator.SUM;   // default
-    private final List<InputRef> primaryInputs = new ArrayList<>();
-    @Nullable private InputRef secondaryInput;
+    private final List<NumberInput> primaryInputs = new ArrayList<>();
+    @Nullable private ArithmeticTubeBehaviour.NumberInput secondaryInput;
+    /** GUI hint: the slot the next created wire should fill (true = primary, false = secondary). One-shot — consumed
+     *  by the next reconcile; null = auto-route. Server-only (not persisted/synced). */
+    @Nullable private Boolean pendingWireIsPrimary;
 
-    /** Emitted output — drives outgoing NUMBER edges, rendered, synced. Only ever changed in {@link #preTick}. */
     private double output = 0.0;
-    /** Target = {@code operator(inputs)}, kept current by {@link #onInputChanged}; committed to {@link #output} on the
-     *  next {@link #preTick} (the one-tick delay). Not serialized. */
     private double nextOutput = 0.0;
 
     public ArithmeticTubeBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position, Item item) {
@@ -188,6 +206,28 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     public ArithmeticOperator getOperator() { return operator; }
 
+    public List<NumberInput> getPrimaryInputs() { return primaryInputs; }
+
+    @Nullable
+    public ArithmeticTubeBehaviour.NumberInput getSecondaryInput() { return secondaryInput; }
+
+    /** Whether the primary list currently holds the feedback {@link LoopInput}. */
+    public boolean hasLoopInput() {
+        for (NumberInput r : primaryInputs) if (r instanceof LoopInput) return true;
+        return false;
+    }
+
+    /** Loop/feedback is only meaningful for a multi-input (order-independent) operator. */
+    public boolean canLoop() { return operator.arity() == OperatorArity.NARY; }
+
+    public boolean hasConstant(boolean primary) {
+        if (primary) {
+            for (NumberInput r : primaryInputs) if (r instanceof ConstantInput) return true;
+            return false;
+        }
+        return secondaryInput instanceof ConstantInput;
+    }
+
     public double getOutput() { return output; }
 
     public String getOutputLabel() {
@@ -207,7 +247,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     @Override
     public ValidationResult validateAsSource(Connection.Type type, VirtualComponentBehaviour sink) {
-        return ValidationResult.SUCCESS;   // a tube is always a valid number source
+        return ValidationResult.SUCCESS;   // always a valid number source
     }
 
     @Override
@@ -218,7 +258,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
                         "createfactorycontroller.arithmetic_tube.inputs_full").withStyle(ChatFormatting.RED));
     }
 
-    /** Whether the current operator has a free input slot for another wire/constant (counts constants too). */
+    /** Whether the current operator has a free input slot for another input. */
     @Override
     public boolean canAcceptMoreInput() {
         return switch (operator.arity()) {
@@ -226,6 +266,15 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
             case BINARY -> primaryInputs.isEmpty() || secondaryInput == null;
             case NARY -> true;
         };
+    }
+
+    /** Whether switching to {@code op} would keep every current input — i.e. its arity can hold the present
+     *  primary/secondary connections without dropping any. The operator picker disables operators that fail this
+     *  (the player must disconnect the offending input first, e.g. a red/secondary wire blocks a unary operator). */
+    public boolean canSwitchTo(ArithmeticOperator op) {
+        OperatorArity a = op.arity();
+        long primaryCount = primaryInputs.stream().filter(r -> !(r instanceof LoopInput)).count();
+        return primaryCount <= a.maxPrimary && (secondaryInput == null || a.allowsSecondary);
     }
 
     // ── Signal: compute target on input change, commit on preTick ───────────────
@@ -241,48 +290,62 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     private void recomputeNext() {
+        // Server-authoritative: nextOutput is a compute buffer only preTick (server-only) ever commits, and the client
+        // renders the synced output. A client tube carries a null controller, so this skips the wasted off-server fold
+        // (which would also read half-synced edge values). reconcileInputs still runs for ref-list upkeep.
+        if (controller == null) return;
         double[] primaries = new double[primaryInputs.size()];
-        for (int i = 0; i < primaryInputs.size(); i++) primaries[i] = primaryInputs.get(i).getValue(this);
+        for (int i = 0; i < primaries.length; i++) primaries[i] = primaryInputs.get(i).getValue(this);
         OptionalDouble secondary = secondaryInput == null
                 ? OptionalDouble.empty() : OptionalDouble.of(secondaryInput.getValue(this));
         double raw = (primaries.length == 0 && secondary.isEmpty())
-                ? 0.0                                     // nothing connected → 0
+                ? 0.0
                 : operator.apply(primaries, secondary);
-        nextOutput = Double.isFinite(raw) ? raw : 0.0;    // no invalid output: NaN and ±∞ (÷0) both become 0
+        nextOutput = clampNumber(raw);
     }
 
-    /** Commit last tick's computed output. Runs at the very start of the tick, before any settle → deterministic
-     *  one-tick delay (breaks tube→tube cycles). */
+    private static final double PRECISION_LIMIT = 0x1p43;
+
+    /** Normalises a result into the tube's number range. */
+    private static double clampNumber(double v) {
+        if (Double.isNaN(v)) return 0.0;
+        if (v >= PRECISION_LIMIT) return Double.POSITIVE_INFINITY;
+        if (v <= -PRECISION_LIMIT) return Double.NEGATIVE_INFINITY;
+        return v;
+    }
+
+    /**
+     * Commit last tick's computed value to {@link #output} (the one-tick delay). A {@link LoopInput} feeds our own
+     * output back in, so an output change means the loop must re-fold for the next tick — but the early-return then
+     * halts the iteration the moment it settles ({@code nextOutput == output}), so a settled loop costs nothing. Every
+     * other recompute is event-driven ({@link #onInputChanged}, {@link #onConnectionSetChanged}, {@link #afterInputChange}).
+     */
     @Override
     public void preTick() {
         if (Double.compare(output, nextOutput) == 0) return;
         output = nextOutput;
         publish(NumberConnection.TYPE);
         if (controller != null) { controller.setChanged(); controller.syncComponentState(position); }
+        if (hasLoopInput()) recomputeNext();
     }
 
     @Override
-    public void tick() {
-        // All work is in preTick (commit) + onInputChanged (compute).
-    }
+    public void tick() {}
 
     // ── Operator switching ──────────────────────────────────────────────────────
 
-    /** The operation-mode key: advance to the next operator (and prune inputs that no longer fit). */
     @Override
     public void cycleOperationMode() {
-        setOperator(operator instanceof BuiltinOperator b ? b.next() : BuiltinOperator.SUM);
+        setOperator(operator instanceof BuiltinOperator b ? b.nextInSameArity() : BuiltinOperator.SUM);
     }
 
-    /**
-     * Switch operator and drop any input that no longer fits the new arity. A dropped {@link WireInput} also loses its
-     * graph edge; a dropped {@link ConstantInput} just vanishes. Positional: keep the first {@code maxPrimary}
-     * primaries; keep the secondary only if the new arity allows one (drop, never migrate).
-     */
     public void setOperator(ArithmeticOperator next) {
         if (next.id().equals(operator.id())) return;
         operator = next;
         OperatorArity arity = next.arity();
+        pendingWireIsPrimary = null;
+        if (arity != OperatorArity.NARY)
+            primaryInputs.removeIf(r -> r instanceof LoopInput);
         while (primaryInputs.size() > arity.maxPrimary) dropInput(primaryInputs.removeLast());
         if (!arity.allowsSecondary && secondaryInput != null) {
             dropInput(secondaryInput);
@@ -292,9 +355,8 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         if (controller != null) { controller.setChanged(); controller.syncComponentFull(position); }
     }
 
-    /** Removes a dropped input's graph edge (constants have none). */
-    private void dropInput(InputRef ref) {
-        if (!(ref instanceof WireInput w) || controller == null) return;
+    private void dropInput(NumberInput input) {
+        if (!(input instanceof ConnectionInput w) || controller == null) return;
         Connection e = incomingConnection(w.source(), NumberConnection.TYPE);
         if (e == null) return;
         controller.connectionGraph().remove(position, w.source(), NumberConnection.TYPE);
@@ -304,54 +366,134 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     // ── Ordered-input reconciliation (mirrors the gauge's recipe slots) ─────────
 
     /**
-     * Keeps {@link #primaryInputs}/{@link #secondaryInput} consistent with the live incoming NUMBER edges: drops wire
-     * refs whose edge is gone, then routes each not-yet-referenced edge into the next legal slot (primary while it has
-     * room, else — for a binary operator — the secondary). Constants are untouched.
+     * Keeps {@link #primaryInputs}/{@link #secondaryInput} consistent with the live incoming NUMBER edges
      */
     private void reconcileInputs() {
-        primaryInputs.removeIf(r -> r instanceof WireInput w && !isWired(w.source()));
-        if (secondaryInput instanceof WireInput w && !isWired(w.source())) secondaryInput = null;
+        primaryInputs.removeIf(r -> r instanceof ConnectionInput w && incomingConnection(w.source(), NumberConnection.TYPE) == null);
+        if (secondaryInput instanceof ConnectionInput w && incomingConnection(w.source(), NumberConnection.TYPE) == null) secondaryInput = null;
 
         for (Connection c : incomingConnections(NumberConnection.TYPE)) {
             VirtualComponentPosition src = c.from;
             if (references(src)) continue;
             OperatorArity arity = operator.arity();
-            if (arity == OperatorArity.NARY || primaryInputs.isEmpty()) {
-                if (primaryInputs.size() < arity.maxPrimary) primaryInputs.add(new WireInput(src));
+            boolean toSecondary = Boolean.FALSE.equals(pendingWireIsPrimary)   // GUI "add secondary connection"
+                    && arity.allowsSecondary && secondaryInput == null;
+            pendingWireIsPrimary = null;   // one-shot: consumed by the first newly-seen wire
+            if (toSecondary) {
+                secondaryInput = new ConnectionInput(src);
+            } else if (arity == OperatorArity.NARY || primaryInputs.isEmpty()) {
+                if (primaryInputs.size() < arity.maxPrimary) {
+                    int at = primaryInputs.size();
+                    while (at > 0 && primaryInputs.get(at - 1) instanceof ConstantInput) at--;
+                    primaryInputs.add(at, new ConnectionInput(src));
+                }
             } else if (arity.allowsSecondary && secondaryInput == null) {
-                secondaryInput = new WireInput(src);
+                secondaryInput = new ConnectionInput(src);
             }
-            // else: no slot — validateAsSink prevents this for a fresh wire; ignore defensively.
         }
+    }
+
+    // ── GUI-driven input edits ──
+
+    /** Sets which slot the next created wire fills (the add-connection buttons); one-shot, cleared on reconcile. */
+    public void prepareWire(boolean primary) { pendingWireIsPrimary = primary; }
+
+    /** Add or remove the feedback {@link LoopInput} (multi-input operators only; at most one). Kept at the front of the
+     *  primary list so it renders at the top. */
+    public void setLoopEnabled(boolean enabled) {
+        if (enabled == hasLoopInput()) return;
+        if (enabled) {
+            if (!canLoop()) return;
+            primaryInputs.addFirst(new LoopInput());
+        } else {
+            primaryInputs.removeIf(r -> r instanceof LoopInput);
+        }
+        afterInputChange();
+    }
+
+    /** Swaps the primary and secondary operands (binary only) */
+    public void swapInputs() {
+        if (operator.arity() != OperatorArity.BINARY) return;
+        NumberInput p = primaryInputs.isEmpty() ? null : primaryInputs.get(0);
+        NumberInput s = secondaryInput;
+        primaryInputs.clear();
+        if (s != null) primaryInputs.add(s);
+        secondaryInput = p;
+        afterInputChange();
+    }
+
+    public void addConstant(boolean primary, double value) {
+        if (primary) {
+            if (primaryInputs.size() >= operator.arity().maxPrimary) return;
+            primaryInputs.add(new ConstantInput(value));
+        } else {
+            if (!operator.arity().allowsSecondary || secondaryInput != null) return;
+            secondaryInput = new ConstantInput(value);
+        }
+        afterInputChange();
+    }
+
+    /** Sets a constant operand's value */
+    public void setConstant(boolean primary, int index, double value) {
+        if (primary) {
+            if (index < 0 || index >= primaryInputs.size() || !(primaryInputs.get(index) instanceof ConstantInput)) return;
+            primaryInputs.set(index, new ConstantInput(value));
+        } else if (secondaryInput instanceof ConstantInput) {
+            secondaryInput = new ConstantInput(value);
+        } else {
+            return;
+        }
+        afterInputChange();
+    }
+
+    public void removeInput(boolean primary, int index) {
+        NumberInput ref = primary
+                ? (index >= 0 && index < primaryInputs.size() ? primaryInputs.get(index) : null)
+                : secondaryInput;
+        if (ref == null) return;
+        if (ref instanceof ConnectionInput w) {
+            if (controller != null) controller.removeConnection(w.source(), position, NumberConnection.TYPE);
+        } else {
+            if (primary)
+                primaryInputs.remove(index);
+            else
+                secondaryInput = null;
+            afterInputChange();
+        }
+    }
+
+    private void afterInputChange() {
+        recomputeNext();
+        if (controller != null) { controller.setChanged(); controller.syncComponentFull(position); }
     }
 
     @Override
     public boolean onConnectionSetChanged(Connection.Type type) {
         if (type != NumberConnection.TYPE) return false;
         reconcileInputs();
+        recomputeNext();
         return true;
     }
 
     /** Re-keys ordered wire inputs without changing their operand assignments. */
     @Override
     public void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {
-        primaryInputs.replaceAll(r -> r instanceof WireInput w ? new WireInput(remap.apply(w.source())) : r);
-        if (secondaryInput instanceof WireInput w) secondaryInput = new WireInput(remap.apply(w.source()));
+        primaryInputs.replaceAll(r -> r instanceof ConnectionInput w ? new ConnectionInput(remap.apply(w.source())) : r);
+        if (secondaryInput instanceof ConnectionInput w) secondaryInput = new ConnectionInput(remap.apply(w.source()));
     }
 
     /** Whether {@code source} feeds the (single) secondary slot — used by the widget to colour the connected face
      *  (secondary → blue, primary → red, both on one face → both). Any other incoming wire is a primary input. */
     public boolean isSecondarySource(VirtualComponentPosition source) {
-        return secondaryInput instanceof WireInput w && w.source().equals(source);
+        return secondaryInput instanceof ConnectionInput w && w.source().equals(source);
     }
 
-    private boolean isWired(VirtualComponentPosition src) {
-        return incomingConnection(src, NumberConnection.TYPE) instanceof NumberConnection;
-    }
-
+    /** Whether one of our input slots already points at {@code src}. Distinct from {@link #incomingConnection} (which
+     *  answers whether an edge exists): reconcile iterates the live edges and needs to know which aren't yet assigned
+     *  to a slot — a question only the ordered ref list can answer, so it can't be derived from the graph. */
     private boolean references(VirtualComponentPosition src) {
-        for (InputRef r : primaryInputs) if (r instanceof WireInput w && w.source().equals(src)) return true;
-        return secondaryInput instanceof WireInput w && w.source().equals(src);
+        for (NumberInput r : primaryInputs) if (r instanceof ConnectionInput w && w.source().equals(src)) return true;
+        return secondaryInput instanceof ConnectionInput w && w.source().equals(src);
     }
 
     // ── Client sync ─────────────────────────────────────────────────────────────
@@ -362,7 +504,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         buf.writeResourceLocation(getItemId());
         buf.writeUtf(operator.id());
         buf.writeVarInt(primaryInputs.size());
-        for (InputRef r : primaryInputs) r.writeClient(buf);
+        for (NumberInput r : primaryInputs) r.writeClient(buf);
         buf.writeBoolean(secondaryInput != null);
         if (secondaryInput != null) secondaryInput.writeClient(buf);
         writeClientState(buf);
@@ -389,7 +531,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         tag.putString("Item", getItemId().toString());
         tag.putString("Operator", operator.id());
         ListTag prim = new ListTag();
-        for (InputRef r : primaryInputs) prim.add(r.toNBT());
+        for (NumberInput r : primaryInputs) prim.add(r.toNBT());
         tag.put("PrimaryInputs", prim);
         if (secondaryInput != null) tag.put("SecondaryInput", secondaryInput.toNBT());
         if (profile.includesRuntime())
@@ -405,9 +547,9 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         ArithmeticTubeBehaviour b = new ArithmeticTubeBehaviour(controller, pos, item);
         b.operator = BuiltinOperator.byId(tag.getString("Operator"));
         ListTag prim = tag.getList("PrimaryInputs", Tag.TAG_COMPOUND);
-        for (int i = 0; i < prim.size(); i++) b.primaryInputs.add(InputRef.fromNBT(prim.getCompound(i)));
+        for (int i = 0; i < prim.size(); i++) b.primaryInputs.add(NumberInput.fromNBT(prim.getCompound(i)));
         if (tag.contains("SecondaryInput", Tag.TAG_COMPOUND))
-            b.secondaryInput = InputRef.fromNBT(tag.getCompound("SecondaryInput"));
+            b.secondaryInput = NumberInput.fromNBT(tag.getCompound("SecondaryInput"));
         b.output = tag.getDouble("Output");
         b.nextOutput = b.output;
         return b;

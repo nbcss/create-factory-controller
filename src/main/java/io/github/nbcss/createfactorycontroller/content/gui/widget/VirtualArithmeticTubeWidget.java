@@ -2,11 +2,14 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.math.Axis;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
+import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.ArithmeticTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.operator.OperatorArity;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ArithmeticTubeSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPathResolver;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
@@ -31,21 +34,23 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * An Arithmetic Tube on the canvas. Borrows the Logical Tube's {@code back}/{@code front_off} sprites, draws the
- * current operator's glyph centred, and — like a gauge — draws the current output value as a bottom-right label.
- * No configuration GUI yet; empty-hand clicks do nothing, shift-click removes (handled by the screen).
+ * An Arithmetic Tube on the canvas.
  */
 @OnlyIn(Dist.CLIENT)
 public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) implements VirtualComponentWidget {
 
     private static final int CELL = 16;
-    private static final int PRIMARY_INPUT_COLOR = 0xCF2D3A;
-    private static final int SECONDARY_INPUT_COLOR = 0x385BC1;
-    private static final int STRIP_HEIGHT = 8;   // the strip sprite is 16×8, UP-oriented and rotated per face
+    private static final int PRIMARY_INPUT_COLOR = 0x385BC1;     // blue
+    private static final int SECONDARY_INPUT_COLOR = 0xCF2D3A;   // red
+    private static final int STRIP_HEIGHT = 8;
+    private static final float ICON_DRAW = 15 * 0.5f;   // operator icon: 15×15
+    private static final int ICON_BORDER_COLOR = 0x80000000;
     private static final int LABEL_INSET = 1;
     private static final float LABEL_SCALE = 0.5f;
     private static final float LABEL_MIN_SCALE = 0.25f;
-    private static final float SYMBOL_MAX_SCALE = 0.7f;
+
+    private static final ResourceLocation OPERATOR_ICONS =
+            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "arithmetic_tube/operators/");
 
     /** A connection-carrying face of the tube. {@code rotation} rotates the UP-oriented strip sprite (clockwise,
      *  {@code Axis.ZP}) onto this face. */
@@ -85,25 +90,23 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        renderStrips(gfx, x0, y0, params.occupiedCells());
-        renderOperatorSymbol(gfx, x0, y0);
+        if (behaviour.getOperator().arity() == OperatorArity.BINARY)
+            renderStrips(gfx, x0, y0, params.occupiedCells());
+        renderOperatorIcon(gfx, x0, y0);
     }
 
-    /** Placement/relocate preview: sprites + operator glyph only. A ghost has no live connection graph, so it draws
-     *  no connection strips (nothing to show anyway). */
+    /** Placement/relocate preview: sprites + operator icon only. */
     @Override
     public void renderGhost(RenderingParameters params) {
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("back")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
         BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        renderOperatorSymbol(gfx, x0, y0);
+        renderOperatorIcon(gfx, x0, y0);
     }
 
     /**
-     * Draws a coloured strip on each face that has incoming connections: red = all primary inputs, blue = only the
-     * secondary input, both = a mix on one face. A face is a wire's entry direction (its resolved path's final
-     * segment into this cell); several wires may share a face.
+     * Draws a coloured strip on each face that has incoming connections
      */
     private void renderStrips(GuiGraphics gfx, int x0, int y0, Set<VirtualComponentPosition> occupied) {
         boolean[] primary = new boolean[Face.VALUES.length];
@@ -117,14 +120,14 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         }
         for (Face face : Face.VALUES) {
             boolean p = primary[face.ordinal()], s = secondary[face.ordinal()];
-            String name = (p && s) ? "strip_both" : p ? "strip_red" : s ? "strip_blue" : null;
+            String name = (p && s) ? "strip_both" : p ? "strip_blue" : s ? "strip_red" : null;
             if (name != null) renderStrip(gfx, x0, y0, face, name);
         }
     }
 
-    /** The face a wire enters through — the direction of its resolved path's final segment into this (sink) cell. */
+    /** The face a connection enters through. */
     private static Face entryFace(List<Vector2i> path) {
-        Vector2i last = path.get(path.size() - 1);   // the sink (this tube) cell
+        Vector2i last = path.get(path.size() - 1);
         Vector2i prev = path.get(path.size() - 2);
         int dx = last.x - prev.x, dy = last.y - prev.y;
         if (dx > 0) return Face.LEFT;
@@ -133,7 +136,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         return Face.DOWN;
     }
 
-    /** Blits the 16×8 UP-oriented strip sprite rotated onto {@code face} (about the cell centre). */
+    /** Blits the 16×8 UP-oriented strip sprite rotated onto {@code face}. */
     private void renderStrip(GuiGraphics gfx, int x0, int y0, Face face, String spriteName) {
         gfx.pose().pushPose();
         gfx.pose().translate(x0 + CELL / 2f, y0 + CELL / 2f, 0);
@@ -143,22 +146,15 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         gfx.pose().popPose();
     }
 
-    /** The operator glyph, centred in the cell and scaled to fit (placeholder for a future icon). */
-    private void renderOperatorSymbol(GuiGraphics gfx, int x0, int y0) {
-        String symbol = behaviour.getOperator().symbol();
-        if (symbol.isEmpty()) return;
-        Font font = Minecraft.getInstance().font;
-        int w = font.width(symbol);
-        if (w <= 0) return;
-        float scale = Mth.clamp((CELL - 3) / (float) w, LABEL_MIN_SCALE, SYMBOL_MAX_SCALE);
-
+    private void renderOperatorIcon(GuiGraphics gfx, int x0, int y0) {
+        String icon = behaviour.getOperator().iconName();
         gfx.pose().pushPose();
-        gfx.pose().translate(x0 + CELL / 2f, y0 + CELL / 2f, 200);
-        gfx.pose().scale(scale, scale, 1);
-        Matrix4f matrix = gfx.pose().last().pose();
-        font.drawInBatch8xOutline(Component.literal(symbol).getVisualOrderText(),
-                -w / 2f, -font.lineHeight / 2f, 0xFFFFFFFF, 0x000000,
-                matrix, gfx.bufferSource(), LightTexture.FULL_BRIGHT);
+        gfx.pose().translate(x0 + (CELL - ICON_DRAW) / 2f, y0 + (CELL - ICON_DRAW) / 2f, 0);
+        gfx.pose().scale(0.5f, 0.5f, 1f);
+        BatchedBlitter.forSprite(OPERATOR_ICONS.withSuffix(icon + "_border")).setColorARGB(ICON_BORDER_COLOR)
+                .blit(gfx.bufferSource(), gfx.pose(), 0, 0, 15, 15);
+        BatchedBlitter.forSprite(OPERATOR_ICONS.withSuffix(icon))
+                .blit(gfx.bufferSource(), gfx.pose(), 0, 0, 15, 15);
         gfx.pose().popPose();
     }
 
@@ -193,15 +189,19 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
                 behaviour.getOperator().displayName().copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.output",
                 Component.literal(behaviour.getOutputText()).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
-        if (selected)
-            lines.add(Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY));
+        lines.add(selected
+                ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
+                : Component.translatable("createfactorycontroller.gui.action_configure").withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component").withStyle(ChatFormatting.DARK_GRAY));
         return lines;
     }
 
     @Override
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
-        return false;   // no configuration GUI yet
+        if (!carried.isEmpty()) return false;
+        screen.clearSelection();
+        Minecraft.getInstance().setScreen(new ArithmeticTubeSettingsScreen(screen, behaviour.position()));
+        return true;
     }
 
     @Override
