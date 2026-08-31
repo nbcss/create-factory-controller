@@ -1,5 +1,5 @@
 {
-  "block.createlogisticscontrol.filter_link": "Filter Link",
+  "block.createlogisticscontrol.filter_link": "过滤链接器",
   "createlogisticscontrol.filter_link.linked": "Linked to %1$s targets",
   "createlogisticscontrol.filter_link.not_packager": "Filter Link must be placed on a packager",
   "createlogisticscontrol.config.enable_filter_link": "Enable Filter Link (require reload game).",
