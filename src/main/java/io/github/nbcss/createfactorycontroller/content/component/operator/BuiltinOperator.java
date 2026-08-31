@@ -26,7 +26,7 @@ public enum BuiltinOperator implements ArithmeticOperator {
     CEIL(OperatorArity.UNARY, "ceil", (p, s) -> Math.ceil(first(p))),
     FLOOR(OperatorArity.UNARY, "floor", (p, s) -> Math.floor(first(p))),
     SIGN(OperatorArity.UNARY, "sign", (p, s) -> Math.signum(first(p))),
-    SIN(OperatorArity.UNARY, "sin", (p, s) -> Math.sin(first(p))),        // radians
+    SIN(OperatorArity.UNARY, "sin", (p, s) -> Math.sin(first(p))),
     COS(OperatorArity.UNARY, "cos", (p, s) -> Math.cos(first(p))),
     TAN(OperatorArity.UNARY, "tan", (p, s) -> Math.tan(first(p)));
 

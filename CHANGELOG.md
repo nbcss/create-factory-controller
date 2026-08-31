@@ -1,7 +1,7 @@
 ## 1.2.0
 
 Features:
-- Added initial release of number connection and Arithmetic Tube.
+- Added initial release of number connection and Arithmetic Tube. Note: it still WIP so further UI & functionalities could change.
 - Added "Filter Link" block in bundled mod "Logistics Control"; it can be used to set filter dynamically.
 - Allow Ctrl-Click to exclude ingredient from request multiplier.
 - Follow Demand mode allow to set minimum target stock amount now.
@@ -9,8 +9,8 @@ Features:
 - Added a client configuration to upscale background texture (default disabled).
 - Ghost placement preview would now render connections and monitoring items.
 - Connection tooltip will now display current state, and display delay is configurable now.
-- Added fade-out animation for targets (configurable)
-- Added a client configuration to show Redstone Link signal strength label (default disabled)
+- Added fade-out animation for targets (configurable).
+- Added a client configuration to show Redstone Link signal strength label (default disabled).
 
 Optimization:
 - Improve the performance of controller GUI.
@@ -20,7 +20,7 @@ Changes:
 - Removed component limit in blueprint selection.
 - Improve blueprint UX.
 - Increased blueprint file size limit.
-- If component limit was 256 (default value) before this update, migrate it to 512.
+- If component limit was 256 (default value) before this update, it will migrate to 512.
 - Improve selection tool interaction while moving camera.
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.
 - Redstone Link frequency item icon is larger now.

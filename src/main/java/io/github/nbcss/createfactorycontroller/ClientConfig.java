@@ -64,7 +64,7 @@ public final class ClientConfig {
                 .translation("createfactorycontroller.config.hide_missing_link_warning")
                 .define("hideMissingLinkWarning", false);
         COLORED_CONNECTED_COMPONENT_OUTLINES = builder
-                .comment("Show colored outlines on components connected to the hovered component in the Controller GUI.")
+                .comment("Show outlines on components connected to the hovered component in the Controller GUI.")
                 .translation("createfactorycontroller.config.colored_connected_component_outlines")
                 .define("coloredConnectedComponentOutlines", true);
         ENABLE_SMOOTH_ANIMATION = builder

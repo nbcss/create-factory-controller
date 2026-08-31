@@ -290,17 +290,12 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     private void recomputeNext() {
-        // Server-authoritative: nextOutput is a compute buffer only preTick (server-only) ever commits, and the client
-        // renders the synced output. A client tube carries a null controller, so this skips the wasted off-server fold
-        // (which would also read half-synced edge values). reconcileInputs still runs for ref-list upkeep.
         if (controller == null) return;
         double[] primaries = new double[primaryInputs.size()];
         for (int i = 0; i < primaries.length; i++) primaries[i] = primaryInputs.get(i).getValue(this);
         OptionalDouble secondary = secondaryInput == null
                 ? OptionalDouble.empty() : OptionalDouble.of(secondaryInput.getValue(this));
-        double raw = (primaries.length == 0 && secondary.isEmpty())
-                ? 0.0
-                : operator.apply(primaries, secondary);
+        double raw = operator.apply(primaries, secondary);
         nextOutput = clampNumber(raw);
     }
 

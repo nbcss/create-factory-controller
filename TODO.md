@@ -23,9 +23,8 @@
 
 # 1.2.0
 - [TODO] Update Arithmetic tube GUI and connection target selection
-- [TODO] Connection type selection tooltip
-- [TODO] Redstone Control of Arithmetic Tube
-- [TODO] Redstone Output of Arithmetic Tube
+- [TODO] Incomplete configuration output NaN to number connection
+- [TODO] Flash animation for number connection when update
 - [TODO] Improve the wording of production order
 - [DONE] Compat with fluid logistics again
 - [DONE] Number Connection & Arithmetic Tube
@@ -44,6 +43,10 @@
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
 - [Patch] Stock Link priority system is broken https://github.com/Creators-of-Create/Create/issues/9689
 - [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
+- [TODO] Connection type selection tooltip
+- [TODO] Redstone Control of Arithmetic Tube
+- [TODO] Redstone Output of Arithmetic Tube
+- [TODO] Hover info format/position customization
 - [TODO] Component Search
 - [TBC] Fix gauge sound overload?
 - [TODO] Improve BP System: Blueprint tooltip includes more info

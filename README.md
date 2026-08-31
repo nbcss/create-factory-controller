@@ -63,7 +63,6 @@ See also:
 | NeoForge                | 21.1.227 |
 | Create                  | 6.0.10   |
 | Deployer (Recommended)  | 0.1.2    |
-| CC: Tweaked (Optional)  | 1.120.2  |
 
 ## Contributing
 
