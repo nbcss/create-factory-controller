@@ -276,7 +276,7 @@
   "item.createfactorycontroller.fluid_filter": "流体过滤",
   "item.createfactorycontroller.arithmetic_tube": "Arithmetic Tube",
   "item.createfactorycontroller.cut_amethyst": "Cut Amethyst",
-  "itemGroup.createfactorycontroller.factory_controller": "Create: Factory Controller",
+  "itemGroup.createfactorycontroller.factory_controller": "机械动力: 工厂控制台",
   "createfactorycontroller.network.default": "网络 #%1$s",
   "createfactorycontroller.network.none": "无网络",
   "createfactorycontroller.subtitle.controller.open": "打开工厂控制台",
