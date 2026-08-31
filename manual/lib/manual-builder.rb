@@ -90,6 +90,7 @@ class ManualBuilder
     def manual_toc
       doc = Asciidoctor.load_file index_path, adoc_options
       toc = doc.find_by(id: 'manual-toc')[0].convert
+      Util.html_strip toc, layers: 2
     end
 
     %i(source attributes po output).map{|k| :"#{k}_path_tmpl" }
