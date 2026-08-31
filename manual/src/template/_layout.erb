@@ -44,12 +44,12 @@
               </div>
             </li>
             <% end %>
-            <li class="nav-item">
+            <li class="nav-item nav-lang-select">
               <button title="<%= h t 'site-nav-langs' %>"><i class="fa-solid">&#xf1ab;</i>&ensp;<%= lang_name language %></button>
               <div class="nav-menu-container">
                 <ol class="nav-menu">
                   <% languages.each do |lang| %>
-                  <li><a lang="<%= lang %>" href="../<%= lang %>/<%= flat_url_for output_path %>">
+                  <li><a rel="alternate" hreflang="<%= lang %>" href="../<%= lang %>/<%= flat_url_for output_path %>" lang="<%= lang %>">
                     <%= lang_name lang %>
                   </a></li>
                   <% end %>

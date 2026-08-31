@@ -10,8 +10,11 @@
 </div>
 
 <script>
-const sourceLangUrl = new URLSearchParams(document.location.search).get('source-lang-url');
-if (sourceLangUrl) {
-  document.getElementById('read-source-lang').href = sourceLangUrl;
+const pageUrl = new URLSearchParams(document.location.search).get('page');
+if (pageUrl) {
+  document.getElementById('read-source-lang').href = "../<%= languages.default %>/"+pageUrl;
+  document.querySelectorAll('.nav-lang-select li > a[hreflang]').forEach((link) => {
+    link.href = `../${link.hreflang}/${pageUrl}`;
+  });
 }
 </script>
