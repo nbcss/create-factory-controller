@@ -19,6 +19,7 @@ Optimization:
 Changes:
 - Removed component limit in blueprint selection.
 - Improve blueprint UX.
+- Increased blueprint file size limit.
 - If component limit was 256 (default value) before this update, migrate it to 512.
 - Improve selection tool interaction while moving camera.
 - Redstone Link can now connect to Redstone Link in different Send/Receive mode.

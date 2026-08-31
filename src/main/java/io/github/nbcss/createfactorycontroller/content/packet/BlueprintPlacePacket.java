@@ -30,8 +30,7 @@ public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor
                                    List<UUID> networks, Optional<BlockPos> boxMin,
                                    Optional<BlockPos> boxMax) implements CustomPacketPayload {
 
-    /** Serverbound custom payloads cap at 32767 bytes; leave room for the rest of the record. */
-    public static final int MAX_PAYLOAD_BYTES = 30000;
+    public static final int MAX_PAYLOAD_BYTES = 1024 * 1024;
     /** One binding per network placeholder — at most one per component, so the board cap bounds it. */
     private static final int MAX_NETWORK_SLOTS = 1024;
 
