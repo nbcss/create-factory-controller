@@ -1,9 +1,11 @@
 {
   "block.createlogisticscontrol.filter_link": "Filtrujący łącznik",
-  "createlogisticscontrol.filter_link.linked": "Połączono z  %1$s celami ",
+  "createlogisticscontrol.filter_link.linked": "Połączono z %1$s celami",
   "createlogisticscontrol.filter_link.not_packager": "Filtrujący łącznik musi być umieszczony na pakowaczu",
+  "createlogisticscontrol.config.enable_filter_link": "Włącz łącznik filtrujący (wymaga przeładowania gry).",
+  "createlogisticscontrol.config.enable_filter_link.tooltip": "Włącz przepis na łącznik filtrujący.",
   "createlogisticscontrol.config.filter_link_range": "Zakres łączniku filtrującego",
-  "createlogisticscontrol.config.filter_link_range.tooltip": "Maksymalna odległość (w blokach) filtrującego łącznika do celu",
+  "createlogisticscontrol.config.filter_link_range.tooltip": "Maksymalna odległość (w blokach) filtrującego łącznika do celu.",
   "createlogisticscontrol.ponder.filter_link.header": "Używanie filtrującego łącznika",
   "createlogisticscontrol.ponder.filter_link.text_1": "Niektóre przepisy mogą nie przetwarzać się poprawnie bez skonfigurowanego filtra",
   "createlogisticscontrol.ponder.filter_link.text_2": "Filtrujący łącznik może być użyty do automatycznego ustawiania filtrów na bloki",
