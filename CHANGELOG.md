@@ -1,3 +1,8 @@
+## 1.2.1
+
+Bugfixes:
+- Fixed unable to use potion bottle to set fluid gauge filter.
+
 ## 1.2.0
 
 Features:

@@ -22,10 +22,6 @@
 - [DONE] Compat with stock keeper from different mods
 
 # 1.2.0
-- [TODO] Update Arithmetic tube GUI and connection target selection
-- [TODO] Incomplete configuration output NaN to number connection
-- [TODO] Flash animation for number connection when update
-- [TODO] Improve the wording of production order
 - [DONE] Compat with fluid logistics again
 - [DONE] Number Connection & Arithmetic Tube
 - [DONE] Filter Link model, polished amethyst texture
@@ -39,21 +35,26 @@
 - [DONE] Highlight upstream and downstream gauges when hover over a gauge
 - [DONE] Allow minimum stock amount in Passive mode gauge
 
+# 1.2.1
+- [TODO] Update Arithmetic tube GUI and connection target selection
+- [TODO] Connection type selection tooltip
+- [TODO] Redstone Control of Arithmetic Tube
+- [TODO] Redstone Output of Arithmetic Tube
+- [TODO] Incomplete configuration output NaN to number connection
+- [TODO] Flash animation for number connection when update
+- [TODO] Improve the wording of production order
+- [TODO] Comparator unit
+
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
 - [Patch] Stock Link priority system is broken https://github.com/Creators-of-Create/Create/issues/9689
 - [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
-- [TODO] Connection type selection tooltip
-- [TODO] Redstone Control of Arithmetic Tube
-- [TODO] Redstone Output of Arithmetic Tube
 - [TODO] Hover info format/position customization
 - [TODO] Component Search
 - [TBC] Fix gauge sound overload?
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
-- [TODO] Crafting output filter
-- [TODO] Comparator unit
 - [TODO] More redstone units (timer etc.)
 - [TODO] Controller IO Link
 - [TODO] No-sending production order
