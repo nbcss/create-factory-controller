@@ -69,7 +69,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             Connection e = tube.incomingConnection(source, NumberConnection.TYPE);
-            return e instanceof NumberConnection nc ? nc.doubleValue() : 0.0;
+            return e instanceof NumberConnection nc ? nc.doubleValue() : Double.NaN;
         }
 
         @Override

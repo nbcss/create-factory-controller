@@ -13,9 +13,9 @@ public enum BuiltinOperator implements ArithmeticOperator {
     // ── N inputs, order-independent ──
     SUM(Arity.N_ARY, "add", (p, s) -> Arrays.stream(p).sum()),
     PRODUCT(Arity.N_ARY, "multiply", (p, s) -> { double r = 1; for (double v : p) r *= v; return r; }),
-    MAX(Arity.N_ARY, "max", (p, s) -> Arrays.stream(p).max().orElse(0)),
-    MIN(Arity.N_ARY, "min", (p, s) -> Arrays.stream(p).min().orElse(0)),
-    // ── 2 inputs, order-sensitive (both operands required — an absent one yields 0, see apply) ──
+    MAX(Arity.N_ARY, "max", (p, s) -> Arrays.stream(p).max().orElse(Double.NaN)),
+    MIN(Arity.N_ARY, "min", (p, s) -> Arrays.stream(p).min().orElse(Double.NaN)),
+    // ── 2 inputs, order-sensitive (both operands required — an absent one yields NaN, see apply) ──
     SUB(Arity.BINARY, "subtract", (p, s) -> p[0] - s),
     DIV(Arity.BINARY, "divide", (p, s) -> p[0] / s),
     POWER(Arity.BINARY, "power", (p, s) -> Math.pow(p[0], s)),
@@ -45,10 +45,10 @@ public enum BuiltinOperator implements ArithmeticOperator {
         this.compute = compute;
     }
 
-    /** {@code primaries[0]} if present, else {@code identity} — an absent operand of a unary op degrades to the
-     *  identity (binary ops require both operands; see {@link #apply}). */
+    /** {@code primaries[0]} if present, else {@code NaN} — an absent operand of a unary op makes the result undefined,
+     *  which propagates as NaN through the computation (binary ops require both operands; see {@link #apply}). */
     private static double first(double[] primaries) {
-        return primaries.length > 0 ? primaries[0] : (double) 0;
+        return primaries.length > 0 ? primaries[0] : Double.NaN;
     }
 
     @Override
@@ -62,7 +62,7 @@ public enum BuiltinOperator implements ArithmeticOperator {
 
     @Override
     public double apply(double[] primaries, OptionalDouble secondary) {
-        if (arity == Arity.BINARY && (primaries.length == 0 || secondary.isEmpty())) return 0.0;
+        if (arity == Arity.BINARY && (primaries.length == 0 || secondary.isEmpty())) return Double.NaN;
         return compute.apply(primaries, secondary.orElse(Double.NaN));
     }
 
