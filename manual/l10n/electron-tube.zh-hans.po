@@ -10,9 +10,7 @@ msgstr ""
 "POT-Creation-Date: 2026-07-26 07:22+1000\n"
 "PO-Revision-Date: 2026-07-25 22:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
-"Language-Team: Chinese (Simplified Han script) <https://"
-"weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/"
-"electron-tube/zh_Hans/>\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/electron-tube/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -28,13 +26,8 @@ msgstr "电子管"
 
 #. type: Plain text
 #: ../src/electron-tube.adoc:4
-msgid ""
-"Electron tubes may be placed inside factory controllers, in which they "
-"function as boolean logic operators for redstone connections. When placed, "
-"they are referred to as \"logical tubes\"."
-msgstr ""
-"电子管可以放入工厂控制台，并作为红石连接的布尔逻辑运算组件。放入后，电子管被"
-"称为“逻辑管”。"
+msgid "Electron tubes may be placed inside factory controllers, in which they function as boolean logic operators for redstone connections. When placed, they are referred to as \"logical tubes\"."
+msgstr "电子管可以放入工厂控制台，并作为红石连接的布尔逻辑运算组件。放入后，电子管被称为“逻辑管”。"
 
 #. type: Block title
 #: ../src/electron-tube.adoc:5
@@ -56,13 +49,8 @@ msgstr "逻辑运算符"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:15
-msgid ""
-"Each logical tube may be connected with 0 or more redstone inputs, and "
-"outputs a redstone signal according to the rules of a logical operator, "
-"determined by its mode."
-msgstr ""
-"每个逻辑管都可连接零个或多个红石输入，并根据当前逻辑运算模式决定是否输出红石"
-"信号。"
+msgid "Each logical tube may be connected with 0 or more redstone inputs, and outputs a redstone signal according to the rules of a logical operator, determined by its mode."
+msgstr "每个逻辑管都可连接零个或多个红石输入，并根据当前逻辑运算模式决定是否输出红石信号。"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:17
@@ -77,9 +65,7 @@ msgstr "或"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:20
-msgid ""
-"Output on when any connected input is on. Otherwise output off. When "
-"unconnected, output off."
+msgid "Output on when any connected input is on. Otherwise output off. When unconnected, output off."
 msgstr "任意一个输入为真时输出真，否则输出假。没有连接时输出假。"
 
 #. type: Labeled list
@@ -90,9 +76,7 @@ msgstr "和"
 
 #. type: #logical-operators
 #: ../src/electron-tube.adoc:23
-msgid ""
-"Output on when all connected inputs are on. Otherwise output off. When "
-"unconnected, output on."
+msgid "Output on when all connected inputs are on. Otherwise output off. When unconnected, output on."
 msgstr "所有输入均为真时输出真，否则输出假。没有连接时输出真。"
 
 #. type: Labeled list
@@ -136,12 +120,8 @@ msgstr "逻辑管设置界面"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:40
-msgid ""
-"❶ Inputs:: Displays the components connected as inputs to this tube. Click a "
-"component to switch it to an output, shift-click to disconnect."
-msgstr ""
-"❶ 输入:: 显示作为此逻辑管输入的组件。点击组件可将其切换为输出，按住 Shift 点"
-"击以断开连接。"
+msgid "❶ Inputs:: Displays the components connected as inputs to this tube. Click a component to switch it to an output, shift-click to disconnect."
+msgstr "❶ 输入:: 显示作为此逻辑管输入的组件。点击组件可将其切换为输出，按住 Shift 点击以断开连接。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:43
@@ -150,24 +130,17 @@ msgstr "❷ 运算符:: 显示当前选择的逻辑运算。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:46
-msgid ""
-"❸ Outputs:: Displays the components connected as outputs to this tube. Click "
-"a component to switch it to an input, shift-click to disconnect."
-msgstr ""
-"❸ 输出:: 显示作为此逻辑管输出的组件。点击组件可将其切换为输入，按住 Shift 点"
-"击以断开连接。"
+msgid "❸ Outputs:: Displays the components connected as outputs to this tube. Click a component to switch it to an input, shift-click to disconnect."
+msgstr "❸ 输出:: 显示作为此逻辑管输出的组件。点击组件可将其切换为输入，按住 Shift 点击以断开连接。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:49
-msgid ""
-"❹ Relocate button:: Click to move the location of this logical tube on the "
-"virtual board."
+msgid "❹ Relocate button:: Click to move the location of this logical tube on the virtual board."
 msgstr "❹ 移动组件:: 点击以在虚拟面板上移动逻辑管。"
 
 #. type: #configuration
 #: ../src/electron-tube.adoc:52
-msgid ""
-"❺ Add connection button:: Click to connect to other components via redstone."
+msgid "❺ Add connection button:: Click to connect to other components via redstone."
 msgstr "❺ 新建连接按钮:: 点击通过红石连接到其他组件。"
 
 #. type: #configuration

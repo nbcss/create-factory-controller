@@ -27,26 +27,17 @@ msgstr "Руководство Create: Factory Controller"
 
 #. type: Plain text
 #: ../src/index.adoc:4
-msgid ""
-"Create: Factory Controller provides a block called the \"`factory "
-"controller`\", which allows you to place factory gauges and other components "
-"on a virtual board stored inside the block. Factory gauges placed in factory "
-"controllers also receive many functional enhancements."
+msgid "Create: Factory Controller provides a block called the \"`factory controller`\", which allows you to place factory gauges and other components on a virtual board stored inside the block. Factory gauges placed in factory controllers also receive many functional enhancements."
 msgstr "Create: Factoru Controller предоставляет блок под названием \"`factory controller`\", который позволяет размещать заводские датчики и другие компоненты на виртуальной панели, хранящейся внутри блока. Заводские датчики, размещенные в фабричных контроллерах, также получают множество функциональных улучшений."
 
 #. type: Plain text
 #: ../src/index.adoc:6
-msgid ""
-"You do not need to read this manual in full to use the mod. The manual "
-"serves to provide a reference to the features of the mod, especially to "
-"those that are difficult to explain fully in the UI."
+msgid "You do not need to read this manual in full to use the mod. The manual serves to provide a reference to the features of the mod, especially to those that are difficult to explain fully in the UI."
 msgstr "Вам не обязательно читать это руководство целиком, чтобы использовать мод. Руководство служит справочником по функциям мода, особенно по тем, которые трудно полностью объяснить в пользовательском интерфейсе."
 
 #. type: Plain text
 #: ../src/index.adoc:10
-msgid ""
-"This manual corresponds to version {mod-version} of the mod. Information may "
-"be incorrect for other versions."
+msgid "This manual corresponds to version {mod-version} of the mod. Information may be incorrect for other versions."
 msgstr "Данное руководство соответствует версии {mod-version} мода. Информация может быть неверной для других версий."
 
 #. type: Title ==

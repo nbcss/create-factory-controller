@@ -26,13 +26,7 @@ msgstr "蓝图"
 
 #. type: Plain text
 #: ../src/blueprint.adoc:6
-msgid ""
-"In a factory controller, you may select any number of "
-"xref:components.adoc[components], and save them into a blueprint. The "
-"configuration and relative position of each component, as well as the "
-"connections between them, are saved into the blueprint. It can then be "
-"reused at another location on the virtual board, or in another factory "
-"controller."
+msgid "In a factory controller, you may select any number of xref:components.adoc[components], and save them into a blueprint. The configuration and relative position of each component, as well as the connections between them, are saved into the blueprint. It can then be reused at another location on the virtual board, or in another factory controller."
 msgstr "在工厂控制台中，你可以选择任意数量的xref:components.adoc[组件]，然后将它们保存到蓝图中。每个组件的配置和相对位置，以及它们之间的连接，都会保存到蓝图中。之后，该蓝图可以在虚拟面板上的其他位置或另一个工厂控制器中重复使用。"
 
 #. type: Title ==
@@ -43,11 +37,7 @@ msgstr "创建蓝图"
 
 #. type: #create
 #: ../src/blueprint.adoc:11
-msgid ""
-"To create a blueprint, xref:dashboard.adoc#selecting[select] the desired "
-"components in the dashboard UI. A save button will subsequently appear in "
-"the top-right corner, clicking it directs you to the \"New Blueprint\" "
-"screen."
+msgid "To create a blueprint, xref:dashboard.adoc#selecting[select] the desired components in the dashboard UI. A save button will subsequently appear in the top-right corner, clicking it directs you to the \"New Blueprint\" screen."
 msgstr "要创建蓝图，请在仪表界面中xref:dashboard.adoc#selecting[选择]所需的组件。随后右上角会出现一个保存按钮，点击打开“新建蓝图”界面。"
 
 #. type: Block title
@@ -76,24 +66,17 @@ msgstr ""
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:27
-msgid ""
-"❷ Blueprint description:: Enter an arbitrary description attached to the "
-"blueprint. Optional."
+msgid "❷ Blueprint description:: Enter an arbitrary description attached to the blueprint. Optional."
 msgstr "❷ 蓝图描述:: 输入任何对该蓝图的描述，选填。"
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:30
-msgid ""
-"❸ Components:: Shows the type and number of components included in the "
-"blueprint."
+msgid "❸ Components:: Shows the type and number of components included in the blueprint."
 msgstr "❸ 组件:: 显示蓝图中包含的组件类型和数量。"
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:33
-msgid ""
-"❹ Networks:: Shows the networks the selected components are tuned to, and "
-"the indices they are saved as. See <<network-mapping>>. Drag an icon to "
-"reorder."
+msgid "❹ Networks:: Shows the networks the selected components are tuned to, and the indices they are saved as. See <<network-mapping>>. Drag an icon to reorder."
 msgstr "❹ 网络:: 显示所选组件连接到的网络，及其被保存为的序号，参阅<<网络映射>>。拖动图标以重新排序。"
 
 #. type: #figure-blueprint-new
@@ -103,9 +86,7 @@ msgstr "❺ 放弃按钮:: 点击取消创建蓝图。"
 
 #. type: #figure-blueprint-new
 #: ../src/blueprint.adoc:39
-msgid ""
-"❻ Save button:: Click to save the new blueprint. Enabled when a valid name "
-"is entered."
+msgid "❻ Save button:: Click to save the new blueprint. Enabled when a valid name is entered."
 msgstr "❻ 保存按钮:: 点击保存新蓝图。输入有效名称后可用。"
 
 #. type: Title ===
@@ -116,20 +97,12 @@ msgstr "蓝图中的网络"
 
 #. type: #network-mapping
 #: ../src/blueprint.adoc:44
-msgid ""
-"Blueprints do not save the networks the components are tuned to. Instead, "
-"the networks are tallied into a list (<<figure-blueprint-new>> ❹), where "
-"each network is mapped to an index within the list (1, 2, ...). Each "
-"component within the blueprint remembers only the index (e.g. whether it is "
-"connected to the 1st, 2nd, ... network). When <<place,placing>>, you will "
-"then be asked to fill in each index with an actual network."
+msgid "Blueprints do not save the networks the components are tuned to. Instead, the networks are tallied into a list (<<figure-blueprint-new>> ❹), where each network is mapped to an index within the list (1, 2, ...). Each component within the blueprint remembers only the index (e.g. whether it is connected to the 1st, 2nd, ... network). When <<place,placing>>, you will then be asked to fill in each index with an actual network."
 msgstr "蓝图不会保存组件所连接的网络，而是会将其统计到一个列表中（<<figure-blueprint-new>> ❹），每个网络都映射到列表中的一个序号（1、2、……）。蓝图中的每个组件仅记住该序号（例如，它是连接到的是第一、第二、……个网络）。在<<place,放置>>蓝图时，你将需要每个序号填写一个实际的网络。"
 
 #. type: #network-mapping
 #: ../src/blueprint.adoc:46
-msgid ""
-"This design allows blueprints to be shared across game saves, where the "
-"networks you want to use the components on are different."
+msgid "This design allows blueprints to be shared across game saves, where the networks you want to use the components on are different."
 msgstr "这种设计使蓝图能够在不同的游戏存档之间共享，因为这些组件将在不同的网络中使用。"
 
 #. type: Title ==
@@ -140,9 +113,7 @@ msgstr "管理蓝图"
 
 #. type: #manage
 #: ../src/blueprint.adoc:51
-msgid ""
-"Saved blueprints can be seen in the blueprint library, opened by clicking "
-"the \"Blueprints\" button on the top-right corner."
+msgid "Saved blueprints can be seen in the blueprint library, opened by clicking the \"Blueprints\" button on the top-right corner."
 msgstr "已保存的蓝图可以在蓝图库中查看，点击右上角的“蓝图”按钮即可打开蓝图库。"
 
 #. type: Block title
@@ -164,16 +135,12 @@ msgstr "❶ 名称:: 显示蓝图的名称。"
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:65
-msgid ""
-"❷ Components:: Shows the type and number of components in the blueprint, and "
-"whether you have enough of them in your inventory."
+msgid "❷ Components:: Shows the type and number of components in the blueprint, and whether you have enough of them in your inventory."
 msgstr "❷ 组件:: 显示蓝图中组件的类型和数量，以及你的物品栏中是否有足够的物品。"
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:68
-msgid ""
-"❸ Place button:: Click to start placing the blueprint. Enabled only when the "
-"blueprint can be placed. See <<place>>."
+msgid "❸ Place button:: Click to start placing the blueprint. Enabled only when the blueprint can be placed. See <<place>>."
 msgstr "❸ 放置按钮:: 点击开始放置蓝图。仅当蓝图可以放置时才启用。参见<<place>>。"
 
 #. type: #figure-blueprint-library
@@ -188,19 +155,12 @@ msgstr "❺ 导入提示:: 对<<import-world>>功能存在的提示。"
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:77
-msgid ""
-"❻ Open folder button:: Click to open the directory the blueprints are stored "
-"in with the operating system's file manager."
+msgid "❻ Open folder button:: Click to open the directory the blueprints are stored in with the operating system's file manager."
 msgstr "❻ 打开文件夹按钮:: 点击以使用操作系统的文件管理器打开蓝图被保存的目录。"
 
 #. type: #figure-blueprint-library
 #: ../src/blueprint.adoc:79
-msgid ""
-"Blueprints are stored as `.nbt` files in the `controller_blueprints` "
-"directory of your Minecraft client. You may copy and rename the files with "
-"the system file manager, they will be recognized by the blueprint library "
-"upon closing and re-opening. Deletion is only possible through the system "
-"file manager."
+msgid "Blueprints are stored as `.nbt` files in the `controller_blueprints` directory of your Minecraft client. You may copy and rename the files with the system file manager, they will be recognized by the blueprint library upon closing and re-opening. Deletion is only possible through the system file manager."
 msgstr "蓝图以 `.nbt` 文件存储在 Minecraft 客户端的 `controller_blueprints` 目录中。你可以使用系统文件管理器复制或重命名这些文件。关闭并重新打开客户端后，蓝图库将能够识别这些改动。删除文件只能通过系统文件管理器进行。"
 
 #. type: Title ===
@@ -211,10 +171,7 @@ msgstr "编辑蓝图"
 
 #. type: #edit
 #: ../src/blueprint.adoc:84
-msgid ""
-"Clicking <<figure-blueprint-library>> ❹ opens the blueprint editing screen. "
-"This is very similar to the <<figure-blueprint-new,\"New Blueprint\" "
-"screen>>, however, you may only edit the name and the description here."
+msgid "Clicking <<figure-blueprint-library>> ❹ opens the blueprint editing screen. This is very similar to the <<figure-blueprint-new,\"New Blueprint\" screen>>, however, you may only edit the name and the description here."
 msgstr "点击<<figure-blueprint-library>> ❹ 将打开蓝图编辑界面。该界面与<<figure-blueprint-new,“新建蓝图”界面>>非常相似，但此处只能编辑名称和描述。"
 
 #. type: Block title
@@ -230,8 +187,7 @@ msgstr "❶ 蓝图名称:: 编辑以重命名蓝图。"
 
 #. type: #figure-blueprint-edit
 #: ../src/blueprint.adoc:94
-msgid ""
-"❷ Blueprint description:: Edit to change the description of the blueprint."
+msgid "❷ Blueprint description:: Edit to change the description of the blueprint."
 msgstr "❷ 蓝图描述:: 编辑以更改蓝图的描述。"
 
 #. type: #figure-blueprint-edit
@@ -252,20 +208,12 @@ msgstr "放置蓝图"
 
 #. type: #place
 #: ../src/blueprint.adoc:105
-msgid ""
-"To place a saved blueprint, open the <<figure-blueprint-library,blueprint "
-"library>> and click the image:btn-place-blueprint.png[,18,18] \"Place\" "
-"button. For the blueprint to be placeable, there must be enough items in "
-"your inventory to create all the included components, and enough remaining "
-"xref:dashboard.adoc#capacity[capacity] in the factory controller."
+msgid "To place a saved blueprint, open the <<figure-blueprint-library,blueprint library>> and click the image:btn-place-blueprint.png[,18,18] \"Place\" button. For the blueprint to be placeable, there must be enough items in your inventory to create all the included components, and enough remaining xref:dashboard.adoc#capacity[capacity] in the factory controller."
 msgstr "要放置已保存的蓝图，请打开<<figure-blueprint-library,蓝图库>>，然后点击 image:btn-place-blueprint.png[,18,18] “放置”按钮。蓝图可放置的前提是，你的物品栏中必须有足够的物品来创建所有其包含的组件，并且工厂控制台中必须有足够的剩余xref:dashboard.adoc#capacity[容量]。"
 
 #. type: #place
 #: ../src/blueprint.adoc:107
-msgid ""
-"You can then xref:dashboard.adoc#navigation[navigate the dashboard] and "
-"click an empty space to select where the new components will be placed. A "
-"screen will then pop up for you to configure the new components."
+msgid "You can then xref:dashboard.adoc#navigation[navigate the dashboard] and click an empty space to select where the new components will be placed. A screen will then pop up for you to configure the new components."
 msgstr "然后你可以xref:dashboard.adoc#navigation[移动控制台界面的视角]，并在空白处点击以选择新的组件放置位置。之后会弹出一个界面，用于配置新的组件。"
 
 #. type: Block title
@@ -276,16 +224,12 @@ msgstr "“放置蓝图”界面"
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:113
-msgid ""
-"This is very similar to the <<figure-blueprint-new,\"New Blueprint\" "
-"screen>>, however, ❶ and ❷ may not be edited here."
+msgid "This is very similar to the <<figure-blueprint-new,\"New Blueprint\" screen>>, however, ❶ and ❷ may not be edited here."
 msgstr "这与<<figure-blueprint-new,“新建蓝图”界面>>非常相似，但是 ❶ 和 ❷ 不能在此处编辑。"
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:116
-msgid ""
-"❹ Networks:: Scroll on each slot to assign an existing network to an index. "
-"See <<network-mapping>>."
+msgid "❹ Networks:: Scroll on each slot to assign an existing network to an index. See <<network-mapping>>."
 msgstr "❹ 网络:: 在每个槽位上滚动以为每个网络序号分配现有的网络。参阅<<network-mapping>>。"
 
 #. type: #figure-blueprint-place
@@ -295,16 +239,12 @@ msgstr "❺ 取消按钮:: 点击取消蓝图放置。"
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:122
-msgid ""
-"❻ Place button:: Click to confirm blueprint placement. Enabled when all "
-"networks are assigned."
+msgid "❻ Place button:: Click to confirm blueprint placement. Enabled when all networks are assigned."
 msgstr "❻ 放置按钮:: 点击以确认放置蓝图。当所有网络都已分配后可用。"
 
 #. type: #figure-blueprint-place
 #: ../src/blueprint.adoc:124
-msgid ""
-"Upon confirming, the items in your inventory are automatically taken to be "
-"placed into the factory controller."
+msgid "Upon confirming, the items in your inventory are automatically taken to be placed into the factory controller."
 msgstr "确认后，你的物品栏中的物品将被自动放入工厂控制台中。"
 
 #. type: Title ==
@@ -315,10 +255,7 @@ msgstr "从游戏世界导入已有的组件配置"
 
 #. type: #import-world
 #: ../src/blueprint.adoc:129
-msgid ""
-"Existing walls of components placed in the game world may be imported into "
-"factory controllers, or saved as blueprints. To do so, use a schematic and "
-"quill to select an area, without saving the area as a schematic."
+msgid "Existing walls of components placed in the game world may be imported into factory controllers, or saved as blueprints. To do so, use a schematic and quill to select an area, without saving the area as a schematic."
 msgstr "游戏世界中已有的组件墙可以被导入工厂控制台，或被保存为蓝图。要执行此操作，请使用“蓝图与笔”选择一个区域，但不要用它将该区域保存为蓝图。"
 
 #. type: Block title
@@ -334,9 +271,7 @@ msgstr "请留意："
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:137
-msgid ""
-"The selected area must be 2-dimensional, i.e. 1 of the 3 dimensions must "
-"have a size of 1."
+msgid "The selected area must be 2-dimensional, i.e. 1 of the 3 dimensions must have a size of 1."
 msgstr "所选区域必须是二维的，即三个维度中必须有一个维度的尺寸为 1。"
 
 #. type: #figure-import-world-select
@@ -346,25 +281,17 @@ msgstr "另外两个维度的尺寸必须小于或等于 128。"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:139
-msgid ""
-"Components must be facing the same direction and have the same orientation. "
-"The behaviour is otherwise undefined."
+msgid "Components must be facing the same direction and have the same orientation. The behaviour is otherwise undefined."
 msgstr "组件必须朝向同一方向且旋转方向一致，否则为未定义行为。"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:140
-msgid ""
-"Only xref:components.adoc[some components] may be imported. Unsupported "
-"blocks are skipped."
+msgid "Only xref:components.adoc[some components] may be imported. Unsupported blocks are skipped."
 msgstr "只有xref:components.adoc[部分组件]可以被导入，不支持的方块将被跳过。"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:142
-msgid ""
-"After selecting, stop holding the schematic and quill in your hand, and "
-"interact with a factory controller. The blueprint library will display a "
-"special entry at the top, representing the area selected by the schematic "
-"and quill."
+msgid "After selecting, stop holding the schematic and quill in your hand, and interact with a factory controller. The blueprint library will display a special entry at the top, representing the area selected by the schematic and quill."
 msgstr "选中后，放下蓝图与笔，并与工厂控制台交互。蓝图库顶部会显示一个特殊条目，代表蓝图与笔选中的区域。"
 
 #. type: Block title
@@ -380,10 +307,7 @@ msgstr "❶ 组件:: 显示所选区域中被识别的组件。"
 
 #. type: #figure-import-world-select
 #: ../src/blueprint.adoc:151
-msgid ""
-"❷ Place button:: Click to place the selected components into the factory "
-"controller. Similar to placing a blueprint, except the networks are not "
-"<<network-mapping,mapped>>."
+msgid "❷ Place button:: Click to place the selected components into the factory controller. Similar to placing a blueprint, except the networks are not <<network-mapping,mapped>>."
 msgstr "❷ 放置按钮:: 点击将选定的组件放置到工厂控制台中。类似于放置蓝图，但没有<<network-mapping,网络映射>>。"
 
 #. type: #figure-import-world-select
