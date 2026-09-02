@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -48,7 +49,7 @@ abstract class GaugeWorkModeEditor {
 
     /** Point-in-rect test (shared by every editor's hit-testing). */
     protected static boolean in(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx < x + w && my >= y && my < y + h;
+        return Rect2i.fromXYWH(x, y, w, h).contains((int) mx, (int) my, Rect2i.Boundary.HALF_OPEN);
     }
 
     /** The 3×3 grid cell (0–8) under {@code (mx, my)}, or {@code -1} if none. */

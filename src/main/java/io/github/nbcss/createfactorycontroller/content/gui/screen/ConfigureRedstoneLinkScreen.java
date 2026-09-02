@@ -247,7 +247,9 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     private boolean overRed(double mx, double my) { return in(mx, my, panelX + RED_X, panelY + RED_Y); }
     private boolean overBlue(double mx, double my) { return in(mx, my, panelX + BLUE_X, panelY + BLUE_Y); }
     private static boolean in(double mx, double my, int x, int y) {
-        return mx >= x && mx < x + SLOT && my >= y && my < y + SLOT;
+        return io.github.nbcss.createfactorycontroller.content.helper.Rect2i
+                .fromXYWH(x, y, SLOT, SLOT)
+                .contains((int) mx, (int) my, io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN);
     }
 
     /** JEI ghost / drop targets (screen coords). */
