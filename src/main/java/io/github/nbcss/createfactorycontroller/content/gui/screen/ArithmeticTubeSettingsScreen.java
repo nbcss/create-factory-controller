@@ -10,7 +10,6 @@ import io.github.nbcss.createfactorycontroller.content.component.ArithmeticTubeB
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
-import io.github.nbcss.createfactorycontroller.content.component.operator.OperatorArity;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
@@ -48,28 +47,34 @@ import java.util.List;
 public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
         implements PanelSyncListener {
 
-    private static final ResourceLocation FRAME = resource("arithmetic_tube/frame");
-    private static final ResourceLocation BOTTOM_BAR = resource("common/bottom_bar");
-    private static final ResourceLocation OP_BUTTON = resource("arithmetic_tube/operator_button");
-    private static final ResourceLocation OP_BUTTON_HOVER = resource("arithmetic_tube/operator_button_hovered");
-    private static final ResourceLocation OP_BUTTON_PRESSED = resource("arithmetic_tube/operator_button_pressed");
-    private static final ResourceLocation DROPDOWN_BG = resource("arithmetic_tube/operator_menu_background");
-    private static final ResourceLocation RESULT_ICON = resource("arithmetic_tube/result_icon");
-    private static final ResourceLocation RESULT_BG = resource("arithmetic_tube/result_entry_background");
-    private static final ResourceLocation RESULT_VALUE_BOX = resource("arithmetic_tube/result_value_box");
-    private static final ResourceLocation BTN_NORMAL = resource("common/button/normal");
-    private static final ResourceLocation BTN_HOVER = resource("common/button/hovered");
-    private static final ResourceLocation BTN_TOGGLED = resource("common/button/toggled");
-    private static final ResourceLocation BTN_DISABLED = resource("common/button/disabled");
-    private static final ResourceLocation OPERAND_BLUE_SLOT = resource("arithmetic_tube/operand_blue_icon_slot");
-    private static final ResourceLocation OPERAND_RED_SLOT = resource("arithmetic_tube/operand_red_icon_slot");
-    private static final ResourceLocation ENTRY_BG = resource("arithmetic_tube/entry_background");
-    private static final ResourceLocation CONN_VALUE_BOX = resource("arithmetic_tube/connection_value_box");
-    private static final ResourceLocation CONSTANT_INPUT_FIELD = resource("arithmetic_tube/constant_input_field");
-    private static final ResourceLocation OPERATOR_DROPDOWN_ICON = resource("arithmetic_tube/operator_dropdown_icon");
-    private static final ResourceLocation CONSTANT_ICON = resource("icons/constant");
-    private static final ResourceLocation ELLIPSIS_ICON = resource("icons/ellipsis");
-    private static final ResourceLocation ADD_CONSTANT_ICON = resource("icons/add_constant");
+    private interface SpriteLocations {
+        ResourceLocation FRAME = resource("arithmetic_tube/frame");
+        ResourceLocation BOTTOM_BAR = resource("common/bottom_bar");
+        ResourceLocation OP_BUTTON = resource("arithmetic_tube/operator_button");
+        ResourceLocation OP_BUTTON_HOVER = resource("arithmetic_tube/operator_button_hovered");
+        ResourceLocation OP_BUTTON_PRESSED = resource("arithmetic_tube/operator_button_pressed");
+        ResourceLocation DROPDOWN_BG = resource("arithmetic_tube/operator_menu_background");
+        ResourceLocation RESULT_ICON = resource("arithmetic_tube/result_icon");
+        ResourceLocation RESULT_BG = resource("arithmetic_tube/result_entry_background");
+        ResourceLocation RESULT_VALUE_BOX = resource("arithmetic_tube/result_value_box");
+        ResourceLocation BTN_NORMAL = resource("common/button/normal");
+        ResourceLocation BTN_HOVER = resource("common/button/hovered");
+        ResourceLocation BTN_TOGGLED = resource("common/button/toggled");
+        ResourceLocation BTN_DISABLED = resource("common/button/disabled");
+        ResourceLocation OPERAND_BLUE_SLOT = resource("arithmetic_tube/operand_blue_icon_slot");
+        ResourceLocation OPERAND_RED_SLOT = resource("arithmetic_tube/operand_red_icon_slot");
+        ResourceLocation ENTRY_BG = resource("arithmetic_tube/entry_background");
+        ResourceLocation CONN_VALUE_BOX = resource("arithmetic_tube/connection_value_box");
+        ResourceLocation CONSTANT_INPUT_FIELD = resource("arithmetic_tube/constant_input_field");
+        ResourceLocation OPERATOR_DROPDOWN_ICON = resource("arithmetic_tube/operator_dropdown_icon");
+        ResourceLocation CONSTANT_ICON = resource("icons/constant");
+        ResourceLocation ELLIPSIS_ICON = resource("icons/ellipsis");
+        ResourceLocation ADD_CONSTANT_ICON = resource("icons/add_constant");
+
+        private static ResourceLocation resource(String path) {
+            return ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, path);
+        }
+    }
 
     private static final int PANEL_W = 184;
     private static final int HEADER_H = 16;
@@ -85,9 +90,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private static final int INPUT_H = 20, SLOT = 20, SLOT_GAP = 2, INPUT_ROW_GAP = 4, ROW_BTN = 18;
     private static final int ADD_PAD_L = 4;
     private static final int ICON16 = 16;
-
-    /** TODO self loop? */
-    private static final boolean allowLoop = false;
 
     private static final int DD_INSET = 1;
     private static final int DD_BTN = 17;
@@ -127,7 +129,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private int commitIndex = NO_COMMIT;
     private double commitValue;
 
-    private enum RowKind { INPUT, ADD, LOOP }
+    private enum RowKind { INPUT, ADD }
     private record Row(RowKind kind, boolean primary, int index, @Nullable ArithmeticTubeBehaviour.NumberInput input) {}
 
     public ArithmeticTubeSettingsScreen(FactoryControllerScreen controller, VirtualComponentPosition tubePos) {
@@ -137,10 +139,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         this.tubePos = tubePos;
         Minecraft.getInstance().getSoundManager().play(
                 SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
-    }
-
-    private static ResourceLocation resource(String path) {
-        return ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, path);
     }
 
     @Override
@@ -165,7 +163,10 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         swapButton.setToolTip(Component.translatable("createfactorycontroller.gui.arithmetic_tube.swap_inputs"));
         addWidget(swapButton);
 
-        relayout();
+        recomputeLayout();
+        scroll.setValue(0);
+        scroll.chase(0, 0.5, Chaser.EXP);
+        renderedScroll = 0;
     }
 
     private int rowsHeight(int n) { return n <= 0 ? 0 : n * INPUT_H + (n - 1) * INPUT_ROW_GAP; }
@@ -188,25 +189,16 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         closeButton.setY(panelY + panelH - 24);
         relocateButton.setX(panelX + 7);
         relocateButton.setY(panelY + panelH - 24);
-        boolean binary = t != null && t.getOperator().arity() == OperatorArity.BINARY;
+        boolean binary = t != null && t.getOperator().arity() == ArithmeticOperator.Arity.BINARY;
         swapButton.setX(binary ? panelX + 27 : -1000);   // right of the move button; off-screen (hidden) for non-binary
         swapButton.setY(panelY + panelH - 24);
-    }
-
-    private void relayout() {
-        recomputeLayout();
-        scroll.setValue(0);
-        scroll.chase(0, 0.5, Chaser.EXP);
-        renderedScroll = 0;
     }
 
     private List<Row> buildRows(ArithmeticTubeBehaviour tube) {
         List<Row> list = new ArrayList<>();
         List<ArithmeticTubeBehaviour.NumberInput> prim = tube.getPrimaryInputs();
-        for (int i = 0; i < prim.size(); i++) {
-            boolean loop = prim.get(i) instanceof ArithmeticTubeBehaviour.LoopInput;
-            list.add(new Row(loop ? RowKind.LOOP : RowKind.INPUT, true, i, prim.get(i)));
-        }
+        for (int i = 0; i < prim.size(); i++)
+            list.add(new Row(RowKind.INPUT, true, i, prim.get(i)));
         if (prim.size() < tube.getOperator().arity().maxPrimary) list.add(new Row(RowKind.ADD, true, -1, null));
         if (tube.getOperator().arity().allowsSecondary) {
             ArithmeticTubeBehaviour.NumberInput sec = tube.getSecondaryInput();
@@ -283,8 +275,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         if (constantBox != null && rows.stream().noneMatch(this::isEditing)) removeConstantBox();
         controller.renderBoard(gfx, -1, -1, partialTick, true);
 
-        TiledSpriteRenderer.create(FRAME).render(gfx, panelX, panelY, PANEL_W, panelH - BOTTOM_H + 1);
-        TiledSpriteRenderer.create(BOTTOM_BAR).render(gfx, panelX, panelY + panelH - BOTTOM_H, PANEL_W, BOTTOM_H);
+        TiledSpriteRenderer.create(SpriteLocations.FRAME).render(gfx, panelX, panelY, PANEL_W, panelH - BOTTOM_H + 1);
+        TiledSpriteRenderer.create(SpriteLocations.BOTTOM_BAR).render(gfx, panelX, panelY + panelH - BOTTOM_H, PANEL_W, BOTTOM_H);
         renderedScroll = Mth.clamp(scroll.getValue(partialTick), 0, (float) maxScroll());
 
         RenderSystem.enableBlend();
@@ -298,7 +290,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         gfx.disableScissor();
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
-        if (tube.getOperator().arity() == OperatorArity.BINARY) swapButton.render(gfx, mouseX, mouseY, partialTick);
+        if (tube.getOperator().arity() == ArithmeticOperator.Arity.BINARY) swapButton.render(gfx, mouseX, mouseY, partialTick);
         closeButton.render(gfx, mouseX, mouseY, partialTick);
         renderScrollbar(gfx, mouseX, mouseY);
 
@@ -309,42 +301,38 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         }
     }
 
-    private static void tiled(GuiGraphics gfx, ResourceLocation sprite, int x, int y, int w, int h) {
-        TiledSpriteRenderer.create(sprite).render(gfx, x, y, w, h);
-    }
-
     private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
         int x = entryX(), y = opEntryY(), w = entryW();
         boolean over = inOperatorButton(mouseX, mouseY);
-        ResourceLocation sprite = (operatorHeld && over) ? OP_BUTTON_PRESSED : (over ? OP_BUTTON_HOVER : OP_BUTTON);
-        tiled(gfx, sprite, x, y, w, OP_H);
+        ResourceLocation sprite = (operatorHeld && over) ? SpriteLocations.OP_BUTTON_PRESSED : (over ? SpriteLocations.OP_BUTTON_HOVER : SpriteLocations.OP_BUTTON);
+        TiledSpriteRenderer.create(sprite).render(gfx, x, y, w, OP_H);
 
         ArithmeticOperator op = tube.getOperator();
         int iconX = x + (OP_SLOT_W - OP_ICON) / 2 + 1;
         int iconY = y + (OP_H - OP_ICON) / 2;
         drawOperatorIcon(gfx, op, iconX, iconY, 0xFFFFFFFF, true,
-                op.arity() == OperatorArity.BINARY);
+                op.arity() == ArithmeticOperator.Arity.BINARY);
 
         Component name = op.displayName();
         int nameX = (x + OP_SLOT_W + x + w) / 2 - font.width(name) / 2;
         int nameY = y + (OP_H - font.lineHeight) / 2;
         gfx.drawString(font, name, nameX, nameY, NAME_COLOR, false);
-        gfx.blitSprite(OPERATOR_DROPDOWN_ICON, x + w - 6 - 7, y + (OP_H - 4) / 2, 7, 4);
+        gfx.blitSprite(SpriteLocations.OPERATOR_DROPDOWN_ICON, x + w - 6 - 7, y + (OP_H - 4) / 2, 7, 4);
     }
 
     private void renderResultEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube) {
         int x = entryX(), y = resultEntryY(), w = entryW();
 
-        BatchedBlitter.forSprite(RESULT_ICON).blit(gfx.bufferSource(), gfx.pose(), x, y, RESULT_ICON_SIZE, RESULT_ICON_SIZE);
+        BatchedBlitter.forSprite(SpriteLocations.RESULT_ICON).blit(gfx.bufferSource(), gfx.pose(), x, y, RESULT_ICON_SIZE, RESULT_ICON_SIZE);
 
         int bgX = x + RESULT_ICON_SIZE + RESULT_GAP, bgW = w - RESULT_ICON_SIZE - RESULT_GAP;
-        tiled(gfx, RESULT_BG, bgX, y, bgW, RESULT_H);
+        TiledSpriteRenderer.create(SpriteLocations.RESULT_BG).render(gfx, bgX, y, bgW, RESULT_H);
 
         int vbX = bgX + 1, vbW = bgW - 2, vbY = y + 1, vbH = 18;
-        tiled(gfx, RESULT_VALUE_BOX, vbX, vbY, vbW, vbH);
+        TiledSpriteRenderer.create(SpriteLocations.RESULT_VALUE_BOX).render(gfx, vbX, vbY, vbW, vbH);
 
         int tx = vbX + 6, ty = vbY + (vbH - font.lineHeight) / 2 + 2;
-        gfx.drawString(font, tube.getOutputText(), tx, ty, VALUE_COLOR, false);
+        gfx.drawString(font, NumberFormatter.format(tube.getOutput()), tx, ty, VALUE_COLOR, false);
     }
 
     // ── Input rows ──────────────────────
@@ -354,28 +342,9 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             Row row = rows.get(k);
             switch (row.kind()) {
                 case INPUT -> renderInputRow(gfx, tube, row, rowY(k), mouseX, mouseY);
-                case LOOP -> renderLoopRow(gfx, tube, rowY(k), mouseX, mouseY);
                 case ADD -> renderAddRow(gfx, tube, row, rowY(k), mouseX, mouseY);
             }
         }
-    }
-
-    /** The synthetic feedback row: read-only, shows the tube's own output; its delete button turns the loop off. */
-    private void renderLoopRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY) {
-        int x = entryX();
-        renderSlot(gfx, true, x, y);                      // primary (blue) slot
-        AllIcons.I_REFRESH.render(gfx, x + 2, y + 2);      // loop indicator
-
-        int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-        tiled(gfx, ENTRY_BG, bgX, y, bgW, INPUT_H);
-
-        int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;   // delete → disable loop
-        tiled(gfx, inRect(mouseX, mouseY, delX, delY, ROW_BTN, ROW_BTN) ? BTN_HOVER : BTN_NORMAL, delX, delY, ROW_BTN, ROW_BTN);
-        AllIcons.I_TRASH.render(gfx, delX + (ROW_BTN - ICON16) / 2, delY + (ROW_BTN - ICON16) / 2);
-
-        int boxX = bgX + 1, boxW = delX - 2 - boxX;         // read-only output value
-        tiled(gfx, CONN_VALUE_BOX, boxX, y + 1, boxW, 18);
-        gfx.drawString(font, tube.getOutputText(), boxX + 6, y + 1 + (18 - font.lineHeight) / 2 + 2, VALUE_COLOR, false);
     }
 
     private void renderInputRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row row, int y, int mouseX, int mouseY) {
@@ -383,22 +352,24 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         renderSlot(gfx, row.primary(), x, y);
         // slot content: a constant icon, or the connected component's item
         if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-            BatchedBlitter.forSprite(CONSTANT_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
+            BatchedBlitter.forSprite(SpriteLocations.CONSTANT_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
         else if (row.input() instanceof ArithmeticTubeBehaviour.ConnectionInput w) {
             var comp = menu.componentAt(w.source());
             if (comp != null) gfx.renderItem(new ItemStack(comp.getItem()), x + 2, y + 2);
         }
 
         int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-        tiled(gfx, ENTRY_BG, bgX, y, bgW, INPUT_H);
+        TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX, y, bgW, INPUT_H);
 
         int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;   // delete button: right, 1px margin
-        tiled(gfx, inRect(mouseX, mouseY, delX, delY, ROW_BTN, ROW_BTN) ? BTN_HOVER : BTN_NORMAL, delX, delY, ROW_BTN, ROW_BTN);
+        ResourceLocation sprite1 = inRect(mouseX, mouseY, delX, delY, ROW_BTN, ROW_BTN) ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+        TiledSpriteRenderer.create(sprite1).render(gfx, delX, delY, ROW_BTN, ROW_BTN);
         AllIcons.I_TRASH.render(gfx, delX + (ROW_BTN - ICON16) / 2, delY + (ROW_BTN - ICON16) / 2);
 
         int boxX = bgX + 1, boxW = delX - 2 - boxX;
         boolean constant = row.input() instanceof ArithmeticTubeBehaviour.ConstantInput;
-        tiled(gfx, constant ? CONSTANT_INPUT_FIELD : CONN_VALUE_BOX, boxX, y + 1, boxW, 18);
+        ResourceLocation sprite = constant ? SpriteLocations.CONSTANT_INPUT_FIELD : SpriteLocations.CONN_VALUE_BOX;
+        TiledSpriteRenderer.create(sprite).render(gfx, boxX, y + 1, boxW, 18);
         int textX = boxX + 6, textY = y + 1 + (18 - font.lineHeight) / 2 + 2;
         if (isEditing(row) && constantBox != null) {
             constantBox.setX(textX);
@@ -410,43 +381,33 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         }
     }
 
-    // ── ADD-row buttons: 0 = add connection, 1 = add constant, 2 = add self-loop input ──
-    /** The self-loop button is only offered on the PRIMARY group of a multi-input operator, and only while the master
-     *  switch is on. Scoping it to the primary group keeps loop independent of the (separate) secondary slot, so were
-     *  loop ever allowed for a binary operator its secondary wouldn't be blocked by the primary loop. */
-    private boolean showLoopAdd(ArithmeticTubeBehaviour tube, boolean primary) {
-        return allowLoop && primary && tube.getOperator().arity() == OperatorArity.NARY;
-    }
+    // ── ADD-row buttons: 0 = add connection, 1 = add constant ──
     private int addButtonX(int bgX, int i) { return bgX + ADD_PAD_L + i * (ROW_BTN + 2); }
-    /** Add-entry background width for {@code n} buttons (left pad + buttons with 2px gaps + 1px right margin). */
-    private int addEntryW(int n) { return ADD_PAD_L + n * ROW_BTN + (n - 1) * 2 + 1; }
+    /** Add-entry background width (left pad + two buttons with a 2px gap + 1px right margin). */
+    private int addEntryW() { return ADD_PAD_L + 2 * ROW_BTN + 2 + 1; }
 
     private void renderAddRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row row, int y, int mouseX, int mouseY) {
         int x = entryX();
         renderSlot(gfx, row.primary(), x, y);
-        BatchedBlitter.forSprite(ELLIPSIS_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
+        BatchedBlitter.forSprite(SpriteLocations.ELLIPSIS_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
 
-        boolean loop = showLoopAdd(tube, row.primary());
         int bgX = x + SLOT + SLOT_GAP, bY = y + 1;
-        tiled(gfx, ENTRY_BG, bgX, y, addEntryW(loop ? 3 : 2), INPUT_H);   // background extends for the third button
+        int w = addEntryW();
+        TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX, y, w, INPUT_H);
 
-        int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1), b3X = addButtonX(bgX, 2);
-        tiled(gfx, inRect(mouseX, mouseY, b1X, bY, ROW_BTN, ROW_BTN) ? BTN_HOVER : BTN_NORMAL, b1X, bY, ROW_BTN, ROW_BTN);
+        int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
+        ResourceLocation sprite2 = inRect(mouseX, mouseY, b1X, bY, ROW_BTN, ROW_BTN) ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+        TiledSpriteRenderer.create(sprite2).render(gfx, b1X, bY, ROW_BTN, ROW_BTN);
         AllIcons.I_ADD.render(gfx, b1X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2);
         // add constant: one per operand group (this row's group), so it greys out once this group has one
-        tiled(gfx, tube.hasConstant(row.primary()) ? BTN_DISABLED
-                : inRect(mouseX, mouseY, b2X, bY, ROW_BTN, ROW_BTN) ? BTN_HOVER : BTN_NORMAL, b2X, bY, ROW_BTN, ROW_BTN);
-        gfx.blitSprite(ADD_CONSTANT_ICON, b2X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2, ICON16, ICON16);
-        // add self-loop input: only one per tube, so it greys out once the loop is on
-        if (loop) {
-            tiled(gfx, tube.hasLoopInput() ? BTN_DISABLED
-                    : inRect(mouseX, mouseY, b3X, bY, ROW_BTN, ROW_BTN) ? BTN_HOVER : BTN_NORMAL, b3X, bY, ROW_BTN, ROW_BTN);
-            AllIcons.I_REFRESH.render(gfx, b3X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2);
-        }
+        ResourceLocation sprite1 = tube.hasConstant(row.primary()) ? SpriteLocations.BTN_DISABLED
+                : inRect(mouseX, mouseY, b2X, bY, ROW_BTN, ROW_BTN) ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+        TiledSpriteRenderer.create(sprite1).render(gfx, b2X, bY, ROW_BTN, ROW_BTN);
+        gfx.blitSprite(SpriteLocations.ADD_CONSTANT_ICON, b2X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2, ICON16, ICON16);
     }
 
     private void renderSlot(GuiGraphics gfx, boolean primary, int x, int y) {
-        BatchedBlitter.forSprite(primary ? OPERAND_BLUE_SLOT : OPERAND_RED_SLOT)
+        BatchedBlitter.forSprite(primary ? SpriteLocations.OPERAND_BLUE_SLOT : SpriteLocations.OPERAND_RED_SLOT)
                 .blit(gfx.bufferSource(), gfx.pose(), x, y, SLOT, SLOT);
     }
 
@@ -471,16 +432,16 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     }
 
     private void renderDropdown(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
-        tiled(gfx, DROPDOWN_BG, ddX(), ddY(), ddW(), ddH());
+        TiledSpriteRenderer.create(SpriteLocations.DROPDOWN_BG).render(gfx, ddX(), ddY(), ddW(), ddH());
         ArithmeticOperator current = tube.getOperator();
         for (int i = 0; i < OPERATORS.length; i++) {
             ArithmeticOperator op = OPERATORS[i];
             int bx = ddBtnX(i % DD_COLS), by = ddBtnY(i / DD_COLS);
             boolean enabled = tube.canSwitchTo(op);
-            boolean active = op.id().equals(current.id());
+            boolean active = op.name().equals(current.name());
             boolean hover = enabled && inRect(mouseX, mouseY, bx, by, DD_BTN, DD_BTN);
-            ResourceLocation state = !enabled ? BTN_DISABLED : active ? BTN_TOGGLED : hover ? BTN_HOVER : BTN_NORMAL;
-            tiled(gfx, state, bx, by, DD_BTN, DD_BTN);
+            ResourceLocation state = !enabled ? SpriteLocations.BTN_DISABLED : active ? SpriteLocations.BTN_TOGGLED : hover ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+            TiledSpriteRenderer.create(state).render(gfx, bx, by, DD_BTN, DD_BTN);
             drawOperatorIcon(gfx, op, bx + (DD_BTN - OP_ICON) / 2, by + (DD_BTN - OP_ICON) / 2, 0xFFFFFFFF, false, false);
         }
     }
@@ -490,13 +451,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         String icon = op.iconName();
         if (border) {
             setColor(gfx, BORDER_BLACK);
-            gfx.blitSprite(resource(OPERATOR_PATH + icon + "_border"), x, y, OP_ICON, OP_ICON);
+            gfx.blitSprite(SpriteLocations.resource(OPERATOR_PATH + icon + "_border"), x, y, OP_ICON, OP_ICON);
         }
         setColor(gfx, tint);
-        gfx.blitSprite(resource(OPERATOR_PATH + icon), x, y, OP_ICON, OP_ICON);
+        gfx.blitSprite(SpriteLocations.resource(OPERATOR_PATH + icon), x, y, OP_ICON, OP_ICON);
         gfx.setColor(1f, 1f, 1f, 1f);
         if (operands)
-            gfx.blitSprite(resource(OPERATOR_PATH + icon + "_operands"), x, y, OP_ICON, OP_ICON);
+            gfx.blitSprite(SpriteLocations.resource(OPERATOR_PATH + icon + "_operands"), x, y, OP_ICON, OP_ICON);
     }
 
     private static void setColor(GuiGraphics gfx, int argb) {
@@ -522,7 +483,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             if (idx >= 0) gfx.renderComponentTooltip(font, operatorTooltip(OPERATORS[idx]), mouseX, mouseY);
         } else {
             ArithmeticTubeBehaviour t = tube();
-            List<Component> tip = t == null ? null : contentTooltip(t, mouseX, mouseY);
+            List<Component> tip = t == null ? null : contentTooltip(mouseX, mouseY);
             if (tip != null && !tip.isEmpty()) gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
         }
         TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, closeButton, relocateButton, swapButton);
@@ -530,7 +491,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     /** Tooltip for the hovered content element (icons and buttons) */
     @Nullable
-    private List<Component> contentTooltip(ArithmeticTubeBehaviour tube, double mx, double my) {
+    private List<Component> contentTooltip(double mx, double my) {
         if (my < viewportY() || my >= viewportY() + viewportH) return null;
         if (inOperatorButton(mx, my)) return
                 tr("tooltip.operator", ChatFormatting.WHITE);
@@ -539,27 +500,23 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             int y = rowY(k), x = entryX();
             if (inRect(mx, my, x, y, SLOT, SLOT)) return slotTooltip(row);
             int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-            if (row.kind() == RowKind.INPUT || row.kind() == RowKind.LOOP) {   // both carry a delete button at the same spot
+            if (row.kind() == RowKind.INPUT) {
                 int delX = bgX + bgW - 1 - ROW_BTN;
                 if (inRect(mx, my, delX, y + 1, ROW_BTN, ROW_BTN))
                     return tr("tooltip.remove", ChatFormatting.WHITE);
-                if (row.kind() == RowKind.INPUT) {
-                    int boxX = bgX + 1, boxW = delX - 2 - boxX;
-                    if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
-                        if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-                            return tr("tooltip.click_to_edit", ChatFormatting.GRAY);
-                        if (row.input() instanceof ArithmeticTubeBehaviour.ConnectionInput)
-                            return tr("tooltip.connection_value", ChatFormatting.GRAY);
-                    }
+                int boxX = bgX + 1, boxW = delX - 2 - boxX;
+                if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
+                    if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
+                        return tr("tooltip.click_to_edit", ChatFormatting.GRAY);
+                    if (row.input() instanceof ArithmeticTubeBehaviour.ConnectionInput)
+                        return tr("tooltip.connection_value", ChatFormatting.GRAY);
                 }
             } else {
-                int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1), b3X = addButtonX(bgX, 2);
+                int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
                 if (inRect(mx, my, b1X, y + 1, ROW_BTN, ROW_BTN))
                     return List.of(CreateLang.translate("gui.factory_panel.connect_input").component());
                 if (inRect(mx, my, b2X, y + 1, ROW_BTN, ROW_BTN))
                     return tr("tooltip.add_constant", ChatFormatting.WHITE);
-                if (showLoopAdd(tube, row.primary()) && inRect(mx, my, b3X, y + 1, ROW_BTN, ROW_BTN))
-                    return List.of(Component.translatable("createfactorycontroller.gui.arithmetic_tube.loop_input"));
             }
         }
         if (inRect(mx, my, entryX(), resultEntryY(), RESULT_ICON_SIZE, RESULT_ICON_SIZE))
@@ -572,8 +529,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private List<Component> slotTooltip(Row row) {
         if (row.kind() == RowKind.ADD)
             return tr("tooltip.new_input", row.primary ? ChatFormatting.BLUE : ChatFormatting.RED);
-        if (row.kind() == RowKind.LOOP)
-            return List.of(Component.translatable("createfactorycontroller.gui.arithmetic_tube.loop_input"));
         if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
             return tr("tooltip.constant", ChatFormatting.GRAY);
         if (row.input() instanceof ArithmeticTubeBehaviour.ConnectionInput w) {
@@ -602,9 +557,9 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 "createfactorycontroller.arithmetic_tube.operator_inputs." + op.arity().name().toLowerCase())
                 .withStyle(ChatFormatting.GRAY);
         inputs.append(Component.literal(" ■").withStyle(ChatFormatting.BLUE));
-        if (op.arity() == OperatorArity.BINARY)
+        if (op.arity() == ArithmeticOperator.Arity.BINARY)
             inputs.append(Component.literal("■").withStyle(ChatFormatting.RED));
-        else if (op.arity() == OperatorArity.NARY)
+        else if (op.arity() == ArithmeticOperator.Arity.N_ARY)
             inputs.append(Component.literal("■■").withStyle(ChatFormatting.BLUE));
         tip.add(inputs);
         ArithmeticTubeBehaviour tube = tube();
@@ -644,7 +599,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 ArithmeticOperator op = OPERATORS[idx];
                 ArithmeticTubeBehaviour tube = tube();
                 if (tube != null && tube.canSwitchTo(op)) {
-                    PacketDistributor.sendToServer(new ConfigureArithmeticTubePacket(menu.controllerPos, tubePos, op.id()));
+                    PacketDistributor.sendToServer(new ConfigureArithmeticTubePacket(menu.controllerPos, tubePos, op.name()));
                     playClickSound();
                     dropdownOpen = false;
                 }
@@ -674,23 +629,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         if (inViewport) {
             for (int k = 0; k < rows.size(); k++)
                 if (handleRowClick(rows.get(k), rowY(k), mouseX, mouseY, button)) return true;
-            if (inOperatorButton(mouseX, mouseY)) { dropdownOpen = true; playClickSound(); return true; }
+            if (inOperatorButton(mouseX, mouseY)) { dropdownOpen = true; return true; }
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     private boolean handleRowClick(Row row, int y, double mx, double my, int button) {
         int x = entryX();
-        if (row.kind() == RowKind.LOOP) {   // read-only feedback row: only its delete button acts (turns the loop off)
-            int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-            int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;
-            if (inRect(mx, my, delX, delY, ROW_BTN, ROW_BTN)) {
-                sendInput(ConfigureArithmeticInputPacket.LOOP, true, -1, 0);
-                playClickSound();
-                return true;
-            }
-            return inRect(mx, my, x, y, entryW(), INPUT_H);
-        }
         if (row.kind() == RowKind.INPUT) {
             int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
             int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;
@@ -703,14 +648,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 int boxX = bgX + 1, boxW = delX - 2 - boxX;
                 if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
                     startEdit(row, button == 1 ? 0 : c.value(), boxW - 9);
-                    playClickSound();
                     return true;
                 }
             }
             return inRect(mx, my, x, y, entryW(), INPUT_H);
         }
         int bgX = x + SLOT + SLOT_GAP;
-        int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1), b3X = addButtonX(bgX, 2), bY = y + 1;
+        int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1), bY = y + 1;
         if (inRect(mx, my, b1X, bY, ROW_BTN, ROW_BTN)) {
             sendInput(ConfigureArithmeticInputPacket.PREPARE_WIRE, row.primary(), -1, 0);
             controller.beginConnectionMode(tubePos);
@@ -723,10 +667,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, row.primary(), -1, 0);
                 playClickSound();
             }
-            return true;   // swallow even when disabled
-        }
-        if (t != null && showLoopAdd(t, row.primary()) && inRect(mx, my, b3X, bY, ROW_BTN, ROW_BTN)) {   // add self-loop input — only one per tube
-            if (!t.hasLoopInput()) { sendInput(ConfigureArithmeticInputPacket.LOOP, true, -1, 1); playClickSound(); }
             return true;   // swallow even when disabled
         }
         return false;

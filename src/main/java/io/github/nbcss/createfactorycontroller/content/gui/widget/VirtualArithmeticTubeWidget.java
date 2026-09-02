@@ -6,12 +6,13 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.ArithmeticTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.component.operator.OperatorArity;
+import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ArithmeticTubeSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPathResolver;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
@@ -90,7 +91,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         GuiGraphics gfx = params.graphics();
         int x0 = position().x() * CELL, y0 = position().y() * CELL;
         BatchedBlitter.forSprite(sprite("front")).blit(gfx.bufferSource(), gfx.pose(), x0, y0, CELL, CELL);
-        if (behaviour.getOperator().arity() == OperatorArity.BINARY)
+        if (behaviour.getOperator().arity() == ArithmeticOperator.Arity.BINARY)
             renderStrips(gfx, x0, y0, params.occupiedCells());
         renderOperatorIcon(gfx, x0, y0);
     }
@@ -161,7 +162,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
     @Override
     public void renderOverlay(RenderingParameters params) {
         if (!params.renderOverlay()) return;
-        String label = behaviour.getOutputLabel();
+        String label = NumberFormatter.formatCompact(behaviour.getOutput());
         if (label.isEmpty()) return;
 
         GuiGraphics gfx = params.graphics();
@@ -188,7 +189,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.operator_prefix",
                 behaviour.getOperator().displayName().copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.output",
-                Component.literal(behaviour.getOutputText()).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
+                Component.literal(NumberFormatter.format(behaviour.getOutput())).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         lines.add(selected
                 ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
                 : Component.translatable("createfactorycontroller.gui.action_configure").withStyle(ChatFormatting.GRAY));
