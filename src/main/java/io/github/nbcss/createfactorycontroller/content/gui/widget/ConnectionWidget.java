@@ -8,6 +8,7 @@ import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionR
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -154,7 +155,8 @@ public class ConnectionWidget {
     /** Draws this connection in its normal (non-hovered) state. */
     public void render(GuiGraphics gfx, ComponentHolder holder) {
         int color = connection.getConnectionColor(holder);
-        long animationTick = connection.getAnimationTick(holder);
+        net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
+        long animationTick = connection.getFlashTick(holder, level != null ? level.getGameTime() : -1);
         boolean animated = animationTick >= 0;
         if (animated) {
             float age = animationTick + AnimationTickHolder.getPartialTicks();

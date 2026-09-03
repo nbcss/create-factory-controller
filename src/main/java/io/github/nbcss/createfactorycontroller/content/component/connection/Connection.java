@@ -64,7 +64,8 @@ public abstract class Connection {
 
     public int getConnectionColor(ComponentHolder holder) { return 0x888898; }
 
-    public long getAnimationTick(ComponentHolder holder) { return -1; }
+    /** Ticks since this connection last "flash", for the client flash animation, or -1 for none. */
+    public long getFlashTick(ComponentHolder holder, long gameTime) { return -1; }
 
     /** Accept a value pushed by the source for a signal type; returns whether it changed (drives sink notification in
      *  {@code publish}). Non-signal types carry no signal value and ignore it. */

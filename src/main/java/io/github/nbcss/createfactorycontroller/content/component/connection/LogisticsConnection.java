@@ -9,7 +9,6 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 
@@ -85,16 +84,16 @@ public class LogisticsConnection extends Connection {
     }
 
     @Override
-    public long getAnimationTick(ComponentHolder holder) {
+    public long getFlashTick(ComponentHolder holder, long gameTime) {
+        if (gameTime < 0)   // renderer had no level (client not in a world)
+            return -1;
         if (!(holder.componentAt(to) instanceof VirtualGaugeBehaviour behaviour))
             return -1;
         if (behaviour.isMissingAddress() || behaviour.waitingForNetwork)
             return -1;
         if (behaviour.satisfied || behaviour.redstonePowered)
             return -1;
-        if (Minecraft.getInstance().level == null)
-            return -1;
-        return Minecraft.getInstance().level.getGameTime() - behaviour.lastRequestTick;
+        return gameTime - behaviour.lastRequestTick;
     }
 
     @Override
