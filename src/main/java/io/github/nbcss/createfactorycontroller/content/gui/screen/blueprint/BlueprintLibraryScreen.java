@@ -332,9 +332,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         SchematicImport.Requirements req = importScan.requirements();
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import"));
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.desc1")
-                .withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.desc2")
+        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.desc")
                 .withStyle(ChatFormatting.GRAY));
         lines.add(Component.empty());
         lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.requirements")

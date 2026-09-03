@@ -982,7 +982,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     private static boolean in(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx < x + w && my >= y && my < y + h;
+        return io.github.nbcss.createfactorycontroller.content.helper.Rect2i
+                .fromXYWH(x, y, w, h)
+                .contains((int) mx, (int) my, io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN);
     }
 
     @Override

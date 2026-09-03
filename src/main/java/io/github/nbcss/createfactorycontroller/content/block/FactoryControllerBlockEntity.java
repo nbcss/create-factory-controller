@@ -993,7 +993,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
      *  current inputs — the picker disables those, so this only guards against a desynced request. */
     public void configureArithmeticTube(VirtualComponentPosition pos, String operatorId) {
         if (components.get(pos) instanceof ArithmeticTubeBehaviour tube) {
-            ArithmeticOperator op = BuiltinOperator.byId(operatorId);
+            ArithmeticOperator op = BuiltinOperator.byName(operatorId);
             if (tube.canSwitchTo(op)) tube.setOperator(op);
         }
     }

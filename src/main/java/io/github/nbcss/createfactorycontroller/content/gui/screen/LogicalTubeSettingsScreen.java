@@ -366,7 +366,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     // ── Interaction ───────────────────────────────────────────────────────────────
 
     private static boolean in(double mx, double my, int x, int y) {
-        return mx >= x && mx < x + CELL && my >= y && my < y + CELL;
+        return io.github.nbcss.createfactorycontroller.content.helper.Rect2i
+                .fromXYWH(x, y, CELL, CELL)
+                .contains((int) mx, (int) my, io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN);
     }
 
     /** The connection under the cursor (input or output slot), or null. */

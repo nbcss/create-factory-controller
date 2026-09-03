@@ -10,8 +10,6 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Numb
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
 import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
-import io.github.nbcss.createfactorycontroller.content.component.operator.OperatorArity;
-import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
@@ -71,7 +69,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             Connection e = tube.incomingConnection(source, NumberConnection.TYPE);
-            return e instanceof NumberConnection nc ? nc.doubleValue() : 0.0;
+            return e instanceof NumberConnection nc ? nc.doubleValue() : Double.NaN;
         }
 
         @Override
@@ -157,7 +155,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
             VirtualComponentPosition pos = SyncCodecs.readPos(buf);
             Item item = BuiltInRegistries.ITEM.get(buf.readResourceLocation());
             ArithmeticTubeBehaviour t = new ArithmeticTubeBehaviour(null, pos, item);
-            t.operator = BuiltinOperator.byId(buf.readUtf());
+            t.operator = BuiltinOperator.byName(buf.readUtf());
             int n = buf.readVarInt();
             for (int i = 0; i < n; i++) t.primaryInputs.add(NumberInput.fromClient(buf));
             if (buf.readBoolean()) t.secondaryInput = NumberInput.fromClient(buf);
@@ -218,7 +216,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     /** Loop/feedback is only meaningful for a multi-input (order-independent) operator. */
-    public boolean canLoop() { return operator.arity() == OperatorArity.NARY; }
+    public boolean canLoop() { return operator.arity() == ArithmeticOperator.Arity.N_ARY; }
 
     public boolean hasConstant(boolean primary) {
         if (primary) {
@@ -229,14 +227,6 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     public double getOutput() { return output; }
-
-    public String getOutputLabel() {
-        return NumberFormatter.formatCompact(output);
-    }
-
-    public String getOutputText() {
-        return NumberFormatter.format(output);
-    }
 
     // ── Connections: NUMBER only, BOTH role ─────────────────────────────────────
 
@@ -264,7 +254,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         return switch (operator.arity()) {
             case UNARY -> primaryInputs.isEmpty();
             case BINARY -> primaryInputs.isEmpty() || secondaryInput == null;
-            case NARY -> true;
+            case N_ARY -> true;
         };
     }
 
@@ -272,7 +262,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
      *  primary/secondary connections without dropping any. The operator picker disables operators that fail this
      *  (the player must disconnect the offending input first, e.g. a red/secondary wire blocks a unary operator). */
     public boolean canSwitchTo(ArithmeticOperator op) {
-        OperatorArity a = op.arity();
+        ArithmeticOperator.Arity a = op.arity();
         long primaryCount = primaryInputs.stream().filter(r -> !(r instanceof LoopInput)).count();
         return primaryCount <= a.maxPrimary && (secondaryInput == null || a.allowsSecondary);
     }
@@ -295,18 +285,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         for (int i = 0; i < primaries.length; i++) primaries[i] = primaryInputs.get(i).getValue(this);
         OptionalDouble secondary = secondaryInput == null
                 ? OptionalDouble.empty() : OptionalDouble.of(secondaryInput.getValue(this));
-        double raw = operator.apply(primaries, secondary);
-        nextOutput = clampNumber(raw);
-    }
-
-    private static final double PRECISION_LIMIT = 0x1p43;
-
-    /** Normalises a result into the tube's number range. */
-    private static double clampNumber(double v) {
-        if (Double.isNaN(v)) return 0.0;
-        if (v >= PRECISION_LIMIT) return Double.POSITIVE_INFINITY;
-        if (v <= -PRECISION_LIMIT) return Double.NEGATIVE_INFINITY;
-        return v;
+        nextOutput = operator.apply(primaries, secondary);
     }
 
     /**
@@ -335,11 +314,11 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     public void setOperator(ArithmeticOperator next) {
-        if (next.id().equals(operator.id())) return;
+        if (next.name().equals(operator.name())) return;
         operator = next;
-        OperatorArity arity = next.arity();
+        ArithmeticOperator.Arity arity = next.arity();
         pendingWireIsPrimary = null;
-        if (arity != OperatorArity.NARY)
+        if (arity != ArithmeticOperator.Arity.N_ARY)
             primaryInputs.removeIf(r -> r instanceof LoopInput);
         while (primaryInputs.size() > arity.maxPrimary) dropInput(primaryInputs.removeLast());
         if (!arity.allowsSecondary && secondaryInput != null) {
@@ -370,13 +349,13 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         for (Connection c : incomingConnections(NumberConnection.TYPE)) {
             VirtualComponentPosition src = c.from;
             if (references(src)) continue;
-            OperatorArity arity = operator.arity();
+            ArithmeticOperator.Arity arity = operator.arity();
             boolean toSecondary = Boolean.FALSE.equals(pendingWireIsPrimary)   // GUI "add secondary connection"
                     && arity.allowsSecondary && secondaryInput == null;
             pendingWireIsPrimary = null;   // one-shot: consumed by the first newly-seen wire
             if (toSecondary) {
                 secondaryInput = new ConnectionInput(src);
-            } else if (arity == OperatorArity.NARY || primaryInputs.isEmpty()) {
+            } else if (arity == ArithmeticOperator.Arity.N_ARY || primaryInputs.isEmpty()) {
                 if (primaryInputs.size() < arity.maxPrimary) {
                     int at = primaryInputs.size();
                     while (at > 0 && primaryInputs.get(at - 1) instanceof ConstantInput) at--;
@@ -408,7 +387,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     /** Swaps the primary and secondary operands (binary only) */
     public void swapInputs() {
-        if (operator.arity() != OperatorArity.BINARY) return;
+        if (operator.arity() != ArithmeticOperator.Arity.BINARY) return;
         NumberInput p = primaryInputs.isEmpty() ? null : primaryInputs.get(0);
         NumberInput s = secondaryInput;
         primaryInputs.clear();
@@ -497,7 +476,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     public void writeClient(RegistryFriendlyByteBuf buf) {
         SyncCodecs.writePos(buf, position);
         buf.writeResourceLocation(getItemId());
-        buf.writeUtf(operator.id());
+        buf.writeUtf(operator.name());
         buf.writeVarInt(primaryInputs.size());
         for (NumberInput r : primaryInputs) r.writeClient(buf);
         buf.writeBoolean(secondaryInput != null);
@@ -524,7 +503,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         tag.putString("Type", TYPE.id());
         tag.put("Pos", position.toNBT());
         tag.putString("Item", getItemId().toString());
-        tag.putString("Operator", operator.id());
+        tag.putString("Operator", operator.name());
         ListTag prim = new ListTag();
         for (NumberInput r : primaryInputs) prim.add(r.toNBT());
         tag.put("PrimaryInputs", prim);
@@ -540,7 +519,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         ResourceLocation itemId = ResourceLocation.parse(tag.getString("Item"));
         Item item = BuiltInRegistries.ITEM.get(itemId);
         ArithmeticTubeBehaviour b = new ArithmeticTubeBehaviour(controller, pos, item);
-        b.operator = BuiltinOperator.byId(tag.getString("Operator"));
+        b.operator = BuiltinOperator.byName(tag.getString("Operator"));
         ListTag prim = tag.getList("PrimaryInputs", Tag.TAG_COMPOUND);
         for (int i = 0; i < prim.size(); i++) b.primaryInputs.add(NumberInput.fromNBT(prim.getCompound(i)));
         if (tag.contains("SecondaryInput", Tag.TAG_COMPOUND))
