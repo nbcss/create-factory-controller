@@ -107,7 +107,7 @@ public record ProductionOrder(int orderId,
                     int orderId, int linkIndex, boolean finalLink) {
             this.network = network;
             this.patternId = patternId;
-            this.item = item;
+            this.item = item.copyWithCount(1);
             this.amount = amount;
             this.address = address;
             this.orderId = orderId;

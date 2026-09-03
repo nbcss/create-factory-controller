@@ -28,6 +28,7 @@ public class ConnectionGraph {
     /** Per-endpoint bucket of typed wires: the other endpoint's position → (type → wire). */
     private static final class EdgeIndex {
         final Map<VirtualComponentPosition, LinkedHashMap<Connection.Type, Connection>> byEndpoint = new LinkedHashMap<>();
+        List<Connection> connections; //lazy cache
     }
 
     private final Map<VirtualComponentPosition, EdgeIndex> incoming = new LinkedHashMap<>();   // keyed by sink
@@ -71,10 +72,11 @@ public class ConnectionGraph {
 
     private static List<Connection> flatten(EdgeIndex index) {
         if (index == null) return Collections.emptyList();
+        if (index.connections != null) return index.connections;
         List<Connection> out = new ArrayList<>();
         for (LinkedHashMap<Connection.Type, Connection> byType : index.byEndpoint.values())
             out.addAll(byType.values());
-        return out;
+        return index.connections = Collections.unmodifiableList(out);
     }
 
     // ── Mutation (both indexes kept in sync) ────────────────────────────────────
@@ -88,9 +90,9 @@ public class ConnectionGraph {
 
     private static void put(Map<VirtualComponentPosition, EdgeIndex> index,
                             VirtualComponentPosition primary, VirtualComponentPosition secondary, Connection conn) {
-        index.computeIfAbsent(primary, k -> new EdgeIndex()).byEndpoint
-                .computeIfAbsent(secondary, k -> new LinkedHashMap<>())
-                .put(conn.type, conn);
+        EdgeIndex edges = index.computeIfAbsent(primary, k -> new EdgeIndex());
+        edges.byEndpoint.computeIfAbsent(secondary, k -> new LinkedHashMap<>()).put(conn.type, conn);
+        edges.connections = null;
     }
 
     /** Removes the {@code type} wire {@code sink} holds from {@code source}, if any. */
@@ -108,6 +110,7 @@ public class ConnectionGraph {
         byType.remove(type);
         if (byType.isEmpty()) edges.byEndpoint.remove(secondary);
         if (edges.byEndpoint.isEmpty()) index.remove(primary);
+        edges.connections = null;
     }
 
     public void reverse(Connection conn) {

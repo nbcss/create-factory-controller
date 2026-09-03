@@ -1,7 +1,11 @@
 ## 1.2.1
 
+Optimization:
+- Improve the performance of passive mode gauge computation.
+
 Bugfixes:
 - Fixed unable to use potion bottle to set fluid gauge filter.
+- Fixed a potential crash issue caused by serializing Production Order with large item count.
 
 ## 1.2.0
 

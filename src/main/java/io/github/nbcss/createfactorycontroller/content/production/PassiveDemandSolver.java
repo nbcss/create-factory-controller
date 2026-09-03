@@ -40,6 +40,12 @@ public final class PassiveDemandSolver {
     public static void solve(FactoryControllerBlockEntity controller) {
         Level level = controller.getLevel();
 
+        // skip non passive gauge
+        boolean anyPassive = false;
+        for (VirtualComponentBehaviour c : controller.components.values())
+            if (c instanceof VirtualGaugeBehaviour g && g.requestMode.isPassive()) { anyPassive = true; break; }
+        if (!anyPassive) return;
+
         // Index every gauge as a node.
         List<VirtualGaugeBehaviour> nodes = new ArrayList<>();
         Map<VirtualComponentPosition, Integer> idx = new HashMap<>();
