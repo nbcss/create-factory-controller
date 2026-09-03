@@ -37,9 +37,17 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector2i;
+import org.joml.Vector2ic;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.OptionalDouble;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Configuration overlay for an Arithmetic Tube.
@@ -127,15 +135,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     /** The input rows (primary inputs, primary-add, secondary input/add) */
     private List<Row> rows = List.of();
-    @Nullable private EditBox constantBox;   // the focused constant editor, nullable
-    private boolean editPrimary;
-    private int editIndex = -1;
-    /** Optimistic post-commit display: show the just-committed value for the slot until the sync catches up (else the
-     *  box flashes back to the old value for a tick). {@code commitIndex == NO_COMMIT} disables it. */
-    private static final int NO_COMMIT = -2;
-    private boolean commitPrimary;
-    private int commitIndex = NO_COMMIT;
-    private double commitValue;
+    private final ConstantEditor constantEditor = new ConstantEditor();
 
     private enum RowKind { INPUT, ADD }
     private record Row(RowKind kind, boolean primary, int index, @Nullable ArithmeticTubeBehaviour.NumberInput input) {}
@@ -280,7 +280,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         ArithmeticTubeBehaviour tube = tube();
         if (tube == null) { Minecraft.getInstance().setScreen(controller); return; }
         recomputeLayout();
-        if (constantBox != null && rows.stream().noneMatch(this::isEditing)) removeConstantBox();
+        constantEditor.discardIfRowGone(rows);
         controller.renderBoard(gfx, -1, -1, partialTick, true);
 
         TiledSpriteRenderer.create(SpriteLocations.FRAME).render(gfx, panelX, panelY, PANEL_W, panelH - BOTTOM_H + 1);
@@ -298,7 +298,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         renderOperatorEntry(gfx, tube, mouseX, mouseY);
         renderInputEntries(gfx, tube, hoverX, hoverY);
         renderResultEntry(gfx, tube);
-        if (constantBox != null) constantBox.render(gfx, mouseX, mouseY, partialTick);
+        constantEditor.render(gfx, mouseX, mouseY, partialTick);
         gfx.disableScissor();
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
@@ -313,6 +313,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             RenderSystem.clear(256, Minecraft.ON_OSX);
             renderDropdown(gfx, tube, mouseX, mouseY);
         }
+        constantEditor.renderMenu(gfx, mouseX, mouseY);
     }
 
     private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
@@ -385,16 +386,16 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         ResourceLocation sprite = constant ? SpriteLocations.CONSTANT_INPUT_FIELD : SpriteLocations.CONN_VALUE_BOX;
         TiledSpriteRenderer.create(sprite).render(gfx, boxX, y + 1, boxW, 18);
         int textX = boxX + 6, textY = y + 1 + (18 - font.lineHeight) / 2 + 2;
-        if (isEditing(row) && constantBox != null) {
-            constantBox.setX(textX);
-            constantBox.setY(textY);
-            constantBox.setWidth(boxW - 9);
+        if (constantEditor.isEditing(row)) {
+            constantEditor.position(textX, textY, boxW - 9);
         } else if (row.input instanceof ArithmeticTubeBehaviour.ConstantInput) {
             boolean hovered = inRect(mouseX, mouseY, boxX, y + 1, boxW, 18);
-            gfx.drawString(font, NumberFormatter.format(rowValue(tube, row)),
+            double value = row.input().getValue(tube);
+            value = constantEditor.optimisticValue(row, value).orElse(value);
+            gfx.drawString(font, SpecialConstant.displayValue(value),
                     textX, textY, CONSTANT_VALUE_COLOR, hovered);
         } else {
-            gfx.drawString(font, NumberFormatter.format(rowValue(tube, row)),
+            gfx.drawString(font, NumberFormatter.format(row.input().getValue(tube)),
                     textX, textY, INPUT_VALUE_COLOR, false);
         }
     }
@@ -427,26 +428,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private void renderSlot(GuiGraphics gfx, boolean primary, int x, int y) {
         BatchedBlitter.forSprite(primary ? SpriteLocations.OPERAND_BLUE_SLOT : SpriteLocations.OPERAND_RED_SLOT)
                 .blit(gfx.bufferSource(), gfx.pose(), x, y, SLOT, SLOT);
-    }
-
-    /** A row's numeric value, honouring the optimistic post-commit value for a just-edited constant. */
-    private double rowValue(ArithmeticTubeBehaviour tube, Row row) {
-        double v = row.input().getValue(tube);
-        if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput && matchesCommit(row)) {
-            if (Double.compare(v, commitValue) == 0) commitIndex = NO_COMMIT;   // the sync caught up
-            else return commitValue;
-        }
-        return v;
-    }
-
-    private boolean matchesCommit(Row row) {
-        return commitIndex != NO_COMMIT && row.kind() == RowKind.INPUT
-                && row.primary() == commitPrimary && row.index() == commitIndex;
-    }
-
-    private boolean isEditing(Row row) {
-        return constantBox != null && row.kind() == RowKind.INPUT
-                && row.primary() == editPrimary && row.index() == editIndex;
     }
 
     private void renderDropdown(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
@@ -504,7 +485,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         if (dropdownOpen) {
             int idx = dropdownButtonAt(mouseX, mouseY);
             if (idx >= 0) gfx.renderComponentTooltip(font, operatorTooltip(OPERATORS[idx]), mouseX, mouseY);
-        } else {
+        } else if (!constantEditor.isMenuOpen()) {
             ArithmeticTubeBehaviour t = tube();
             List<Component> tip = t == null ? null : contentTooltip(mouseX, mouseY);
             if (tip != null && !tip.isEmpty()) gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
@@ -530,7 +511,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 int boxX = bgX + 1, boxW = delX - 2 - boxX;
                 if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
                     if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-                        return isEditing(row) ? null : tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
+                        return constantEditor.isEditing(row) ? null : tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
                 }
             } else {
                 int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
@@ -639,14 +620,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             if (!onThumb) dragScrollbarTo(mouseY);
             return true;
         }
-        // constant editor
-        if (constantBox != null) {
-            if (constantBox.isMouseOver(mouseX, mouseY)) {
-                if (button == 1) { constantBox.setValue(""); return true; }
-                return super.mouseClicked(mouseX, mouseY, button);
-            }
-            commitConstant();
-        }
+        if (constantEditor.mouseClicked(mouseX, mouseY, button)) return true;
 
         if (inViewport) {
             for (int k = 0; k < rows.size(); k++)
@@ -666,10 +640,10 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 playClickSound();
                 return true;
             }
-            if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput c) {
+            if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
                 int boxX = bgX + 1, boxW = delX - 2 - boxX;
                 if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
-                    startEdit(row, button == 1 ? 0 : c.value(), boxW - 9);
+                    constantEditor.start(row, boxW - 9);
                     return true;
                 }
             }
@@ -698,47 +672,18 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         PacketDistributor.sendToServer(new ConfigureArithmeticInputPacket(menu.controllerPos, tubePos, op, primary, index, value));
     }
 
-    private void startEdit(Row row, double value, int width) {
-        commitConstant();   // commit any prior edit
-        editPrimary = row.primary();
-        editIndex = row.index();
-        constantBox = new EditBox(font, 0, 0, Math.max(10, width), font.lineHeight, Component.empty());
-        constantBox.setBordered(false);
-        constantBox.setTextColor(CONSTANT_VALUE_COLOR);
-        constantBox.setMaxLength(12);
-        constantBox.setFilter(s -> s.matches("-?\\d*\\.?\\d*"));
-        constantBox.setValue(value == 0 ? "" : NumberFormatter.format(value));
-        addWidget(constantBox);
-        setFocused(constantBox);
-        constantBox.setFocused(true);
-        constantBox.setHighlightPos(0);
-    }
-
-    private void commitConstant() {
-        if (constantBox == null) return;
-        String s = constantBox.getValue();
-        double value;
-        try { value = s.isEmpty() || s.equals("-") || s.equals(".") ? 0 : Double.parseDouble(s); }
-        catch (NumberFormatException e) { value = 0; }
-        sendInput(ConfigureArithmeticInputPacket.SET_CONSTANT, editPrimary, editIndex, value);
-        commitPrimary = editPrimary;
-        commitIndex = editIndex;
-        commitValue = value;
-        removeConstantBox();
-    }
-
-    private void removeConstantBox() {
-        if (constantBox == null) return;
-        removeWidget(constantBox);
-        constantBox = null;
-        setFocused(null);
-    }
-
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (constantBox != null) {
-            if (keyCode == 257 || keyCode == 335) { commitConstant(); return true; }
-            if (keyCode == 256) { removeConstantBox(); return true; }
+        if (constantEditor.active()) {
+            switch (keyCode) {
+                case GLFW.GLFW_KEY_ENTER:
+                case GLFW.GLFW_KEY_KP_ENTER:
+                    constantEditor.commit();
+                    return true;
+                case GLFW.GLFW_KEY_ESCAPE:
+                    constantEditor.remove();
+                    return true;
+            }
             // other input fall back to super input box to handle
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -791,7 +736,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     @Override
     public void onClose() {
-        commitConstant();
+        constantEditor.commit();
         Minecraft.getInstance().setScreen(controller);
     }
 
@@ -800,5 +745,245 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         Minecraft.getInstance().getSoundManager().play(
                 SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
         super.removed();
+    }
+
+    /** Special constants that can be entered by name (case-insensitive) */
+    private record SpecialConstant(double value, List<String> names, boolean visibleInMenu) {
+        /** Infinity and NaN are already parsed by {@link Double#parseDouble}, but we handle them anyway
+         * since the rest of the infrastructure is here */
+        public static final List<SpecialConstant> LIST = List.of(
+                new SpecialConstant(Math.PI, List.of("π", "pi"), true),
+                new SpecialConstant(Math.TAU, List.of("τ", "tau"), true),
+                new SpecialConstant(Math.E, List.of("e"), true),
+                new SpecialConstant(Double.POSITIVE_INFINITY, List.of("∞", "Inf", "Infinity"), true),
+                new SpecialConstant(Double.NEGATIVE_INFINITY, List.of("-∞", "-Inf", "-Infinity"), true),
+                new SpecialConstant(Double.NaN, List.of("NaN"), false)
+        );
+
+        /** Name -> Value lookup table of special constants */
+        public static final Map<String, Double> LOOKUP = LIST.stream()
+                .flatMap(s ->
+                        s.names.stream().map(name -> Map.entry(name.toLowerCase(Locale.ROOT), s.value))
+                ).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        public static String displayValue(double value) {
+            return LIST.stream()
+                    .filter(s -> Double.valueOf(s.value).equals(value))
+                    .findFirst()
+                    .map(s -> s.names.getFirst())
+                    .orElseGet(() -> NumberFormatter.format(value));
+        }
+    }
+
+    private class ConstantEditor {
+        // Notation of a finite floating point number
+        private static final Pattern FLOAT_LITERAL_PATTERN = Pattern.compile("[+-]?\\d*\\.?\\d*(?:e[+-]?\\d*)?", Pattern.CASE_INSENSITIVE);
+
+        private static final List<String> MENU_ITEMS = SpecialConstant.LIST.stream()
+                .filter(SpecialConstant::visibleInMenu)
+                .map(s -> s.names.getFirst())
+                .toList();
+
+        private static final Vector2ic MENU_BUTTON_SIZE = new Vector2i(10, 10);
+        private static final Vector2ic MENU_ITEM_SIZE = new Vector2i(20, 10);
+        private static final int MENU_PAD = 2;
+        private static final int MENU_ITEM_COLOR = 0xFFCCCCCC;
+        private static final int MENU_ITEM_HOVER_COLOR = 0xFFFFFF00;
+
+        private static final int MAX_LENGTH = 18;
+
+        @Nullable private EditBox box;
+        private boolean editPrimary;
+        private int editIndex = -1;
+        private boolean constantMenuOpen;
+
+        private static final int NO_COMMIT = -2;
+
+        /** Optimistic post-commit display: show the just-committed value for the slot until the sync catches up (else
+         *  the box flashes back to the old value for a tick). {@code commitIndex == NO_COMMIT} disables it. */
+        private boolean commitPrimary;
+        private int commitIndex = NO_COMMIT;
+        private double commitValue;
+
+        public boolean active() { return box != null; }
+
+        public boolean isEditing(Row row) {
+            return box != null && row.kind() == RowKind.INPUT && row.primary() == editPrimary && row.index() == editIndex;
+        }
+
+        public boolean isMenuOpen() { return constantMenuOpen; }
+
+        public void discardIfRowGone(List<Row> rows) {
+            if (box != null && rows.stream().noneMatch(this::isEditing)) remove();
+        }
+
+        public void position(int x, int y, int width) {
+            if (box == null) return;
+            box.setX(x);
+            box.setY(y);
+            box.setWidth(width);
+        }
+
+        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            if (box == null) return;
+            box.render(gfx, mouseX, mouseY, partialTick);
+            if (showMenuButton()) {
+                boolean menuButtonHovered = menuButtonBounds().contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN);
+                gfx.drawString(font, "⏷", menuButtonBounds().x() + 2, menuButtonBounds().y() + 1,
+                        menuButtonHovered ? MENU_ITEM_HOVER_COLOR : CONSTANT_VALUE_COLOR, menuButtonHovered);
+            }
+        }
+
+        public void renderMenu(GuiGraphics gfx, int mouseX, int mouseY) {
+            if (!constantMenuOpen || !showMenuButton()) return;
+            RenderSystem.enableBlend();
+            Rect2i menu = menuBounds();
+            gfx.fill(menu.minX(), menu.minY(), menu.maxX(), menu.maxY(), 0xA0000000);
+            int hovered = menuItemAt(mouseX, mouseY);
+            for (int i = 0; i < MENU_ITEMS.size(); i++) {
+                Rect2i item = menuItemBounds(menu, i);
+                String label = MENU_ITEMS.get(i);
+                gfx.drawString(font, label,
+                        item.x() + (item.w() - font.width(label)) / 2,
+                        item.y() + (item.h() - font.lineHeight) / 2 + 1,
+                        i == hovered ? MENU_ITEM_HOVER_COLOR : MENU_ITEM_COLOR, true);
+            }
+        }
+
+        /** The optimistic post-commit value for a just-edited constant, if the server sync has not caught up yet. */
+        public OptionalDouble optimisticValue(Row row, double currentValue) {
+            if (!(row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) || !matchesCommit(row))
+                return OptionalDouble.empty();
+            if (Double.compare(currentValue, commitValue) == 0) {
+                commitIndex = NO_COMMIT;   // the sync caught up
+                return OptionalDouble.empty();
+            }
+            return OptionalDouble.of(commitValue);
+        }
+
+        private boolean matchesCommit(Row row) {
+            return commitIndex != NO_COMMIT &&
+                    row.kind() == RowKind.INPUT &&
+                    row.primary() == commitPrimary &&
+                    row.index() == commitIndex;
+        }
+
+        public void start(Row row, int width) {
+            commit();   // commit any prior edit
+            editPrimary = row.primary();
+            editIndex = row.index();
+
+            box = new EditBox(font, 0, 0, Math.max(10, width), font.lineHeight, Component.empty());
+            box.setBordered(false);
+            box.setTextColor(CONSTANT_VALUE_COLOR);
+            box.setMaxLength(MAX_LENGTH);
+            box.setFilter(input ->
+                    FLOAT_LITERAL_PATTERN.matcher(input).matches() ||
+                    SpecialConstant.LOOKUP.keySet().stream().anyMatch(name -> name.toLowerCase(Locale.ROOT).startsWith(input))
+            );
+
+            double value = ((ArithmeticTubeBehaviour.ConstantInput) row.input()).value();
+            box.setValue(SpecialConstant.displayValue(value));
+
+            addWidget(box);
+            setFocused(box);
+            box.setFocused(true);
+            box.setHighlightPos(0);
+        }
+
+        public void commit() {
+            if (box == null) return;
+            constantMenuOpen = false;
+            String input = box.getValue();
+
+            double value;
+            var specialValue = SpecialConstant.LOOKUP.get(input.toLowerCase(Locale.ROOT));
+            if (specialValue != null) {
+               value = specialValue;
+            } else if (input.isEmpty()) {
+                value = 0;
+            } else {
+                try {
+                    value = Double.parseDouble(input);
+                } catch (NumberFormatException e) {
+                    value = 0;
+                }
+            }
+
+            sendInput(ConfigureArithmeticInputPacket.SET_CONSTANT, editPrimary, editIndex, value);
+            commitPrimary = editPrimary;
+            commitIndex = editIndex;
+            commitValue = value;
+            remove();
+        }
+
+        public void remove() {
+            if (box == null) return;
+            removeWidget(box);
+            box = null;
+            constantMenuOpen = false;
+            setFocused(null);
+        }
+
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (box == null) return false;
+            if (button == 0 && showMenuButton() && menuButtonBounds().contains((int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN)) {
+                constantMenuOpen = !constantMenuOpen;
+                return true;
+            }
+            if (constantMenuOpen) {
+                int idx = menuItemAt(mouseX, mouseY);
+                if (button == 0 && idx >= 0) {
+                    box.setValue(MENU_ITEMS.get(idx));
+                    commit();
+                    return true;
+                }
+                if (constantMenuOpen && box != null && menuBounds().contains((int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN)) return true;
+                constantMenuOpen = false;
+            }
+            if (box.isMouseOver(mouseX, mouseY)) {
+                if (button == 1) { box.setValue(""); return true; }
+                return ArithmeticTubeSettingsScreen.super.mouseClicked(mouseX, mouseY, button);
+            }
+            commit();
+            return false;
+        }
+
+        private boolean showMenuButton() {
+            return box != null && box.getValue().length() <= MAX_LENGTH - 2;
+        }
+
+        private Rect2i menuButtonBounds() {
+            if (box == null) return Rect2i.fromXYWH(0, 0, 0, 0);
+            int hCenter = box.getY() + font.lineHeight / 2;
+            return Rect2i.fromXYWH(
+                    box.getX() + box.getWidth() - MENU_BUTTON_SIZE.x() + 2, hCenter - MENU_BUTTON_SIZE.y() / 2,
+                    MENU_BUTTON_SIZE.x(), MENU_BUTTON_SIZE.y());
+        }
+
+        private Rect2i menuBounds() {
+            if (box == null) return Rect2i.fromXYWH(0, 0, 0, 0);
+            int menuW = MENU_PAD * 2 + MENU_ITEMS.size() * MENU_ITEM_SIZE.x();
+            return Rect2i.fromXYWH(
+                    box.getX() + box.getWidth() + 2 - menuW, box.getY() + box.getHeight() + 2,
+                    menuW, MENU_PAD * 2 + MENU_ITEM_SIZE.y());
+        }
+
+        private Rect2i menuItemBounds(Rect2i menu, int index) {
+            return Rect2i.fromXYWH(
+                    menu.x() + MENU_PAD + index * MENU_ITEM_SIZE.x(),
+                    menu.y() + MENU_PAD,
+                    MENU_ITEM_SIZE.x(), MENU_ITEM_SIZE.y());
+        }
+
+        private int menuItemAt(double mx, double my) {
+            if (!(constantMenuOpen && box != null && menuBounds().contains((int) mx, (int) my, Rect2i.Boundary.HALF_OPEN))) return -1;
+            Rect2i menu = menuBounds();
+            int localX = (int) mx - menu.x() - MENU_PAD;
+            int localY = (int) my - menu.y() - MENU_PAD;
+            if (localY < 0 || localY >= MENU_ITEM_SIZE.y() || localX < 0) return -1;
+            int index = localX / MENU_ITEM_SIZE.x();
+            return index < MENU_ITEMS.size() ? index : -1;
+        }
     }
 }

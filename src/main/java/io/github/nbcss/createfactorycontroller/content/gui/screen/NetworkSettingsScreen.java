@@ -29,6 +29,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.UUID;
 
@@ -148,8 +149,8 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (nameBox.isFocused() && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
-                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)) {
+        if (nameBox.isFocused() && (keyCode == GLFW.GLFW_KEY_ENTER
+                || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
             nameBox.setFocused(false);
             setFocused(null);
             return true;

@@ -1,7 +1,14 @@
 ## 1.2.1
 
+Features:
+- Added ability to enter π, τ, e, ∞, -∞ as constants in arithmetic tubes.
+
 Optimization:
 - Improve the performance of passive mode gauge computation.
+
+Changes:
+- Arithmetic tubes now outputs NaN for invalid inputs.
+- Removed precision limit on arithmetic tubes.
 
 Bugfixes:
 - Fixed unable to use potion bottle to set fluid gauge filter.

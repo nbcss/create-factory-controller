@@ -73,9 +73,9 @@ public final class NumberFormatter {
 
     public static String formatCompact(double value) {
         double abs = Math.abs(value);
-        if (Double.isNaN(value) || Double.isInfinite(value) || value == 0 || abs >= 1 && abs < COMPACT_LIMIT)
+        if (Double.isNaN(value) || Double.isInfinite(value) || value == 0 || abs >= 10 && abs < COMPACT_LIMIT)
             return COMPACT_FORMAT.format(value);
-        else if (abs >= 0.001 && abs < 1)
+        else if (abs >= 0.001 && abs < 10)
             return COMPACT_FRAC_FORMAT.format(value);
         else
             return COMPACT_SCI_FORMAT.format(value);
