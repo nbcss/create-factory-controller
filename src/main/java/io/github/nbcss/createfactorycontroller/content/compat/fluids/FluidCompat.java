@@ -2,9 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.compat.fluids;
 
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.content.fluids.potion.PotionFluidHandler;
-import com.simibubi.create.content.fluids.transfer.GenericItemEmptying;
 import net.minecraft.ChatFormatting;
-import net.minecraft.world.level.Level;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -254,15 +252,8 @@ public final class FluidCompat {
             FluidStack potion = PotionFluidHandler.getFluidFromPotionItem(container);
             if (!potion.isEmpty()) return potion.copy();
         }
-        // Honey / any other Create emptying-recipe container also lacks the cap but needs the recipe manager
-        Level level = net.minecraft.client.Minecraft.getInstance().level;
-        ItemStack probe = container.copyWithCount(1);
-        if (level != null) {
-            FluidStack emptied = GenericItemEmptying.emptyItem(level, probe, true).getFirst();
-            if (!emptied.isEmpty()) return emptied.copy();
-        }
-        // Buckets / tanks
-        IFluidHandlerItem handler = probe.getCapability(Capabilities.FluidHandler.ITEM);
+        // buckets
+        IFluidHandlerItem handler = container.getCapability(Capabilities.FluidHandler.ITEM);
         if (handler == null) return FluidStack.EMPTY;
         for (int i = 0; i < handler.getTanks(); i++) {
             FluidStack fluid = handler.getFluidInTank(i);
