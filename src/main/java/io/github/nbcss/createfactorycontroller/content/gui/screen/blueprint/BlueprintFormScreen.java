@@ -34,6 +34,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -755,7 +756,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (noteBox.isFocused()) {
-            if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 noteBox.setFocused(false);
                 setFocused(null);
             } else {
@@ -763,8 +764,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             }
             return true;
         }
-        if (nameBox.isFocused() && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
-                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)) {
+        if (nameBox.isFocused() && (keyCode == GLFW.GLFW_KEY_ENTER
+                || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
             nameBox.setFocused(false);
             setFocused(null);
             return true;

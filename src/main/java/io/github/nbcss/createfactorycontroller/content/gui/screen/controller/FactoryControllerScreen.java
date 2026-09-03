@@ -86,6 +86,7 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.joml.Vector2d;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
 
@@ -1721,12 +1722,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (nameBox != null && nameBox.isFocused()) {
-            if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
-                    || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
+            if (keyCode == GLFW.GLFW_KEY_ENTER
+                    || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
                 commitName();
                 return true;
             }
-            if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 nameBox.setValue(menu.controllerName);
                 nameBox.setFocused(false);
                 collapseNameSelection();
@@ -1736,7 +1737,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
         }
 
-        if (pendingPlacement != null && keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+        if (pendingPlacement != null && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             cancelBlueprintPlacement();
             return true;
         }
