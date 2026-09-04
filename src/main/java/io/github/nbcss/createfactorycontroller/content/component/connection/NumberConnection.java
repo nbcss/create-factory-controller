@@ -16,6 +16,7 @@ import java.util.List;
  */
 public class NumberConnection extends Connection {
     public static final int COLOR = 0xB265E6;
+    private static final int INACTIVE_COLOR = 0x888898;
 
     public static final Type TYPE = new Type("NUMBER", COLOR) {
         @Override
@@ -54,7 +55,7 @@ public class NumberConnection extends Connection {
 
     @Override
     public int getConnectionColor(ComponentHolder holder) {
-        return COLOR;
+        return Double.isNaN(value) ? INACTIVE_COLOR : COLOR;
     }
 
     @Override
