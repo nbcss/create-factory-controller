@@ -3,12 +3,13 @@
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # Automatically generated, 2026.
 #
+# Prefill add-on <noreply-addon-prefill@weblate.org>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-07-26 07:22+1000\n"
 "PO-Revision-Date: 2026-09-04 12:27+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
+"Last-Translator: Prefill add-on <noreply-addon-prefill@weblate.org>\n"
 "Language-Team: Russian <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/redstone-link/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
