@@ -19,6 +19,8 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
+
 /**
  * REGULAR work mode: each ingredient connection is a single total; the 3×3 grid is derived on demand
  * (full stacks first, then a partial), a slot click disconnects the whole connection, and a slot scroll
@@ -45,7 +47,7 @@ class RegularEditor extends GaugeWorkModeEditor {
                         ? ConfigureRecipeScreen.formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
             }
             VirtualComponentPosition source = s.inputConnections.get(slot.connectionIndex());
-            if (in(mouseX, mouseY, ix, iy, 16, 16)) {
+            if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
                 // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
                 int total = Math.max(1, s.inputTotals.get(slot.connectionIndex()));
                 String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
@@ -64,7 +66,7 @@ class RegularEditor extends GaugeWorkModeEditor {
                     : ConfigureRecipeScreen.withIgnoreDataLine(ingredientTooltip(inHeader, source), srcIgnore);
             }
         }
-        if (s.inputConnections.isEmpty() && in(mouseX, mouseY, s.panelX + 68, s.panelY + 28, 58, 58))
+        if (s.inputConnections.isEmpty() && inputGridBounds().contains(mouseX, mouseY, HALF_OPEN))
             tooltip = List.of(
                 CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
@@ -89,7 +91,7 @@ class RegularEditor extends GaugeWorkModeEditor {
     VirtualComponentPosition ingredientSourceAt(double mouseX, double mouseY) {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
         for (int i = 0; i < slots.size(); i++)
-            if (in(mouseX, mouseY, cellX(i), cellY(i), 16, 16))
+            if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN))
                 return s.inputConnections.get(slots.get(i).connectionIndex());
         return null;
     }
@@ -98,7 +100,7 @@ class RegularEditor extends GaugeWorkModeEditor {
     boolean inputAreaClicked(double mouseX, double mouseY, int button) {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
         for (int i = 0; i < slots.size(); i++) {
-            if (!in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) continue;
+            if (!slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) continue;
             // Shift-click disconnects
             if (button == 0 && Screen.hasShiftDown()) s.disconnectInput(slots.get(i).connectionIndex());
             return true;
@@ -110,7 +112,7 @@ class RegularEditor extends GaugeWorkModeEditor {
     boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step) {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
         for (int i = 0; i < slots.size(); i++) {
-            if (in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) {
+            if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
                 s.adjustInputTotal(slots.get(i).connectionIndex(), dir, Screen.hasShiftDown(), Screen.hasControlDown());
                 ConfigureRecipeScreen.playScrollSound();
                 return true;

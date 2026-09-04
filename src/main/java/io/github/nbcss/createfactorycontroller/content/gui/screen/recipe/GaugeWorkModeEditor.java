@@ -12,6 +12,8 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
+
 /**
  * Strategy for the ingredient-grid + output behaviour of a {@link ConfigureRecipeScreen}, one per
  * {@link io.github.nbcss.createfactorycontroller.content.GaugeWorkMode work mode}. The screen owns the
@@ -47,15 +49,14 @@ abstract class GaugeWorkModeEditor {
     /** Top-left Y of ingredient grid cell {@code i}. */
     protected int cellY(int i) { return s.panelY + 28 + (i / 3) * 20; }
 
-    /** Point-in-rect test (shared by every editor's hit-testing). */
-    protected static boolean in(double mx, double my, int x, int y, int w, int h) {
-        return Rect2i.fromXYWH(x, y, w, h).contains((int) mx, (int) my, Rect2i.Boundary.HALF_OPEN);
-    }
+    protected Rect2i slotBounds(int i) { return Rect2i.fromXYWH(cellX(i), cellY(i), 16, 16); }
+    protected Rect2i inputGridBounds() { return Rect2i.fromXYWH(s.panelX + 68, s.panelY + 28, 58, 58); }
+    protected Rect2i outputBounds() { return Rect2i.fromXYWH(s.panelX + 160, s.panelY + 48, 16, 16); }
 
     /** The 3×3 grid cell (0–8) under {@code (mx, my)}, or {@code -1} if none. */
     protected int slotAt(double mx, double my) {
         for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++)
-            if (in(mx, my, cellX(i), cellY(i), 16, 16)) return i;
+            if (slotBounds(i).contains(mx, my, HALF_OPEN)) return i;
         return -1;
     }
 
@@ -91,7 +92,7 @@ abstract class GaugeWorkModeEditor {
     /** Handles a scroll on the output slot; {@code true} if consumed. Default: freely tune the produced
      *  count (item stack/snap steps, or fluid steps for a fluid output); crafting locks this to the recipe. */
     boolean outputScrolled(double mouseX, double mouseY, int dir, int step) {
-        if (!in(mouseX, mouseY, s.panelX + 160, s.panelY + 48, 16, 16)) return false;
+        if (!outputBounds().contains(mouseX, mouseY, HALF_OPEN)) return false;
         if (s.fluidMode) {
             s.outputCount = ConfigureRecipeScreen.adjustFluidAmount(s.outputCount, dir,
                     Screen.hasShiftDown(), Screen.hasControlDown(), 1, ConfigureRecipeScreen.FLUID_OUTPUT_CAP_MB);

@@ -18,6 +18,8 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
+
 /**
  * CUSTOM work mode: the player hand-places ingredients into an explicit 9-slot grid ({@link
  * ConfigureRecipeScreen#customSlots}). Left-drag moves/swaps a slot (empty gaps allowed), right-drag copies
@@ -108,7 +110,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++) {
             RecipeSlot draw = slotDisplay(i, hover);
             renderSlotCell(gfx, cellX(i), cellY(i), draw, scale);
-            if (dragFrom < 0 && !draw.isEmpty() && in(mouseX, mouseY, cellX(i), cellY(i), 16, 16)) {
+            if (dragFrom < 0 && !draw.isEmpty() && slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
                 ItemStack stack = s.ingredientOf(draw.source());
                 String amount = FluidCompat.isFluidFilter(stack)
                     ? ThresholdUnit.formatFluidAmount(draw.count()) : String.valueOf(draw.count());
@@ -137,7 +139,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         }
 
         if (s.customSlots.stream().allMatch(RecipeSlot::isEmpty)
-                && in(mouseX, mouseY, s.panelX + 68, s.panelY + 28, 58, 58))
+                && inputGridBounds().contains(mouseX, mouseY, HALF_OPEN))
             tooltip = List.of(
                 CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),

@@ -14,13 +14,13 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstone
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.ClickType;
@@ -32,6 +32,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
 /**
  * Full-configuration overlay for a Redstone Link component.
@@ -150,8 +152,8 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     }
 
     @Override
-    public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(panelX + 195, panelY + 76, 50, 18));
+    public List<net.minecraft.client.renderer.Rect2i> getExtraAreas() {
+        return List.of(new net.minecraft.client.renderer.Rect2i(panelX + 195, panelY + 76, 50, 18));
     }
 
     @Override
@@ -244,17 +246,12 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
                 Component.translatable("createfactorycontroller.gui.redstone_link.freq_tip").withStyle(ChatFormatting.GRAY));
     }
 
-    private boolean overRed(double mx, double my) { return in(mx, my, panelX + RED_X, panelY + RED_Y); }
-    private boolean overBlue(double mx, double my) { return in(mx, my, panelX + BLUE_X, panelY + BLUE_Y); }
-    private static boolean in(double mx, double my, int x, int y) {
-        return io.github.nbcss.createfactorycontroller.content.helper.Rect2i
-                .fromXYWH(x, y, SLOT, SLOT)
-                .contains((int) mx, (int) my, io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN);
-    }
+    private boolean overRed(double mx, double my) { return Rect2i.fromXYWH(panelX + RED_X, panelY + RED_Y, SLOT, SLOT).contains(mx, my, HALF_OPEN); }
+    private boolean overBlue(double mx, double my) { return Rect2i.fromXYWH(panelX + BLUE_X, panelY + BLUE_Y, SLOT, SLOT).contains(mx, my, HALF_OPEN); }
 
     /** JEI ghost / drop targets (screen coords). */
-    public Rect2i redSlotArea()  { return new Rect2i(panelX + RED_X + 1, panelY + RED_Y + 1, 16, 16); }
-    public Rect2i blueSlotArea() { return new Rect2i(panelX + BLUE_X + 1, panelY + BLUE_Y + 1, 16, 16); }
+    public net.minecraft.client.renderer.Rect2i redSlotArea()  { return new net.minecraft.client.renderer.Rect2i(panelX + RED_X + 1, panelY + RED_Y + 1, 16, 16); }
+    public net.minecraft.client.renderer.Rect2i blueSlotArea() { return new net.minecraft.client.renderer.Rect2i(panelX + BLUE_X + 1, panelY + BLUE_Y + 1, 16, 16); }
     public void setRedFromJei(ItemStack stack)  { red = stack.copyWithCount(1); }
     public void setBlueFromJei(ItemStack stack) { blue = stack.copyWithCount(1); }
 

@@ -11,6 +11,8 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
+
 /**
  * CRAFTING work mode: the inputs form a crafting recipe, so the grid shows the recipe's cells (or, for a
  * &gt;3×3 recipe, one aggregated slot per distinct ingredient type). Slots aren't individually editable —
@@ -46,7 +48,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                     gfx.renderItem(slot.stack(), ix, iy);
                     s.drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount() * scale));
                 }
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
+                if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
                     hovering = true;
                     if (i < slots.size()) hovered = slots.get(i).stack();
                 }
@@ -77,7 +79,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 int dispBatch = s.effectiveBatch() * scale;
                 if (!stack.isEmpty() && dispBatch > 1)
                     s.drawItemCount(gfx, stack, ix, iy, String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
-                if (in(mouseX, mouseY, ix, iy, 16, 16)) {
+                if (slotBounds(row * 3 + col).contains(mouseX, mouseY, HALF_OPEN)) {
                     hovering = true;
                     hovered = stack;
                 }
@@ -112,7 +114,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
 
     @Override
     boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step) {
-        if (!in(mouseX, mouseY, s.panelX + 68, s.panelY + 28, 58, 58)) return false;
+        if (!inputGridBounds().contains(mouseX, mouseY, HALF_OPEN)) return false;
         // Ctrl over the recipe's ingredients resizes the square crafter grid; otherwise tune the batch.
         if (Screen.hasControlDown()) s.adjustCraftDimension(dir);
         else s.adjustCraftBatch(dir * step);
@@ -121,7 +123,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
 
     @Override
     boolean outputScrolled(double mouseX, double mouseY, int dir, int step) {
-        if (!in(mouseX, mouseY, s.panelX + 160, s.panelY + 48, 16, 16)) return false;
+        if (!outputBounds().contains(mouseX, mouseY, HALF_OPEN)) return false;
         // Per-craft yield is fixed, so scrolling the output changes how many crafts ride one request.
         s.adjustCraftBatch(dir * step);
         return true;
