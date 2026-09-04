@@ -494,7 +494,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             List<Component> tip = t == null ? null : contentTooltip(mouseX, mouseY);
             if (tip != null && !tip.isEmpty()) gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
         }
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, closeButton, relocateButton, swapButton);
     }
 
     /** Tooltip for the hovered content element (icons and buttons) */

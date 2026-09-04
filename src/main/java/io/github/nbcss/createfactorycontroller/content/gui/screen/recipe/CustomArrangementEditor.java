@@ -18,8 +18,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
-import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
-
 /**
  * CUSTOM work mode: the player hand-places ingredients into an explicit 9-slot grid ({@link
  * ConfigureRecipeScreen#customSlots}). Left-drag moves/swaps a slot (empty gaps allowed), right-drag copies
@@ -102,49 +100,55 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     // ── Render ────────────────────────────────────────────────────────────────
 
     @Override
-    List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
+    void renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
         s.patternHovered = false;
         int hover = slotAt(mouseX, mouseY);
         int scale = s.previewScale(mouseX, mouseY);
-        List<Component> tooltip = null;
         for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++) {
             RecipeSlot draw = slotDisplay(i, hover);
             renderSlotCell(gfx, cellX(i), cellY(i), draw, scale);
-            if (dragFrom < 0 && !draw.isEmpty() && slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
-                ItemStack stack = s.ingredientOf(draw.source());
+        }
+    }
+
+    @Override
+    List<Component> inputTooltip(int mouseX, int mouseY) {
+        int slot = slotAt(mouseX, mouseY);
+        if (dragFrom < 0 && slot >= 0 && slot < s.customSlots.size()) {
+            RecipeSlot recipeSlot = s.customSlots.get(slot);
+            if (!recipeSlot.isEmpty()) {
+                ItemStack stack = s.ingredientOf(recipeSlot.source());
                 String amount = FluidCompat.isFluidFilter(stack)
-                    ? ThresholdUnit.formatFluidAmount(draw.count()) : String.valueOf(draw.count());
-                boolean srcIgnore = s.getMenu().componentAt(draw.source())
+                        ? ThresholdUnit.formatFluidAmount(recipeSlot.count()) : String.valueOf(recipeSlot.count());
+                boolean srcIgnore = s.getMenu().componentAt(recipeSlot.source())
                         instanceof VirtualGaugeBehaviour src && src.ignoreData;
                 List<Component> lines = new java.util.ArrayList<>(List.of(
-                    CreateLang.translate("gui.factory_panel.sending_item",
-                        FluidCompat.filterName(stack).getString() + " x" + amount)
-                        .color(ScrollInput.HEADER_RGB).component(),
-                    Component.translatable("createfactorycontroller.gui.custom_slot_tip", String.valueOf(i + 1))
-                        .withStyle(ChatFormatting.GRAY)));
-                if (s.multiplierExcluded(draw.source()))
+                        CreateLang.translate("gui.factory_panel.sending_item",
+                                        FluidCompat.filterName(stack).getString() + " x" + amount)
+                                .color(ScrollInput.HEADER_RGB).component(),
+                        Component.translatable("createfactorycontroller.gui.custom_slot_tip", String.valueOf(slot + 1))
+                                .withStyle(ChatFormatting.GRAY)));
+                if (s.multiplierExcluded(recipeSlot.source()))
                     lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.excluded")
                             .withColor(0xFFDD70));
                 lines.addAll(List.of(
-                    Component.translatable("createfactorycontroller.gui.custom_slot_move")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
-                    Component.translatable("createfactorycontroller.gui.custom_slot_copy")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
-                    CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                    Component.translatable("createfactorycontroller.gui.action_remove_component")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
-                tooltip = ConfigureRecipeScreen.withIgnoreDataLine(lines, srcIgnore);
+                        Component.translatable("createfactorycontroller.gui.custom_slot_move")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
+                        Component.translatable("createfactorycontroller.gui.custom_slot_copy")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
+                        CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
+                        Component.translatable("createfactorycontroller.gui.action_remove_component")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
+                return ConfigureRecipeScreen.withIgnoreDataLine(lines, srcIgnore);
             }
         }
 
-        if (s.customSlots.stream().allMatch(RecipeSlot::isEmpty)
-                && inputGridBounds().contains(mouseX, mouseY, HALF_OPEN))
-            tooltip = List.of(
+        if (s.customSlots.stream().allMatch(RecipeSlot::isEmpty))
+            return List.of(
                 CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
-        return tooltip;
+        return List.of();
     }
 
     private RecipeSlot slotDisplay(int i, int hover) {

@@ -11,8 +11,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
-import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
-
 /**
  * CRAFTING work mode: the inputs form a crafting recipe, so the grid shows the recipe's cells (or, for a
  * &gt;3×3 recipe, one aggregated slot per distinct ingredient type). Slots aren't individually editable —
@@ -30,17 +28,14 @@ class CraftingEditor extends GaugeWorkModeEditor {
     }
 
     @Override
-    List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
+    void renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
         s.patternHovered = false;
-        List<Component> tooltip = null;
-        ItemStack hovered = ItemStack.EMPTY;   // the specific ingredient under the cursor (for the per-slot line)
         int scale = s.previewScale(mouseX, mouseY);   // multiplier preview while its bar is hovered, else 1
 
         if (s.craftingIsLarge()) {
             // >3×3: aggregate to one slot per distinct ingredient type (count = cells × batch, no overflow)
             // and offer the real N×M layout in a Ctrl-held tooltip (drawn in render()).
             List<ConfigureRecipeScreen.CraftSlot> slots = s.craftingDisplaySlots();
-            boolean hovering = false;
             for (int i = 0; i < ConfigureRecipeScreen.MAX_INPUT_SLOTS; i++) {
                 int ix = cellX(i), iy = cellY(i);
                 if (i < slots.size()) {
@@ -48,30 +43,13 @@ class CraftingEditor extends GaugeWorkModeEditor {
                     gfx.renderItem(slot.stack(), ix, iy);
                     s.drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount() * scale));
                 }
-                if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
-                    hovering = true;
-                    if (i < slots.size()) hovered = slots.get(i).stack();
-                }
-            }
-            if (hovering) {
-                if (Screen.hasControlDown())
-                    s.patternHovered = true;
-                else {
-                    int dim = s.effectiveCraftDimension();
-                    tooltip = List.of(
-                        CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                        Component.translatable("createfactorycontroller.gui.crafting_unpacked").withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim).withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim").withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
-                }
             }
         } else {
             // ≤3×3: render the recipe's own cells straight into the grid (top-left 3×3 of the dim×dim square).
             int dim = s.effectiveCraftDimension();
-            boolean hovering = false;
             for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
-                int ix = s.panelX + 68 + col * 20;
-                int iy = s.panelY + 28 + row * 20;
+                int ix = cellX(row * 3 + col);
+                int iy = cellY(row * 3 + col);
                 int idx = row * dim + col;
                 ItemStack stack = (col < dim && row < dim && idx < s.craftingIngredients.size())
                     ? s.craftingIngredients.get(idx).stack : ItemStack.EMPTY;
@@ -79,29 +57,43 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 int dispBatch = s.effectiveBatch() * scale;
                 if (!stack.isEmpty() && dispBatch > 1)
                     s.drawItemCount(gfx, stack, ix, iy, String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
-                if (slotBounds(row * 3 + col).contains(mouseX, mouseY, HALF_OPEN)) {
-                    hovering = true;
-                    hovered = stack;
-                }
-            }
-            if (hovering) {
-                if (Screen.hasControlDown())
-                    s.patternHovered = true;
-                else
-                    tooltip = List.of(
-                            CreateLang.translate("gui.factory_panel.crafting_input").color(ScrollInput.HEADER_RGB).component(),
-                            Component.translatable("createfactorycontroller.gui.crafting_unpacked")
-                                    .withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim)
-                                    .withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
-                                    .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
             }
         }
-        // Per-slot: flag the hovered cell gold when its ingredient comes from an ignore-data gauge.
-        if (tooltip != null)
-            tooltip = ConfigureRecipeScreen.withIgnoreDataLine(tooltip, s.craftingCellIgnoresData(hovered));
-        return tooltip;
+    }
+
+    @Override
+    List<Component> inputTooltip(int mouseX, int mouseY) {
+        int slot = slotAt(mouseX, mouseY);
+        if (slot < 0) return List.of();
+        if (Screen.hasControlDown()) {
+            s.patternHovered = true;
+            return List.of();
+        }
+
+        ItemStack hovered = ItemStack.EMPTY;
+        if (s.craftingIsLarge()) {
+            List<ConfigureRecipeScreen.CraftSlot> slots = s.craftingDisplaySlots();
+            if (slot < slots.size()) hovered = slots.get(slot).stack();
+        } else {
+            int dim = s.effectiveCraftDimension();
+            int row = slot / 3;
+            int col = slot % 3;
+            int index = row * dim + col;
+            if (col < dim && row < dim && index < s.craftingIngredients.size())
+                hovered = s.craftingIngredients.get(index).stack;
+        }
+
+        int dim = s.effectiveCraftDimension();
+        return ConfigureRecipeScreen.withIgnoreDataLine(List.of(
+                        CreateLang.translate("gui.factory_panel.crafting_input")
+                                .color(ScrollInput.HEADER_RGB).component(),
+                        Component.translatable("createfactorycontroller.gui.crafting_unpacked")
+                                .withStyle(ChatFormatting.GRAY),
+                        Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim)
+                                .withStyle(ChatFormatting.GRAY),
+                        Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
+                s.craftingCellIgnoresData(hovered));
     }
 
     @Override
@@ -114,7 +106,6 @@ class CraftingEditor extends GaugeWorkModeEditor {
 
     @Override
     boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step) {
-        if (!inputGridBounds().contains(mouseX, mouseY, HALF_OPEN)) return false;
         // Ctrl over the recipe's ingredients resizes the square crafter grid; otherwise tune the batch.
         if (Screen.hasControlDown()) s.adjustCraftDimension(dir);
         else s.adjustCraftBatch(dir * step);
@@ -122,8 +113,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
     }
 
     @Override
-    boolean outputScrolled(double mouseX, double mouseY, int dir, int step) {
-        if (!outputBounds().contains(mouseX, mouseY, HALF_OPEN)) return false;
+    boolean outputScrolled(int dir, int step) {
         // Per-craft yield is fixed, so scrolling the output changes how many crafts ride one request.
         s.adjustCraftBatch(dir * step);
         return true;

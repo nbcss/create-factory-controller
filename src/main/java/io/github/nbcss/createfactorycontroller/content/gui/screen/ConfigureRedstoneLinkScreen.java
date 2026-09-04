@@ -13,8 +13,8 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
-import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.gui.element.ScreenElement;
@@ -32,8 +32,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-
-import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
 /**
  * Full-configuration overlay for a Redstone Link component.
@@ -72,6 +70,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     private int panelX, panelY, invBgX, invBgY;
     private TooltipIconButton relocateButton, addConnectionButton, modeButton, confirmButton;
     private HelpButton helpButton;
+    private InteractiveAreaWidget redArea, blueArea;
 
     public ConfigureRedstoneLinkScreen(FactoryControllerScreen controller, VirtualComponentPosition linkPos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -124,7 +123,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         ScreenElement modeIcon = (gfx, x, y) -> gfx.blitSprite(receive ? WIRELESS_RECEIVE : WIRELESS_TRANSMIT, x, y, 16, 16);
         modeButton = new TooltipIconButton(panelX + 138, panelY + 79, modeIcon);
         modeButton.withCallback(() -> receive = !receive);   // staged; icon lambda reads it live
-        modeButton.withDeferredTooltip(this::modeButtonTooltip);
+        modeButton.withTooltip(this::modeButtonTooltip);
         addWidget(modeButton);
 
         confirmButton = new TooltipIconButton(panelX + 167, panelY + 79, AllIcons.I_CONFIRM);
@@ -135,6 +134,23 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
                 HelpButton.ColorPalette.ANDESITE, "redstone-link.html");
         addWidget(helpButton);
+
+        redArea = addRenderableWidget(new InteractiveAreaWidget(
+                panelX + RED_X, panelY + RED_Y, SLOT, SLOT,
+                () -> red.isEmpty() ? freqEmptyTooltip(1) : getTooltipFromItem(Minecraft.getInstance(), red))
+                .onClick(button -> {
+                    ItemStack carried = menu.getCarried();
+                    red = carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1);
+                    return true;
+                }));
+        blueArea = addRenderableWidget(new InteractiveAreaWidget(
+                panelX + BLUE_X, panelY + BLUE_Y, SLOT, SLOT,
+                () -> blue.isEmpty() ? freqEmptyTooltip(2) : getTooltipFromItem(Minecraft.getInstance(), blue))
+                .onClick(button -> {
+                    ItemStack carried = menu.getCarried();
+                    blue = carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1);
+                    return true;
+                }));
     }
 
     private List<Component> modeButtonTooltip() {
@@ -178,18 +194,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        // Frequency-slot tooltips.
-        if (overRed(mouseX, mouseY) && !red.isEmpty())
-            gfx.renderTooltip(font, red, mouseX, mouseY);
-        else if (overBlue(mouseX, mouseY) && !blue.isEmpty())
-            gfx.renderTooltip(font, blue, mouseX, mouseY);
-        else if (overRed(mouseX, mouseY))
-            gfx.renderComponentTooltip(font, freqEmptyTooltip(1), mouseX, mouseY);
-        else if (overBlue(mouseX, mouseY))
-            gfx.renderComponentTooltip(font, freqEmptyTooltip(2), mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
-                modeButton, relocateButton, addConnectionButton, confirmButton);
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
@@ -208,8 +213,8 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         // Frequency item icons + hover highlight.
         gfx.renderItem(red, panelX + RED_X + 1, panelY + RED_Y + 1);
         gfx.renderItem(blue, panelX + BLUE_X + 1, panelY + BLUE_Y + 1);
-        if (overRed(mouseX, mouseY)) highlight(gfx, panelX + RED_X + 1, panelY + RED_Y + 1);
-        if (overBlue(mouseX, mouseY)) highlight(gfx, panelX + BLUE_X + 1, panelY + BLUE_Y + 1);
+        if (redArea.isMouseOver(mouseX, mouseY)) highlight(gfx, panelX + RED_X + 1, panelY + RED_Y + 1);
+        if (blueArea.isMouseOver(mouseX, mouseY)) highlight(gfx, panelX + BLUE_X + 1, panelY + BLUE_Y + 1);
 
         gfx.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);
@@ -246,27 +251,11 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
                 Component.translatable("createfactorycontroller.gui.redstone_link.freq_tip").withStyle(ChatFormatting.GRAY));
     }
 
-    private boolean overRed(double mx, double my) { return Rect2i.fromXYWH(panelX + RED_X, panelY + RED_Y, SLOT, SLOT).contains(mx, my, HALF_OPEN); }
-    private boolean overBlue(double mx, double my) { return Rect2i.fromXYWH(panelX + BLUE_X, panelY + BLUE_Y, SLOT, SLOT).contains(mx, my, HALF_OPEN); }
-
     /** JEI ghost / drop targets (screen coords). */
     public net.minecraft.client.renderer.Rect2i redSlotArea()  { return new net.minecraft.client.renderer.Rect2i(panelX + RED_X + 1, panelY + RED_Y + 1, 16, 16); }
     public net.minecraft.client.renderer.Rect2i blueSlotArea() { return new net.minecraft.client.renderer.Rect2i(panelX + BLUE_X + 1, panelY + BLUE_Y + 1, 16, 16); }
     public void setRedFromJei(ItemStack stack)  { red = stack.copyWithCount(1); }
     public void setBlueFromJei(ItemStack stack) { blue = stack.copyWithCount(1); }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        boolean onRed = overRed(mouseX, mouseY), onBlue = overBlue(mouseX, mouseY);
-        if (onRed || onBlue) {
-            // A held item sets the type; an empty cursor clears it. The cursor is never consumed (filters).
-            ItemStack carried = menu.getCarried();
-            ItemStack set = carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1);
-            if (onRed) red = set; else blue = set;
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
 
     @Override
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {

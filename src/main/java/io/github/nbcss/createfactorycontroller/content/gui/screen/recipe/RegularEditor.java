@@ -19,8 +19,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
-import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
-
 /**
  * REGULAR work mode: each ingredient connection is a single total; the 3×3 grid is derived on demand
  * (full stacks first, then a partial), a slot click disconnects the whole connection, and a slot scroll
@@ -31,9 +29,8 @@ class RegularEditor extends GaugeWorkModeEditor {
     RegularEditor(ConfigureRecipeScreen screen) { super(screen); }
 
     @Override
-    List<Component> renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
+    void renderInputArea(GuiGraphics gfx, int mouseX, int mouseY) {
         s.patternHovered = false;
-        List<Component> tooltip = null;
         // Scaled layout while the multiplier bar is hovered (previewScale = 1 otherwise → unchanged).
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.previewScale(mouseX, mouseY));
         for (int i = 0; i < slots.size(); i++) {
@@ -46,32 +43,42 @@ class RegularEditor extends GaugeWorkModeEditor {
                 s.drawItemCount(gfx, stack, ix, iy, fluidIng
                         ? ConfigureRecipeScreen.formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
             }
-            VirtualComponentPosition source = s.inputConnections.get(slot.connectionIndex());
-            if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
-                // Every slot of a connection shows that connection's TOTAL, not the slot's own count.
-                int total = Math.max(1, s.inputTotals.get(slot.connectionIndex()));
-                String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
-                boolean srcIgnore = s.getMenu().componentAt(s.inputConnections.get(slot.connectionIndex()))
-                        instanceof VirtualGaugeBehaviour src && src.ignoreData;
-                MutableComponent inHeader = CreateLang.translate("gui.factory_panel.sending_item",
-                        FluidCompat.filterName(stack).getString() + " x" + totalLabel)
-                        .color(ScrollInput.HEADER_RGB).component();
-                if (!fluidIng && total > ConfigureRecipeScreen.stackSizeOf(stack))
-                    inHeader.append(ConfigureRecipeScreen.stackBreakdown(total, ConfigureRecipeScreen.stackSizeOf(stack)));
-                tooltip = stack.isEmpty()
-                    ? List.of(
-                        CreateLang.translate("gui.factory_panel.empty_panel").color(ScrollInput.HEADER_RGB).component(),
-                        Component.translatable("createfactorycontroller.gui.action_disconnect")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
-                    : ConfigureRecipeScreen.withIgnoreDataLine(ingredientTooltip(inHeader, source), srcIgnore);
-            }
         }
-        if (s.inputConnections.isEmpty() && inputGridBounds().contains(mouseX, mouseY, HALF_OPEN))
-            tooltip = List.of(
+    }
+
+    @Override
+    List<Component> inputTooltip(int mouseX, int mouseY) {
+        int hovered = slotAt(mouseX, mouseY);
+        List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.previewScale(mouseX, mouseY));
+        if (hovered >= 0 && hovered < slots.size()) {
+            ConfigureRecipeScreen.InputSlot slot = slots.get(hovered);
+            boolean fluidIng = s.isFluidConn(slot.connectionIndex());
+            ItemStack stack = s.ingredientOf(s.inputConnections.get(slot.connectionIndex()));
+            VirtualComponentPosition source = s.inputConnections.get(slot.connectionIndex());
+            int total = Math.max(1, s.inputTotals.get(slot.connectionIndex()));
+            String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
+            boolean srcIgnore = s.getMenu().componentAt(source)
+                    instanceof VirtualGaugeBehaviour src && src.ignoreData;
+            MutableComponent inHeader = CreateLang.translate("gui.factory_panel.sending_item",
+                            FluidCompat.filterName(stack).getString() + " x" + totalLabel)
+                    .color(ScrollInput.HEADER_RGB).component();
+            if (!fluidIng && total > ConfigureRecipeScreen.stackSizeOf(stack))
+                inHeader.append(ConfigureRecipeScreen.stackBreakdown(
+                        total, ConfigureRecipeScreen.stackSizeOf(stack)));
+            return stack.isEmpty()
+                    ? List.of(
+                            CreateLang.translate("gui.factory_panel.empty_panel")
+                                    .color(ScrollInput.HEADER_RGB).component(),
+                            Component.translatable("createfactorycontroller.gui.action_disconnect")
+                                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                    : ConfigureRecipeScreen.withIgnoreDataLine(ingredientTooltip(inHeader, source), srcIgnore);
+        }
+        if (s.inputConnections.isEmpty())
+            return List.of(
                 CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
                 CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
-        return tooltip;
+        return List.of();
     }
 
     private List<Component> ingredientTooltip(MutableComponent header, VirtualComponentPosition source) {
@@ -90,35 +97,28 @@ class RegularEditor extends GaugeWorkModeEditor {
     @Override
     VirtualComponentPosition ingredientSourceAt(double mouseX, double mouseY) {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
-        for (int i = 0; i < slots.size(); i++)
-            if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN))
-                return s.inputConnections.get(slots.get(i).connectionIndex());
-        return null;
+        int slot = slotAt(mouseX, mouseY);
+        return slot >= 0 && slot < slots.size()
+                ? s.inputConnections.get(slots.get(slot).connectionIndex()) : null;
     }
 
     @Override
     boolean inputAreaClicked(double mouseX, double mouseY, int button) {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
-        for (int i = 0; i < slots.size(); i++) {
-            if (!slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) continue;
-            // Shift-click disconnects
-            if (button == 0 && Screen.hasShiftDown()) s.disconnectInput(slots.get(i).connectionIndex());
-            return true;
-        }
-        return false;
+        int slot = slotAt(mouseX, mouseY);
+        if (slot < 0 || slot >= slots.size()) return false;
+        if (button == 0 && Screen.hasShiftDown()) s.disconnectInput(slots.get(slot).connectionIndex());
+        return true;
     }
 
     @Override
     boolean inputAreaScrolled(double mouseX, double mouseY, int dir, int step) {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots();
-        for (int i = 0; i < slots.size(); i++) {
-            if (slotBounds(i).contains(mouseX, mouseY, HALF_OPEN)) {
-                s.adjustInputTotal(slots.get(i).connectionIndex(), dir, Screen.hasShiftDown(), Screen.hasControlDown());
-                ConfigureRecipeScreen.playScrollSound();
-                return true;
-            }
-        }
-        return false;
+        int slot = slotAt(mouseX, mouseY);
+        if (slot < 0 || slot >= slots.size()) return false;
+        s.adjustInputTotal(slots.get(slot).connectionIndex(), dir, Screen.hasShiftDown(), Screen.hasControlDown());
+        ConfigureRecipeScreen.playScrollSound();
+        return true;
     }
 
     @Override

@@ -37,8 +37,8 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.Fac
 import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
-import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
@@ -74,8 +74,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
 /**
  * Recipe-configuration overlay for a virtual gauge.
@@ -189,6 +187,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Cycles the gauge's {@link RequestMode}; its icon reflects the current mode. */
     @Nullable private TooltipIconButton requestModeButton;
     private HelpButton helpButton;
+    private InteractiveAreaWidget multiplierArea;
+    private InteractiveAreaWidget countArea;
+    private InteractiveAreaWidget ingredientArea;
 
     public ConfigureRecipeScreen(FactoryControllerScreen controller, VirtualComponentPosition gaugePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -212,7 +213,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - PANEL_H) / 2;
 
-        VirtualGaugeBehaviour g = gauge();
+        VirtualGaugeBehaviour g = getBehaviour();
 
         // Preserve any unsaved edits across re-init (the crafting toggle re-runs init()).
         String address = addressBox != null ? addressBox.getValue() : (g == null ? "" : g.recipeAddress);
@@ -228,6 +229,25 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         addressBox.setTextColor(0x555555);
         addressBox.setValue(address);
         addWidget(addressBox);
+        addRenderableOnly(new InteractiveAreaWidget(
+                addressBox.getX(), addressBox.getY(), addressBox.getWidth(), addressBox.getHeight(),
+                () -> addressBox.isFocused()
+                        ? List.of()
+                        : addressBox.getValue().isBlank()
+                                ? List.of(
+                                        CreateLang.translate("gui.factory_panel.recipe_address")
+                                                .color(ScrollInput.HEADER_RGB).component(),
+                                        CreateLang.translate("gui.factory_panel.recipe_address_tip")
+                                                .style(ChatFormatting.GRAY).component(),
+                                        CreateLang.translate("gui.factory_panel.recipe_address_tip_1")
+                                                .style(ChatFormatting.GRAY).component(),
+                                        CreateLang.translate("gui.schedule.lmb_edit")
+                                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                                : List.of(
+                                        CreateLang.translate("gui.factory_panel.recipe_address_given")
+                                                .color(ScrollInput.HEADER_RGB).component(),
+                                        CreateLang.text("'" + addressBox.getValue() + "'")
+                                                .style(ChatFormatting.GRAY).component())));
 
         promiseExpiration = new ScrollInput(panelX + PROMISE_TIMEOUT_X, panelY + PANEL_H - 24, PROMISE_TIMEOUT_W, 16)
             .withRange(-1, 31)
@@ -278,7 +298,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 editor().onChange(prev);
                 rebuildWidgets();
             });
-            craftingButton.withDeferredTooltip(this::craftingButtonTooltip);
+            craftingButton.withTooltip(this::craftingButtonTooltip);
             addWidget(craftingButton);
         }
 
@@ -293,13 +313,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             editor().onChange(prev);   // CUSTOM seeds its 9-slot layout from the outgoing mode
             rebuildWidgets();
         });
-        customButton.withDeferredTooltip(this::customButtonTooltip);
+        customButton.withTooltip(this::customButtonTooltip);
         addWidget(customButton);
 
         // Request-mode cycle button
         requestModeButton = new TooltipIconButton(panelX + REQUEST_MODE_BTN_X, panelY + THRESH_TOP - 1, iconFor(requestMode));
         requestModeButton.withCallback(this::cycleRequestMode);
-        requestModeButton.withDeferredTooltip(this::requestModeButtonTooltip);
+        requestModeButton.withTooltip(this::requestModeButtonTooltip);
         addWidget(requestModeButton);
 
         disconnectLinkButton = null;
@@ -322,6 +342,243 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
                 HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html");
         addWidget(helpButton);
+
+        addRenderableWidget(new InteractiveAreaWidget(panelX + OUTPUT_X, panelY + OUTPUT_Y, 16, 16,
+                () -> {
+                    VirtualGaugeBehaviour behaviour = getBehaviour();
+                    if (behaviour == null || behaviour.filter.isEmpty()) return List.of();
+                    int producedCount = editor().producedCount();
+                    String produced = fluidMode
+                            ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
+                    MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
+                                    FluidCompat.filterName(behaviour.filter).getString() + " x" + produced)
+                            .color(ScrollInput.HEADER_RGB).component();
+                    if (!fluidMode && producedCount > outputStackSize())
+                        header.append(stackBreakdown(producedCount, outputStackSize()));
+                    return withIgnoreDataLine(List.of(
+                                    header,
+                                    CreateLang.translate("gui.factory_panel.expected_output_tip")
+                                            .style(ChatFormatting.GRAY).component(),
+                                    CreateLang.translate("gui.factory_panel.expected_output_tip_1")
+                                            .style(ChatFormatting.GRAY).component(),
+                                    CreateLang.translate("gui.factory_panel.expected_output_tip_2")
+                                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()),
+                            behaviour.ignoreData);
+                }).onScroll((scrollX, scrollY) -> {
+            int dir = (int) Math.signum(scrollY);
+            int step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
+            return editor().outputScrolled(dir, step);
+        }));
+        multiplierArea = addRenderableWidget(new InteractiveAreaWidget(
+                panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y, MULTIPLIER_W, MULTIPLIER_H,
+                () -> {
+                    VirtualGaugeBehaviour behaviour = getBehaviour();
+                    if (behaviour == null || behaviour.filter.isEmpty()) return List.of();
+                    List<Component> lines = new ArrayList<>();
+                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier",
+                                    maxRequestMultiplier, structuralMultiplierCap())
+                            .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
+                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
+                            .withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
+                            .withStyle(ChatFormatting.GRAY));
+                    if (workMode != GaugeWorkMode.CRAFTING)
+                        lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.exclude_tip")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    lines.add(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    return lines;
+                }).onClick(button -> {
+            if (button != 0 && button != 1) return false;
+            maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
+            playClickSound();
+            return true;
+        }).onScroll((scrollX, scrollY) -> {
+            int dir = (int) Math.signum(scrollY);
+            if (dir != 0) {
+                int step = hasShiftDown() ? 10 : 1;
+                maxRequestMultiplier = Mth.clamp(
+                        maxRequestMultiplier + dir * step, 1, structuralMultiplierCap());
+                playScrollSound();
+            }
+            return true;
+        }));
+        addRenderableWidget(new InteractiveAreaWidget(
+                panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, ARROW_ANIM_W, ARROW_ANIM_H,
+                () -> {
+                    int ticks = customRequestTimer > 0
+                            ? customRequestTimer : AllConfigs.server().logistics.factoryGaugeTimer.get();
+                    String seconds = ticks % TICKS_PER_SEC == 0
+                            ? String.valueOf(ticks / TICKS_PER_SEC)
+                            : String.format(java.util.Locale.ROOT, "%.1f", ticks / (float) TICKS_PER_SEC);
+                    List<Component> lines = new ArrayList<>(List.of(
+                            Component.translatable("createfactorycontroller.gui.request_interval", seconds)
+                                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
+                            Component.translatable("createfactorycontroller.gui.request_interval.tip_1")
+                                    .withStyle(ChatFormatting.GRAY),
+                            Component.translatable("createfactorycontroller.gui.request_interval.tip_2")
+                                    .withStyle(ChatFormatting.GRAY),
+                            CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()));
+                    if (customRequestTimer > 0)
+                        lines.add(Component.translatable("createfactorycontroller.gui.request_interval.reset")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    return lines;
+                }).onClick(button -> {
+            if (customRequestTimer > 0) {
+                setRequestInterval(0);
+                playClickSound();
+            }
+            return true;
+        }).onScroll((scrollX, scrollY) -> {
+            int dir = (int) Math.signum(scrollY);
+            if (dir != 0) {
+                setRequestInterval(Mth.clamp(shownIntervalSeconds() + dir, 1, 60) * TICKS_PER_SEC);
+                playScrollSound();
+            }
+            return true;
+        }));
+        addRenderableWidget(new InteractiveAreaWidget(
+                panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16,
+                () -> {
+                    VirtualGaugeBehaviour behaviour = getBehaviour();
+                    int promised = behaviour == null ? 0 : behaviour.promisedCount;
+                    if (promised == 0)
+                        return List.of(
+                                CreateLang.translate("gui.factory_panel.no_open_promises")
+                                        .color(ScrollInput.HEADER_RGB).component(),
+                                CreateLang.translate("gui.factory_panel.recipe_promises_tip")
+                                        .style(ChatFormatting.GRAY).component(),
+                                CreateLang.translate("gui.factory_panel.recipe_promises_tip_1")
+                                        .style(ChatFormatting.GRAY).component(),
+                                CreateLang.translate("gui.factory_panel.promise_prevents_oversending")
+                                        .style(ChatFormatting.GRAY).component());
+                    String promisedLabel = FluidCompat.isFluidFilter(behaviour.filter)
+                            ? formatFluidShort(promised) : String.valueOf(promised);
+                    return List.of(
+                            CreateLang.translate("gui.factory_panel.promised_items")
+                                    .color(ScrollInput.HEADER_RGB).component(),
+                            CreateLang.text(FluidCompat.filterName(behaviour.filter).getString() + " x" + promisedLabel)
+                                    .component(),
+                            CreateLang.translate("gui.factory_panel.left_click_reset")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                }).onClick(button -> {
+            sendConfig(true, false);
+            playClickSound();
+            return true;
+        }));
+        addRenderableWidget(new InteractiveAreaWidget(
+                panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16,
+                () -> {
+                    List<Component> lines = new ArrayList<>();
+                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.title")
+                            .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
+                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.desc1")
+                            .withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.desc2")
+                            .withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.empty());
+                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
+                            .withColor(0xb88218));
+                    lines.add(Component.literal(!promiseLimitByAddress ? "-> " : "> ")
+                            .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_gauge"))
+                            .withStyle(!promiseLimitByAddress ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+                    lines.add(Component.literal(promiseLimitByAddress ? "-> " : "> ")
+                            .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_address"))
+                            .withStyle(promiseLimitByAddress ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.click_scope")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    return lines;
+                }).onClick(button -> {
+            promiseLimitByAddress = !promiseLimitByAddress;
+            playClickSound();
+            return true;
+        }).onScroll((scrollX, scrollY) -> {
+            int dir = (int) Math.signum(scrollY);
+            if (dir != 0) {
+                int step = hasShiftDown() ? 10 : 1;
+                promiseLimitState = Mth.clamp(promiseLimitState + dir * step, 0, 99);
+                playScrollSound();
+            }
+            return true;
+        }));
+        countArea = addRenderableWidget(new InteractiveAreaWidget(
+                panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H,
+                () -> {
+                    VirtualGaugeBehaviour behaviour = getBehaviour();
+                    Component title = Component.translatable(requestMode.isPassive()
+                                    ? "createfactorycontroller.gui.threshold.minimum_target"
+                                    : "createfactorycontroller.gui.threshold.stock_target")
+                            .withColor(ScrollInput.HEADER_RGB.getRGB());
+                    if (behaviour != null && behaviour.isNumberManaged())
+                        return List.of(title,
+                                Component.translatable("createfactorycontroller.gui.threshold.auto_managed_by_number")
+                                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    List<Component> lines = new ArrayList<>();
+                    lines.add(title);
+                    if (behaviour != null && requestMode.isPassive()) {
+                        String targetCount = behaviour.unit.format(g.getPassiveTargetCount(), true);
+                        lines.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
+                                        Component.literal(targetCount).withColor(0x9ECFFC))
+                                .withStyle(ChatFormatting.GRAY));
+                    }
+                    lines.add(CreateLang.translate("gui.scrollInput.scrollToModify")
+                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    lines.add(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
+                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    return lines;
+                }).onClick(button -> {
+            if (button != 0 && button != 1) return false;
+            if (numberManaged()) return true;
+            countEditing = true;
+            countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
+            setFocused(null);
+            playClickSound();
+            return true;
+        }).onScroll((scrollX, scrollY) -> {
+            if (numberManaged()) return true;
+            if (countEditing) commitCountEdit();
+            int dir = (int) Math.signum(scrollY);
+            int step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
+            thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
+            playScrollSound();
+            return true;
+        }));
+        addRenderableWidget(new InteractiveAreaWidget(
+                panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H,
+                () -> {
+                    ThresholdUnit a = fluidMode ? ThresholdUnit.FLUID_MB : ThresholdUnit.ITEMS;
+                    ThresholdUnit b = fluidMode ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.STACKS;
+                    return List.of(
+                            CreateLang.translate("schedule.condition.threshold.item_measure")
+                                    .color(ScrollInput.HEADER_RGB).component(),
+                            a.tooltipLine(mode == a),
+                            b.tooltipLine(mode == b),
+                            CreateLang.translate("gui.scrollInput.scrollToSelect")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                }).onClick(button -> {
+            setMode(mode.cycle(1));
+            return true;
+        }).onScroll((scrollX, scrollY) -> {
+            int dir = (int) Math.signum(scrollY);
+            if (dir != 0) setMode(mode.cycle(-dir));
+            return true;
+        }));
+        addRenderableWidget(new InteractiveAreaWidget(panelX + FILTER_X, panelY + THRESH_TOP, 16, 16,
+                () -> {
+                    VirtualGaugeBehaviour behaviour = getBehaviour();
+                    if (behaviour == null) return List.of();
+                    if (behaviour.filter.isEmpty())
+                        return List.of(CreateLang.translate("gui.factory_panel.unconfigured_input")
+                                .color(ScrollInput.HEADER_RGB).component());
+                    return FluidCompat.isFluidFilter(behaviour.filter)
+                            ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(behaviour.filter),
+                            Minecraft.getInstance().options.advancedItemTooltips)
+                            : getTooltipFromItem(Minecraft.getInstance(), behaviour.filter);
+                }));
+        ingredientArea = addRenderableWidget(editor().createInputAreaWidget());
 
         GaugeInfoClient.clear();   // drop any stale count; the next tick polls fresh
         promiseInfoPollCooldown = 0;
@@ -359,13 +616,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     // ── State ────────────────────────────────────────────────────────────────
 
     @Nullable
-    private VirtualGaugeBehaviour gauge() {
+    private VirtualGaugeBehaviour getBehaviour() {
         return menu.componentAt(gaugePos) instanceof VirtualGaugeBehaviour g ? g : null;
     }
 
     /** Whether the request-amount input is locked because a Number Connection is driving the target. */
     private boolean numberManaged() {
-        VirtualGaugeBehaviour g = gauge();
+        VirtualGaugeBehaviour g = getBehaviour();
         return g != null && g.isNumberManaged();
     }
 
@@ -483,7 +740,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Max stack size of the produced item (64 when no filter yet). */
     int outputStackSize() {
-        VirtualGaugeBehaviour g = gauge();
+        VirtualGaugeBehaviour g = getBehaviour();
         return g == null || g.filter.isEmpty() ? 64 : Math.max(1, g.filter.getMaxStackSize());
     }
 
@@ -525,34 +782,18 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Whether {@code (mx, my)} is over the request-multiplier bar. */
     boolean overMultiplier(double mx, double my) {
-        return Rect2i.fromXYWH(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y, MULTIPLIER_W, MULTIPLIER_H).contains(mx, my, HALF_OPEN);
-    }
-
-    /** Whether {@code (mx, my)} is over the output arrow (the request-interval readout / scroll target). */
-    boolean overIntervalArrow(double mx, double my) {
-        return Rect2i.fromXYWH(panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, ARROW_ANIM_W, ARROW_ANIM_H).contains(mx, my, HALF_OPEN);
-    }
-
-    private static int defaultIntervalSeconds() {
-        return Math.max(1,
-                Math.round(AllConfigs.server().logistics.factoryGaugeTimer.get() / (float) TICKS_PER_SEC));
+        return multiplierArea != null && multiplierArea.isMouseOver(mx, my);
     }
 
     /** The interval currently shown on the arrow, in whole seconds. */
     private int shownIntervalSeconds() {
-        return customRequestTimer > 0 ? customRequestTimer / TICKS_PER_SEC : defaultIntervalSeconds();
+        return customRequestTimer > 0 ? customRequestTimer / TICKS_PER_SEC : Math.max(1,
+                Math.round(AllConfigs.server().logistics.factoryGaugeTimer.get() / (float) TICKS_PER_SEC));
     }
 
     private void setRequestInterval(int ticks) {
         customRequestTimer = ticks;
         PacketDistributor.sendToServer(new SetGaugeRequestIntervalPacket(menu.controllerPos, gaugePos, ticks));
-    }
-
-    private String intervalTooltipSeconds() {
-        int ticks = customRequestTimer > 0
-                ? customRequestTimer : AllConfigs.server().logistics.factoryGaugeTimer.get();
-        if (ticks % TICKS_PER_SEC == 0) return String.valueOf(ticks / TICKS_PER_SEC);
-        return String.format(java.util.Locale.ROOT, "%.1f", ticks / (float) TICKS_PER_SEC);
     }
 
     /** Scale to render the ingredient/output amounts at for the given cursor: the multiplier while its bar is
@@ -754,7 +995,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         inputTotals.clear();
         inputConfig.clear();
         multiplierExcludedInputs.clear();
-        VirtualGaugeBehaviour g = gauge();
+        VirtualGaugeBehaviour g = getBehaviour();
         if (g == null) return;
         outputCount = Math.max(1, g.recipeOutput);
         craftBatch = Math.max(1, g.craftBatch);
@@ -894,10 +1135,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         rebuildWidgets();   // clears + re-runs init(); button appears/disappears with availability
     }
 
-    /** Reimplements Create's FactoryPanelScreen#searchForCraftingRecipe for our gauge's inputs/output. */
+    /** Reimplements Create's FactoryPanelScreen#searchForCraftingRecipe for gauge's inputs/output. */
     private void searchForCraftingRecipe() {
         availableCraftingRecipe = null;
-        VirtualGaugeBehaviour g = gauge();
+        VirtualGaugeBehaviour g = getBehaviour();
         if (g == null || g.filter.isEmpty() || inputConfig.isEmpty()) return;
 
         ItemStack output = g.filter;
@@ -907,16 +1148,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
 
-        // Vanilla 3×3 first; then Create's mechanical-crafting recipes, which can be larger than 3×3
-        // (MechanicalCraftingRecipe extends ShapedRecipe, so it satisfies the same CraftingRecipe contract).
         availableCraftingRecipe = matchCraftingRecipe(level, output, itemsToUse, RecipeType.CRAFTING);
         if (availableCraftingRecipe == null) {
             RecipeType<MechanicalCraftingRecipe> mechanical = AllRecipeTypes.MECHANICAL_CRAFTING.getType();
             availableCraftingRecipe = matchCraftingRecipe(level, output, itemsToUse, mechanical);
         }
-        // A >3×3 recipe with an ignore-data ingredient is allowed: its grid is fixed at the recipe's own size
-        // (resize disabled), and the server pins each ignore-data ingredient to a single in-stock variant per
-        // request so the shipped package can't balloon past the package-fit budget.
     }
 
     /** Whether any wired ingredient ignores item data — crafting then ships a single in-stock variant per such
@@ -996,9 +1232,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (patternHovered) renderCraftingPattern(gfx, mouseX, mouseY);   // Ctrl-held layout, drawn on top
         editor().renderOverlay(gfx, mouseX, mouseY);   // drag preview (custom mode), above all grid items/font
         renderTooltip(gfx, mouseX, mouseY);
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
-                confirmButton, deleteButton, craftingButton, customButton, newInputButton, relocateButton,
-                requestModeButton, disconnectLinkButton);
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
@@ -1067,55 +1300,24 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         RenderSystem.enableBlend();
         gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
 
-        VirtualGaugeBehaviour g = gauge();
-        List<Component> tooltip;
+        VirtualGaugeBehaviour g = getBehaviour();
 
         int multCap = structuralMultiplierCap();
         maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, multCap);
         boolean overMultiplier = overMultiplier(mouseX, mouseY);
 
-        tooltip = editor().renderInputArea(gfx, mouseX, mouseY);
+        editor().renderInputArea(gfx, mouseX, mouseY);
 
         if (g != null && !g.filter.isEmpty()) {
             int ox = panelX + OUTPUT_X, oy = panelY + OUTPUT_Y;
             int producedCount = editor().producedCount();
             int shownOutput = producedCount * previewScale(mouseX, mouseY);
-            String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             ResourceIconRenderer.render(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(shownOutput) : String.valueOf(shownOutput));
-            if (Rect2i.fromXYWH(ox, oy, 16, 16).contains(mouseX, mouseY, HALF_OPEN)) {
-                Component scrollLine = CreateLang.translate("gui.factory_panel.expected_output_tip_2")
-                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
-                MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
-                        FluidCompat.filterName(g.filter).getString() + " x" + producedTip)
-                        .color(ScrollInput.HEADER_RGB).component();
-                if (!fluidMode && producedCount > outputStackSize())
-                    header.append(stackBreakdown(producedCount, outputStackSize()));
-                tooltip = withIgnoreDataLine(List.of(
-                    header,
-                    CreateLang.translate("gui.factory_panel.expected_output_tip").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.expected_output_tip_1").style(ChatFormatting.GRAY).component(),
-                    scrollLine),
-                    g.ignoreData);
-            } else if (overMultiplier) {
+            if (overMultiplier) {
                 gfx.fill(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y,
                         panelX + MULTIPLIER_X + MULTIPLIER_W, panelY + MULTIPLIER_Y + MULTIPLIER_H,
                         0x55AAAAAA);
-                List<Component> multiplierTooltip = new ArrayList<>();
-                multiplierTooltip.add(Component.translatable("createfactorycontroller.gui.request_multiplier",
-                                maxRequestMultiplier, multCap)
-                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
-                multiplierTooltip.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
-                    .withStyle(ChatFormatting.GRAY));
-                multiplierTooltip.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
-                    .withStyle(ChatFormatting.GRAY));
-                if (workMode != GaugeWorkMode.CRAFTING)
-                    multiplierTooltip.add(Component.translatable(
-                            "createfactorycontroller.gui.request_multiplier.exclude_tip")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                multiplierTooltip.add(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-                tooltip = multiplierTooltip;
             }
             SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.MULTIPLY + maxRequestMultiplier,
                     panelX + MULTIPLIER_X + MULTIPLIER_W + 2, panelY + MULTIPLIER_Y + MULTIPLIER_H - 6,
@@ -1143,21 +1345,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.CLOCK + "·" + shownIntervalSeconds(),
                 panelX + INTERVAL_RIGHT_X, panelY + INTERVAL_Y,
                 customRequestTimer > 0 ? INTERVAL_CUSTOM_COLOR : INTERVAL_DISABLE_COLOR);
-        if (overIntervalArrow(mouseX, mouseY)) {
-            List<Component> lines = new ArrayList<>(List.of(
-                Component.translatable("createfactorycontroller.gui.request_interval", intervalTooltipSeconds())
-                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
-                Component.translatable("createfactorycontroller.gui.request_interval.tip_1")
-                    .withStyle(ChatFormatting.GRAY),
-                Component.translatable("createfactorycontroller.gui.request_interval.tip_2")
-                    .withStyle(ChatFormatting.GRAY),
-                CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()));
-            if (customRequestTimer > 0)   // only clearable when an override is actually set
-                lines.add(Component.translatable("createfactorycontroller.gui.request_interval.reset")
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            tooltip = lines;
-        }
 
         renderThreshold(gfx, g);
 
@@ -1170,19 +1357,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.renderItem(box, pbx, pby);
         drawItemCount(gfx, box, pbx, pby, (ClientConfig.compactRecipeCountFont() && promised > 0 ? "+": "")
                 + promisedLabel);
-        if (Rect2i.fromXYWH(pbx, pby, 16, 16).contains(mouseX, mouseY, HALF_OPEN))
-            tooltip = promised == 0
-                ? List.of(
-                    CreateLang.translate("gui.factory_panel.no_open_promises").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.translate("gui.factory_panel.recipe_promises_tip").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.recipe_promises_tip_1").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.promise_prevents_oversending").style(ChatFormatting.GRAY).component())
-                : List.of(
-                    CreateLang.translate("gui.factory_panel.promised_items").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.text(FluidCompat.filterName(g.filter).getString() + " x" + promisedLabel)
-                        .component(),
-                    CreateLang.translate("gui.factory_panel.left_click_reset")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
 
         // 3D gauge preview
         GuiGameElement.of(g == null ? AllBlocks.FACTORY_GAUGE : g.getItem())
@@ -1219,86 +1393,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         drawPromiseLimitLabel(gfx, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W,
             activePromises, limit, promiseLimitByAddress);
 
-        if (Rect2i.fromXYWH(panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16).contains(mouseX, mouseY, HALF_OPEN)) {
-            boolean addr = promiseLimitByAddress;
-            List<Component> t = new ArrayList<>();
-            t.add(Component.translatable("createfactorycontroller.gui.open_requests.title")
-                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
-            t.add(Component.translatable("createfactorycontroller.gui.open_requests.desc1").withStyle(ChatFormatting.GRAY));
-            t.add(Component.translatable("createfactorycontroller.gui.open_requests.desc2").withStyle(ChatFormatting.GRAY));
-            t.add(Component.empty());
-            t.add(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
-                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(0xb88218)));
-            t.add(Component.literal(!addr ? "-> " : "> ")
-                    .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_gauge"))
-                    .withStyle(!addr ? ChatFormatting.WHITE : ChatFormatting.GRAY));
-            t.add(Component.literal(addr ? "-> " : "> ")
-                    .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_address"))
-                    .withStyle(addr ? ChatFormatting.WHITE : ChatFormatting.GRAY));
-            t.add(Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            t.add(Component.translatable("createfactorycontroller.gui.open_requests.click_scope")
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            tooltip = t;
-        }
-
         // Non logistics conn reset slot
         if (disconnectLinkButton != null) {
             disconnectLinkButton.render(gfx, mouseX, mouseY, partialTick);
         }
 
-        // Count box tooltip
-        if (Rect2i.fromXYWH(panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
-            if(g != null && g.isNumberManaged()) {
-                tooltip = List.of(Component.translatable(requestMode.isPassive() ?
-                                        "createfactorycontroller.gui.threshold.minimum_target" :
-                                        "createfactorycontroller.gui.threshold.stock_target")
-                                .withColor(ScrollInput.HEADER_RGB.getRGB()),
-                        Component.translatable("createfactorycontroller.gui.threshold.auto_managed_by_number")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            }else{
-                List<Component> countTooltip = new ArrayList<>();
-                countTooltip.add(Component.translatable(requestMode.isPassive() ?
-                                "createfactorycontroller.gui.threshold.minimum_target" :
-                                "createfactorycontroller.gui.threshold.stock_target")
-                        .withColor(ScrollInput.HEADER_RGB.getRGB()));
-                if (g != null && requestMode.isPassive()) {
-                    String targetCount = g.unit.format(g.getPassiveTargetCount(), true);
-                    countTooltip.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
-                                    Component.literal(targetCount).withColor(0x9ECFFC))
-                            .withStyle(ChatFormatting.GRAY));
-                }
-                countTooltip.add(CreateLang.translate("gui.scrollInput.scrollToModify")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-                countTooltip.add(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-                tooltip = countTooltip;
-            }
-        }
-
-        // Unit box tooltip
-        if (Rect2i.fromXYWH(panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
-            ThresholdUnit a = fluidMode ? ThresholdUnit.FLUID_MB : ThresholdUnit.ITEMS;
-            ThresholdUnit b = fluidMode ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.STACKS;
-            tooltip = List.of(
-                CreateLang.translate("schedule.condition.threshold.item_measure").color(ScrollInput.HEADER_RGB).component(),
-                a.tooltipLine(mode == a),
-                b.tooltipLine(mode == b),
-                CreateLang.translate("gui.scrollInput.scrollToSelect")
-                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-        }
-
-        // Filter/stock box tooltip — the filtered item's normal item tooltip.
-        if (g != null && Rect2i.fromXYWH(panelX + FILTER_X, panelY + THRESH_TOP, 16, 16).contains(mouseX, mouseY, HALF_OPEN))
-            tooltip = g.filter.isEmpty()
-                ? List.of(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
-                : FluidCompat.isFluidFilter(g.filter)
-                    ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(g.filter),
-                        Minecraft.getInstance().options.advancedItemTooltips)
-                    : getTooltipFromItem(Minecraft.getInstance(), g.filter);
-
-        if (tooltip != null)
-            gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
     // ── Fluid mode helpers ──────────────────────────────────────────────────────
@@ -1415,19 +1514,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);
 
-        if (addressBox.isHovered() && !addressBox.isFocused())
-            gfx.renderComponentTooltip(font, addressBox.getValue().isBlank()
-                ? List.of(
-                    CreateLang.translate("gui.factory_panel.recipe_address").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.translate("gui.factory_panel.recipe_address_tip").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.factory_panel.recipe_address_tip_1").style(ChatFormatting.GRAY).component(),
-                    CreateLang.translate("gui.schedule.lmb_edit")
-                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
-                : List.of(
-                    CreateLang.translate("gui.factory_panel.recipe_address_given").color(ScrollInput.HEADER_RGB).component(),
-                    CreateLang.text("'" + addressBox.getValue() + "'").style(ChatFormatting.GRAY).component()),
-                mouseX, mouseY);
-
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 
@@ -1451,7 +1537,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (getFocused() != null && !getFocused().isMouseOver(mouseX, mouseY))
             setFocused(null);
 
-        boolean onCountBox = Rect2i.fromXYWH(panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN);
+        boolean onCountBox = countArea != null && countArea.isMouseOver(mouseX, mouseY);
         if (countEditing && !onCountBox) commitCountEdit();
 
         if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
@@ -1464,57 +1550,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        if (onCountBox && (button == 0 || button == 1)) {
-            if (numberManaged()) return true;   // locked — Auto managed by Number Connection
-            countEditing = true;
-            countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
-            setFocused(null);
-            playClickSound();
-            return true;
-        }
-
-        if (Rect2i.fromXYWH(panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16).contains(mouseX, mouseY, HALF_OPEN)) {
-            sendConfig(true, false);
-            playClickSound();
-            return true;
-        }
-
-        if (Rect2i.fromXYWH(panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16).contains(mouseX, mouseY, HALF_OPEN)) {
-            promiseLimitByAddress = !promiseLimitByAddress;
-            playClickSound();
-            return true;
-        }
-
-        if (overIntervalArrow(mouseX, mouseY)) {
-            if (customRequestTimer > 0) {
-                setRequestInterval(0);
-                playClickSound();
-            }
-            return true;
-        }
-
-        if ((button == 0 || button == 1) && overMultiplier(mouseX, mouseY)) {
-            maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
-            playClickSound();
-            return true;
-        }
-
-        if (button == 0 && hasControlDown() && workMode != GaugeWorkMode.CRAFTING) {
-            VirtualComponentPosition source = editor().ingredientSourceAt(mouseX, mouseY);
-            if (source != null) {
-                if (!multiplierExcludedInputs.add(source)) multiplierExcludedInputs.remove(source);
-                maxRequestMultiplier = Mth.clamp(maxRequestMultiplier, 1, structuralMultiplierCap());
-                playClickSound();
-                return true;
-            }
-        }
-
-        if (editor().inputAreaClicked(mouseX, mouseY, button)) return true;
-
-        if (Rect2i.fromXYWH(panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
-            setMode(mode.cycle(1));
-            return true;
-        }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -1561,60 +1596,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (editor().gridReleased(mouseX, mouseY, button)) return true;
+        if (button != 0 && ingredientArea != null && ingredientArea.mouseReleased(mouseX, mouseY, button)) return true;
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (addressBox.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
-        int step = hasControlDown() ? 100 : (hasShiftDown() ? 10 : 1);
-        int dir = (int) Math.signum(scrollY);
-
-        if (Rect2i.fromXYWH(panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16).contains(mouseX, mouseY, HALF_OPEN)) {
-            if (dir != 0) {
-                int limitStep = hasShiftDown() ? 10 : 1;
-                promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 99);
-                playScrollSound();
-            }
-            return true;
-        }
-
-        if (overIntervalArrow(mouseX, mouseY)) {
-            if (dir != 0) {
-                setRequestInterval(Mth.clamp(shownIntervalSeconds() + dir, 1, 60) * TICKS_PER_SEC);
-                playScrollSound();
-            }
-            return true;
-        }
-
-        // Request-multiplier modifier
-        if (overMultiplier(mouseX, mouseY)) {
-            if (dir != 0) {
-                int mstep = hasShiftDown() ? 10 : 1;
-                maxRequestMultiplier = Mth.clamp(maxRequestMultiplier + dir * mstep, 1, structuralMultiplierCap());
-                playScrollSound();
-            }
-            return true;
-        }
-
-        // Ingredient grid + output slot: both are mode-specific, handled by the active work-mode editor.
-        if (editor().inputAreaScrolled(mouseX, mouseY, dir, step)) return true;
-        if (editor().outputScrolled(mouseX, mouseY, dir, step)) return true;
-        // Threshold count box
-        if (Rect2i.fromXYWH(panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
-            if (numberManaged()) return true;   // locked — Auto managed by Number Connection
-            if (countEditing) commitCountEdit();
-            // Fluid threshold is a whole number in the unit box's unit.
-            step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
-            thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
-            playScrollSound();
-            return true;
-        }
-        if (Rect2i.fromXYWH(panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
-            if (dir != 0) setMode(mode.cycle(-dir));
-            return true;
-        }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 

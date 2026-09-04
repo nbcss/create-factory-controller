@@ -17,9 +17,9 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
-import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureLogicalTubePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
@@ -42,8 +42,6 @@ import org.joml.Vector2i;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
-import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
 /**
  * Full-config overlay for a Logical Tube.
@@ -119,7 +117,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                 PacketDistributor.sendToServer(new ConfigureLogicalTubePacket(menu.controllerPos, tubePos, m.name()));
                 playClickSound();
             });
-            button.withDeferredTooltip(() -> modeButtonTooltip(m));
+            button.withTooltip(() -> modeButtonTooltip(m));
             modeButtons.put(m, button);
             addWidget(button);
         }
@@ -132,6 +130,55 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
                 HelpButton.ColorPalette.ROSE, "electron-tube.html");
         addWidget(helpButton);
+
+        addRenderableWidget(new InteractiveAreaWidget(
+                gridX(), gridY(), GRID_COLS * CELL, 3 * CELL,
+                (mouseX, mouseY) -> {
+                    ConnectionSlot hovered = connectionSlotAt(mouseX, mouseY);
+                    if (hovered != null) {
+                        VirtualComponentBehaviour partner = menu.componentAt(
+                                hovered.output() ? hovered.connection().to : hovered.connection().from);
+                        List<Component> tip = new ArrayList<>();
+                        if (partner != null) {
+                            tip.add(partner.getName().copy().withColor(partner.getColor()));
+                            tip.addAll(partner.infoTooltip());
+                        }
+                        if (hovered.connection().canReverse(menu))
+                            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse")
+                                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                        tip.add(Component.translatable("createfactorycontroller.gui.action_disconnect")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                        return tip;
+                    }
+                    if (!tubeCellHovered(mouseX, mouseY)) return List.of();
+                    int nIn = inputs().size();
+                    int nOut = outputs().size();
+                    return List.of(
+                            Component.translatable("createfactorycontroller.gui.mode_prefix",
+                                    Component.translatable("createfactorycontroller.component.logical_tube.mode."
+                                                    + currentMode().name().toLowerCase())
+                                            .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY),
+                            Component.translatable("createfactorycontroller.gui.logical_tube.input_connections",
+                                    Component.literal(String.valueOf(nIn)).withStyle(
+                                            nIn > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
+                                    .withStyle(ChatFormatting.GRAY),
+                            Component.translatable("createfactorycontroller.gui.logical_tube.output_connections",
+                                    Component.literal(String.valueOf(nOut)).withStyle(
+                                            nOut > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
+                                    .withStyle(ChatFormatting.GRAY));
+                }).onClick((mouseX, mouseY, button) -> {
+                    ConnectionSlot hovered = connectionSlotAt(mouseX, mouseY);
+                    if (hovered == null) return false;
+                    Connection connection = hovered.connection();
+                    if (hasShiftDown())
+                        PacketDistributor.sendToServer(new RemoveConnectionPacket(
+                                menu.controllerPos, connection.from, connection.to, connection.type.name()));
+                    else
+                        PacketDistributor.sendToServer(new ReverseConnectionPacket(
+                                menu.controllerPos, connection.from, connection.to, connection.type.name()));
+                    playClickSound();
+                    return true;
+                }));
     }
 
     private static ScreenElement modeButtonIcon(LogicalTubeBehaviour.Mode mode) {
@@ -213,7 +260,8 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                 componentRenderingHelper.params(gfx, new Vector2d(Double.NaN, Double.NaN), false);
         renderIconBacks(gfx, renderingParameters, inputs, outputs);      // backs first
         renderConnections(gfx, inputs, outputs);    // then wires (above backs, below fronts)
-        renderIconFronts(gfx, renderingParameters, inputs, outputs, mouseX, mouseY);   // fronts cover the arrow ends
+        renderIconFronts(gfx, renderingParameters, inputs, outputs,
+                connectionSlotAt(mouseX, mouseY, inputs, outputs));   // fronts cover the arrow ends
 
         RenderSystem.enableBlend();
         gfx.blitSprite(
@@ -274,11 +322,13 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     }
 
     private void renderIconFronts(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
-                                  List<Connection> inputs, List<Connection> outputs, int mouseX, int mouseY) {
+                                  List<Connection> inputs, List<Connection> outputs,
+                                  ConnectionSlot hovered) {
         for (int i = 0; i < Math.min(MAX_PER_SIDE, inputs.size()); i++)
-            frontAt(gfx, params, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
+            frontAt(gfx, params, inputs.get(i).from, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)));
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            frontAt(gfx, params, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), mouseX, mouseY);
+            frontAt(gfx, params, outputs.get(i).to, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)));
+        if (hovered != null) highlight(gfx, hovered.x(), hovered.y());
         componentRenderingHelper.flushBuffers(gfx);
     }
 
@@ -289,10 +339,9 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     }
 
     private void frontAt(GuiGraphics gfx, VirtualComponentWidget.RenderingParameters params,
-                         VirtualComponentPosition pos, int x, int y, int mouseX, int mouseY) {
+                         VirtualComponentPosition pos, int x, int y) {
         VirtualComponentWidget w = controller.componentWidgetAt(pos);
         if (w != null) atSlot(gfx, w, x, y, () -> w.renderFront(params));
-        if (Rect2i.fromXYWH(x, y, CELL, CELL).contains(mouseX, mouseY, HALF_OPEN)) highlight(gfx, x, y);
     }
 
     /** Reuses a component's canvas render at slot {@code (x,y)}: translate the pose so its board cell lands on the slot,
@@ -328,75 +377,39 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        Connection hovered = slotConnectionAt(mouseX, mouseY);
-        if (hovered != null) {
-            VirtualComponentBehaviour partner = menu.componentAt(isOutputSlot(mouseX, mouseY) ? hovered.to : hovered.from);
-            List<Component> tip = new ArrayList<>();
-            if (partner != null) {
-                tip.add(partner.getName().copy().withColor(partner.getColor()));
-                tip.addAll(partner.infoTooltip());   // component-specific info (monitored item / frequencies+mode / mode)
-            }
-            if (hovered.canReverse(menu))
-                tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            tip.add(Component.translatable("createfactorycontroller.gui.action_disconnect")
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-            gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
-            return;
-        }
-        if (Rect2i.fromXYWH(cellScreenX(TUBE_COL), cellScreenY(MID_ROW), CELL, CELL).contains(mouseX, mouseY, HALF_OPEN)) {
-            int nIn = inputs().size(), nOut = outputs().size();
-            List<Component> tip = new ArrayList<>();
-            tip.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
-                    Component.translatable("createfactorycontroller.component.logical_tube.mode." + currentMode().name().toLowerCase())
-                            .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
-            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.input_connections",
-                    Component.literal(String.valueOf(nIn)).withStyle(nIn > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
-                    .withStyle(ChatFormatting.GRAY));
-            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.output_connections",
-                    Component.literal(String.valueOf(nOut)).withStyle(nOut > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
-                    .withStyle(ChatFormatting.GRAY));
-            gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
-            return;
-        }
-        if (TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, modeButtons.values())) return;
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
-                relocateButton, addConnectionButton, confirmButton);
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     // ── Interaction ───────────────────────────────────────────────────────────────
 
-    /** The connection under the cursor (input or output slot), or null. */
-    private Connection slotConnectionAt(double mx, double my) {
-        List<Connection> inputs = inputs();
-        for (int i = 0; i < Math.min(MAX_PER_SIDE, inputs.size()); i++)
-            if (Rect2i.fromXYWH(cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), CELL, CELL).contains(mx, my, HALF_OPEN)) return inputs.get(i);
-        List<Connection> outputs = outputs();
-        for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            if (Rect2i.fromXYWH(cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), CELL, CELL).contains(mx, my, HALF_OPEN)) return outputs.get(i);
+    private record ConnectionSlot(Connection connection, boolean output, int x, int y) {}
+
+    private ConnectionSlot connectionSlotAt(double mouseX, double mouseY) {
+        return connectionSlotAt(mouseX, mouseY, inputs(), outputs());
+    }
+
+    private ConnectionSlot connectionSlotAt(double mouseX, double mouseY,
+                                            List<Connection> inputs, List<Connection> outputs) {
+        int col = Math.floorDiv((int) Math.floor(mouseX) - gridX(), CELL);
+        int row = Math.floorDiv((int) Math.floor(mouseY) - gridY(), CELL);
+        if (row != 0 && row != 2) return null;
+        if (col >= 0 && col < COLS_PER_SIDE) {
+            int index = (row == 0 ? 0 : COLS_PER_SIDE) + COLS_PER_SIDE - 1 - col;
+            return index < inputs.size()
+                    ? new ConnectionSlot(inputs.get(index), false, cellScreenX(col), cellScreenY(row)) : null;
+        }
+        if (col > TUBE_COL && col < GRID_COLS) {
+            int index = (row == 0 ? 0 : COLS_PER_SIDE) + col - TUBE_COL - 1;
+            return index < outputs.size()
+                    ? new ConnectionSlot(outputs.get(index), true, cellScreenX(col), cellScreenY(row)) : null;
+        }
         return null;
     }
 
-    private boolean isOutputSlot(double mx, double my) {
-        List<Connection> outputs = outputs();
-        for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            if (Rect2i.fromXYWH(cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), CELL, CELL).contains(mx, my, HALF_OPEN)) return true;
-        return false;
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        Connection c = slotConnectionAt(mouseX, mouseY);
-        if (c != null) {
-            if (hasShiftDown())
-                PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos, c.from, c.to, c.type.name()));
-            else
-                PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, c.from, c.to, c.type.name()));
-            playClickSound();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
+    private boolean tubeCellHovered(double mouseX, double mouseY) {
+        int x = (int) Math.floor(mouseX) - cellScreenX(TUBE_COL);
+        int y = (int) Math.floor(mouseY) - cellScreenY(MID_ROW);
+        return x >= 0 && x < CELL && y >= 0 && y < CELL;
     }
 
     /** Create's soft GUI button blip for slot clicks. */

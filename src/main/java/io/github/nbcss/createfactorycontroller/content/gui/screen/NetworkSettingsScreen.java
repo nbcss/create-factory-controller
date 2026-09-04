@@ -9,6 +9,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.packet.SetNetworkSettingsPacket;
@@ -17,6 +18,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.CommonComponents;
@@ -31,6 +33,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -75,6 +78,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     private EditBox nameBox;
     private TooltipIconButton clearButton;
     private TooltipIconButton confirmButton;
+    private InteractiveAreaWidget iconArea;
 
     private int panelX, panelY;
     private int invBgX, invBgY;
@@ -127,6 +131,35 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         nameBox.setTextColor(0xFFFFFF);
         nameBox.setHint(defaultName());
         nameBox.setValue(currentName);
+
+        iconArea = addRenderableWidget(new InteractiveAreaWidget(
+                panelX + ICON_X, panelY + ICON_Y, ICON_SIZE, ICON_SIZE,
+                () -> icon.isEmpty()
+                        ? List.of(Component.translatable(
+                                "createfactorycontroller.gui.network_settings.icon_tip").withStyle(ChatFormatting.GRAY))
+                        : Screen.getTooltipFromItem(Minecraft.getInstance(), icon))
+                .onClick(button -> {
+                    setIconFromCarried(menu.getCarried(), true);
+                    playClickSound();
+                    return true;
+                }));
+        addRenderableWidget(new InteractiveAreaWidget(
+                panelX + NAME_X, panelY + NAME_Y, NAME_W, NAME_H,
+                () -> nameBox.isFocused()
+                        ? List.of()
+                        : List.of(Component.translatable(
+                                "createfactorycontroller.gui.network_settings.name_tip")
+                                .withStyle(ChatFormatting.GRAY)))
+                .onClick((mouseX, mouseY, button) -> {
+                    if (button == 1) {
+                        nameBox.setValue("");
+                        nameBox.setFocused(true);
+                        setFocused(nameBox);
+                        playClickSound();
+                        return true;
+                    }
+                    return !nameBox.isMouseOver(mouseX, mouseY);
+                }));
         addWidget(nameBox);
     }
 
@@ -202,16 +235,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        if (overIcon(mouseX, mouseY)) {
-            if (!icon.isEmpty()) gfx.renderTooltip(font, icon, mouseX, mouseY);
-            else gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.network_settings.icon_tip")
-                    .withStyle(ChatFormatting.GRAY), mouseX, mouseY);
-        } else if (overNameBox(mouseX, mouseY) && !nameBox.isFocused()) {
-            gfx.renderTooltip(font, Component.translatable("createfactorycontroller.gui.network_settings.name_tip")
-                    .withStyle(ChatFormatting.GRAY), mouseX, mouseY);
-        }
         renderTooltip(gfx, mouseX, mouseY);   // hovered inventory item
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, clearButton, confirmButton);
     }
 
     @Override
@@ -226,7 +250,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         // Icon slot
         renderNetworkIcon(gfx, new NetworkSettings(network, "", icon), panelX + ICON_X, panelY + ICON_Y);
 
-        if (overIcon(mouseX, mouseY))
+        if (iconArea.isMouseOver(mouseX, mouseY))
             gfx.fill(panelX + ICON_X, panelY + ICON_Y, panelX + ICON_X + ICON_SIZE, panelY + ICON_Y + ICON_SIZE, 0x80FFFFFF);
 
         // Name box
@@ -269,22 +293,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (overIcon(mouseX, mouseY)) {
-            setIconFromCarried(menu.getCarried(), true);
-            playClickSound();
-            return true;
-        }
-        if (overNameBox(mouseX, mouseY)) {
-            super.mouseClicked(mouseX, mouseY, button);
-            if (button == 1) {
-                nameBox.setValue("");
-                nameBox.setFocused(true);
-                setFocused(nameBox);
-                playClickSound();
-            }
-            return true;
-        }
-        nameBox.setFocused(false);
+        if (!nameBox.isMouseOver(mouseX, mouseY)) nameBox.setFocused(false);
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -308,16 +317,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         Minecraft.getInstance().getSoundManager().play(
             SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
         super.removed();
-    }
-
-    private boolean overIcon(double mx, double my) {
-        return mx >= panelX + ICON_X && mx < panelX + ICON_X + ICON_SIZE
-            && my >= panelY + ICON_Y && my < panelY + ICON_Y + ICON_SIZE;
-    }
-
-    private boolean overNameBox(double mx, double my) {
-        return mx >= panelX + NAME_X && mx < panelX + NAME_X + NAME_W
-            && my >= panelY + NAME_Y && my < panelY + NAME_Y + NAME_H;
     }
 
     // ── JEI/EMI ghost-slot hooks ──

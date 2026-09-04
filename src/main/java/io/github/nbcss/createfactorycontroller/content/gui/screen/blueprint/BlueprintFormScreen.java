@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -89,6 +90,9 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private SpacedMultiLineEditBox noteBox;
     private TooltipIconButton discardButton;
     private TooltipIconButton confirmButton;
+    private InteractiveAreaWidget overwriteInfoArea;
+    private InteractiveAreaWidget networkInfoArea;
+    private InteractiveAreaWidget contentTooltipArea;
 
     private int panelX;
     private int panelY;
@@ -268,12 +272,33 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
 
         confirmButton = new TooltipIconButton(0, 0, confirmIcon());
         confirmButton.withCallback(this::trySave);
-        confirmButton.withDeferredTooltip(() -> {
+        confirmButton.withTooltip(() -> {
             Component blocked = confirmBlockedReason();
             return blocked == null ? List.of(confirmTooltip())
                     : List.of(confirmTooltip(), blocked.copy().withStyle(ChatFormatting.RED));
         });
         addWidget(confirmButton);
+
+        overwriteInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
+                (mouseX, mouseY) -> draggedNetwork < 0 && overwriteExisting && insideViewport(mouseX, mouseY)
+                        ? List.of(Component.translatable(
+                                "createfactorycontroller.gui.blueprint.overwrite_existing"))
+                        : List.of()));
+        networkInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
+                (mouseX, mouseY) -> draggedNetwork < 0 && networkCount() > 0 && insideViewport(mouseX, mouseY)
+                        ? List.of(
+                                Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"),
+                                Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"),
+                                Component.translatable("createfactorycontroller.gui.blueprint.network_info_3"))
+                        : List.of()));
+        contentTooltipArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 0, 0,
+                (mouseX, mouseY) -> {
+                    if (draggedNetwork >= 0) return List.of();
+                    int material = materialAt(mouseX, mouseY);
+                    if (material >= 0) return BlueprintMaterialDisplay.tooltip(materials().get(material));
+                    int network = networkAt(mouseX, mouseY);
+                    return network >= 0 ? networkTooltip(network) : List.of();
+                }));
 
         nameBox.setResponder(value -> {
             overwriteExisting = false;
@@ -302,22 +327,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         updateNameValidity();
         overwriteExisting = editable() && validName && !isOwnName(nameBox.getValue())
                 && BlueprintStorage.blueprintExists(nameBox.getValue());
-    }
-
-    private boolean overOverwriteInfo(double mouseX, double mouseY) {
-        if (!overwriteExisting || !insideViewport(mouseX, mouseY)) return false;
-        Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
-        int x = panelX + LABEL_X + font.width(nameTitle) + 2;
-        int y = viewportY - (int) renderedScroll + nameLabelY + (font.lineHeight - 8) / 2;
-        return mouseX >= x && mouseX < x + 8 && mouseY >= y && mouseY < y + 8;
-    }
-
-    private boolean overNetworkInfo(double mouseX, double mouseY) {
-        if (networkCount() == 0 || !insideViewport(mouseX, mouseY)) return false;
-        Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
-        int x = panelX + LABEL_X + font.width(networkTitle) + 2;
-        int y = viewportY - (int) renderedScroll + networkLabelY + (font.lineHeight - 8) / 2;
-        return mouseX >= x && mouseX < x + 8 && mouseY >= y && mouseY < y + 8;
     }
 
     private void relayout() {
@@ -380,6 +389,18 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         discardButton.setY(panelY + panelH - 24);
         confirmButton.setX(panelX + PANEL_W - 25);
         confirmButton.setY(panelY + panelH - 24);
+        if (overwriteInfoArea != null) {
+            Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
+            overwriteInfoArea.setPosition(panelX + LABEL_X + font.width(nameTitle) + 2,
+                    contentTop + nameLabelY + (font.lineHeight - 8) / 2);
+        }
+        if (networkInfoArea != null) {
+            Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
+            networkInfoArea.setPosition(panelX + LABEL_X + font.width(networkTitle) + 2,
+                    contentTop + networkLabelY + (font.lineHeight - 8) / 2);
+        }
+        if (contentTooltipArea != null)
+            contentTooltipArea.setRectangle(PANEL_W - 14, viewportH, panelX + 7, viewportY);
     }
 
     private double maxScroll() {
@@ -429,29 +450,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         super.render(gfx, mouseX, mouseY, partialTick);
         if (draggedNetwork >= 0) {
             renderHeldNetwork(gfx, mouseX, mouseY);
-        } else if (overOverwriteInfo(mouseX, mouseY)) {
-            gfx.renderTooltip(font,
-                    Component.translatable("createfactorycontroller.gui.blueprint.overwrite_existing"),
-                    mouseX, mouseY);
-        } else if (overNetworkInfo(mouseX, mouseY)) {
-            gfx.renderComponentTooltip(font, List.of(
-                    Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"),
-                    Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"),
-                    Component.translatable("createfactorycontroller.gui.blueprint.network_info_3")),
-                    mouseX, mouseY);
-        } else if (insideViewport(mouseX, mouseY)) {
-            int material = materialAt(mouseX, mouseY);
-            if (material >= 0) {
-                BlueprintStorage.Material entry = materials().get(material);
-                BlueprintMaterialDisplay.renderTooltip(gfx, font, entry, mouseX, mouseY);
-            } else {
-                int network = networkAt(mouseX, mouseY);
-                List<Component> tooltip = network >= 0 ? networkTooltip(network) : List.of();
-                if (!tooltip.isEmpty()) gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
-            }
         }
         if (draggedNetwork < 0) {
-            TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, discardButton, confirmButton);
             helpButton.renderTooltip(gfx, font, mouseX, mouseY);
         }
     }

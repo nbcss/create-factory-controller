@@ -413,7 +413,6 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
                     gfx.renderComponentTooltip(font, slotTooltip(tip.req()), mouseX, mouseY);
                     return;
                 }
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, backButton);
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 

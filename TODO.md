@@ -37,6 +37,7 @@
 
 # 1.2.1
 - [TODO] Update Arithmetic tube GUI and connection target selection
+- [TODO] Refactor connection type priority
 - [TODO] Connection type selection tooltip
 - [TODO] Redstone Control of Arithmetic Tube
 - [TODO] Redstone Output of Arithmetic Tube

@@ -14,6 +14,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.Fac
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ActionPromptWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.packet.BlueprintPlacePacket;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -135,6 +136,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         addWidget(closeButton);
 
         relayout();
+        addRenderableOnly(new InteractiveAreaWidget(importIconX, importIconY, 16, 16, this::importTooltip));
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
                 HelpButton.ColorPalette.GENERAL, "blueprint.html");
@@ -312,10 +314,6 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         Minecraft.getInstance().setScreen(controller);
     }
 
-    private boolean overImportIcon(double x, double y) {
-        return x >= importIconX && x < importIconX + 16 && y >= importIconY && y < importIconY + 16;
-    }
-
     /** A small green tick badge at the icon's bottom-right, shown when the selection is importable. */
     private void renderReadyTick(GuiGraphics gfx, int x, int y) {
         gfx.pose().pushPose();
@@ -359,10 +357,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             for (EntryWidget widget : entryWidgets)
                 if (widget.renderTooltip(gfx, mouseX, mouseY)) return;
         }
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, openFolderButton, closeButton);
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
-        if (overImportIcon(mouseX, mouseY))
-            gfx.renderComponentTooltip(font, importTooltip(), mouseX, mouseY);
     }
 
     @Override
@@ -528,7 +523,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             super(0, 0, ENTRY_W, ENTRY_H, Component.empty());
             this.placeButton = createButton(PLACE_ICON,
                     Component.translatable("createfactorycontroller.gui.blueprint.place"), this::place);
-            this.placeButton.withDeferredTooltip(() -> {
+            this.placeButton.withTooltip(() -> {
                 Component blocked = placeBlockedReason();
                 return blocked == null
                         ? List.of(Component.translatable("createfactorycontroller.gui.blueprint.place"))
@@ -537,7 +532,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             });
             this.editButton = new TooltipIconButton(0, 0, (gfx, x, y) -> entry.secondaryIcon().render(gfx, x, y));
             this.editButton.withCallback(this::edit);
-            this.editButton.withDeferredTooltip(() -> List.of(entry.secondaryTooltip()));
+            this.editButton.withTooltip(() -> List.of(entry.secondaryTooltip()));
         }
 
         @Nullable
@@ -655,9 +650,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         private boolean renderTooltip(GuiGraphics gfx, int mouseX, int mouseY) {
             if (!isMouseOver(mouseX, mouseY)) return false;
             return renderNameTooltip(gfx, mouseX, mouseY)
-                    || renderMaterialTooltip(gfx, mouseX, mouseY)
-                    || TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
-                    placeButton, editButton);
+                    || renderMaterialTooltip(gfx, mouseX, mouseY);
         }
 
         private boolean renderNameTooltip(GuiGraphics gfx, int mouseX, int mouseY) {

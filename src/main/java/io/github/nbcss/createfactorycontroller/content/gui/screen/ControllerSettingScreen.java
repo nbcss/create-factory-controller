@@ -1,6 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ScrollListWindow;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 
 import com.simibubi.create.AllSoundEvents;
@@ -118,6 +119,14 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         closeButton.withCallback(this::returnToController);
         closeButton.setToolTip(CommonComponents.GUI_DONE);
         addWidget(closeButton);
+
+        addRenderableWidget(new InteractiveAreaWidget(
+                panelX + SELECTOR_X, panelY + SELECTOR_Y, SELECTOR_W, SELECTOR_H,
+                () -> options.isEmpty() ? List.of() : selectorTooltip())
+                .onScroll((scrollX, scrollY) -> {
+                    scrollSelection(scrollY);
+                    return true;
+                }));
     }
 
     @Override
@@ -170,11 +179,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         Minecraft.getInstance().setScreen(controller);
     }
 
-    private boolean overSelector(double mx, double my) {
-        return mx >= panelX + SELECTOR_X && mx < panelX + SELECTOR_X + SELECTOR_W
-            && my >= panelY + SELECTOR_Y && my < panelY + SELECTOR_Y + SELECTOR_H;
-    }
-
     private List<Component> selectorTooltip() {
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable("createfactorycontroller.gui.controller_settings")
@@ -200,10 +204,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        if (overSelector(mouseX, mouseY) && !options.isEmpty())
-            gfx.renderComponentTooltip(font, selectorTooltip(), mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY, resetButton, closeButton);
     }
 
     @Override
@@ -239,15 +240,6 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
     protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {}   // no default container labels
 
     // ── Input ────────────────────────────────────────────────────────────────
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (overSelector(mouseX, mouseY)) {
-            scrollSelection(scrollY);
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-    }
 
     @Override
     public void onClose() {

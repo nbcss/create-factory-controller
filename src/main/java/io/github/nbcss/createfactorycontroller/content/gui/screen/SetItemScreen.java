@@ -14,6 +14,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
@@ -65,6 +66,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private TooltipIconButton respectDataButton;
     private TooltipIconButton ignoreDataButton;
     private HelpButton helpButton;
+    private InteractiveAreaWidget filterArea;
     /** Whether the gauge should monitor/consume the filter item ignoring its NBT/components. */
     private boolean ignoreData;
     // Tooltip text reused verbatim from Create's FilterScreen (same lang keys).
@@ -132,16 +134,29 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         int ignoreDataX = panelX + 97;
         respectDataButton = new TooltipIconButton(ignoreDataX, buttonY, AllIcons.I_RESPECT_NBT);
         respectDataButton.withCallback(() -> { ignoreData = false; updateIgnoreDataButtons(); });
-        respectDataButton.withDeferredTooltip(() -> dataButtonTooltip(respectDataName, respectDataDesc));
+        respectDataButton.withTooltip(() -> dataButtonTooltip(respectDataName, respectDataDesc));
         addWidget(respectDataButton);
         ignoreDataButton = new TooltipIconButton(ignoreDataX + 18, buttonY, AllIcons.I_IGNORE_NBT);
         ignoreDataButton.withCallback(() -> { ignoreData = true; updateIgnoreDataButtons(); });
-        ignoreDataButton.withDeferredTooltip(() -> dataButtonTooltip(ignoreDataName, ignoreDataDesc));
+        ignoreDataButton.withTooltip(() -> dataButtonTooltip(ignoreDataName, ignoreDataDesc));
         addWidget(ignoreDataButton);
 
         helpButton = new HelpButton(panelX + blockW - HelpButton.WIDTH - 20, panelY + 3,
                 HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html");
         addWidget(helpButton);
+        filterArea = addRenderableWidget(new InteractiveAreaWidget(
+                filterX(), filterY(), FILTER_SLOT_SIZE, FILTER_SLOT_SIZE,
+                () -> filter.isEmpty()
+                        ? filterEmptyTooltip()
+                        : FluidCompat.isFluidFilter(filter)
+                                ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(filter),
+                                        minecraft.options.advancedItemTooltips)
+                                : getTooltipFromItem(Minecraft.getInstance(), filter))
+                .onClick(button -> {
+                    setFilterFromCarried(menu.getCarried(), button, true);
+                    updateIgnoreDataButtons();
+                    return true;
+                }));
         updateIgnoreDataButtons();
 
         extraAreas = List.of(new Rect2i(panelX + bg.getWidth(),
@@ -193,17 +208,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        if (overFilter(mouseX, mouseY) && !filter.isEmpty()) {
-            if (FluidCompat.isFluidFilter(filter))
-                gfx.renderComponentTooltip(font, FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(filter),
-                        minecraft.options.advancedItemTooltips), mouseX, mouseY);
-            else
-                gfx.renderTooltip(font, filter, mouseX, mouseY);
-        } else if (overFilter(mouseX, mouseY)) {
-            gfx.renderComponentTooltip(font, filterEmptyTooltip(), mouseX, mouseY);
-        } else renderTooltip(gfx, mouseX, mouseY);
-        TooltipIconButton.renderFirstTooltip(gfx, font, mouseX, mouseY,
-                confirm, relocateButton, respectDataButton, ignoreDataButton);
+        renderTooltip(gfx, mouseX, mouseY);
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
@@ -231,7 +236,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     private void renderFilter(GuiGraphics gfx, int mouseX, int mouseY) {
         ResourceIconRenderer.render(gfx, filter, filterX(), filterY());
-        if (overFilter(mouseX, mouseY))
+        if (filterArea.isMouseOver(mouseX, mouseY))
             gfx.fill(filterX(), filterY(), filterX() + FILTER_SLOT_SIZE, filterY() + FILTER_SLOT_SIZE, 0x80FFFFFF);
     }
 
@@ -245,16 +250,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     // ── Input ────────────────────────────────────────────────────────────────
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (overFilter(mouseX, mouseY)) {
-            setFilterFromCarried(menu.getCarried(), button, true);
-            updateIgnoreDataButtons();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
 
     @Override
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
@@ -311,11 +306,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     public void setFluidFromJei(FluidStack fluid) {
         ItemStack stack = behaviour.filterResolver().fromFluid(fluid);
         if (!stack.isEmpty()) setGhostFromJei(stack);
-    }
-
-    private boolean overFilter(double mx, double my) {
-        return mx >= filterX() && mx < filterX() + FILTER_SLOT_SIZE
-                && my >= filterY() && my < filterY() + FILTER_SLOT_SIZE;
     }
 
     /** Empty-filter-slot hint */
