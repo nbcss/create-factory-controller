@@ -60,7 +60,7 @@ jobs:
 
   build:
     needs: build-container
-    if: needs.build-container.result == 'success' || needs.build-container.result == 'skipped'
+    if: always() || needs.build-container.result == 'success' || needs.build-container.result == 'skipped'
     runs-on: ubuntu-latest
     permissions:
       contents: read
