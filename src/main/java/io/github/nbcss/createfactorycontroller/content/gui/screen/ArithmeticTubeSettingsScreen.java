@@ -11,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
@@ -127,11 +128,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private int panelX, panelY, panelH;
     private int viewportH;
     private float renderedScroll;
-    private boolean dropdownOpen;
     private boolean operatorHeld;
     private boolean draggingScrollbar;
     private double scrollbarGrabOffset;
     private TooltipIconButton closeButton, relocateButton, swapButton;
+    private ArithmeticViewportWidget viewportWidget;
+    private OperatorDropdownWidget operatorDropdown;
+    private ConstantDropdownWidget constantDropdown;
 
     /** The input rows (primary inputs, primary-add, secondary input/add) */
     private List<Row> rows = List.of();
@@ -143,6 +146,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         record Add(boolean primary) implements Row {}
         record Input(boolean primary, int index, ArithmeticTubeBehaviour.NumberInput input) implements Row {}
     }
+
+    private enum TargetKind {
+        OPERATOR, SLOT, REMOVE, CONSTANT_FIELD, CONSTANT_MENU, ADD_CONNECTION, ADD_CONSTANT,
+        RESULT, SCROLLBAR, ROW
+    }
+
+    private record ContentTarget(TargetKind kind, @Nullable Row row) {}
 
     public ArithmeticTubeSettingsScreen(FactoryControllerScreen controller, VirtualComponentPosition tubePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -163,16 +173,23 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         closeButton = new TooltipIconButton(0, 0, AllIcons.I_CONFIRM);
         closeButton.withCallback(() -> Minecraft.getInstance().setScreen(controller));   // save & close
         closeButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
-        addWidget(closeButton);
 
         relocateButton = new TooltipIconButton(0, 0, AllIcons.I_MOVE_GAUGE);
         relocateButton.withCallback(() -> { controller.beginRelocateMode(tubePos); Minecraft.getInstance().setScreen(controller); });
         relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
-        addWidget(relocateButton);
 
         swapButton = new TooltipIconButton(0, 0, AllIcons.I_FLIP);
         swapButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.SWAP, true, -1, 0); playClickSound(); });
         swapButton.setToolTip(Component.translatable("createfactorycontroller.gui.arithmetic_tube.swap_inputs"));
+
+        operatorDropdown = new OperatorDropdownWidget();
+        addWidget(operatorDropdown);
+        constantDropdown = new ConstantDropdownWidget();
+        addWidget(constantDropdown);
+        viewportWidget = new ArithmeticViewportWidget();
+        addWidget(viewportWidget);
+        addWidget(closeButton);
+        addWidget(relocateButton);
         addWidget(swapButton);
 
         recomputeLayout();
@@ -204,6 +221,12 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         boolean binary = t != null && t.getOperator().arity() == ArithmeticOperator.Arity.BINARY;
         swapButton.setX(binary ? panelX + PANEL_W - BOTTOM_CLOSE_GROUP_W + 1 - 5 - ROW_BTN : -1000);
         swapButton.setY(panelY + panelH - 24);
+        if (viewportWidget != null)
+            viewportWidget.setRectangle(PANEL_W, viewportH, panelX, viewportY());
+        if (operatorDropdown != null)
+            operatorDropdown.updateBounds();
+        if (constantDropdown != null)
+            constantDropdown.updateBounds();
     }
 
     private List<Row> buildRows(ArithmeticTubeBehaviour tube) {
@@ -241,11 +264,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     // ── Scrollbar ────────────────────
 
-    private void renderScrollbar(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void renderScrollbar(GuiGraphics gfx, boolean hovered) {
         if (maxScroll() <= 0) return;
         int thumbY = scrollbarThumbY(), thumbH = scrollbarThumbHeight();
         gfx.fill(panelX + SCROLLBAR_X, viewportY(), panelX + SCROLLBAR_X + 3, viewportY() + viewportH, 0x503D3C48);
-        int thumbColor = overScrollbar(mouseX, mouseY) ? 0xFFE2E2E2 : 0xFFC6C6C6;
+        int thumbColor = hovered ? 0xFFE2E2E2 : 0xFFC6C6C6;
         gfx.fill(panelX + SCROLLBAR_X, thumbY, panelX + SCROLLBAR_X + 3, thumbY + thumbH, thumbColor);
     }
 
@@ -297,33 +320,27 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
         RenderSystem.enableBlend();
 
-        int hoverX = dropdownOpen ? Integer.MIN_VALUE : mouseX, hoverY = dropdownOpen ? Integer.MIN_VALUE : mouseY;
-        gfx.enableScissor(panelX, viewportY(), panelX + PANEL_W, viewportY() + viewportH);   // clip the scrolled content
-        renderOperatorEntry(gfx, tube, mouseX, mouseY);
-        renderInputEntries(gfx, tube, hoverX, hoverY);
-        renderResultEntry(gfx, tube);
-        constantEditor.render(gfx, mouseX, mouseY, partialTick);
-        gfx.disableScissor();
+        viewportWidget.render(gfx, mouseX, mouseY, partialTick);
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         if (tube.getOperator().arity() == ArithmeticOperator.Arity.BINARY) swapButton.render(gfx, mouseX, mouseY, partialTick);
         closeButton.render(gfx, mouseX, mouseY, partialTick);
         GuiGameElement.of(tube.getItem()).scale(2).at(0, 0, 100)
                 .render(gfx, panelX + PANEL_W + 13, panelY + panelH - 30);
-        renderScrollbar(gfx, mouseX, mouseY);
-
-        if (dropdownOpen) {
+        if (operatorDropdown.isOpen()) {
             gfx.flush();
             RenderSystem.clear(256, Minecraft.ON_OSX);
-            renderDropdown(gfx, tube, mouseX, mouseY);
         }
-        constantEditor.renderMenu(gfx, mouseX, mouseY);
+        operatorDropdown.updateBounds();
+        operatorDropdown.render(gfx, mouseX, mouseY, partialTick);
+        constantDropdown.updateBounds();
+        constantDropdown.render(gfx, mouseX, mouseY, partialTick);
     }
 
-    private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
+    private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, boolean hovered) {
         int x = entryX(), y = opEntryY(), w = entryW();
-        boolean over = inOperatorButton(mouseX, mouseY);
-        ResourceLocation sprite = (operatorHeld && over) ? SpriteLocations.OP_BUTTON_PRESSED : (over ? SpriteLocations.OP_BUTTON_HOVER : SpriteLocations.OP_BUTTON);
+        ResourceLocation sprite = (operatorHeld && hovered) ? SpriteLocations.OP_BUTTON_PRESSED
+                : (hovered ? SpriteLocations.OP_BUTTON_HOVER : SpriteLocations.OP_BUTTON);
         TiledSpriteRenderer.create(sprite).render(gfx, x, y, w, OP_H);
 
         ArithmeticOperator op = tube.getOperator();
@@ -356,17 +373,18 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     // ── Input rows ──────────────────────
 
-    private void renderInputEntries(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
+    private void renderInputEntries(GuiGraphics gfx, ArithmeticTubeBehaviour tube, @Nullable ContentTarget hovered) {
         for (int k = 0; k < rows.size(); k++) {
             Row row = rows.get(k);
             if (row instanceof Row.Input input)
-                renderInputRow(gfx, tube, input, rowY(k), mouseX, mouseY);
+                renderInputRow(gfx, tube, input, rowY(k), hovered);
             else if (row instanceof Row.Add add)
-                renderAddRow(gfx, tube, add, rowY(k), mouseX, mouseY);
+                renderAddRow(gfx, tube, add, rowY(k), hovered);
         }
     }
 
-    private void renderInputRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Input row, int y, int mouseX, int mouseY) {
+    private void renderInputRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Input row, int y,
+                                @Nullable ContentTarget hovered) {
         int x = entryX();
         renderSlot(gfx, row.primary(), x, y);
         // slot content: a constant icon, or the connected component's item
@@ -381,7 +399,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX, y, bgW, INPUT_H);
 
         int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;   // delete button: right, 1px margin
-        ResourceLocation sprite1 = inRect(mouseX, mouseY, delX, delY, ROW_BTN, ROW_BTN) ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+        boolean removeHovered = hovered != null && hovered.kind() == TargetKind.REMOVE && hovered.row() == row;
+        ResourceLocation sprite1 = removeHovered ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
         TiledSpriteRenderer.create(sprite1).render(gfx, delX, delY, ROW_BTN, ROW_BTN);
         AllIcons.I_TRASH.render(gfx, delX + (ROW_BTN - ICON16) / 2, delY + (ROW_BTN - ICON16) / 2);
 
@@ -393,11 +412,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         if (constantEditor.isEditing(row)) {
             constantEditor.position(textX, textY, boxW - 9);
         } else if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
-            boolean hovered = inRect(mouseX, mouseY, boxX, y + 1, boxW, 18);
+            boolean fieldHovered = hovered != null && hovered.kind() == TargetKind.CONSTANT_FIELD && hovered.row() == row;
             double value = row.input().getValue(tube);
             value = constantEditor.optimisticValue(row, value).orElse(value);
             gfx.drawString(font, SpecialConstant.displayValue(value),
-                    textX, textY, CONSTANT_VALUE_COLOR, hovered);
+                    textX, textY, CONSTANT_VALUE_COLOR, fieldHovered);
         } else {
             gfx.drawString(font, NumberFormatter.format(row.input().getValue(tube)),
                     textX, textY, INPUT_VALUE_COLOR, false);
@@ -409,7 +428,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     /** Add-entry background width (left pad + two buttons with a 2px gap + 1px right margin). */
     private int addEntryW() { return ADD_PAD_L + 2 * ROW_BTN + 2 + 1; }
 
-    private void renderAddRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Add row, int y, int mouseX, int mouseY) {
+    private void renderAddRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Add row, int y,
+                              @Nullable ContentTarget hovered) {
         int x = entryX();
         renderSlot(gfx, row.primary(), x, y);
         BatchedBlitter.forSprite(SpriteLocations.ELLIPSIS_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
@@ -419,12 +439,15 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX, y, w, INPUT_H);
 
         int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
-        ResourceLocation sprite2 = inRect(mouseX, mouseY, b1X, bY, ROW_BTN, ROW_BTN) ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+        boolean addConnectionHovered = hovered != null && hovered.kind() == TargetKind.ADD_CONNECTION
+                && hovered.row() == row;
+        ResourceLocation sprite2 = addConnectionHovered ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
         TiledSpriteRenderer.create(sprite2).render(gfx, b1X, bY, ROW_BTN, ROW_BTN);
         AllIcons.I_ADD.render(gfx, b1X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2);
         // add constant: one per operand group (this row's group), so it greys out once this group has one
         ResourceLocation sprite1 = tube.hasConstant(row.primary()) ? SpriteLocations.BTN_DISABLED
-                : inRect(mouseX, mouseY, b2X, bY, ROW_BTN, ROW_BTN) ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
+                : hovered != null && hovered.kind() == TargetKind.ADD_CONSTANT && hovered.row() == row
+                        ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
         TiledSpriteRenderer.create(sprite1).render(gfx, b2X, bY, ROW_BTN, ROW_BTN);
         gfx.blitSprite(SpriteLocations.ADD_CONSTANT_ICON, b2X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2, ICON16, ICON16);
     }
@@ -483,50 +506,59 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         return List.of(new net.minecraft.client.renderer.Rect2i(panelX + PANEL_W, panelY + panelH - 35, 45, 35));
     }
 
-    @Override
-    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        super.render(gfx, mouseX, mouseY, partialTick);
-        if (dropdownOpen) {
-            int idx = dropdownButtonAt(mouseX, mouseY);
-            if (idx >= 0) gfx.renderComponentTooltip(font, operatorTooltip(OPERATORS[idx]), mouseX, mouseY);
-        } else if (!constantEditor.isMenuOpen()) {
-            ArithmeticTubeBehaviour t = tube();
-            List<Component> tip = t == null ? null : contentTooltip(mouseX, mouseY);
-            if (tip != null && !tip.isEmpty()) gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
-        }
-    }
-
-    /** Tooltip for the hovered content element (icons and buttons) */
     @Nullable
-    private List<Component> contentTooltip(double mx, double my) {
-        if (my < viewportY() || my >= viewportY() + viewportH) return null;
-        if (inOperatorButton(mx, my)) return
-                tr("tooltip.operator", ChatFormatting.WHITE);
+    private ContentTarget contentTargetAt(double mouseX, double mouseY) {
+        if (viewportWidget == null || !viewportWidget.isMouseOver(mouseX, mouseY)
+                || operatorDropdown.isOpen() || constantDropdown.isOpen()) return null;
+        if (overScrollbar(mouseX, mouseY)) return new ContentTarget(TargetKind.SCROLLBAR, null);
+        if (constantEditor.box != null && constantEditor.showMenuButton()
+                && constantEditor.menuButtonBounds().contains(
+                        (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN))
+            return new ContentTarget(TargetKind.CONSTANT_MENU, null);
+        if (inOperatorButton(mouseX, mouseY)) return new ContentTarget(TargetKind.OPERATOR, null);
         for (int k = 0; k < rows.size(); k++) {
             Row row = rows.get(k);
             int y = rowY(k), x = entryX();
-            if (inRect(mx, my, x, y, SLOT, SLOT)) return slotTooltip(row);
+            if (inRect(mouseX, mouseY, x, y, SLOT, SLOT))
+                return new ContentTarget(TargetKind.SLOT, row);
             int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
             if (row instanceof Row.Input input) {
-                int delX = bgX + bgW - 1 - ROW_BTN;
-                if (inRect(mx, my, delX, y + 1, ROW_BTN, ROW_BTN))
-                    return tr("tooltip.remove", ChatFormatting.WHITE);
-                int boxX = bgX + 1, boxW = delX - 2 - boxX;
-                if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
-                    if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-                        return constantEditor.isEditing(input) ? null : tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
-                }
+                int deleteX = bgX + bgW - 1 - ROW_BTN;
+                if (inRect(mouseX, mouseY, deleteX, y + 1, ROW_BTN, ROW_BTN))
+                    return new ContentTarget(TargetKind.REMOVE, input);
+                int boxX = bgX + 1, boxW = deleteX - 2 - boxX;
+                if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput
+                        && inRect(mouseX, mouseY, boxX, y + 1, boxW, 18))
+                    return new ContentTarget(TargetKind.CONSTANT_FIELD, input);
+                if (inRect(mouseX, mouseY, x, y, entryW(), INPUT_H))
+                    return new ContentTarget(TargetKind.ROW, input);
             } else {
-                int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
-                if (inRect(mx, my, b1X, y + 1, ROW_BTN, ROW_BTN))
-                    return List.of(CreateLang.translate("gui.factory_panel.connect_input").component());
-                if (inRect(mx, my, b2X, y + 1, ROW_BTN, ROW_BTN))
-                    return tr("tooltip.add_constant", ChatFormatting.WHITE);
+                int addConnectionX = addButtonX(bgX, 0), addConstantX = addButtonX(bgX, 1);
+                if (inRect(mouseX, mouseY, addConnectionX, y + 1, ROW_BTN, ROW_BTN))
+                    return new ContentTarget(TargetKind.ADD_CONNECTION, row);
+                if (inRect(mouseX, mouseY, addConstantX, y + 1, ROW_BTN, ROW_BTN))
+                    return new ContentTarget(TargetKind.ADD_CONSTANT, row);
             }
         }
-        if (inRect(mx, my, entryX(), resultEntryY(), RESULT_ICON_SIZE, RESULT_ICON_SIZE))
-            return tr("tooltip.result", ChatFormatting.YELLOW);
+        if (inRect(mouseX, mouseY, entryX(), resultEntryY(), RESULT_ICON_SIZE, RESULT_ICON_SIZE))
+            return new ContentTarget(TargetKind.RESULT, null);
         return null;
+    }
+
+    @Nullable
+    private List<Component> contentTooltip(@Nullable ContentTarget target) {
+        if (target == null) return null;
+        return switch (target.kind()) {
+            case OPERATOR -> tr("tooltip.operator", ChatFormatting.WHITE);
+            case SLOT -> slotTooltip(target.row());
+            case REMOVE -> tr("tooltip.remove", ChatFormatting.WHITE);
+            case CONSTANT_FIELD -> target.row() instanceof Row.Input input && !constantEditor.isEditing(input)
+                    ? tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC) : null;
+            case ADD_CONNECTION -> List.of(CreateLang.translate("gui.factory_panel.connect_input").component());
+            case ADD_CONSTANT -> tr("tooltip.add_constant", ChatFormatting.WHITE);
+            case RESULT -> tr("tooltip.result", ChatFormatting.YELLOW);
+            default -> null;
+        };
     }
 
     /** Tooltip for an operand icon slot. */
@@ -597,80 +629,275 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         return -1;
     }
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        boolean inViewport = mouseY >= viewportY() && mouseY < viewportY() + viewportH;
-        if (button == 0 && inViewport && inOperatorButton(mouseX, mouseY)) operatorHeld = true;
-        if (dropdownOpen) {
-            int idx = dropdownButtonAt(mouseX, mouseY);
-            if (idx >= 0) {
-                ArithmeticOperator op = OPERATORS[idx];
-                ArithmeticTubeBehaviour tube = tube();
-                if (tube != null && tube.canSwitchTo(op)) {
-                    PacketDistributor.sendToServer(new ConfigureArithmeticTubePacket(menu.controllerPos, tubePos, op.name()));
-                    playClickSound();
-                    dropdownOpen = false;
+    private class ArithmeticViewportWidget extends InteractiveAreaWidget {
+        ArithmeticViewportWidget() {
+            super(0, 0, 0, 0, (mouseX, mouseY) -> {
+                if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return List.of();
+                List<Component> tooltip = contentTooltip(contentTargetAt(mouseX, mouseY));
+                return tooltip == null ? List.of() : tooltip;
+            });
+            onClick(this::contentClicked);
+            onScroll((mouseX, mouseY, scrollX, scrollY) -> {
+                if (operatorDropdown.isOpen() || constantDropdown.isOpen() || maxScroll() <= 0) return false;
+                double target = Mth.clamp(scroll.getChaseTarget() - scrollY * 18, 0, maxScroll());
+                scroll.chase(target, 0.5, Chaser.EXP);
+                return true;
+            });
+            onRelease((mouseX, mouseY, button) -> {
+                operatorHeld = false;
+                if (button == 0 && draggingScrollbar) {
+                    draggingScrollbar = false;
+                    return true;
                 }
+                return false;
+            });
+        }
+
+        @Override
+        protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            ArithmeticTubeBehaviour tube = tube();
+            if (tube == null) return;
+            ContentTarget hovered = contentTargetAt(mouseX, mouseY);
+            boolean contentHovered = hovered != null || isHovered()
+                    && !operatorDropdown.isOpen() && !constantDropdown.isOpen();
+            int hoverX = contentHovered ? mouseX : Integer.MIN_VALUE;
+            int hoverY = contentHovered ? mouseY : Integer.MIN_VALUE;
+            gfx.enableScissor(getX(), getY(), getRight(), getBottom());
+            renderOperatorEntry(gfx, tube, hovered != null && hovered.kind() == TargetKind.OPERATOR);
+            renderInputEntries(gfx, tube, hovered);
+            renderResultEntry(gfx, tube);
+            constantEditor.render(gfx, hoverX, hoverY, partialTick,
+                    hovered != null && hovered.kind() == TargetKind.CONSTANT_MENU);
+            gfx.disableScissor();
+            renderScrollbar(gfx, hovered != null && hovered.kind() == TargetKind.SCROLLBAR);
+            super.renderWidget(gfx, mouseX, mouseY, partialTick);
+        }
+
+        private boolean contentClicked(double mouseX, double mouseY, int button) {
+            if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return false;
+            ContentTarget target = contentTargetAt(mouseX, mouseY);
+            if (target == null) return false;
+            if (button == 0 && target.kind() == TargetKind.SCROLLBAR) {
+                draggingScrollbar = true;
+                int thumbY = scrollbarThumbY(), thumbH = scrollbarThumbHeight();
+                boolean onThumb = mouseY >= thumbY && mouseY < thumbY + thumbH;
+                scrollbarGrabOffset = onThumb ? mouseY - thumbY : thumbH / 2.0;
+                if (!onThumb) dragScrollbarTo(mouseY);
                 return true;
             }
-            if (inDropdown(mouseX, mouseY)) return true;
-            dropdownOpen = false;
-            return true;
-        }
-        if (button == 0 && overScrollbar(mouseX, mouseY)) {
-            draggingScrollbar = true;
-            int thumbY = scrollbarThumbY(), thumbH = scrollbarThumbHeight();
-            boolean onThumb = mouseY >= thumbY && mouseY < thumbY + thumbH;
-            scrollbarGrabOffset = onThumb ? mouseY - thumbY : thumbH / 2.0;
-            if (!onThumb) dragScrollbarTo(mouseY);
-            return true;
-        }
-        if (constantEditor.mouseClicked(mouseX, mouseY, button)) return true;
-
-        if (inViewport) {
-            for (int k = 0; k < rows.size(); k++)
-                if (handleRowClick(rows.get(k), rowY(k), mouseX, mouseY, button)) return true;
-            if (inOperatorButton(mouseX, mouseY)) { dropdownOpen = true; return true; }
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    private boolean handleRowClick(Row row, int y, double mx, double my, int button) {
-        int x = entryX();
-        if (row instanceof Row.Input input) {
-            int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-            int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;
-            if (inRect(mx, my, delX, delY, ROW_BTN, ROW_BTN)) {
+            if (target.kind() == TargetKind.CONSTANT_MENU && button == 0) {
+                constantDropdown.toggle();
+                return true;
+            }
+            if (constantEditor.box != null && constantEditor.box.isMouseOver(mouseX, mouseY)) {
+                if (button == 1) {
+                    constantEditor.box.setValue("");
+                    return true;
+                }
+                ArithmeticTubeSettingsScreen.this.setFocused(viewportWidget);
+                constantEditor.box.setFocused(true);
+                return constantEditor.box.mouseClicked(mouseX, mouseY, button);
+            }
+            if (constantEditor.active()) constantEditor.commit();
+            if (target.kind() == TargetKind.OPERATOR) {
+                operatorHeld = button == 0;
+                operatorDropdown.open();
+                return true;
+            }
+            if (target.kind() == TargetKind.REMOVE && target.row() instanceof Row.Input input) {
                 sendInput(ConfigureArithmeticInputPacket.REMOVE, input.primary(), input.index(), 0);
                 playClickSound();
                 return true;
             }
-            if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
-                int boxX = bgX + 1, boxW = delX - 2 - boxX;
-                if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
-                    constantEditor.start(input, boxW - 9);
-                    return true;
-                }
+            if (target.kind() == TargetKind.CONSTANT_FIELD && target.row() instanceof Row.Input input) {
+                int bgX = entryX() + SLOT + SLOT_GAP;
+                int deleteX = bgX + entryW() - SLOT - SLOT_GAP - 1 - ROW_BTN;
+                int fieldWidth = deleteX - 2 - (bgX + 1);
+                constantEditor.start(input, fieldWidth - 9);
+                return true;
             }
-            return inRect(mx, my, x, y, entryW(), INPUT_H);
+            if (target.kind() == TargetKind.ADD_CONNECTION && target.row() instanceof Row.Add add) {
+                sendInput(ConfigureArithmeticInputPacket.PREPARE_WIRE, add.primary(), -1, 0);
+                controller.beginConnectionMode(tubePos);
+                Minecraft.getInstance().setScreen(controller);
+                return true;
+            }
+            if (target.kind() == TargetKind.ADD_CONSTANT && target.row() instanceof Row.Add add) {
+                ArithmeticTubeBehaviour tube = tube();
+                if (tube != null && !tube.hasConstant(add.primary())) {
+                    sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, add.primary(), -1, 0);
+                    playClickSound();
+                }
+                return true;
+            }
+            return target.kind() == TargetKind.SLOT && target.row() instanceof Row.Input
+                    || target.kind() == TargetKind.ROW;
         }
-        int bgX = x + SLOT + SLOT_GAP;
-        int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1), bY = y + 1;
-        if (inRect(mx, my, b1X, bY, ROW_BTN, ROW_BTN)) {
-            sendInput(ConfigureArithmeticInputPacket.PREPARE_WIRE, row.primary(), -1, 0);
-            controller.beginConnectionMode(tubePos);
-            Minecraft.getInstance().setScreen(controller);
+
+        @Override
+        public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+            if (button == 0 && draggingScrollbar) {
+                dragScrollbarTo(mouseY);
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public void setFocused(boolean focused) {
+            super.setFocused(focused);
+            if (constantEditor.box != null) constantEditor.box.setFocused(focused);
+        }
+
+        @Override
+        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+            return constantEditor.box != null && constantEditor.box.keyPressed(keyCode, scanCode, modifiers);
+        }
+
+        @Override
+        public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+            return constantEditor.box != null && constantEditor.box.keyReleased(keyCode, scanCode, modifiers);
+        }
+
+        @Override
+        public boolean charTyped(char codePoint, int modifiers) {
+            return constantEditor.box != null && constantEditor.box.charTyped(codePoint, modifiers);
+        }
+    }
+
+    private class OperatorDropdownWidget extends InteractiveAreaWidget {
+        OperatorDropdownWidget() {
+            super(0, 0, 0, 0, (mouseX, mouseY) -> {
+                int index = dropdownButtonAt(mouseX, mouseY);
+                return index >= 0 ? operatorTooltip(OPERATORS[index]) : List.of();
+            });
+            visible = false;
+        }
+
+        boolean isOpen() { return visible; }
+
+        void open() {
+            constantDropdown.close();
+            visible = true;
+            updateBounds();
+        }
+
+        void close() { visible = false; }
+
+        void updateBounds() { setRectangle(ddW(), ddH(), ddX(), ddY()); }
+
+        @Override
+        protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            ArithmeticTubeBehaviour tube = tube();
+            if (tube != null) renderDropdown(gfx, tube, mouseX, mouseY);
+            super.renderWidget(gfx, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (!isOpen()) return false;
+            int index = dropdownButtonAt(mouseX, mouseY);
+            if (button == 0 && index >= 0) {
+                ArithmeticOperator operator = OPERATORS[index];
+                ArithmeticTubeBehaviour tube = tube();
+                if (tube != null && tube.canSwitchTo(operator)) {
+                    PacketDistributor.sendToServer(new ConfigureArithmeticTubePacket(
+                            menu.controllerPos, tubePos, operator.name()));
+                    playClickSound();
+                    close();
+                }
+                return true;
+            }
+            if (!inDropdown(mouseX, mouseY)) close();
             return true;
         }
-        ArithmeticTubeBehaviour t = tube();
-        if (inRect(mx, my, b2X, bY, ROW_BTN, ROW_BTN)) {
-            if (t != null && !t.hasConstant(row.primary())) {
-                sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, row.primary(), -1, 0);
-                playClickSound();
-            }
-            return true;   // swallow even when disabled
+    }
+
+    private class ConstantDropdownWidget extends InteractiveAreaWidget {
+        ConstantDropdownWidget() {
+            super(0, 0, 0, 0, () -> List.of());
+            visible = false;
         }
-        return false;
+
+        boolean isOpen() { return visible; }
+
+        void toggle() {
+            if (isOpen()) close();
+            else {
+                operatorDropdown.close();
+                visible = true;
+                updateBounds();
+            }
+        }
+
+        void close() { visible = false; }
+
+        void updateBounds() {
+            Rect2i bounds = constantEditor.menuBounds();
+            setRectangle(bounds.w(), bounds.h(), bounds.x(), bounds.y());
+        }
+
+        @Override
+        protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            if (!constantEditor.showMenuButton()) {
+                close();
+                return;
+            }
+            RenderSystem.enableBlend();
+            Rect2i menu = constantEditor.menuBounds();
+            gfx.fill(menu.minX(), menu.minY(), menu.maxX(), menu.maxY(), 0xA0000000);
+            int hovered = constantEditor.menuItemAt(mouseX, mouseY);
+            for (int i = 0; i < ConstantEditor.MENU_ITEMS.size(); i++) {
+                Rect2i item = constantEditor.menuItemBounds(menu, i);
+                String label = ConstantEditor.MENU_ITEMS.get(i);
+                gfx.drawString(font, label,
+                        item.x() + (item.w() - font.width(label)) / 2,
+                        item.y() + (item.h() - font.lineHeight) / 2 + 1,
+                        i == hovered ? ConstantEditor.MENU_ITEM_HOVER_COLOR : ConstantEditor.MENU_ITEM_COLOR, true);
+            }
+            super.renderWidget(gfx, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (!isOpen()) return false;
+            int index = constantEditor.menuItemAt(mouseX, mouseY);
+            if (button == 0 && index >= 0) {
+                constantEditor.box.setValue(ConstantEditor.MENU_ITEMS.get(index));
+                constantEditor.commit();
+                return true;
+            }
+            if (constantEditor.menuBounds().contains(
+                    (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN)) return true;
+            if (button == 0 && constantEditor.menuButtonBounds().contains(
+                    (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN)) {
+                close();
+                return true;
+            }
+            close();
+            return false;
+        }
+
+        @Override
+        public void setFocused(boolean focused) {
+            super.setFocused(focused);
+            if (constantEditor.box != null) constantEditor.box.setFocused(focused);
+        }
+
+        @Override
+        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+            return constantEditor.box != null && constantEditor.box.keyPressed(keyCode, scanCode, modifiers);
+        }
+
+        @Override
+        public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+            return constantEditor.box != null && constantEditor.box.keyReleased(keyCode, scanCode, modifiers);
+        }
+
+        @Override
+        public boolean charTyped(char codePoint, int modifiers) {
+            return constantEditor.box != null && constantEditor.box.charTyped(codePoint, modifiers);
+        }
     }
 
     private void sendInput(int op, boolean primary, int index, double value) {
@@ -678,18 +905,41 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (constantEditor.active()
+                && !constantEditor.box.isMouseOver(mouseX, mouseY)
+                && !(constantDropdown.isOpen() && constantEditor.menuBounds().contains(
+                        (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN))
+                && !(button == 0 && constantEditor.showMenuButton()
+                        && constantEditor.menuButtonBounds().contains(
+                                (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN))) {
+            constantEditor.commit();
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (viewportWidget != null && viewportWidget.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (constantEditor.active()) {
-            switch (keyCode) {
-                case GLFW.GLFW_KEY_ENTER:
-                case GLFW.GLFW_KEY_KP_ENTER:
+            return switch (keyCode) {
+                case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
                     constantEditor.commit();
-                    return true;
-                case GLFW.GLFW_KEY_ESCAPE:
+                    yield true;
+                }
+                case GLFW.GLFW_KEY_ESCAPE -> {
                     constantEditor.remove();
-                    return true;
-            }
-            // other input fall back to super input box to handle
+                    yield true;
+                }
+                default -> constantEditor.box.keyPressed(keyCode, scanCode, modifiers);
+            };
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -697,29 +947,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private static void playClickSound() {
         Minecraft.getInstance().getSoundManager().play(
                 SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        operatorHeld = false;
-        if (button == 0 && draggingScrollbar) { draggingScrollbar = false; return true; }
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (button == 0 && draggingScrollbar) { dragScrollbarTo(mouseY); return true; }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (maxScroll() > 0) {
-            double target = Mth.clamp(scroll.getChaseTarget() - scrollY * 18, 0, maxScroll());
-            scroll.chase(target, 0.5, Chaser.EXP);
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     // ── Overlay plumbing ─────────────────────
@@ -800,7 +1027,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         @Nullable private EditBox box;
         private boolean editPrimary;
         private int editIndex = -1;
-        private boolean constantMenuOpen;
 
         private static final int NO_COMMIT = -2;
 
@@ -816,8 +1042,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             return box != null && row.primary() == editPrimary && row.index() == editIndex;
         }
 
-        public boolean isMenuOpen() { return constantMenuOpen; }
-
         public void discardIfRowGone(List<Row> rows) {
             if (box != null &&
                     rows.stream().noneMatch(row -> row instanceof Row.Input input && isEditing(input))
@@ -831,29 +1055,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             box.setWidth(width);
         }
 
-        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick,
+                           boolean menuButtonHovered) {
             if (box == null) return;
             box.render(gfx, mouseX, mouseY, partialTick);
             if (showMenuButton()) {
-                boolean menuButtonHovered = menuButtonBounds().contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN);
                 gfx.drawString(font, "⏷", menuButtonBounds().x() + 2, menuButtonBounds().y() + 1,
                         menuButtonHovered ? MENU_ITEM_HOVER_COLOR : CONSTANT_VALUE_COLOR, menuButtonHovered);
-            }
-        }
-
-        public void renderMenu(GuiGraphics gfx, int mouseX, int mouseY) {
-            if (!constantMenuOpen || !showMenuButton()) return;
-            RenderSystem.enableBlend();
-            Rect2i menu = menuBounds();
-            gfx.fill(menu.minX(), menu.minY(), menu.maxX(), menu.maxY(), 0xA0000000);
-            int hovered = menuItemAt(mouseX, mouseY);
-            for (int i = 0; i < MENU_ITEMS.size(); i++) {
-                Rect2i item = menuItemBounds(menu, i);
-                String label = MENU_ITEMS.get(i);
-                gfx.drawString(font, label,
-                        item.x() + (item.w() - font.width(label)) / 2,
-                        item.y() + (item.h() - font.lineHeight) / 2 + 1,
-                        i == hovered ? MENU_ITEM_HOVER_COLOR : MENU_ITEM_COLOR, true);
             }
         }
 
@@ -891,15 +1099,14 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             double value = ((ArithmeticTubeBehaviour.ConstantInput) row.input()).value();
             box.setValue(SpecialConstant.displayValue(value));
 
-            addWidget(box);
-            setFocused(box);
+            setFocused(viewportWidget);
             box.setFocused(true);
             box.setHighlightPos(0);
         }
 
         public void commit() {
             if (box == null) return;
-            constantMenuOpen = false;
+            if (constantDropdown != null) constantDropdown.close();
             String input = box.getValue();
 
             double value;
@@ -925,34 +1132,9 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
         public void remove() {
             if (box == null) return;
-            removeWidget(box);
             box = null;
-            constantMenuOpen = false;
+            if (constantDropdown != null) constantDropdown.close();
             setFocused(null);
-        }
-
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (box == null) return false;
-            if (button == 0 && showMenuButton() && menuButtonBounds().contains((int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN)) {
-                constantMenuOpen = !constantMenuOpen;
-                return true;
-            }
-            if (constantMenuOpen) {
-                int idx = menuItemAt(mouseX, mouseY);
-                if (button == 0 && idx >= 0) {
-                    box.setValue(MENU_ITEMS.get(idx));
-                    commit();
-                    return true;
-                }
-                if (constantMenuOpen && box != null && menuBounds().contains((int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN)) return true;
-                constantMenuOpen = false;
-            }
-            if (box.isMouseOver(mouseX, mouseY)) {
-                if (button == 1) { box.setValue(""); return true; }
-                return ArithmeticTubeSettingsScreen.super.mouseClicked(mouseX, mouseY, button);
-            }
-            commit();
-            return false;
         }
 
         private boolean showMenuButton() {
@@ -983,7 +1165,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         }
 
         private int menuItemAt(double mx, double my) {
-            if (!(constantMenuOpen && box != null && menuBounds().contains((int) mx, (int) my, Rect2i.Boundary.HALF_OPEN))) return -1;
+            if (!(constantDropdown.isOpen() && box != null
+                    && menuBounds().contains((int) mx, (int) my, Rect2i.Boundary.HALF_OPEN))) return -1;
             Rect2i menu = menuBounds();
             int localX = (int) mx - menu.x() - MENU_PAD;
             int localY = (int) my - menu.y() - MENU_PAD;
