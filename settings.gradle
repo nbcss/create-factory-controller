@@ -10,5 +10,20 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
-include 'higherlogisticspatch'
-include 'logisticscontrol'
+// Create: Higher Logistics Patch and Create: Logistics Control each live in their own repository and are bundled into
+// this mod via Jar-in-Jar. They are consumed as Gradle composite builds so that the JiJ bundling and the dev runtime
+// pick up their live sources; the dependency substitution maps the published coordinate used in build.gradle onto each
+// included build. Clone both next to this repository.
+def includeBundledMod = { String dirName, String coordinate ->
+    def dir = file("../${dirName}")
+    if (!dir.exists())
+        throw new GradleException("Bundled mod checkout not found at ${dir}. It is bundled into this mod via " +
+                "Jar-in-Jar and must be cloned next to this repository (../${dirName}).")
+    includeBuild(dir) {
+        dependencySubstitution {
+            substitute module(coordinate) using project(':')
+        }
+    }
+}
+includeBundledMod('create_higher_logistics_patch', 'io.github.nbcss.higherlogisticspatch:higherlogisticspatch')
+includeBundledMod('create_logistics_control', 'io.github.nbcss.logisticscontrol:logisticscontrol')
