@@ -26,26 +26,17 @@ msgstr "机械动力：工厂控制台手册"
 
 #. type: Plain text
 #: ../src/index.adoc:4
-msgid ""
-"Create: Factory Controller provides a block called the \"`factory "
-"controller`\", which allows you to place factory gauges and other components "
-"on a virtual board stored inside the block. Factory gauges placed in factory "
-"controllers also receive many functional enhancements."
+msgid "Create: Factory Controller provides a block called the \"`factory controller`\", which allows you to place factory gauges and other components on a virtual board stored inside the block. Factory gauges placed in factory controllers also receive many functional enhancements."
 msgstr "机械动力：工厂控制台提供了一个名叫“工厂控制台”的方块，使你能够将工厂仪表和其它组件放置在方块内的一个虚拟面板中。模组同时也对工厂仪表进添加了许多扩展功能。"
 
 #. type: Plain text
 #: ../src/index.adoc:6
-msgid ""
-"You do not need to read this manual in full to use the mod. The manual "
-"serves to provide a reference to the features of the mod, especially to "
-"those that are difficult to explain fully in the UI."
+msgid "You do not need to read this manual in full to use the mod. The manual serves to provide a reference to the features of the mod, especially to those that are difficult to explain fully in the UI."
 msgstr "你无需完整阅读本手册即可使用此模组。本手册旨在提供模组功能的参考信息，特别是那些在界面中难以完全解释的功能。"
 
 #. type: Plain text
 #: ../src/index.adoc:10
-msgid ""
-"This manual corresponds to version {mod-version} of the mod. Information may "
-"be incorrect for other versions."
+msgid "This manual corresponds to version {mod-version} of the mod. Information may be incorrect for other versions."
 msgstr "本手册适用于 {mod-version} 版本的模组，信息对其他版本可能不准确。"
 
 #. type: Title ==

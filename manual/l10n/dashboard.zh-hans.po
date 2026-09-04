@@ -26,13 +26,8 @@ msgstr "控制台界面"
 
 #. type: Plain text
 #: ../src/dashboard.adoc:4
-msgid ""
-"The dashboard UI appears when you interact with a factory controller block. "
-"It displays a virtual 2D board on which you can place xref:factory-"
-"gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
-msgstr ""
-"与工厂控制台方块交互即可打开控制台界面。控制台界面可用于放置xref:factory-"
-"gauge.adoc[工厂仪表]（及xref:components.adoc[其他组件]）。"
+msgid "The dashboard UI appears when you interact with a factory controller block. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
+msgstr "与工厂控制台方块交互即可打开控制台界面。控制台界面可用于放置xref:factory-gauge.adoc[工厂仪表]（及xref:components.adoc[其他组件]）。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:5
@@ -125,9 +120,7 @@ msgstr "界面概览"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:36
-msgid ""
-"❶ Title bar:: Shows the name of this factory controller. Name can be edited "
-"by clicking on it."
+msgid "❶ Title bar:: Shows the name of this factory controller. Name can be edited by clicking on it."
 msgstr "❶ 标题栏:: 显示当前工厂控制台的名称，单击名称可进行修改。"
 
 #. type: #ui-overview
@@ -137,14 +130,8 @@ msgstr "❷ 帮助按钮:: 打开此帮助页面。"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:42
-msgid ""
-"❸ Network selector:: All networks tuned to by components placed in this "
-"controller are listed here. Scroll to select a network to highlight its "
-"components. While holding a gauge, scroll to tune the gauge to a network. "
-"<<network-selector,More Info>>"
-msgstr ""
-"❸ 网络选择器:: 列出控制台内组件已经绑定的全部网络。滚动可选择网络并高亮其中的"
-"组件，也可为手中的工厂仪表设定网络。<<network-selector,详情>>"
+msgid "❸ Network selector:: All networks tuned to by components placed in this controller are listed here. Scroll to select a network to highlight its components. While holding a gauge, scroll to tune the gauge to a network. <<network-selector,More Info>>"
+msgstr "❸ 网络选择器:: 列出控制台内组件已经绑定的全部网络。滚动可选择网络并高亮其中的组件，也可为手中的工厂仪表设定网络。<<network-selector,详情>>"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:46
@@ -168,16 +155,12 @@ msgstr "❻ 设置按钮:: 打开设置界面。"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:55
-msgid ""
-"❼ Blueprints button:: Opens the blueprint library. See "
-"xref:blueprint.adoc[Blueprint]."
+msgid "❼ Blueprints button:: Opens the blueprint library. See xref:blueprint.adoc[Blueprint]."
 msgstr "❼ 蓝图按钮:: 打开蓝图库，参见xref:blueprint.adoc[蓝图]。"
 
 #. type: #ui-overview
 #: ../src/dashboard.adoc:58
-msgid ""
-"❽ Player inventory:: Shows the player inventory. Only the 9 hotbar slots are "
-"shown by default. Click the \"+\" button to expand the other 27 slots."
+msgid "❽ Player inventory:: Shows the player inventory. Only the 9 hotbar slots are shown by default. Click the \"+\" button to expand the other 27 slots."
 msgstr "❽ 玩家物品栏:: 显示玩家持有的物品。默认只显示快捷栏的 9 个槽位，单击“+”可展开其余 27 个槽位。"
 
 #. type: Title ==
@@ -188,12 +171,8 @@ msgstr "移动视角"
 
 #. type: #navigation
 #: ../src/dashboard.adoc:63
-msgid ""
-"Drag with the left mouse button to pan the view around the virtual board. "
-"The W, A, S, D keys can also be used to move the view in cardinal directions."
-msgstr ""
-"按住鼠标左键拖动即可在虚拟面板上平移视角，也可使用 W、A、S、D 向四个方向移"
-"动。"
+msgid "Drag with the left mouse button to pan the view around the virtual board. The W, A, S, D keys can also be used to move the view in cardinal directions."
+msgstr "按住鼠标左键拖动即可在虚拟面板上平移视角，也可使用 W、A、S、D 向四个方向移动。"
 
 #. type: #navigation
 #: ../src/dashboard.adoc:65
@@ -214,17 +193,8 @@ msgstr "手持已设定网络的工厂仪表指向空白位置"
 
 #. type: #components
 #: ../src/dashboard.adoc:73
-msgid ""
-"To place a component, grab a corresponding item from the inventory and click "
-"on an empty spot on the board. The xref:components.adoc[Components] page "
-"lists all items that may be placed. Notably, factory gauges need to be "
-"<<network-selector,tuned to a network>> before being placed. Placed items "
-"will be stored inside the factory controller, even when the factory "
-"controller block is mined."
-msgstr ""
-"从物品栏拿起对应物品，再单击面板上的空白位置即可放置组件。"
-"xref:components.adoc[“可放置组件”]一章列出了所有可用物品。需要注意的是，工厂"
-"仪表必须先<<network-selector,设定物流网络>>，才能放入工厂控制台。"
+msgid "To place a component, grab a corresponding item from the inventory and click on an empty spot on the board. The xref:components.adoc[Components] page lists all items that may be placed. Notably, factory gauges need to be <<network-selector,tuned to a network>> before being placed. Placed items will be stored inside the factory controller, even when the factory controller block is mined."
+msgstr "从物品栏拿起对应物品，再单击面板上的空白位置即可放置组件。xref:components.adoc[“可放置组件”]一章列出了所有可用物品。需要注意的是，工厂仪表必须先<<network-selector,设定物流网络>>，才能放入工厂控制台。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:74
@@ -234,35 +204,18 @@ msgstr "刚刚放置的工厂仪表"
 
 #. type: #components
 #: ../src/dashboard.adoc:78
-msgid ""
-"Holding shift and clicking on a component removes it from the controller and "
-"returns the item to your inventory."
+msgid "Holding shift and clicking on a component removes it from the controller and returns the item to your inventory."
 msgstr "按住 Shift 并单击组件可将其从控制台中移除，物品会返回玩家物品栏。"
 
 #. type: #components
 #: ../src/dashboard.adoc:80
-msgid ""
-"Either left- or right-clicking a component opens its configuration screen. "
-"To move a component, open its screen and click the image:btn-"
-"relocate.png[,18,18] \"relocate\" button, then click on a new location for "
-"the component. Alternatively, press the Q key while hovering the component, "
-"then click a new location."
-msgstr ""
-"左键或右键单击组件都会打开其配置界面。若要移动组件，先打开配置界面并点击 "
-"image:btn-relocate.png[,18,18]“移动组件”按钮，再点击新的位置。你也可以在悬浮"
-"于组件上时按 Q 键，然后点击新的位置。"
+msgid "Either left- or right-clicking a component opens its configuration screen. To move a component, open its screen and click the image:btn-relocate.png[,18,18] \"relocate\" button, then click on a new location for the component. Alternatively, press the Q key while hovering the component, then click a new location."
+msgstr "左键或右键单击组件都会打开其配置界面。若要移动组件，先打开配置界面并点击 image:btn-relocate.png[,18,18]“移动组件”按钮，再点击新的位置。你也可以在悬浮于组件上时按 Q 键，然后点击新的位置。"
 
 #. type: #selecting
 #: ../src/dashboard.adoc:83
-msgid ""
-"Multiple components may be selected. Hold Ctrl and drag with the left mouse "
-"button to select all components within a rectangular area. Selected "
-"components are indicated with a green outline. To add and remove individual "
-"components from the selection, hold Ctrl and left-click them."
-msgstr ""
-"仪表盘支持同时选择多个组件。按住 Ctrl 并按住左键拖动，可框选矩形区域内的所有"
-"组件。被选中的组件会显示绿色轮廓。按住 Ctrl 并左键单击单个组件，可将其加入选"
-"择或从选择中移除。"
+msgid "Multiple components may be selected. Hold Ctrl and drag with the left mouse button to select all components within a rectangular area. Selected components are indicated with a green outline. To add and remove individual components from the selection, hold Ctrl and left-click them."
+msgstr "仪表盘支持同时选择多个组件。按住 Ctrl 并按住左键拖动，可框选矩形区域内的所有组件。被选中的组件会显示绿色轮廓。按住 Ctrl 并左键单击单个组件，可将其加入选择或从选择中移除。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:84
@@ -272,11 +225,7 @@ msgstr "框选多个组件"
 
 #. type: #selecting
 #: ../src/dashboard.adoc:88
-msgid ""
-"When components are selected, drag on any of them to move all selected "
-"components. Likewise, shift-clicking on any of them removes all selected "
-"components from the board. Selected components can be saved as "
-"xref:blueprint.adoc[blueprints]."
+msgid "When components are selected, drag on any of them to move all selected components. Likewise, shift-clicking on any of them removes all selected components from the board. Selected components can be saved as xref:blueprint.adoc[blueprints]."
 msgstr "选中多个组件后，拖动其中任意一个即可一起移动所有选中组件；同样地，如果按住 Shift 单击其中任意一个组建，则会从面板中移除所有选中组件。被选中的组件可以被保存为xref:blueprint.adoc[蓝图]。"
 
 #. type: Title ==
@@ -287,36 +236,18 @@ msgstr "创建和修改连接"
 
 #. type: #connections
 #: ../src/dashboard.adoc:93
-msgid ""
-"Components may be connected to one another. Refer to a specific component's "
-"documentation for the functionality provided by connections."
+msgid "Components may be connected to one another. Refer to a specific component's documentation for the functionality provided by connections."
 msgstr "组件之间可以建立连接，参见特定组件的文档以了解连接所提供的功能。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:95
-msgid ""
-"To connect component A to B, click on B to open its UI, click on the "
-"image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
-"click A. Alternatively, press the C key while hovering B, then click A. Some "
-"components may only act as the source or sink of a connection, in which case "
-"a valid direction is automatically chosen."
-msgstr ""
-"若要将组件 A 连接至组件 B，请打开 B 的配置界面，单击 image:btn-add-"
-"connection.png[,18,18]“新建连接”按钮，再单击 A。你也可以在悬浮于 B 上时按 C "
-"键，然后点击 A 。部分组件只能作为连接的输入端或输出端；此时系统会自动选择有效"
-"方向。"
+msgid "To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] \"add connection\" button, and then click A. Alternatively, press the C key while hovering B, then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen."
+msgstr "若要将组件 A 连接至组件 B，请打开 B 的配置界面，单击 image:btn-add-connection.png[,18,18]“新建连接”按钮，再单击 A。你也可以在悬浮于 B 上时按 C 键，然后点击 A 。部分组件只能作为连接的输入端或输出端；此时系统会自动选择有效方向。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:97
-msgid ""
-"A component's UI may allow you to remove its connections. They can also be "
-"removed using the dashboard by hovering over them and shift-clicking. When "
-"multiple connections overlap, hold shift and scroll while hovering over a "
-"spot with overlapping connections to select one of them."
-msgstr ""
-"连接通常可以在组件的配置界面中移除。也可在控制台界面中将鼠标悬停在连接线上，"
-"再按住 Shift 单击来移除连接。当多条连接线重叠时，按住 Shift 并在重叠位置滚动"
-"鼠标滚轮，可依次选择其中一条连接。"
+msgid "A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them."
+msgstr "连接通常可以在组件的配置界面中移除。也可在控制台界面中将鼠标悬停在连接线上，再按住 Shift 单击来移除连接。当多条连接线重叠时，按住 Shift 并在重叠位置滚动鼠标滚轮，可依次选择其中一条连接。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:98
@@ -326,17 +257,8 @@ msgstr "选择重叠的连接"
 
 #. type: #connections
 #: ../src/dashboard.adoc:102
-msgid ""
-"Connections automatically choose paths between their 2 ends. To customize "
-"this path, select from 4 path modes by hovering over a connection and "
-"pressing R. Keeping the mouse cursor still after changing path modes keeps "
-"the connection selected. The path modes of all connections on one component "
-"can be changed by pressing R on the component."
-msgstr ""
-"连接线会自动规划两端之间的路径。如需改变路径形状，将鼠标悬停在连接线上并按 "
-"R，可在四种箭头路径模式之间切换。切换一个连接的路径模式后，保持鼠标指针不动将"
-"保持连接的选中状态。在组件上按 R，则会同时改变连接到该组件的所有连接线的路径"
-"样式。"
+msgid "Connections automatically choose paths between their 2 ends. To customize this path, select from 4 path modes by hovering over a connection and pressing R. Keeping the mouse cursor still after changing path modes keeps the connection selected. The path modes of all connections on one component can be changed by pressing R on the component."
+msgstr "连接线会自动规划两端之间的路径。如需改变路径形状，将鼠标悬停在连接线上并按 R，可在四种箭头路径模式之间切换。切换一个连接的路径模式后，保持鼠标指针不动将保持连接的选中状态。在组件上按 R，则会同时改变连接到该组件的所有连接线的路径样式。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:103
@@ -358,15 +280,8 @@ msgstr "未选中网络时的网络选择器"
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:113
-msgid ""
-"Factory gauges need to be tuned to a network before being placed in the "
-"controller. The first gauge needs to be tuned the usual way (e.g. by "
-"interacting with a stock link with a gauge in hand). Once a tuned gauge is "
-"placed in the controller, its network appears in the network selector."
-msgstr ""
-"工厂仪表在放入控制台前必须设定物流网络。第一个工厂仪表需要按常规方式绑定（例"
-"如手持仪表与仓储链接站交互）。将已设定网络的仪表放入控制台后，对应网络便会出"
-"现在网络选择器中。"
+msgid "Factory gauges need to be tuned to a network before being placed in the controller. The first gauge needs to be tuned the usual way (e.g. by interacting with a stock link with a gauge in hand). Once a tuned gauge is placed in the controller, its network appears in the network selector."
+msgstr "工厂仪表在放入控制台前必须设定物流网络。第一个工厂仪表需要按常规方式绑定（例如手持仪表与仓储链接站交互）。将已设定网络的仪表放入控制台后，对应网络便会出现在网络选择器中。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:114
@@ -376,25 +291,13 @@ msgstr "选中一个网络后的网络选择器"
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:118
-msgid ""
-"With an empty cursor, scrolling with the mouse wheel selects one of the "
-"tuned networks, highlighting all components tuned to that network with a "
-"blue outline. The number of components tuned to the network also appears on "
-"the network selector icon."
-msgstr ""
-"鼠标指针为空时，在网络选择器上滚动鼠标滚轮可选择其中一个网络。所有已绑定至该"
-"网络的组件会显示蓝色轮廓，网络选择器图标上也会显示该网络中的组件数量。"
+msgid "With an empty cursor, scrolling with the mouse wheel selects one of the tuned networks, highlighting all components tuned to that network with a blue outline. The number of components tuned to the network also appears on the network selector icon."
+msgstr "鼠标指针为空时，在网络选择器上滚动鼠标滚轮可选择其中一个网络。所有已绑定至该网络的组件会显示蓝色轮廓，网络选择器图标上也会显示该网络中的组件数量。"
 
 #. type: #network-selector
 #: ../src/dashboard.adoc:120
-msgid ""
-"While holding a factory gauge item, scrolling on the network selector "
-"changes the network this item is tuned to, allowing you to quickly tune a "
-"new gauge to an existing network. Holding shift and scrolling accomplishes "
-"the same."
-msgstr ""
-"手持工厂仪表时，在网络选择器上滚动鼠标滚轮可改变手中仪表所绑定的网络，从而快"
-"速将新仪表加入现有网络。按住 Shift 滚动也能完成相同操作。"
+msgid "While holding a factory gauge item, scrolling on the network selector changes the network this item is tuned to, allowing you to quickly tune a new gauge to an existing network. Holding shift and scrolling accomplishes the same."
+msgstr "手持工厂仪表时，在网络选择器上滚动鼠标滚轮可改变手中仪表所绑定的网络，从而快速将新仪表加入现有网络。按住 Shift 滚动也能完成相同操作。"
 
 #. type: Title ==
 #: ../src/dashboard.adoc:122
@@ -404,25 +307,13 @@ msgstr "其他操作"
 
 #. type: #additional-interactions
 #: ../src/dashboard.adoc:125
-msgid ""
-"Some components, like the xref:redstone-link.adoc[redstone link], have modes "
-"of operation that can be switched either by pressing the F key while "
-"hovering over them in the dashboard, or through their configuration UI."
-msgstr ""
-"部分组件，如xref:redstone-link.adoc[无线红石信号终端]，具有多个工作模式。该模"
-"式可在控制台界面中将鼠标指向组件并按 F 切换，也可以打开其配置界面设置。"
+msgid "Some components, like the xref:redstone-link.adoc[redstone link], have modes of operation that can be switched either by pressing the F key while hovering over them in the dashboard, or through their configuration UI."
+msgstr "部分组件，如xref:redstone-link.adoc[无线红石信号终端]，具有多个工作模式。该模式可在控制台界面中将鼠标指向组件并按 F 切换，也可以打开其配置界面设置。"
 
 #. type: #additional-interactions
 #: ../src/dashboard.adoc:127
-msgid ""
-"Each factory gauge displays a label, providing relevant information (e.g. "
-"items in stock) at a glance. When the labels become distracting or obstruct "
-"other components, they can be hidden by pressing Alt. Then only the label of "
-"the hovered component is displayed. Press Alt again to show all labels."
-msgstr ""
-"每个工厂仪表都会显示悬浮字体信息，方便快速查看库存等信息。如果悬浮字体遮挡组"
-"件或影响观察，按 Alt 可隐藏所有悬浮字体，仅显示鼠标所指组件的信息。再次按 "
-"Alt 可恢复显示。"
+msgid "Each factory gauge displays a label, providing relevant information (e.g. items in stock) at a glance. When the labels become distracting or obstruct other components, they can be hidden by pressing Alt. Then only the label of the hovered component is displayed. Press Alt again to show all labels."
+msgstr "每个工厂仪表都会显示悬浮字体信息，方便快速查看库存等信息。如果悬浮字体遮挡组件或影响观察，按 Alt 可隐藏所有悬浮字体，仅显示鼠标所指组件的信息。再次按 Alt 可恢复显示。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:128
@@ -582,18 +473,8 @@ msgstr "告示"
 
 #. type: #notices
 #: ../src/dashboard.adoc:174
-msgid ""
-"When a xref:factory-gauge.adoc[factory gauge] is tuned to a network that "
-"contains stock links in unloaded chunks, the gauge stops functioning and "
-"displays a \"`?`\" on its label. When this happens to any gauge in a factory "
-"controller, its dashboard displays a notice near the top-left corner. "
-"Hovering the notice displays a tooltip detailing the locations of the "
-"unloaded stock links they were last known at."
-msgstr ""
-"如果一个xref:factory-gauge.adoc[工厂仪表]所处的网络中包含未被加载的区块中的仓"
-"储链接站，此仪表将停止工作，并在其标签上显示“?”。当工厂控制台中的任何仪表发生"
-"这种情况时，其界面的左上角将会显示一条告示。鼠标悬停于告示上时会显示提示框，"
-"详细说明这些未被加载的仓储链接站最后所处的位置。"
+msgid "When a xref:factory-gauge.adoc[factory gauge] is tuned to a network that contains stock links in unloaded chunks, the gauge stops functioning and displays a \"`?`\" on its label. When this happens to any gauge in a factory controller, its dashboard displays a notice near the top-left corner. Hovering the notice displays a tooltip detailing the locations of the unloaded stock links they were last known at."
+msgstr "如果一个xref:factory-gauge.adoc[工厂仪表]所处的网络中包含未被加载的区块中的仓储链接站，此仪表将停止工作，并在其标签上显示“?”。当工厂控制台中的任何仪表发生这种情况时，其界面的左上角将会显示一条告示。鼠标悬停于告示上时会显示提示框，详细说明这些未被加载的仓储链接站最后所处的位置。"
 
 #. type: Block title
 #: ../src/dashboard.adoc:175

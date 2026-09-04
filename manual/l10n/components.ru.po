@@ -44,9 +44,7 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/components.adoc:4
-msgid ""
-"Some items can be placed inside a factory controller. Once placed, they are "
-"referred to as \"virtual components\". These include:"
+msgid "Some items can be placed inside a factory controller. Once placed, they are referred to as \"virtual components\". These include:"
 msgstr ""
 
 #. type: Table

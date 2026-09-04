@@ -1,9 +1,13 @@
 name: Publish manual
 
+env:
+  MANUAL_BRANCHES: main l10n_weblate
+
 on:
   push:
     branches:
       - main
+      - l10n_weblate
     paths:
       - manual/**
       - .github/workflows/publish-manual.yml
@@ -11,10 +15,12 @@ on:
 jobs:
 
   build-container:
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    concurrency: ${{ github.workflow }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -47,12 +53,19 @@ jobs:
           file: ./manual/Containerfile
           tags: ghcr.io/${{ github.repository }}/manual-builder:latest
           push: true
+          annotations: &builder_annotations |
+            org.opencontainers.image.revision=${{ steps.revision.outputs.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          labels: *builder_annotations
 
   build:
     needs: build-container
+    if: always() || needs.build-container.result == 'success' || needs.build-container.result == 'skipped'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
+    concurrency: ${{ github.workflow }}-${{ github.ref }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -64,11 +77,62 @@ jobs:
       - name: Build manual
         run: docker run --rm --volume "${{ github.workspace }}:/work" ghcr.io/${{ github.repository }}/manual-builder:latest rake build
 
-      - name: Prepare Pages content
+      - &oras_setup_step
+        name: Set up ORAS
+        uses: oras-project/setup-oras@v2
+
+      - &oras_login_step
+        name: Log in to GitHub Container Registry with ORAS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<< "$GITHUB_TOKEN"
+
+      - name: Push manual artifact
+        env:
+          REPOSITORY: ${{ github.repository }}
         run: |
-          mkdir -p _site/manual
-          cp -a manual/build/. _site/manual/
-          cp manual/build/404.html _site/404.html
+          set -euo pipefail
+          tar -C manual/build -czf build.tar.gz .
+          oras push "ghcr.io/${REPOSITORY}/manual:${{ github.ref_name }}" \
+            --annotation org.opencontainers.image.revision=${{ github.sha }} \
+            --annotation org.opencontainers.image.source=https://github.com/${REPOSITORY} \
+            --annotation org.opencontainers.image.version=${{ github.ref_name }} \
+            build.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip
+
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      pages: write
+    concurrency: ${{ github.workflow }}
+    steps:
+      - *oras_setup_step
+      - *oras_login_step
+
+      - name: Merge manual artifacts
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for branch in $MANUAL_BRANCHES; do
+            if [[ "$branch" == main ]]; then
+              path=manual
+            else
+              path="manual-${branch}"
+            fi
+
+            if ! oras pull "ghcr.io/${REPOSITORY}/manual:${branch}" --output "$branch"; then
+              echo "::warning title=Missing manual artifact::No manual artifact found for branch ${branch}; skipping"
+              continue
+            fi
+
+            mkdir -p "_site/${path}"
+            tar -C "_site/${path}" -xzf "${branch}/build.tar.gz"
+          done
+
+          cp _site/manual/404.html _site/404.html
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
@@ -80,7 +144,7 @@ jobs:
           include-hidden-files: true
 
   deploy:
-    needs: build
+    needs: merge
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -88,6 +152,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    concurrency: ${{ github.workflow }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

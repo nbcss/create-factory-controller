@@ -14,8 +14,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 #. type: Table
 #: ../src/components.adoc:8 ../src/production-orders.adoc:41
@@ -43,24 +42,12 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/production-orders.adoc:4
-msgid ""
-"Factory gauges set to the xref:factory-gauge.adoc#production-orders[\"follow "
-"demand and order\" mode] allow their products to be manually ordered from a "
-"stock keeper tuned to the same network. In the stock keeper UI, each gauge "
-"in this mode appears as a [#term-production-task]_production task_, "
-"signified by a blueprint background."
+msgid "Factory gauges set to the xref:factory-gauge.adoc#production-orders[\"follow demand and order\" mode] allow their products to be manually ordered from a stock keeper tuned to the same network. In the stock keeper UI, each gauge in this mode appears as a [#term-production-task]_production task_, signified by a blueprint background."
 msgstr ""
 
 #. type: Plain text
 #: ../src/production-orders.adoc:9
-msgid ""
-"Click to add the production task to the order. The amount of output items to "
-"send can be adjusted per usual. Sending an order containing production tasks "
-"creates a [#term-production-order]_production order_, causing the "
-"corresponding factory gauges to add the number of items in the order to "
-"their xref:factory-gauge.adoc#term-demand[demands]. When the ordered items "
-"arrive in the logistic network, they are sent out again to the address "
-"specified on the order."
+msgid "Click to add the production task to the order. The amount of output items to send can be adjusted per usual. Sending an order containing production tasks creates a [#term-production-order]_production order_, causing the corresponding factory gauges to add the number of items in the order to their xref:factory-gauge.adoc#term-demand[demands]. When the ordered items arrive in the logistic network, they are sent out again to the address specified on the order."
 msgstr ""
 
 #. type: Block title
@@ -71,14 +58,7 @@ msgstr ""
 
 #. type: Plain text
 #: ../src/production-orders.adoc:14
-msgid ""
-"The responsible factory gauge will produce enough items to satisfy the "
-"amount specified in the production order, reusing existing items in storage. "
-"For example, if the xref:factory-gauge.adoc#term-recipe[recipe] of the gauge "
-"produces 4 oak planks from 1 oak log, and 5 oak planks are ordered when 0 "
-"oak planks are in storage, then 8 planks will be produced, 5 sent to the "
-"destination address, 3 left over in storage; when 5 planks are order again, "
-"4 new planks will be produced, leaving 2 left-over."
+msgid "The responsible factory gauge will produce enough items to satisfy the amount specified in the production order, reusing existing items in storage. For example, if the xref:factory-gauge.adoc#term-recipe[recipe] of the gauge produces 4 oak planks from 1 oak log, and 5 oak planks are ordered when 0 oak planks are in storage, then 8 planks will be produced, 5 sent to the destination address, 3 left over in storage; when 5 planks are order again, 4 new planks will be produced, leaving 2 left-over."
 msgstr ""
 
 #. type: Title ==
@@ -89,11 +69,7 @@ msgstr ""
 
 #. type: #view
 #: ../src/production-orders.adoc:19
-msgid ""
-"Pending production orders can be viewed in the \"production orders\" tab (❶) "
-"in the stock keeper UI. They are automatically removed when all ordered "
-"items arrive in the logistic network. Otherwise, they remain stuck if the "
-"items never arrive."
+msgid "Pending production orders can be viewed in the \"production orders\" tab (❶) in the stock keeper UI. They are automatically removed when all ordered items arrive in the logistic network. Otherwise, they remain stuck if the items never arrive."
 msgstr ""
 
 #. type: Block title
@@ -109,9 +85,7 @@ msgstr ""
 
 #. type: #view
 #: ../src/production-orders.adoc:28
-msgid ""
-"❷ Destination address:: The address the items are sent to after they arrive "
-"in storage."
+msgid "❷ Destination address:: The address the items are sent to after they arrive in storage."
 msgstr ""
 
 #. type: #view
@@ -215,10 +189,7 @@ msgstr ""
 
 #. type: #notification
 #: ../src/production-orders.adoc:60
-msgid ""
-"When all items in a production order arrive, and are dispatched to the "
-"destination address, a notification is shown on the top-right corner of the "
-"screen, to the player that has created the production order."
+msgid "When all items in a production order arrive, and are dispatched to the destination address, a notification is shown on the top-right corner of the screen, to the player that has created the production order."
 msgstr ""
 
 #. type: Block title
@@ -229,9 +200,7 @@ msgstr ""
 
 #. type: #notification
 #: ../src/production-orders.adoc:65
-msgid ""
-"A similar notification is shown when a responsible gauge has become <<term-"
-"invalid-gauge,invalid>>."
+msgid "A similar notification is shown when a responsible gauge has become <<term-invalid-gauge,invalid>>."
 msgstr ""
 
 #. type: Block title
@@ -248,19 +217,12 @@ msgstr ""
 
 #. type: #mod-compat
 #: ../src/production-orders.adoc:73
-msgid ""
-"Other mods may provide UIs alternative to the stock keeper for ordering "
-"items, such as handheld remote stock keepers. These UIs are likely able to "
-"create production orders without explicit support. However, they will not be "
-"able to view pending production orders, and will not display "
-"<<notification,delivery notifications>>."
+msgid "Other mods may provide UIs alternative to the stock keeper for ordering items, such as handheld remote stock keepers. These UIs are likely able to create production orders without explicit support. However, they will not be able to view pending production orders, and will not display <<notification,delivery notifications>>."
 msgstr ""
 
 #. type: #mod-compat
 #: ../src/production-orders.adoc:75
-msgid ""
-"The following mods are tested to work with production orders, and have "
-"explicit support to display notifications:"
+msgid "The following mods are tested to work with production orders, and have explicit support to display notifications:"
 msgstr ""
 
 #. type: #mod-compat
