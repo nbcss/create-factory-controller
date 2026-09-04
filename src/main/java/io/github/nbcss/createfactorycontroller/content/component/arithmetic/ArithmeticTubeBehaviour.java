@@ -1,15 +1,17 @@
-package io.github.nbcss.createfactorycontroller.content.component;
+package io.github.nbcss.createfactorycontroller.content.component.arithmetic;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.component.AbstractVirtualComponent;
+import io.github.nbcss.createfactorycontroller.content.component.SyncCodecs;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
-import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
-import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
@@ -37,9 +39,6 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     // ── Input model ─────────────────────────────────────────────────────────────
 
     public sealed interface NumberInput permits ConnectionInput, ConstantInput, LoopInput {
-        /** Client-sync discriminators, kept in step with the NBT {@code "Kind"} strings. */
-        byte TAG_CONNECTION = 0, TAG_CONSTANT = 1, TAG_LOOP = 2;
-
         /** This operand's current value for {@code tube}. */
         double getValue(ArithmeticTubeBehaviour tube);
 
@@ -47,25 +46,30 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
         void writeClient(RegistryFriendlyByteBuf buf);
 
-        static NumberInput fromNBT(CompoundTag tag) {
+        static @Nullable NumberInput fromNBT(CompoundTag tag) {
             return switch (tag.getString("Kind")) {
-                case "constant" -> new ConstantInput(tag.getDouble("Value"));
-                case "loop" -> new LoopInput();
-                default -> new ConnectionInput(VirtualComponentPosition.fromNBT(tag.getCompound("Source")));
+                case ConnectionInput.KIND_NAME -> new ConnectionInput(VirtualComponentPosition.fromNBT(tag.getCompound("Source")));
+                case ConstantInput.KIND_NAME -> new ConstantInput(tag.getDouble("Value"));
+                case LoopInput.KIND_NAME -> new LoopInput();
+                default -> null;
             };
         }
 
-        static NumberInput fromClient(RegistryFriendlyByteBuf buf) {
+        static @Nullable NumberInput fromClient(RegistryFriendlyByteBuf buf) {
             return switch (buf.readByte()) {
-                case TAG_CONSTANT -> new ConstantInput(buf.readDouble());
-                case TAG_LOOP -> new LoopInput();
-                default -> new ConnectionInput(SyncCodecs.readPos(buf));
+                case ConnectionInput.CLIENT_TAG -> new ConnectionInput(SyncCodecs.readPos(buf));
+                case ConstantInput.CLIENT_TAG -> new ConstantInput(buf.readDouble());
+                case LoopInput.CLIENT_TAG -> new LoopInput();
+                default -> null;
             };
         }
     }
 
     /** An operand read from the incoming NUMBER edge from {@code source} */
     public record ConnectionInput(VirtualComponentPosition source) implements NumberInput {
+        public static final byte CLIENT_TAG = 0;
+        public static final String KIND_NAME = "connection";
+
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             Connection e = tube.incomingConnection(source, NumberConnection.TYPE);
@@ -75,20 +79,23 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public CompoundTag toNBT() {
             CompoundTag t = new CompoundTag();
-            t.putString("Kind", "connection");
+            t.putString("Kind", KIND_NAME);
             t.put("Source", source.toNBT());
             return t;
         }
 
         @Override
         public void writeClient(RegistryFriendlyByteBuf buf) {
-            buf.writeByte(TAG_CONNECTION);
+            buf.writeByte(CLIENT_TAG);
             SyncCodecs.writePos(buf, source);
         }
     }
 
     /** A literal operand. No GUI creates these yet — scaffolding for the deferred configuration screen. */
     public record ConstantInput(double value) implements NumberInput {
+        public static final byte CLIENT_TAG = 1;
+        public static final String KIND_NAME = "constant";
+
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             return value;
@@ -97,14 +104,14 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public CompoundTag toNBT() {
             CompoundTag t = new CompoundTag();
-            t.putString("Kind", "constant");
+            t.putString("Kind", KIND_NAME);
             t.putDouble("Value", value);
             return t;
         }
 
         @Override
         public void writeClient(RegistryFriendlyByteBuf buf) {
-            buf.writeByte(TAG_CONSTANT);
+            buf.writeByte(CLIENT_TAG);
             buf.writeDouble(value);
         }
     }
@@ -112,6 +119,9 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     /** The self-feedback operand: reads the tube's own output — from the PREVIOUS tick, thanks to the one-tick output
      *  delay, so it forms a stable feedback loop. Valid only on a multi-input operator; at most one per tube. */
     public record LoopInput() implements NumberInput {
+        public static final byte CLIENT_TAG = 2;
+        public static final String KIND_NAME = "loop";
+
         @Override
         public double getValue(ArithmeticTubeBehaviour tube) {
             return tube.output;
@@ -120,19 +130,19 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         @Override
         public CompoundTag toNBT() {
             CompoundTag t = new CompoundTag();
-            t.putString("Kind", "loop");
+            t.putString("Kind", KIND_NAME);
             return t;
         }
 
         @Override
         public void writeClient(RegistryFriendlyByteBuf buf) {
-            buf.writeByte(TAG_LOOP);
+            buf.writeByte(CLIENT_TAG);
         }
     }
 
     // ── Type ─────────────────────────────────────────────────────────────────────
 
-    public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type() {
+    public static final Type TYPE = new Type() {
         @Override public String id() { return "ARITHMETIC_TUBE"; }
         @Override public List<ResourceLocation> items() { return List.of(CFCItems.ARITHMETIC_TUBE.getId()); }
         @Override public int color() { return NumberConnection.COLOR; }   // purple, matching its wire
@@ -304,6 +314,11 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     @Override
+    public void onAdded() {
+        recomputeNext();
+    }
+
+    @Override
     public void tick() {}
 
     // ── Operator switching ──────────────────────────────────────────────────────
@@ -330,10 +345,10 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     }
 
     private void dropInput(NumberInput input) {
-        if (!(input instanceof ConnectionInput w) || controller == null) return;
-        Connection e = incomingConnection(w.source(), NumberConnection.TYPE);
+        if (!(input instanceof ConnectionInput(VirtualComponentPosition source)) || controller == null) return;
+        Connection e = incomingConnection(source, NumberConnection.TYPE);
         if (e == null) return;
-        controller.connectionGraph().remove(position, w.source(), NumberConnection.TYPE);
+        controller.connectionGraph().remove(position, source, NumberConnection.TYPE);
         controller.syncConnectionRemoved(ConnectionKey.of(e));
     }
 
@@ -343,8 +358,13 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
      * Keeps {@link #primaryInputs}/{@link #secondaryInput} consistent with the live incoming NUMBER edges
      */
     private void reconcileInputs() {
-        primaryInputs.removeIf(r -> r instanceof ConnectionInput w && incomingConnection(w.source(), NumberConnection.TYPE) == null);
-        if (secondaryInput instanceof ConnectionInput w && incomingConnection(w.source(), NumberConnection.TYPE) == null) secondaryInput = null;
+        primaryInputs.removeIf(r ->
+                r instanceof ConnectionInput(VirtualComponentPosition source) &&
+                incomingConnection(source, NumberConnection.TYPE) == null
+        );
+        if (secondaryInput instanceof ConnectionInput(VirtualComponentPosition source) &&
+                incomingConnection(source, NumberConnection.TYPE) == null
+        ) secondaryInput = null;
 
         for (Connection c : incomingConnections(NumberConnection.TYPE)) {
             VirtualComponentPosition src = c.from;
@@ -388,7 +408,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     /** Swaps the primary and secondary operands (binary only) */
     public void swapInputs() {
         if (operator.arity() != ArithmeticOperator.Arity.BINARY) return;
-        NumberInput p = primaryInputs.isEmpty() ? null : primaryInputs.get(0);
+        NumberInput p = primaryInputs.isEmpty() ? null : primaryInputs.getFirst();
         NumberInput s = secondaryInput;
         primaryInputs.clear();
         if (s != null) primaryInputs.add(s);
@@ -425,8 +445,8 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
                 ? (index >= 0 && index < primaryInputs.size() ? primaryInputs.get(index) : null)
                 : secondaryInput;
         if (ref == null) return;
-        if (ref instanceof ConnectionInput w) {
-            if (controller != null) controller.removeConnection(w.source(), position, NumberConnection.TYPE);
+        if (ref instanceof ConnectionInput(VirtualComponentPosition source)) {
+            if (controller != null) controller.removeConnection(source, position, NumberConnection.TYPE);
         } else {
             if (primary)
                 primaryInputs.remove(index);
@@ -452,22 +472,27 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     /** Re-keys ordered wire inputs without changing their operand assignments. */
     @Override
     public void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {
-        primaryInputs.replaceAll(r -> r instanceof ConnectionInput w ? new ConnectionInput(remap.apply(w.source())) : r);
-        if (secondaryInput instanceof ConnectionInput w) secondaryInput = new ConnectionInput(remap.apply(w.source()));
+        primaryInputs.replaceAll(r ->
+                r instanceof ConnectionInput(VirtualComponentPosition source) ? new ConnectionInput(remap.apply(source)) : r
+        );
+        if (secondaryInput instanceof ConnectionInput(VirtualComponentPosition source))
+            secondaryInput = new ConnectionInput(remap.apply(source));
     }
 
     /** Whether {@code source} feeds the (single) secondary slot — used by the widget to colour the connected face
      *  (secondary → blue, primary → red, both on one face → both). Any other incoming wire is a primary input. */
     public boolean isSecondarySource(VirtualComponentPosition source) {
-        return secondaryInput instanceof ConnectionInput w && w.source().equals(source);
+        return secondaryInput instanceof ConnectionInput(VirtualComponentPosition source1) && source1.equals(source);
     }
 
     /** Whether one of our input slots already points at {@code src}. Distinct from {@link #incomingConnection} (which
      *  answers whether an edge exists): reconcile iterates the live edges and needs to know which aren't yet assigned
      *  to a slot — a question only the ordered ref list can answer, so it can't be derived from the graph. */
     private boolean references(VirtualComponentPosition src) {
-        for (NumberInput r : primaryInputs) if (r instanceof ConnectionInput w && w.source().equals(src)) return true;
-        return secondaryInput instanceof ConnectionInput w && w.source().equals(src);
+        for (NumberInput r : primaryInputs)
+            if (r instanceof ConnectionInput(VirtualComponentPosition source) && source.equals(src))
+                return true;
+        return secondaryInput instanceof ConnectionInput(VirtualComponentPosition source) && source.equals(src);
     }
 
     // ── Client sync ─────────────────────────────────────────────────────────────
@@ -513,8 +538,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
         return tag;
     }
 
-    public static ArithmeticTubeBehaviour fromNBT(FactoryControllerBlockEntity controller, CompoundTag tag,
-                                                  HolderLookup.Provider registries) {
+    public static ArithmeticTubeBehaviour fromNBT(FactoryControllerBlockEntity controller, CompoundTag tag, HolderLookup.Provider registries) {
         VirtualComponentPosition pos = VirtualComponentPosition.fromNBT(tag.getCompound("Pos"));
         ResourceLocation itemId = ResourceLocation.parse(tag.getString("Item"));
         Item item = BuiltInRegistries.ITEM.get(itemId);

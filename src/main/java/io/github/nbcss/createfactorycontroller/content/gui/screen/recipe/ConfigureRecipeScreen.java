@@ -26,10 +26,10 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
-import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
@@ -38,6 +38,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClien
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
@@ -49,7 +50,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.network.chat.Component;
@@ -74,6 +74,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
 /**
  * Recipe-configuration overlay for a virtual gauge.
@@ -523,12 +525,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     /** Whether {@code (mx, my)} is over the request-multiplier bar. */
     boolean overMultiplier(double mx, double my) {
-        return in(mx, my, panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y, MULTIPLIER_W, MULTIPLIER_H);
+        return Rect2i.fromXYWH(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y, MULTIPLIER_W, MULTIPLIER_H).contains(mx, my, HALF_OPEN);
     }
 
     /** Whether {@code (mx, my)} is over the output arrow (the request-interval readout / scroll target). */
     boolean overIntervalArrow(double mx, double my) {
-        return in(mx, my, panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, ARROW_ANIM_W, ARROW_ANIM_H);
+        return Rect2i.fromXYWH(panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, ARROW_ANIM_W, ARROW_ANIM_H).contains(mx, my, HALF_OPEN);
     }
 
     private static int defaultIntervalSeconds() {
@@ -981,12 +983,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return min <= ServerConfig.maxCraftGridSize();
     }
 
-    private static boolean in(double mx, double my, int x, int y, int w, int h) {
-        return io.github.nbcss.createfactorycontroller.content.helper.Rect2i
-                .fromXYWH(x, y, w, h)
-                .contains((int) mx, (int) my, io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN);
-    }
-
     @Override
     public void onPanelSync() {
         controller.onPanelSync();
@@ -1087,7 +1083,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             String producedTip = fluidMode ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
             ResourceIconRenderer.render(gfx, g.filter, ox, oy);
             drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(shownOutput) : String.valueOf(shownOutput));
-            if (in(mouseX, mouseY, ox, oy, 16, 16)) {
+            if (Rect2i.fromXYWH(ox, oy, 16, 16).contains(mouseX, mouseY, HALF_OPEN)) {
                 Component scrollLine = CreateLang.translate("gui.factory_panel.expected_output_tip_2")
                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component();
                 MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
@@ -1174,7 +1170,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         gfx.renderItem(box, pbx, pby);
         drawItemCount(gfx, box, pbx, pby, (ClientConfig.compactRecipeCountFont() && promised > 0 ? "+": "")
                 + promisedLabel);
-        if (in(mouseX, mouseY, pbx, pby, 16, 16))
+        if (Rect2i.fromXYWH(pbx, pby, 16, 16).contains(mouseX, mouseY, HALF_OPEN))
             tooltip = promised == 0
                 ? List.of(
                     CreateLang.translate("gui.factory_panel.no_open_promises").color(ScrollInput.HEADER_RGB).component(),
@@ -1223,7 +1219,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         drawPromiseLimitLabel(gfx, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W,
             activePromises, limit, promiseLimitByAddress);
 
-        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
+        if (Rect2i.fromXYWH(panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16).contains(mouseX, mouseY, HALF_OPEN)) {
             boolean addr = promiseLimitByAddress;
             List<Component> t = new ArrayList<>();
             t.add(Component.translatable("createfactorycontroller.gui.open_requests.title")
@@ -1252,7 +1248,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         // Count box tooltip
-        if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
+        if (Rect2i.fromXYWH(panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
             if(g != null && g.isNumberManaged()) {
                 tooltip = List.of(Component.translatable(requestMode.isPassive() ?
                                         "createfactorycontroller.gui.threshold.minimum_target" :
@@ -1281,7 +1277,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         // Unit box tooltip
-        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+        if (Rect2i.fromXYWH(panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
             ThresholdUnit a = fluidMode ? ThresholdUnit.FLUID_MB : ThresholdUnit.ITEMS;
             ThresholdUnit b = fluidMode ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.STACKS;
             tooltip = List.of(
@@ -1293,7 +1289,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         // Filter/stock box tooltip — the filtered item's normal item tooltip.
-        if (g != null && in(mouseX, mouseY, panelX + FILTER_X, panelY + THRESH_TOP, 16, 16))
+        if (g != null && Rect2i.fromXYWH(panelX + FILTER_X, panelY + THRESH_TOP, 16, 16).contains(mouseX, mouseY, HALF_OPEN))
             tooltip = g.filter.isEmpty()
                 ? List.of(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
                 : FluidCompat.isFluidFilter(g.filter)
@@ -1455,7 +1451,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (getFocused() != null && !getFocused().isMouseOver(mouseX, mouseY))
             setFocused(null);
 
-        boolean onCountBox = in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H);
+        boolean onCountBox = Rect2i.fromXYWH(panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN);
         if (countEditing && !onCountBox) commitCountEdit();
 
         if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
@@ -1477,13 +1473,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             return true;
         }
 
-        if (in(mouseX, mouseY, panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16)) {
+        if (Rect2i.fromXYWH(panelX + PROMISE_CLEAR_X, panelY + PANEL_H - 24, 16, 16).contains(mouseX, mouseY, HALF_OPEN)) {
             sendConfig(true, false);
             playClickSound();
             return true;
         }
 
-        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
+        if (Rect2i.fromXYWH(panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16).contains(mouseX, mouseY, HALF_OPEN)) {
             promiseLimitByAddress = !promiseLimitByAddress;
             playClickSound();
             return true;
@@ -1515,7 +1511,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         if (editor().inputAreaClicked(mouseX, mouseY, button)) return true;
 
-        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+        if (Rect2i.fromXYWH(panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
             setMode(mode.cycle(1));
             return true;
         }
@@ -1575,7 +1571,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int step = hasControlDown() ? 100 : (hasShiftDown() ? 10 : 1);
         int dir = (int) Math.signum(scrollY);
 
-        if (in(mouseX, mouseY, panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16)) {
+        if (Rect2i.fromXYWH(panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16).contains(mouseX, mouseY, HALF_OPEN)) {
             if (dir != 0) {
                 int limitStep = hasShiftDown() ? 10 : 1;
                 promiseLimitState = Mth.clamp(promiseLimitState + dir * limitStep, 0, 99);
@@ -1606,7 +1602,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (editor().inputAreaScrolled(mouseX, mouseY, dir, step)) return true;
         if (editor().outputScrolled(mouseX, mouseY, dir, step)) return true;
         // Threshold count box
-        if (in(mouseX, mouseY, panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H)) {
+        if (Rect2i.fromXYWH(panelX + COUNT_X, panelY + THRESH_TOP - 1, COUNT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
             if (numberManaged()) return true;   // locked — Auto managed by Number Connection
             if (countEditing) commitCountEdit();
             // Fluid threshold is a whole number in the unit box's unit.
@@ -1615,7 +1611,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             playScrollSound();
             return true;
         }
-        if (in(mouseX, mouseY, panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H)) {
+        if (Rect2i.fromXYWH(panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H).contains(mouseX, mouseY, HALF_OPEN)) {
             if (dir != 0) setMode(mode.cycle(-dir));
             return true;
         }
@@ -1635,8 +1631,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     @Override
-    public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(panelX + 195, panelY + 152, 52, 35));
+    public List<net.minecraft.client.renderer.Rect2i> getExtraAreas() {
+        return List.of(new net.minecraft.client.renderer.Rect2i(panelX + 195, panelY + 152, 52, 35));
     }
 
     // ── Commit ───────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import org.anti_ad.mc.ipn.api.IPNIgnore;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
@@ -19,6 +19,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.Fac
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureLogicalTubePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
@@ -29,7 +30,6 @@ import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -42,6 +42,8 @@ import org.joml.Vector2i;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
 /**
  * Full-config overlay for a Logical Tube.
@@ -290,7 +292,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                          VirtualComponentPosition pos, int x, int y, int mouseX, int mouseY) {
         VirtualComponentWidget w = controller.componentWidgetAt(pos);
         if (w != null) atSlot(gfx, w, x, y, () -> w.renderFront(params));
-        if (in(mouseX, mouseY, x, y)) highlight(gfx, x, y);
+        if (Rect2i.fromXYWH(x, y, CELL, CELL).contains(mouseX, mouseY, HALF_OPEN)) highlight(gfx, x, y);
     }
 
     /** Reuses a component's canvas render at slot {@code (x,y)}: translate the pose so its board cell lands on the slot,
@@ -319,8 +321,8 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {}
 
     @Override
-    public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(panelX + 196, panelY + 60, 40, 40));   // the decorative electron tube on the right
+    public List<net.minecraft.client.renderer.Rect2i> getExtraAreas() {
+        return List.of(new net.minecraft.client.renderer.Rect2i(panelX + 196, panelY + 60, 40, 40));   // the decorative electron tube on the right
     }
 
     @Override
@@ -342,7 +344,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             gfx.renderComponentTooltip(font, tip, mouseX, mouseY);
             return;
         }
-        if (in(mouseX, mouseY, cellScreenX(TUBE_COL), cellScreenY(MID_ROW))) {
+        if (Rect2i.fromXYWH(cellScreenX(TUBE_COL), cellScreenY(MID_ROW), CELL, CELL).contains(mouseX, mouseY, HALF_OPEN)) {
             int nIn = inputs().size(), nOut = outputs().size();
             List<Component> tip = new ArrayList<>();
             tip.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
@@ -365,27 +367,21 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     // ── Interaction ───────────────────────────────────────────────────────────────
 
-    private static boolean in(double mx, double my, int x, int y) {
-        return io.github.nbcss.createfactorycontroller.content.helper.Rect2i
-                .fromXYWH(x, y, CELL, CELL)
-                .contains((int) mx, (int) my, io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN);
-    }
-
     /** The connection under the cursor (input or output slot), or null. */
     private Connection slotConnectionAt(double mx, double my) {
         List<Connection> inputs = inputs();
         for (int i = 0; i < Math.min(MAX_PER_SIDE, inputs.size()); i++)
-            if (in(mx, my, cellScreenX(inputCol(i)), cellScreenY(rowOf(i)))) return inputs.get(i);
+            if (Rect2i.fromXYWH(cellScreenX(inputCol(i)), cellScreenY(rowOf(i)), CELL, CELL).contains(mx, my, HALF_OPEN)) return inputs.get(i);
         List<Connection> outputs = outputs();
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            if (in(mx, my, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)))) return outputs.get(i);
+            if (Rect2i.fromXYWH(cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), CELL, CELL).contains(mx, my, HALF_OPEN)) return outputs.get(i);
         return null;
     }
 
     private boolean isOutputSlot(double mx, double my) {
         List<Connection> outputs = outputs();
         for (int i = 0; i < Math.min(MAX_PER_SIDE, outputs.size()); i++)
-            if (in(mx, my, cellScreenX(outputCol(i)), cellScreenY(rowOf(i)))) return true;
+            if (Rect2i.fromXYWH(cellScreenX(outputCol(i)), cellScreenY(rowOf(i)), CELL, CELL).contains(mx, my, HALF_OPEN)) return true;
         return false;
     }
 

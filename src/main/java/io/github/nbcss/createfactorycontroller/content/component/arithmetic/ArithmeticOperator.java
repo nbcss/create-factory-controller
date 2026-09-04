@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.component.operator;
+package io.github.nbcss.createfactorycontroller.content.component.arithmetic;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;

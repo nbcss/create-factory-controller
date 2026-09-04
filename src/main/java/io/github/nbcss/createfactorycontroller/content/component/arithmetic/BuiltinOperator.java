@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.component.operator;
+package io.github.nbcss.createfactorycontroller.content.component.arithmetic;
 
 import net.minecraft.network.chat.Component;
 
@@ -12,7 +12,7 @@ import java.util.OptionalDouble;
 public enum BuiltinOperator implements ArithmeticOperator {
     // ── N inputs, order-independent ──
     SUM(Arity.N_ARY, "add", (p, s) -> Arrays.stream(p).sum()),
-    PRODUCT(Arity.N_ARY, "multiply", (p, s) -> { double r = 1; for (double v : p) r *= v; return r; }),
+    PRODUCT(Arity.N_ARY, "multiply", (p, s) -> Arrays.stream(p).reduce(1, (a, b) -> a * b)),
     MAX(Arity.N_ARY, "max", (p, s) -> Arrays.stream(p).max().orElse(Double.NaN)),
     MIN(Arity.N_ARY, "min", (p, s) -> Arrays.stream(p).min().orElse(Double.NaN)),
     // ── 2 inputs, order-sensitive (both operands required — an absent one yields NaN, see apply) ──

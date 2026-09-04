@@ -6,10 +6,10 @@ import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.ArithmeticTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
-import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticOperator;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
@@ -137,8 +137,12 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private List<Row> rows = List.of();
     private final ConstantEditor constantEditor = new ConstantEditor();
 
-    private enum RowKind { INPUT, ADD }
-    private record Row(RowKind kind, boolean primary, int index, @Nullable ArithmeticTubeBehaviour.NumberInput input) {}
+    private sealed interface Row permits Row.Add, Row.Input {
+        boolean primary();
+
+        record Add(boolean primary) implements Row {}
+        record Input(boolean primary, int index, ArithmeticTubeBehaviour.NumberInput input) implements Row {}
+    }
 
     public ArithmeticTubeSettingsScreen(FactoryControllerScreen controller, VirtualComponentPosition tubePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -206,11 +210,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         List<Row> list = new ArrayList<>();
         List<ArithmeticTubeBehaviour.NumberInput> prim = tube.getPrimaryInputs();
         for (int i = 0; i < prim.size(); i++)
-            list.add(new Row(RowKind.INPUT, true, i, prim.get(i)));
-        if (prim.size() < tube.getOperator().arity().maxPrimary) list.add(new Row(RowKind.ADD, true, -1, null));
+            list.add(new Row.Input(true, i, prim.get(i)));
+        if (prim.size() < tube.getOperator().arity().maxPrimary) list.add(new Row.Add(true));
         if (tube.getOperator().arity().allowsSecondary) {
             ArithmeticTubeBehaviour.NumberInput sec = tube.getSecondaryInput();
-            list.add(sec != null ? new Row(RowKind.INPUT, false, -1, sec) : new Row(RowKind.ADD, false, -1, null));
+            list.add(sec != null ? new Row.Input(false, -1, sec) : new Row.Add(false));
         }
         return list;
     }
@@ -355,14 +359,14 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private void renderInputEntries(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
         for (int k = 0; k < rows.size(); k++) {
             Row row = rows.get(k);
-            switch (row.kind()) {
-                case INPUT -> renderInputRow(gfx, tube, row, rowY(k), mouseX, mouseY);
-                case ADD -> renderAddRow(gfx, tube, row, rowY(k), mouseX, mouseY);
-            }
+            if (row instanceof Row.Input input)
+                renderInputRow(gfx, tube, input, rowY(k), mouseX, mouseY);
+            else if (row instanceof Row.Add add)
+                renderAddRow(gfx, tube, add, rowY(k), mouseX, mouseY);
         }
     }
 
-    private void renderInputRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row row, int y, int mouseX, int mouseY) {
+    private void renderInputRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Input row, int y, int mouseX, int mouseY) {
         int x = entryX();
         renderSlot(gfx, row.primary(), x, y);
         // slot content: a constant icon, or the connected component's item
@@ -388,7 +392,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         int textX = boxX + 6, textY = y + 1 + (18 - font.lineHeight) / 2 + 2;
         if (constantEditor.isEditing(row)) {
             constantEditor.position(textX, textY, boxW - 9);
-        } else if (row.input instanceof ArithmeticTubeBehaviour.ConstantInput) {
+        } else if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
             boolean hovered = inRect(mouseX, mouseY, boxX, y + 1, boxW, 18);
             double value = row.input().getValue(tube);
             value = constantEditor.optimisticValue(row, value).orElse(value);
@@ -405,7 +409,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     /** Add-entry background width (left pad + two buttons with a 2px gap + 1px right margin). */
     private int addEntryW() { return ADD_PAD_L + 2 * ROW_BTN + 2 + 1; }
 
-    private void renderAddRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row row, int y, int mouseX, int mouseY) {
+    private void renderAddRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Add row, int y, int mouseX, int mouseY) {
         int x = entryX();
         renderSlot(gfx, row.primary(), x, y);
         BatchedBlitter.forSprite(SpriteLocations.ELLIPSIS_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
@@ -504,14 +508,14 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             int y = rowY(k), x = entryX();
             if (inRect(mx, my, x, y, SLOT, SLOT)) return slotTooltip(row);
             int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-            if (row.kind() == RowKind.INPUT) {
+            if (row instanceof Row.Input input) {
                 int delX = bgX + bgW - 1 - ROW_BTN;
                 if (inRect(mx, my, delX, y + 1, ROW_BTN, ROW_BTN))
                     return tr("tooltip.remove", ChatFormatting.WHITE);
                 int boxX = bgX + 1, boxW = delX - 2 - boxX;
                 if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
-                    if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-                        return constantEditor.isEditing(row) ? null : tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
+                    if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
+                        return constantEditor.isEditing(input) ? null : tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
                 }
             } else {
                 int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
@@ -529,11 +533,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     /** Tooltip for an operand icon slot. */
     @Nullable
     private List<Component> slotTooltip(Row row) {
-        if (row.kind() == RowKind.ADD)
-            return tr("tooltip.new_input", row.primary ? ChatFormatting.BLUE : ChatFormatting.RED);
-        if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
+        if (row instanceof Row.Add)
+            return tr("tooltip.new_input", row.primary() ? ChatFormatting.BLUE : ChatFormatting.RED);
+        if (!(row instanceof Row.Input input))
+            return null;
+        if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
             return tr("tooltip.constant", ChatFormatting.WHITE);
-        if (row.input() instanceof ArithmeticTubeBehaviour.ConnectionInput(VirtualComponentPosition source)) {
+        if (input.input() instanceof ArithmeticTubeBehaviour.ConnectionInput(VirtualComponentPosition source)) {
             var comp = menu.componentAt(source);
             if (comp != null) {
                 List<Component> tip = new ArrayList<>();
@@ -632,18 +638,18 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     private boolean handleRowClick(Row row, int y, double mx, double my, int button) {
         int x = entryX();
-        if (row.kind() == RowKind.INPUT) {
+        if (row instanceof Row.Input input) {
             int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
             int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;
             if (inRect(mx, my, delX, delY, ROW_BTN, ROW_BTN)) {
-                sendInput(ConfigureArithmeticInputPacket.REMOVE, row.primary(), row.index(), 0);
+                sendInput(ConfigureArithmeticInputPacket.REMOVE, input.primary(), input.index(), 0);
                 playClickSound();
                 return true;
             }
-            if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
+            if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
                 int boxX = bgX + 1, boxW = delX - 2 - boxX;
                 if (inRect(mx, my, boxX, y + 1, boxW, 18)) {
-                    constantEditor.start(row, boxW - 9);
+                    constantEditor.start(input, boxW - 9);
                     return true;
                 }
             }
@@ -807,14 +813,16 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
         public boolean active() { return box != null; }
 
-        public boolean isEditing(Row row) {
-            return box != null && row.kind() == RowKind.INPUT && row.primary() == editPrimary && row.index() == editIndex;
+        public boolean isEditing(Row.Input row) {
+            return box != null && row.primary() == editPrimary && row.index() == editIndex;
         }
 
         public boolean isMenuOpen() { return constantMenuOpen; }
 
         public void discardIfRowGone(List<Row> rows) {
-            if (box != null && rows.stream().noneMatch(this::isEditing)) remove();
+            if (box != null &&
+                    rows.stream().noneMatch(row -> row instanceof Row.Input input && isEditing(input))
+            ) remove();
         }
 
         public void position(int x, int y, int width) {
@@ -851,7 +859,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         }
 
         /** The optimistic post-commit value for a just-edited constant, if the server sync has not caught up yet. */
-        public OptionalDouble optimisticValue(Row row, double currentValue) {
+        public OptionalDouble optimisticValue(Row.Input row, double currentValue) {
             if (!(row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) || !matchesCommit(row))
                 return OptionalDouble.empty();
             if (Double.compare(currentValue, commitValue) == 0) {
@@ -861,14 +869,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             return OptionalDouble.of(commitValue);
         }
 
-        private boolean matchesCommit(Row row) {
+        private boolean matchesCommit(Row.Input row) {
             return commitIndex != NO_COMMIT &&
-                    row.kind() == RowKind.INPUT &&
                     row.primary() == commitPrimary &&
                     row.index() == commitIndex;
         }
 
-        public void start(Row row, int width) {
+        public void start(Row.Input row, int width) {
             commit();   // commit any prior edit
             editPrimary = row.primary();
             editIndex = row.index();
