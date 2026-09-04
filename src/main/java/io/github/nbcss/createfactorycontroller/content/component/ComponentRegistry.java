@@ -2,6 +2,11 @@ package io.github.nbcss.createfactorycontroller.content.component;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.FluidGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -10,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

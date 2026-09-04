@@ -1,15 +1,17 @@
-package io.github.nbcss.createfactorycontroller.content.component;
+package io.github.nbcss.createfactorycontroller.content.component.arithmetic;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.component.AbstractVirtualComponent;
+import io.github.nbcss.createfactorycontroller.content.component.SyncCodecs;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionValue;
 import io.github.nbcss.createfactorycontroller.content.component.connection.NumberConnection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ValidationResult;
-import io.github.nbcss.createfactorycontroller.content.component.operator.ArithmeticOperator;
-import io.github.nbcss.createfactorycontroller.content.component.operator.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
@@ -132,7 +134,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     // ── Type ─────────────────────────────────────────────────────────────────────
 
-    public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type() {
+    public static final Type TYPE = new Type() {
         @Override public String id() { return "ARITHMETIC_TUBE"; }
         @Override public List<ResourceLocation> items() { return List.of(CFCItems.ARITHMETIC_TUBE.getId()); }
         @Override public int color() { return NumberConnection.COLOR; }   // purple, matching its wire

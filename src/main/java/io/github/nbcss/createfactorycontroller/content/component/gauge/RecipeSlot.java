@@ -1,5 +1,7 @@
-package io.github.nbcss.createfactorycontroller.content.component;
+package io.github.nbcss.createfactorycontroller.content.component.gauge;
 
+import io.github.nbcss.createfactorycontroller.content.component.SyncCodecs;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import org.jetbrains.annotations.Nullable;

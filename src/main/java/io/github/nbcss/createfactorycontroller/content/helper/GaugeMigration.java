@@ -1,6 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.helper;
 
-import io.github.nbcss.createfactorycontroller.content.component.CflFluidGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidGaugeBehaviour;
 import net.minecraft.nbt.CompoundTag;
 
 /**

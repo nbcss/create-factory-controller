@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
-import io.github.nbcss.createfactorycontroller.content.component.RecipeSlot;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import net.minecraft.client.gui.GuiGraphics;

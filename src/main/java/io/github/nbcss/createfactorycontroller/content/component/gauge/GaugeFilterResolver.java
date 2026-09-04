@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.component;
+package io.github.nbcss.createfactorycontroller.content.component.gauge;
 
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;

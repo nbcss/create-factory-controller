@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.LogicalTubeSettingsScreen;

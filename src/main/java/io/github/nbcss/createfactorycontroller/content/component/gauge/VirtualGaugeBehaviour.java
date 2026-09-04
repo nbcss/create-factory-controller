@@ -1,4 +1,4 @@
-package io.github.nbcss.createfactorycontroller.content.component;
+package io.github.nbcss.createfactorycontroller.content.component.gauge;
 
 import com.google.common.collect.Multimap;
 import com.simibubi.create.AllBlocks;
@@ -18,6 +18,10 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
+import io.github.nbcss.createfactorycontroller.content.component.AbstractVirtualComponent;
+import io.github.nbcss.createfactorycontroller.content.component.SyncCodecs;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
 import io.github.nbcss.logisticscontrol.api.LogisticsControlApi;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
@@ -63,7 +67,7 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements DisplayDataProvider {
-    public static final VirtualComponentBehaviour.Type TYPE = new VirtualComponentBehaviour.Type(){
+    public static final Type TYPE = new Type(){
 
         @Override
         public String id() {

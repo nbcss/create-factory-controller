@@ -1,9 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
-import io.github.nbcss.createfactorycontroller.content.component.ArithmeticTubeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.LogicalTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
-import io.github.nbcss.createfactorycontroller.content.component.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
