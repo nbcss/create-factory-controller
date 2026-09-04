@@ -13,6 +13,7 @@ Changes:
 Bugfixes:
 - Fixed unable to use potion bottle to set fluid gauge filter.
 - Fixed a potential crash issue caused by serializing Production Order with large item count.
+- Fixed logical and arithmetic tubes not updating output values when restored from factory controller items or blueprints.
 
 ## 1.2.0
 

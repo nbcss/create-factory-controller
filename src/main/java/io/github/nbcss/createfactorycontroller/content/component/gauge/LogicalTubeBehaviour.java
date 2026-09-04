@@ -187,6 +187,11 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     }
 
     @Override
+    public void onAdded() {
+        recomputeNext();
+    }
+
+    @Override
     public void tick() {
         // No per-tick work: the logic runs in preTick (commit) + onInputChanged (compute).
     }
