@@ -40,11 +40,9 @@
 - [TODO] Refactor connection type priority
 - [TODO] Connection type selection tooltip
 - [TODO] Redstone Control of Arithmetic Tube
-- [TODO] Redstone Output of Arithmetic Tube
-- [TODO] Incomplete configuration output NaN to number connection
+- [TODO] Redstone Output (Compare) of Arithmetic Tube
 - [TODO] Flash animation for number connection when update
 - [TODO] Improve the wording of production order
-- [TODO] Comparator unit
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190

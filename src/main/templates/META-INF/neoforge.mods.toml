@@ -97,8 +97,8 @@ config="${mod_id}.mixins.json"
 
 [[dependencies.${mod_id}]]
     modId="createlogisticscontrol"
-    type="required"
-    reason="Provides the Filter Link and its API (the virtual gauge bridge). Bundled inside this mod via Jar-in-Jar."
+    type="optional"
+    reason="Provides the Filter Link and its API (the virtual gauge bridge). Bundled inside this mod via Jar-in-Jar; the bridge is guarded by LogisticsControlCompat.isLoaded(), so this mod still runs if it is removed."
     versionRange="[0.0,)"
     ordering="AFTER"
     side="BOTH"

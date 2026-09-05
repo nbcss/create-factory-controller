@@ -23,7 +23,7 @@ import io.github.nbcss.createfactorycontroller.content.component.SyncCodecs;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
-import io.github.nbcss.logisticscontrol.api.LogisticsControlApi;
+import io.github.nbcss.createfactorycontroller.content.compat.logisticscontrol.LogisticsControlCompat;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
@@ -1014,7 +1014,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                     .toList()),
                 batch * scaler));
 
-        LogisticsControlApi.beginDispatch(filter);
+        LogisticsControlCompat.beginDispatch(filter);
         try {
             List<Multimap<PackagerBlockEntity, PackagingRequest>> dispatch = new ArrayList<>();
             List<Map.Entry<UUID, List<BigItemStack>>> fluidNetworks = new ArrayList<>();            // CFL/CreateFluid (Create logistics)
@@ -1066,7 +1066,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             addPromise(networkId, filter, ignoreData, Math.max(1, recipeOutput) * batch * scaler);
             controller.setChanged();
         } finally {
-            LogisticsControlApi.endDispatch();
+            LogisticsControlCompat.endDispatch();
         }
     }
 
