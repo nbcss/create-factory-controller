@@ -261,7 +261,7 @@
   "createfactorycontroller.config.hide_missing_link_warning": "Ukryj ostrzeżenie o brakujących łącznikach",
   "createfactorycontroller.config.hide_missing_link_warning.tooltip": "Ukrywa wskaźniki ostrzegawcze o niezaładowanych łącznikach logistycznych w GUI kontrolera.",
   "createfactorycontroller.config.colored_connected_component_outlines": "Kontury podłączonych elementów",
-  "createfactorycontroller.config.colored_connected_component_outlines.tooltip": "Pokaż kontury na elementach podłączonych do elementu pod myszą",
+  "createfactorycontroller.config.colored_connected_component_outlines.tooltip": "Show outlines on components connected to the hovered component or connection in the Controller GUI.",
   "createfactorycontroller.config.enable_smooth_animation": "Włącz płynną animację",
   "createfactorycontroller.config.enable_smooth_animation.tooltip": "Pokaż płynne animacje przejścia (takie jak wybrane komponenty) w interfejsie kontrolera.",
   "createfactorycontroller.config.connection_tooltip_delay": "Opóźnienie podpowiedzi połączenia",
