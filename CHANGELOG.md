@@ -17,6 +17,8 @@ Bugfixes:
 - Fixed some tooltips in Recipe Settings GUI would render below JEI/EMI's items.
 - Fixed a potential crash issue caused by serializing Production Order with large item count.
 - Fixed logical and arithmetic tubes not updating output values when restored from factory controller items or blueprints.
+- Fixed Filter Link cannot set target when hold last filter link item in hand.
+- Fixed repackager cannot merge fluid & item packages requested via Stock Keeper JEI recipe.
 
 ## 1.2.0
 
