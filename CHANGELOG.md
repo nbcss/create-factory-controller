@@ -9,6 +9,8 @@ Optimization:
 Changes:
 - Arithmetic tubes now outputs NaN for invalid inputs.
 - Removed precision limit on arithmetic tubes.
+- Change connection overlapping tooltip to use number when there are too many overlapping.
+- Added source/target component highlight when hover over connection.
 
 Bugfixes:
 - Fixed unable to use potion bottle to set fluid gauge filter.

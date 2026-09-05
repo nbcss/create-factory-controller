@@ -134,9 +134,14 @@ public class ConnectionWidget {
                     .withStyle(ChatFormatting.GRAY));
         } else if (overlapCount > 1) {
             lines.add(Component.empty());
-            StringBuilder boxes = new StringBuilder();
-            for (int i = 0; i < overlapCount; i++) boxes.append(i == selectedIndex ? '■' : '□');   // ■ marks the selected wire
-            lines.add(Component.translatable("createfactorycontroller.connection.overlapping", boxes.toString())
+            StringBuilder suffix = new StringBuilder();
+            if (overlapCount <= 6) {
+                // ■ marks the selected wire
+                for (int i = 0; i < overlapCount; i++) suffix.append(i == selectedIndex ? '■' : '□');
+            } else {
+                suffix.append(selectedIndex + 1).append("/").append(overlapCount);
+            }
+            lines.add(Component.translatable("createfactorycontroller.connection.overlapping", suffix.toString())
                     .withStyle(ChatFormatting.GRAY));
             lines.add(Component.translatable("createfactorycontroller.connection.scroll_hint")
                     .withStyle(ChatFormatting.DARK_GRAY));

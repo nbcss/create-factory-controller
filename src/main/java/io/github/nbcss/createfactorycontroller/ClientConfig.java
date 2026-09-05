@@ -17,7 +17,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue ORDER_FROM_MATERIAL_LIST;
     public static final ModConfigSpec.BooleanValue COMPACT_RECIPE_COUNT_FONT;
     public static final ModConfigSpec.BooleanValue HIDE_MISSING_LINK_WARNING;
-    public static final ModConfigSpec.BooleanValue COLORED_CONNECTED_COMPONENT_OUTLINES;
+    public static final ModConfigSpec.BooleanValue RENDER_CONNECTED_COMPONENT_OUTLINES;
     public static final ModConfigSpec.BooleanValue ENABLE_SMOOTH_ANIMATION;
     public static final ModConfigSpec.IntValue CONNECTION_TOOLTIP_DELAY;
 
@@ -63,8 +63,8 @@ public final class ClientConfig {
                 .comment("Hide the missing logistics-link warning indicators in the Controller GUI.")
                 .translation("createfactorycontroller.config.hide_missing_link_warning")
                 .define("hideMissingLinkWarning", false);
-        COLORED_CONNECTED_COMPONENT_OUTLINES = builder
-                .comment("Show outlines on components connected to the hovered component in the Controller GUI.")
+        RENDER_CONNECTED_COMPONENT_OUTLINES = builder
+                .comment("Show outlines on components connected to the hovered component or connection in the Controller GUI.")
                 .translation("createfactorycontroller.config.colored_connected_component_outlines")
                 .define("coloredConnectedComponentOutlines", true);
         ENABLE_SMOOTH_ANIMATION = builder
@@ -112,8 +112,8 @@ public final class ClientConfig {
         return HIDE_MISSING_LINK_WARNING.get();
     }
 
-    public static boolean coloredConnectedComponentOutlines() {
-        return COLORED_CONNECTED_COMPONENT_OUTLINES.get();
+    public static boolean renderConnectedComponentOutlines() {
+        return RENDER_CONNECTED_COMPONENT_OUTLINES.get();
     }
 
     public static boolean enableSmoothAnimation() {

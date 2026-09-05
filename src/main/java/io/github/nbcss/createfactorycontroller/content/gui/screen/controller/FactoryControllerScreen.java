@@ -630,7 +630,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         targetAnimations.beginFrame(Util.getMillis());
         renderSelectedNetworkMask(graphics);
         // The blueprint ghost owns the cursor cell while placing; the normal hover reticle would fight it.
-        if (hoveredConn == null && pendingPlacement == null) renderHoverTarget(graphics);
+        if (hoveredConn != null) renderConnectionTargets(graphics, hoveredConn.connection);
+        else if (pendingPlacement == null) renderHoverTarget(graphics);
         renderSelectionTargets(graphics, worldMouse);
 
         profiler.push("ghost");
@@ -877,7 +878,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         } else {
             // Empty cursor
             if (hoveredWidget != null) {
-                if (dragSelection == null && ClientConfig.coloredConnectedComponentOutlines())
+                if (dragSelection == null && ClientConfig.renderConnectedComponentOutlines())
                     renderConnectionNeighbours(graphics, hoveredWidget);
                 renderTarget(graphics, hoveredPosition, TARGET_WHITE);
             }
@@ -913,6 +914,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         ConnectedTargetRole.OUTPUT, neighbour, outputConnections));
             }
         }
+    }
+
+    private void renderConnectionTargets(GuiGraphics graphics, Connection connection) {
+        if (!ClientConfig.renderConnectedComponentOutlines()) return;
+        renderTarget(graphics, connection.from, ConnectedTargetRole.INPUT.defaultColor());
+        renderTarget(graphics, connection.to, ConnectedTargetRole.OUTPUT.defaultColor());
     }
 
     /** Draws a translucent single-component preview from a cursor item — a fresh component, so no configured state
