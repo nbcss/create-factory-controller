@@ -22,7 +22,7 @@ Additionally, using a factory controller allows you to:
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
 
 - More than 1 stack of the same ingredient.
-- Up to 9 stacks of expected outputs.
+- Up to 64 stacks of expected outputs.
 - Mechanical crafting:
   - Crafting grid sizes up to 10×10. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#crafting)
   - Request ingredients in batches of up to 64. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#batch-crafting)
@@ -39,10 +39,20 @@ You can also place these in factory controllers:
 
 - Redstone Link [🕮](https://nbcss.github.io/create-factory-controller/manual/en/redstone-link.html)
 - Electron Tube: Act as logical gates for redstone signals. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/electron-tube.html)
+- Arithmetic Tube: New item, for number calculations in factory controller.
 
 This mod does **not**:
 
 - Manage an external wall of factory gauges.
+
+## Bundled Mods
+The following mods are bundled in Factory Controller mod release.
+
+Create: Higher Logistics Patch
+- Fix number of logistics related bugs in Create.
+
+Create: Logistics Control
+- Filter Link: for dynamically set filter to blocks when unpack package.
 
 ## Mod Compatibility
 
