@@ -261,7 +261,7 @@
   "createfactorycontroller.config.hide_missing_link_warning": "Masquer l'avertissement de liaison manquante",
   "createfactorycontroller.config.hide_missing_link_warning.tooltip": "Hide unloaded logistics-link warning indicators in the Controller GUI.",
   "createfactorycontroller.config.colored_connected_component_outlines": "Connected-component outlines",
-  "createfactorycontroller.config.colored_connected_component_outlines.tooltip": "Show outlines on components connected to the hovered component in the Controller GUI.",
+  "createfactorycontroller.config.colored_connected_component_outlines.tooltip": "Show outlines on components connected to the hovered component or connection in the Controller GUI.",
   "createfactorycontroller.config.enable_smooth_animation": "Enable smooth animation",
   "createfactorycontroller.config.enable_smooth_animation.tooltip": "Show smooth transition animations (such as selected target components) in the Controller GUI.",
   "createfactorycontroller.config.connection_tooltip_delay": "Connection tooltip delay",
