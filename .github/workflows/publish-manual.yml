@@ -64,7 +64,7 @@ jobs:
           annotations: &builder_annotations |
             org.opencontainers.image.description=The container image to build the manual.
             org.opencontainers.image.url=https://github.com/${{ github.repository }}/blob/main/.github/workflows/publish-manual.yml
-            org.opencontainers.image.revision=${{ steps.revision.outputs.sha }}
+            org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           labels: *builder_annotations
 
@@ -105,7 +105,7 @@ jobs:
           set -euo pipefail
           tar -C manual/build -czf build.tar.gz .
           oras push "ghcr.io/${REPOSITORY}/manual:${REF_NAME}" \
-            --annotation org.opencontainers.image.description="Manual for ${{ github.ref_type }} ${REF_NAME}" \
+            --annotation org.opencontainers.image.description="Manual for ${{ github.ref_type }} ${REF_NAME}." \
             --annotation org.opencontainers.image.url="https://github.com/${REPOSITORY}/blob/main/.github/workflows/publish-manual.yml" \
             --annotation org.opencontainers.image.revision=${{ github.sha }} \
             --annotation org.opencontainers.image.source="https://github.com/${REPOSITORY}" \
