@@ -261,7 +261,7 @@
   "createfactorycontroller.config.hide_missing_link_warning": "隐藏链接未加载警告",
   "createfactorycontroller.config.hide_missing_link_warning.tooltip": "隐藏控制台界面中未加载的仓储链接站的警告指示。",
   "createfactorycontroller.config.colored_connected_component_outlines": "相连组件选中框",
-  "createfactorycontroller.config.colored_connected_component_outlines.tooltip": "在控制台界面中显示与当前悬停的组件相连的组件的选中框。",
+  "createfactorycontroller.config.colored_connected_component_outlines.tooltip": "Show outlines on components connected to the hovered component or connection in the Controller GUI.",
   "createfactorycontroller.config.enable_smooth_animation": "启用平滑动画",
   "createfactorycontroller.config.enable_smooth_animation.tooltip": "在控制台界面中显示平滑的过渡动画（例如选定的目标组件）。",
   "createfactorycontroller.config.connection_tooltip_delay": "连接提示框显示延迟",
