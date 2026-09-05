@@ -52,6 +52,7 @@
 - [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
 - [TODO] Hover info format/position customization
 - [TODO] Component Search
+- [TODO] Add tracker UI to show managed address, gauges, promises
 - [TBC] Fix gauge sound overload?
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Color wire/bulb by limit blocked state
@@ -89,7 +90,6 @@
 - [TODO] Infinite Request
 - [TODO] Show Active Promise Timer
 - [TODO] Connected controller blocks form a group
-- [TODO] List gauge view
 - [TODO] Better Display Link integration (Stream processing?)
 - [TODO] Improve BP System: Layout preview
 - [TBC] No promise request

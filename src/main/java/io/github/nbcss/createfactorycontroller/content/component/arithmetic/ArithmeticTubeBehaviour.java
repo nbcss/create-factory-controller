@@ -242,7 +242,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     @Override
     public List<ConnectionCapability> ports() {
-        return List.of(new ConnectionCapability(NumberConnection.TYPE, ConnectionCapability.Role.BOTH));
+        return List.of(new ConnectionCapability(NumberConnection.TYPE, ConnectionCapability.Role.BOTH, 1.0));
     }
 
     @Override

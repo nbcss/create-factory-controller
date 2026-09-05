@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -33,25 +34,22 @@ public final class ConnectionResolver {
      * Resolves wiring {@code a} and {@code b}. {@code creationSink} is the component whose GUI started the
      * connection (the user's intended target) — the direction fallback when neither end is decisive (e.g. gauge →
      * gauge). Order of {@code a}/{@code b} is otherwise irrelevant.
+     *
+     * <p>The default type is the highest-scoring shared, orientable type (score = {@code source.sourceOrder ×
+     * sink.sinkOrder}, ties broken by registry order).
      */
     public static Result resolve(@Nullable VirtualComponentBehaviour a,
                                  @Nullable VirtualComponentBehaviour b,
                                  @Nullable VirtualComponentBehaviour creationSink) {
         if (a == null || b == null || a.position().equals(b.position())) return Result.fail(ConnectionResolver::aborted);
-
-        for (Connection.Type type : Connection.Type.values()) {
-            ConnectionCapability.Role ca = capabilityOf(a, type);
-            ConnectionCapability.Role cb = capabilityOf(b, type);
-            if (ca == null || cb == null) continue;             // not a shared type — try the next
-            return orientShared(type, ca, cb, a, b, creationSink, true);   // first shared type decides (short-circuit)
-        }
-        return Result.fail(() -> cannotConnect(a, b));   // no shared type
+        List<Candidate> candidates = candidates(a, b, creationSink);
+        if (candidates.isEmpty()) return Result.fail(() -> cannotConnect(a, b));   // no shared/orientable type
+        Candidate top = candidates.get(0);
+        return result(top.type(), top.source(), top.sink(), true);
     }
 
     /**
-     * Resolves wiring {@code a} and {@code b} constrained to one explicit {@code type} (the type-override UI). Considers
-     * only that type — a failure here never falls through to another type. Its orientation and validation match the
-     * server's {@link #validate}, so a picked type that {@link Result#ok()}s here will pass the server re-check.
+     * Resolves wiring {@code a} and {@code b} constrained to one explicit {@code type} (the type-override UI).
      */
     public static Result resolveAs(@Nullable VirtualComponentBehaviour a,
                                    @Nullable VirtualComponentBehaviour b,
@@ -66,37 +64,63 @@ public final class ConnectionResolver {
                                     Connection.Type type,
                                     boolean rejectExisting) {
         if (a == null || b == null || a.position().equals(b.position())) return Result.fail(ConnectionResolver::aborted);
-        ConnectionCapability.Role ca = capabilityOf(a, type);
-        ConnectionCapability.Role cb = capabilityOf(b, type);
-        if (ca == null || cb == null) return Result.fail(() -> cannotConnect(a, b));
-        return orientShared(type, ca, cb, a, b, creationSink, rejectExisting);
+        ConnectionCapability pa = portOf(a, type);
+        ConnectionCapability pb = portOf(b, type);
+        if (pa == null || pb == null) return Result.fail(() -> cannotConnect(a, b));
+        Oriented o = orient(pa.role(), pb.role(), a, b, creationSink);
+        if (o == null) return Result.fail(() -> cannotConnect(a, b));
+        return result(type, o.source(), o.sink(), rejectExisting);
     }
 
-    /** Every possible type for this pair in registry (priority) order, including types already connected. */
+    /** Every valid type for this pair in score (priority) order. */
     public static List<Connection.Type> possibleTypes(@Nullable VirtualComponentBehaviour a,
                                                       @Nullable VirtualComponentBehaviour b,
                                                       @Nullable VirtualComponentBehaviour creationSink) {
         List<Connection.Type> out = new ArrayList<>();
-        for (Connection.Type type : Connection.Type.values())
-            if (resolveAs(a, b, creationSink, type, false).ok()) out.add(type);
+        for (Candidate c : candidates(a, b, creationSink))
+            if (validate(c.type(), c.source(), c.sink(), false).isSuccess()) out.add(c.type());
         return out;
     }
 
-    /** Orients a KNOWN-shared {@code type} (both roles non-null): picks the legal direction — a decisive role wins,
-     *  else the {@code creationSink} tiebreak — and validates. Fails if neither direction's capabilities line up. */
-    private static Result orientShared(Connection.Type type,
-                                       ConnectionCapability.Role ca, ConnectionCapability.Role cb,
-                                       VirtualComponentBehaviour a, VirtualComponentBehaviour b,
-                                       @Nullable VirtualComponentBehaviour creationSink,
-                                       boolean rejectExisting) {
+    /** A shared type oriented to its one legal direction, tagged with its priority {@link #score}. */
+    private record Candidate(Connection.Type type, VirtualComponentBehaviour source,
+                             VirtualComponentBehaviour sink, double score) {}
+
+    /** The oriented endpoints of a wire: which component ends up the source, which the sink. */
+    private record Oriented(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {}
+
+    /** Every shared, orientable type for the pair, highest score first (stable → ties keep registry order). */
+    private static List<Candidate> candidates(@Nullable VirtualComponentBehaviour a,
+                                              @Nullable VirtualComponentBehaviour b,
+                                              @Nullable VirtualComponentBehaviour creationSink) {
+        List<Candidate> out = new ArrayList<>();
+        if (a == null || b == null || a.position().equals(b.position())) return out;
+        for (Connection.Type type : Connection.Type.values()) {
+            ConnectionCapability pa = portOf(a, type);
+            ConnectionCapability pb = portOf(b, type);
+            if (pa == null || pb == null) continue;                      // not a shared type
+            Oriented o = orient(pa.role(), pb.role(), a, b, creationSink);
+            if (o == null) continue;                                     // shared but no legal direction
+            ConnectionCapability srcPort = o.source() == a ? pa : pb;
+            ConnectionCapability sinkPort = o.sink() == a ? pa : pb;
+            out.add(new Candidate(type, o.source(), o.sink(), srcPort.sourceOrder() * sinkPort.sinkOrder()));
+        }
+        out.sort(Comparator.comparingDouble(Candidate::score).reversed());   // stable: equal scores keep registry order
+        return out;
+    }
+
+    /** Picks the one legal direction for a KNOWN-shared type: a decisive role wins, else the {@code creationSink}
+     *  tiebreak. Returns {@code null} if neither direction's capabilities line up (e.g. both source-only). */
+    @Nullable
+    private static Oriented orient(ConnectionCapability.Role ca, ConnectionCapability.Role cb,
+                                   VirtualComponentBehaviour a, VirtualComponentBehaviour b,
+                                   @Nullable VirtualComponentBehaviour creationSink) {
         boolean abValid = ca.canSource() && cb.canSink();   // a → b
         boolean baValid = cb.canSource() && ca.canSink();   // b → a
-        if (!abValid && !baValid) return Result.fail(() -> cannotConnect(a, b));
-        if (abValid && !baValid) return result(type, a, b, rejectExisting);
-        if (!abValid) return result(type, b, a, rejectExisting);
-        return creationSink == a
-                ? result(type, b, a, rejectExisting)
-                : result(type, a, b, rejectExisting);
+        if (!abValid && !baValid) return null;
+        if (abValid && !baValid) return new Oriented(a, b);
+        if (!abValid) return new Oriented(b, a);
+        return creationSink == a ? new Oriented(b, a) : new Oriented(a, b);
     }
 
     private static Result result(Connection.Type type, VirtualComponentBehaviour source,
@@ -117,9 +141,9 @@ public final class ConnectionResolver {
                                              boolean rejectExisting) {
         if (type == null || source == null || sink == null || source.position().equals(sink.position()))
             return ValidationResult.fail(ConnectionResolver::aborted);
-        ConnectionCapability.Role sourceCap = capabilityOf(source, type);
-        ConnectionCapability.Role sinkCap = capabilityOf(sink, type);
-        if (sourceCap == null || sinkCap == null || !sourceCap.canSource() || !sinkCap.canSink())
+        ConnectionCapability sourcePort = portOf(source, type);
+        ConnectionCapability sinkPort = portOf(sink, type);
+        if (sourcePort == null || sinkPort == null || !sourcePort.role().canSource() || !sinkPort.role().canSink())
             return ValidationResult.fail(() -> cannotConnect(source, sink));
         ValidationResult vr = source.validateAsSource(type, sink);
         if (vr.isSuccess()) vr = sink.validateAsSink(type, source);
@@ -137,11 +161,11 @@ public final class ConnectionResolver {
         return sink.incomingConnection(source.position(), type) != null;
     }
 
-    /** {@code c}'s role for {@code type}, or null if it has no such port. */
+    /** {@code c}'s port (role + order scores) for {@code type}, or null if it has no such port. */
     @Nullable
-    private static ConnectionCapability.Role capabilityOf(VirtualComponentBehaviour c, Connection.Type type) {
+    private static ConnectionCapability portOf(VirtualComponentBehaviour c, Connection.Type type) {
         for (ConnectionCapability p : c.ports())
-            if (type.equals(p.type())) return p.role();
+            if (type.equals(p.type())) return p;
         return null;
     }
 

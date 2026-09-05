@@ -169,8 +169,8 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     public java.util.List<ConnectionCapability> ports() {
         ConnectionCapability.Role role = receive ? ConnectionCapability.Role.SOURCE : ConnectionCapability.Role.SINK;
         // NUMBER is mode-decisive exactly like REDSTONE: source in RECEIVE (outputs strength), sink in SEND.
-        return java.util.List.of(new ConnectionCapability(RedstoneConnection.TYPE, role),
-                                 new ConnectionCapability(NumberConnection.TYPE, role));
+        return java.util.List.of(new ConnectionCapability(RedstoneConnection.TYPE, role, 0.5),
+                                 new ConnectionCapability(NumberConnection.TYPE, role, 0.25));
     }
 
     @Override

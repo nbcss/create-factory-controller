@@ -326,9 +326,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  types defer their direction (BOTH), so a wired link's mode dictates the redstone arrow. */
     @Override
     public List<ConnectionCapability> ports() {
-        return List.of(new ConnectionCapability(LogisticsConnection.TYPE, ConnectionCapability.Role.BOTH),
-                       new ConnectionCapability(RedstoneConnection.TYPE, ConnectionCapability.Role.BOTH),
-                       new ConnectionCapability(NumberConnection.TYPE, ConnectionCapability.Role.BOTH));
+        return List.of(new ConnectionCapability(LogisticsConnection.TYPE, ConnectionCapability.Role.BOTH, 0.5),
+                       new ConnectionCapability(RedstoneConnection.TYPE, ConnectionCapability.Role.BOTH, 0.25),
+                       new ConnectionCapability(NumberConnection.TYPE, ConnectionCapability.Role.BOTH, 0.25));
     }
 
     /** As a LOGISTICS source the gauge feeds its stock, so it must carry a filter. (REDSTONE source: no rule.) */
