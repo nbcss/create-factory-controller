@@ -1,4 +1,9 @@
 name: Publish manual
+# Publish manual on GitHub Pages
+#
+# 1. On main branch, create a container image containing the dependencies for building the manual.
+# 2. Then for any of the below branches, use the container to build the manual, upload to container registry as artifacts.
+# 3. Download artifacts for each branch, then publish under `manual` and `manual-$branch`.
 
 env:
   MANUAL_BRANCHES: main l10n_weblate
@@ -15,17 +20,19 @@ on:
 jobs:
 
   build-container:
-    if: github.ref_name == 'main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    concurrency: ${{ github.workflow }}
+    concurrency: ${{ github.workflow }} build-container
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
-          sparse-checkout: manual
+          sparse-checkout:
+            - .github
+            - manual
 
       - name: Check for container changes
         id: filter
@@ -33,6 +40,7 @@ jobs:
         with:
           filters: |
             container:
+              - .github/workflows/publish-manual.yml
               - manual/Containerfile
               - manual/Gemfile
               - manual/Gemfile.lock
@@ -54,18 +62,20 @@ jobs:
           tags: ghcr.io/${{ github.repository }}/manual-builder:latest
           push: true
           annotations: &builder_annotations |
+            org.opencontainers.image.description=The container image to build the manual.
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}/blob/main/.github/workflows/publish-manual.yml
             org.opencontainers.image.revision=${{ steps.revision.outputs.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           labels: *builder_annotations
 
   build:
     needs: build-container
-    if: always() || needs.build-container.result == 'success' || needs.build-container.result == 'skipped'
+    if: always() && (needs.build-container.result == 'success' || needs.build-container.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    concurrency: ${{ github.workflow }}-${{ github.ref }}
+    concurrency: ${{ github.workflow }} build ${{ github.ref }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -90,13 +100,16 @@ jobs:
       - name: Push manual artifact
         env:
           REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           tar -C manual/build -czf build.tar.gz .
-          oras push "ghcr.io/${REPOSITORY}/manual:${{ github.ref_name }}" \
+          oras push "ghcr.io/${REPOSITORY}/manual:${REF_NAME}" \
+            --annotation org.opencontainers.image.description="Manual for ${{ github.ref_type }} ${REF_NAME}" \
+            --annotation org.opencontainers.image.url="https://github.com/${REPOSITORY}/blob/main/.github/workflows/publish-manual.yml" \
             --annotation org.opencontainers.image.revision=${{ github.sha }} \
-            --annotation org.opencontainers.image.source=https://github.com/${REPOSITORY} \
-            --annotation org.opencontainers.image.version=${{ github.ref_name }} \
+            --annotation org.opencontainers.image.source="https://github.com/${REPOSITORY}" \
+            --annotation org.opencontainers.image.version="${REF_NAME}" \
             build.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip
 
   merge:
@@ -106,7 +119,7 @@ jobs:
       contents: read
       packages: read
       pages: write
-    concurrency: ${{ github.workflow }}
+    concurrency: ${{ github.workflow }} merge
     steps:
       - *oras_setup_step
       - *oras_login_step
@@ -116,6 +129,8 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
+          mkdir -p artifacts
+
           for branch in $MANUAL_BRANCHES; do
             if [[ "$branch" == main ]]; then
               path=manual
@@ -123,13 +138,13 @@ jobs:
               path="manual-${branch}"
             fi
 
-            if ! oras pull "ghcr.io/${REPOSITORY}/manual:${branch}" --output "$branch"; then
+            if ! oras pull "ghcr.io/${REPOSITORY}/manual:${branch}" --output "artifacts/$branch"; then
               echo "::warning title=Missing manual artifact::No manual artifact found for branch ${branch}; skipping"
               continue
             fi
 
             mkdir -p "_site/${path}"
-            tar -C "_site/${path}" -xzf "${branch}/build.tar.gz"
+            tar -C "_site/${path}" -xzf "artifacts/${branch}/build.tar.gz"
           done
 
           cp _site/manual/404.html _site/404.html
@@ -152,7 +167,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    concurrency: ${{ github.workflow }}
+    concurrency: ${{ github.workflow }} deploy
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
