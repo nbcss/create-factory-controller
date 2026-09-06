@@ -29,6 +29,14 @@ sourceSets.main.resources {
 repositories {
     mavenCentral()
     maven {
+        name = "Create: Logistics Control"
+        url = "https://maven.pkg.github.com/nbcss/create-logistics-control"
+    }
+    maven {
+        name = "Create: Higher Logistics Patch"
+        url = "https://maven.pkg.github.com/nbcss/create-higher-logistics-patch"
+    }
+    maven {
         name = "NeoForged"
         url = "https://maven.neoforged.net/releases"
     }
@@ -221,18 +229,16 @@ dependencies {
     compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
     localRuntime "com.simibubi.create:create-1.21.1:${create_version}"
 
-    // Create: Higher Logistics Patch — developed in its own repository (../create_higher_logistics_patch) and consumed
-    // as a composite build (see settings.gradle), so this published coordinate is substituted onto that checkout.
+    // Create: Higher Logistics Patch — developed in its own repository,
     // Bundled via Jar-in-Jar and on the dev runtime; CFC compiles against none of its API.
-    jarJar("io.github.nbcss.higherlogisticspatch:higherlogisticspatch:${higher_logistics_patch_version}")
-    localRuntime "io.github.nbcss.higherlogisticspatch:higherlogisticspatch:${higher_logistics_patch_version}"
+    jarJar("io.github.nbcss.higherlogisticspatch:createhigherlogisticspatch:${higher_logistics_patch_version}")
+    localRuntime "io.github.nbcss.higherlogisticspatch:createhigherlogisticspatch:${higher_logistics_patch_version}"
 
-    // Create: Logistics Control — developed in its own repository (../create_logistics_control) and consumed as a
-    // composite build (see settings.gradle), so this published coordinate is substituted onto that checkout. Bundled
-    // via Jar-in-Jar; compileOnly for the API (VirtualGaugeBehaviour's gauge bridge); on the dev runtime via localRuntime.
-    compileOnly "io.github.nbcss.logisticscontrol:logisticscontrol:${logistics_control_version}"
-    jarJar("io.github.nbcss.logisticscontrol:logisticscontrol:${logistics_control_version}")
-    localRuntime "io.github.nbcss.logisticscontrol:logisticscontrol:${logistics_control_version}"
+    // Create: Logistics Control — developed in its own repository.
+    // Bundled via Jar-in-Jar; compileOnly for the API (VirtualGaugeBehaviour's gauge bridge); on the dev runtime via localRuntime.
+    compileOnly "io.github.nbcss.logisticscontrol:createlogisticscontrol:${logistics_control_version}"
+    jarJar("io.github.nbcss.logisticscontrol:createlogisticscontrol:${logistics_control_version}")
+    localRuntime "io.github.nbcss.logisticscontrol:createlogisticscontrol:${logistics_control_version}"
 
     // Deployer (soft dependency — adds the Stock Keeper tab system + generic order dispatch the Production Orders
     // feature hooks into; every reference is guarded by DeployerCompat.isLoaded() / the mixin plugin, so the mod
@@ -382,7 +388,12 @@ publishing {
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/repo"
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/nbcss/create-factory-controller"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
 }
