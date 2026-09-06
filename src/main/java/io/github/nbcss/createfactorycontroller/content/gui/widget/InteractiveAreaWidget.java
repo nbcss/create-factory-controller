@@ -1,18 +1,21 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /** Invisible rectangular control with a deferred vanilla tooltip and optional mouse handlers. */
 public class InteractiveAreaWidget extends AbstractWidget {
@@ -62,11 +65,16 @@ public class InteractiveAreaWidget extends AbstractWidget {
 
     @Override
     protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        List<Component> lines = isHovered() ? tooltipProvider.get(mouseX, mouseY) : List.of();
+        List<Component> tooltip = isHovered() ? tooltipProvider.get(mouseX, mouseY) : List.of();
         Screen screen = Minecraft.getInstance().screen;
-        if (screen != null && lines != null && !lines.isEmpty())
-            screen.setTooltipForNextRenderPass(lines.stream().map(Component::getVisualOrderText).toList(),
-                    DefaultTooltipPositioner.INSTANCE, false);
+        if (screen != null && tooltip != null && !tooltip.isEmpty()) {
+            Font font = Minecraft.getInstance().font;
+            List<FormattedCharSequence> lines = tooltip.stream().flatMap(line -> {
+                var split = font.split(line, Integer.MAX_VALUE);
+                return split.isEmpty() ? Stream.of(FormattedCharSequence.EMPTY) : split.stream();
+            }).toList();
+            screen.setTooltipForNextRenderPass(lines, DefaultTooltipPositioner.INSTANCE, false);
+        }
     }
 
     @Override
