@@ -11,8 +11,3 @@ plugins {
 }
 
 rootProject.name = mod_id
-
-// Create: Higher Logistics Patch and Create: Logistics Control each live in their own repository and are bundled into
-// this mod via Jar-in-Jar.
-includeBuild('../create_higher_logistics_patch')
-includeBuild('../create_logistics_control')

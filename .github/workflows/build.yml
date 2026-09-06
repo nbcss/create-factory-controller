@@ -38,5 +38,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: >
+          ./gradlew build
+          --include-build ../create_higher_logistics_patch
+          --include-build ../create_logistics_control
         working-directory: create_factory_controller
