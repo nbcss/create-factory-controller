@@ -10,6 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
@@ -64,9 +65,15 @@ public class HelpButton extends GraphicButton {
         addTooltip(Component.literal(getDocUrl(docPath)).withStyle(ChatFormatting.BLUE));
     }
 
+    @Override
+    public GraphicButton addTooltip(@Nullable Component line) {
+        tooltip.wrapped(line, TOOLTIP_WIDTH);
+        return this;
+    }
+
     public void renderTooltip(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         if (isMouseOver(mouseX, mouseY))
-            graphics.renderTooltip(font, getTooltipText(font, TOOLTIP_WIDTH), mouseX, mouseY);
+            graphics.renderTooltip(font, getTooltipText(), mouseX, mouseY);
     }
 
     private static final String DOC_URL_BASE = "https://nbcss.github.io/create-factory-controller/manual/";

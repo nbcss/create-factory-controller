@@ -5,18 +5,20 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTu
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.LogicalTubeSettingsScreen;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -60,24 +62,29 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
     }
 
     @Override
-    public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.component.logical_tube").withColor(behaviour.getColor()));
-        lines.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
-                Component.translatable("createfactorycontroller.component.logical_tube.mode." + behaviour.getMode().name().toLowerCase())
-                        .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
-        lines.add(selected
-                ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
-                : Component.translatable("createfactorycontroller.gui.action_configure").withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component").withStyle(ChatFormatting.DARK_GRAY));
-        return lines;
+    public List<FormattedCharSequence> getTooltip(FactoryControllerMenu menu, boolean selected) {
+        return TooltipBuilder.of(Minecraft.getInstance().font)
+                .line(Component.translatable("createfactorycontroller.component.logical_tube")
+                        .withColor(behaviour.getColor()))
+                .line(Component.translatable("createfactorycontroller.gui.mode_prefix",
+                        Component.translatable("createfactorycontroller.component.logical_tube.mode."
+                                        + behaviour.getMode().name().toLowerCase())
+                                .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY))
+                .line(selected
+                        ? Component.translatable("createfactorycontroller.gui.drag_to_relocate")
+                                .withStyle(ChatFormatting.GRAY)
+                        : Component.translatable("createfactorycontroller.gui.action_configure")
+                                .withStyle(ChatFormatting.GRAY))
+                .line(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                        .withStyle(ChatFormatting.DARK_GRAY))
+                .build();
     }
 
     @Override
     public boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button) {
         if (!carried.isEmpty()) return false;   // no item interaction
         screen.clearSelection();
-        net.minecraft.client.Minecraft.getInstance().setScreen(new LogicalTubeSettingsScreen(screen, behaviour.position()));
+        Minecraft.getInstance().setScreen(new LogicalTubeSettingsScreen(screen, behaviour.position()));
         return true;
     }
 

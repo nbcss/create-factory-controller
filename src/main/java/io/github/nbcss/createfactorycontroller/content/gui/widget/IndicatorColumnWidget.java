@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -45,7 +46,7 @@ public class IndicatorColumnWidget extends AbstractWidget {
         visible = !indicators.isEmpty();
     }
 
-    public List<Component> getTooltipLines(double mouseX, double mouseY) {
+    public List<FormattedCharSequence> getTooltipLines(double mouseX, double mouseY) {
         ControllerIndicator indicator = indicatorAt(mouseX, mouseY);
         return indicator == null ? List.of() : indicator.tooltip();
     }

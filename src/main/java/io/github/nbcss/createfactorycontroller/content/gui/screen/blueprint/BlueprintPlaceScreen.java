@@ -17,6 +17,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
@@ -24,7 +26,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -167,18 +168,18 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
     }
 
     @Override
-    protected List<Component> networkTooltip(int slot) {
+    protected List<FormattedCharSequence> networkTooltip(int slot) {
         List<UUID> options = options();
         UUID current = placement.assignment(slot);
         int state = current == null ? 0 : options.indexOf(current) + 1;
 
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.network_slot", slot + 1)
-                .withColor(ScrollInput.HEADER_RGB.getRGB()));
+        TooltipBuilder lines = TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_slot", slot + 1)
+                        .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
         for (int i : ScrollListWindow.rows(options.size() + 1, state)) {
             if (i == ScrollListWindow.MARKER) {
-                lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+                lines.line(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
                 continue;
             }
             boolean selected = i == state;
@@ -187,15 +188,15 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
                     : menu.networkName(options.get(i - 1));
             ChatFormatting color = i > 0 && isNewNetwork(options.get(i - 1)) ? ChatFormatting.GREEN
                     : selected ? ChatFormatting.WHITE : ChatFormatting.GRAY;
-            lines.add(Component.literal(selected ? "-> " : "> ").append(name).withStyle(color));
+            lines.line(Component.literal(selected ? "-> " : "> ").append(name).withStyle(color));
         }
 
         if (options.isEmpty())
-            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_no_network_tip")
+            lines.line(Component.translatable("createfactorycontroller.gui.network_selector_no_network_tip")
                     .withStyle(ChatFormatting.RED));
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.network_scroll_tip")
-                .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
-        return lines;
+        return lines.line(Component.translatable("createfactorycontroller.gui.blueprint.network_scroll_tip")
+                        .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC))
+                .build();
     }
 
     // ── Confirm ───────────────────────────────────────────────────────────────

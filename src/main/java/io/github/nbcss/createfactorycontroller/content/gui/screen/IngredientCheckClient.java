@@ -9,11 +9,13 @@ import io.github.nbcss.createfactorycontroller.content.packet.RequestIngredientC
 import io.github.nbcss.createfactorycontroller.content.production.IngredientDemandResolver.PatternDemand;
 import io.github.nbcss.createfactorycontroller.content.production.IngredientDemandResolver.Reserved;
 import io.github.nbcss.createfactorycontroller.content.production.IngredientDemandResolver.Shortfall;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
@@ -80,27 +82,26 @@ public final class IngredientCheckClient {
             PacketDistributor.sendToServer(new RequestIngredientCheckPacket(keeperPos, patterns, reserved));
         }
 
-        gfx.renderComponentTooltip(Minecraft.getInstance().font, buildTooltip(), mouseX, mouseY);
+        gfx.renderTooltip(Minecraft.getInstance().font, buildTooltip(), mouseX, mouseY);
     }
 
-    private static List<Component> buildTooltip() {
-        List<Component> lines = new ArrayList<>();
+    private static List<FormattedCharSequence> buildTooltip() {
+        TooltipBuilder tooltip = TooltipBuilder.of(Minecraft.getInstance().font);
         if (patternMissing) {
-            lines.add(Component.translatable("createfactorycontroller.gui.ingredients_pattern_missing")
-                .withStyle(ChatFormatting.RED));
-            return lines;
+            return tooltip.line(Component.translatable("createfactorycontroller.gui.ingredients_pattern_missing")
+                    .withStyle(ChatFormatting.RED)).build();
         }
         if (shortfalls.isEmpty()) {
-            lines.add(Component.translatable("createfactorycontroller.gui.ingredients_sufficient")
-                .withStyle(ChatFormatting.GREEN));
-            return lines;
+            return tooltip.line(Component.translatable("createfactorycontroller.gui.ingredients_sufficient")
+                    .withStyle(ChatFormatting.GREEN)).build();
         }
-        lines.add(Component.translatable("createfactorycontroller.gui.ingredients_warning")
-            .withStyle(ChatFormatting.GOLD));
+        tooltip.line(Component.translatable("createfactorycontroller.gui.ingredients_warning")
+                .withStyle(ChatFormatting.GOLD));
         for (Shortfall s : shortfalls)
-            lines.add(Component.empty()
-                .append(s.item().getHoverName().copy().withColor(0xFBDC7D))
-                .append(Component.literal(": " + s.inStock() + "/" + s.required()).withStyle(ChatFormatting.GRAY)));
-        return lines;
+            tooltip.line(Component.empty()
+                    .append(s.item().getHoverName().copy().withColor(0xFBDC7D))
+                    .append(Component.literal(": " + s.inStock() + "/" + s.required())
+                            .withStyle(ChatFormatting.GRAY)));
+        return tooltip.build();
     }
 }

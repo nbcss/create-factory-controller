@@ -9,6 +9,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstone
 import io.github.nbcss.createfactorycontroller.content.component.connection.RedstoneConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedstoneLinkScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
@@ -19,13 +20,13 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -115,20 +116,20 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
     }
 
     @Override
-    public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(behaviour.getColor()).component());
+    public List<FormattedCharSequence> getTooltip(FactoryControllerMenu menu, boolean selected) {
+        TooltipBuilder tooltip = TooltipBuilder.of(Minecraft.getInstance().font)
+                .line(CreateLang.itemName(AllBlocks.REDSTONE_LINK.asStack()).color(behaviour.getColor()).component());
         String modeKey = behaviour.receive
             ? "createfactorycontroller.gui.redstone_link.mode.receive"
             : "createfactorycontroller.gui.redstone_link.mode.send";
-        lines.add(Component.translatable("createfactorycontroller.gui.mode_prefix",
+        tooltip.line(Component.translatable("createfactorycontroller.gui.mode_prefix",
                 Component.translatable(modeKey).withStyle(ChatFormatting.WHITE))
             .withStyle(ChatFormatting.GRAY));
-        lines.add(selected
+        tooltip.line(selected
             ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
             : Component.translatable("createfactorycontroller.gui.action_configure").withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component").withStyle(ChatFormatting.DARK_GRAY));
-        return lines;
+        return tooltip.line(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                .withStyle(ChatFormatting.DARK_GRAY)).build();
     }
 
     @Override

@@ -11,6 +11,7 @@ import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMe
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.packet.SetNetworkSettingsPacket;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -134,10 +135,12 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
 
         iconArea = addRenderableWidget(new InteractiveAreaWidget(
                 panelX + ICON_X, panelY + ICON_Y, ICON_SIZE, ICON_SIZE,
-                () -> icon.isEmpty()
-                        ? List.of(Component.translatable(
-                                "createfactorycontroller.gui.network_settings.icon_tip").withStyle(ChatFormatting.GRAY))
-                        : Screen.getTooltipFromItem(Minecraft.getInstance(), icon))
+                () -> TooltipBuilder.of(font)
+                        .lines(icon.isEmpty()
+                                ? List.of(Component.translatable(
+                                        "createfactorycontroller.gui.network_settings.icon_tip").withStyle(ChatFormatting.GRAY))
+                                : Screen.getTooltipFromItem(Minecraft.getInstance(), icon))
+                        .build())
                 .onClick(button -> {
                     setIconFromCarried(menu.getCarried(), true);
                     playClickSound();
@@ -145,11 +148,10 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
                 }));
         addRenderableWidget(new InteractiveAreaWidget(
                 panelX + NAME_X, panelY + NAME_Y, NAME_W, NAME_H,
-                () -> nameBox.isFocused()
-                        ? List.of()
-                        : List.of(Component.translatable(
-                                "createfactorycontroller.gui.network_settings.name_tip")
-                                .withStyle(ChatFormatting.GRAY)))
+                () -> nameBox.isFocused() ? List.of() : TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.network_settings.name_tip")
+                                .withStyle(ChatFormatting.GRAY))
+                        .build())
                 .onClick((mouseX, mouseY, button) -> {
                     if (button == 1) {
                         nameBox.setValue("");

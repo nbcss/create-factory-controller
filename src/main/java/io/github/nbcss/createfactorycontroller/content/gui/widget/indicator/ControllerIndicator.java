@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget.indicator;
 
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 
 import java.util.List;
 
@@ -12,5 +12,5 @@ public interface ControllerIndicator {
 
     ResourceLocation icon();
 
-    List<Component> tooltip();
+    List<FormattedCharSequence> tooltip();
 }

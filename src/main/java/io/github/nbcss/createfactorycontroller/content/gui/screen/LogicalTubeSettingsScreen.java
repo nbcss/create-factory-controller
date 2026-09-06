@@ -20,6 +20,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureLogicalTubePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
@@ -32,6 +33,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -138,34 +140,35 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                     if (hovered != null) {
                         VirtualComponentBehaviour partner = menu.componentAt(
                                 hovered.output() ? hovered.connection().to : hovered.connection().from);
-                        List<Component> tip = new ArrayList<>();
+                        TooltipBuilder tip = TooltipBuilder.of(font);
                         if (partner != null) {
-                            tip.add(partner.getName().copy().withColor(partner.getColor()));
-                            tip.addAll(partner.infoTooltip());
+                            tip.line(partner.getName().copy().withColor(partner.getColor()));
+                            tip.lines(partner.infoTooltip());
                         }
                         if (hovered.connection().canReverse(menu))
-                            tip.add(Component.translatable("createfactorycontroller.gui.logical_tube.reverse")
+                            tip.line(Component.translatable("createfactorycontroller.gui.logical_tube.reverse")
                                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                        tip.add(Component.translatable("createfactorycontroller.gui.action_disconnect")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                        return tip;
+                        return tip.line(Component.translatable("createfactorycontroller.gui.action_disconnect")
+                                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                                .build();
                     }
                     if (!tubeCellHovered(mouseX, mouseY)) return List.of();
                     int nIn = inputs().size();
                     int nOut = outputs().size();
-                    return List.of(
-                            Component.translatable("createfactorycontroller.gui.mode_prefix",
+                    return TooltipBuilder.of(font)
+                            .line(Component.translatable("createfactorycontroller.gui.mode_prefix",
                                     Component.translatable("createfactorycontroller.component.logical_tube.mode."
                                                     + currentMode().name().toLowerCase())
-                                            .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.logical_tube.input_connections",
+                                            .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY))
+                            .line(Component.translatable("createfactorycontroller.gui.logical_tube.input_connections",
                                     Component.literal(String.valueOf(nIn)).withStyle(
                                             nIn > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
-                                    .withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.logical_tube.output_connections",
+                                    .withStyle(ChatFormatting.GRAY))
+                            .line(Component.translatable("createfactorycontroller.gui.logical_tube.output_connections",
                                     Component.literal(String.valueOf(nOut)).withStyle(
                                             nOut > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
-                                    .withStyle(ChatFormatting.GRAY));
+                                    .withStyle(ChatFormatting.GRAY))
+                            .build();
                 }).onClick((mouseX, mouseY, button) -> {
                     ConnectionSlot hovered = connectionSlotAt(mouseX, mouseY);
                     if (hovered == null) return false;
@@ -198,16 +201,16 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         modeButtons.forEach((m, b) -> b.green = m == current);
     }
 
-    private List<Component> modeButtonTooltip(LogicalTubeBehaviour.Mode m) {
+    private List<FormattedCharSequence> modeButtonTooltip(LogicalTubeBehaviour.Mode m) {
         boolean shift = hasShiftDown();
-        List<Component> tip = new ArrayList<>();
-        tip.add(Component.translatable("createfactorycontroller.component.logical_tube.mode." + m.name().toLowerCase())
-                .withStyle(ChatFormatting.WHITE));
-        tip.add(TooltipHelper.holdShift(FontHelper.Palette.YELLOW, shift));
-        if (shift) tip.addAll(TooltipHelper.cutTextComponent(
+        TooltipBuilder tip = TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.component.logical_tube.mode." + m.name().toLowerCase())
+                        .withStyle(ChatFormatting.WHITE))
+                .line(TooltipHelper.holdShift(FontHelper.Palette.YELLOW, shift));
+        if (shift) tip.lines(TooltipHelper.cutTextComponent(
                 Component.translatable("createfactorycontroller.component.logical_tube.mode." + m.name().toLowerCase() + ".desc"),
                 FontHelper.Palette.ALL_GRAY));
-        return tip;
+        return tip.build();
     }
 
     // ── Layout ────────────────────────

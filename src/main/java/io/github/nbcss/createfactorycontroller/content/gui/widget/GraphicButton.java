@@ -1,8 +1,8 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -17,7 +17,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 /**
  * A button with custom graphics: Each graphic layer a sprite or a solid color, drawn on normal state or hover.
@@ -38,34 +37,21 @@ public class GraphicButton extends AbstractWidget {
 
     private final ArrayList<GraphicLayer> graphicLayers = new ArrayList<>();
     private final Supplier<Boolean> onClick;
-    @Nullable private List<Component> tooltip;
+    protected final TooltipBuilder tooltip;
 
     public GraphicButton(int x, int y, int width, int height, Supplier<Boolean> onClick) {
         super(x, y, width, height, Component.empty());
         this.onClick = onClick;
+        tooltip = TooltipBuilder.of(Minecraft.getInstance().font);
     }
 
     public GraphicButton addTooltip(@Nullable Component tooltip) {
-        if (tooltip != null) {
-            if (this.tooltip == null) {
-                this.tooltip = new ArrayList<>();
-            }
-            this.tooltip.add(tooltip);
-        }
+        this.tooltip.line(tooltip);
         return this;
     }
 
     public List<FormattedCharSequence> getTooltipText() {
-        if (tooltip == null) return List.of();
-        return tooltip.stream().map(Component::getVisualOrderText).toList();
-    }
-
-    public List<FormattedCharSequence> getTooltipText(Font font, int maxWidth) {
-        if (tooltip == null) return List.of();
-        return tooltip.stream().flatMap(line -> {
-            var lines = font.split(line, maxWidth);
-            return lines.isEmpty() ? Stream.of(FormattedCharSequence.EMPTY) : lines.stream();
-        }).toList();
+        return tooltip.build();
     }
 
     public GraphicButton addGraphic(int displayedState, ResourceLocation resource, int color, int x, int y, int w, int h) {

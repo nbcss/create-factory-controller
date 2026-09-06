@@ -6,7 +6,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
@@ -92,7 +92,7 @@ abstract class GaugeWorkModeEditor {
 
     /** Supplies the ingredient tooltip under the cursor. May set
      *  {@link ConfigureRecipeScreen#patternHovered}. */
-    abstract List<Component> inputTooltip(int mouseX, int mouseY);
+    abstract List<FormattedCharSequence> inputTooltip(int mouseX, int mouseY);
 
     /** The produced-count number shown on the output slot. Default: the free (non-recipe-locked) count. */
     int producedCount() { return s.outputCount; }

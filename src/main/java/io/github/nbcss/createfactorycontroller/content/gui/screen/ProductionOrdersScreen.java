@@ -27,6 +27,7 @@ import io.github.nbcss.createfactorycontroller.content.production.ProductionOrde
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
 import net.createmod.catnip.animation.AnimationTickHolder;
@@ -46,6 +47,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -410,18 +412,19 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         if (mouseY >= viewTop() && mouseY < viewBottom())
             for (SlotTip tip : slotTips)
                 if (tip.contains(mouseX, mouseY)) {
-                    gfx.renderComponentTooltip(font, slotTooltip(tip.req()), mouseX, mouseY);
+                    gfx.renderTooltip(font, slotTooltip(tip.req()), mouseX, mouseY);
                     return;
                 }
         helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     /** Per-task tooltip */
-    private List<Component> slotTooltip(ProductionOrderView.RequestView r) {
-        List<Component> lines = new ArrayList<>();
+    private List<FormattedCharSequence> slotTooltip(ProductionOrderView.RequestView r) {
+        TooltipBuilder tooltip = TooltipBuilder.of(font);
         // A fluid task: name from the fluid (not its filter-wrapper) and amounts in buckets (B) with a "B" suffix.
         boolean fluid = FluidCompat.isFluidFilter(r.display());
-        lines.add((fluid ? FluidCompat.filterName(r.display()) : r.display().getHoverName()).copy().withColor(0xFBDC7D));
+        tooltip.line((fluid ? FluidCompat.filterName(r.display()) : r.display().getHoverName())
+                .copy().withColor(0xFBDC7D));
 
         Task.State state = r.stateEnum();
         boolean active = state.isActive();
@@ -430,13 +433,13 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
         String value = active
             ? (fluid ? r.inStock() / 1000 : r.inStock()) + "/" + amount   // progress: current network stock → request
             : amount;
-        lines.add(Component.translatable("createfactorycontroller.gui.production_tooltip_request")
+        tooltip.line(Component.translatable("createfactorycontroller.gui.production_tooltip_request")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal(value).withStyle(ChatFormatting.WHITE)));
 
-        lines.add(Component.translatable("createfactorycontroller.gui.production_tooltip_status")
+        tooltip.line(Component.translatable("createfactorycontroller.gui.production_tooltip_status")
             .withStyle(ChatFormatting.GRAY).append(state.getComponent()));
-        return lines;
+        return tooltip.build();
     }
 
     @Override

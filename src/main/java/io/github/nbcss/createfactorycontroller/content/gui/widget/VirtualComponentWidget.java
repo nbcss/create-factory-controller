@@ -6,7 +6,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -78,7 +78,7 @@ public interface VirtualComponentWidget {
     default void renderOverlay(RenderingParameters params) {}
 
     /** Hover tooltip. When {@code selected}, the "Click to configure" hint is replaced with "Drag to relocate". */
-    List<Component> getTooltip(FactoryControllerMenu menu, boolean selected);
+    List<FormattedCharSequence> getTooltip(FactoryControllerMenu menu, boolean selected);
 
     /** Handles a left/right click on this component with the given cursor stack (the type-specific interaction:
      *  configure, set filter, open config, …). Returns true if consumed. */

@@ -9,11 +9,14 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlo
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -111,7 +114,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     }
 
     @Override
-    List<Component> inputTooltip(int mouseX, int mouseY) {
+    List<FormattedCharSequence> inputTooltip(int mouseX, int mouseY) {
         int slot = slotAt(mouseX, mouseY);
         if (dragFrom < 0 && slot >= 0 && slot < s.customSlots.size()) {
             RecipeSlot recipeSlot = s.customSlots.get(slot);
@@ -121,33 +124,35 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
                         ? ThresholdUnit.formatFluidAmount(recipeSlot.count()) : String.valueOf(recipeSlot.count());
                 boolean srcIgnore = s.getMenu().componentAt(recipeSlot.source())
                         instanceof VirtualGaugeBehaviour src && src.ignoreData;
-                List<Component> lines = new java.util.ArrayList<>(List.of(
-                        CreateLang.translate("gui.factory_panel.sending_item",
+                TooltipBuilder lines = TooltipBuilder.of(Minecraft.getInstance().font)
+                        .line(CreateLang.translate("gui.factory_panel.sending_item",
                                         FluidCompat.filterName(stack).getString() + " x" + amount)
-                                .color(ScrollInput.HEADER_RGB).component(),
-                        Component.translatable("createfactorycontroller.gui.custom_slot_tip", String.valueOf(slot + 1))
-                                .withStyle(ChatFormatting.GRAY)));
+                                .color(ScrollInput.HEADER_RGB).component());
+                if (srcIgnore)
+                    lines.line(CreateLang.translate("gui.filter.ignore_data").style(ChatFormatting.GOLD).component());
+                lines.line(Component.translatable("createfactorycontroller.gui.custom_slot_tip", String.valueOf(slot + 1))
+                                .withStyle(ChatFormatting.GRAY));
                 if (s.multiplierExcluded(recipeSlot.source()))
-                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.excluded")
+                    lines.line(Component.translatable("createfactorycontroller.gui.request_multiplier.excluded")
                             .withColor(0xFFDD70));
-                lines.addAll(List.of(
-                        Component.translatable("createfactorycontroller.gui.custom_slot_move")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
-                        Component.translatable("createfactorycontroller.gui.custom_slot_copy")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC),
-                        CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component(),
-                        Component.translatable("createfactorycontroller.gui.action_remove_component")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
-                return ConfigureRecipeScreen.withIgnoreDataLine(lines, srcIgnore);
+                return lines.line(Component.translatable("createfactorycontroller.gui.custom_slot_move")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                        .line(Component.translatable("createfactorycontroller.gui.custom_slot_copy")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                        .line(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                        .line(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                        .build();
             }
         }
 
         if (s.customSlots.stream().allMatch(RecipeSlot::isEmpty))
-            return List.of(
-                CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component(),
-                CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component(),
-                CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component());
+            return TooltipBuilder.of(Minecraft.getInstance().font)
+                    .line(CreateLang.translate("gui.factory_panel.unconfigured_input").color(ScrollInput.HEADER_RGB).component())
+                    .line(CreateLang.translate("gui.factory_panel.unconfigured_input_tip").style(ChatFormatting.GRAY).component())
+                    .line(CreateLang.translate("gui.factory_panel.unconfigured_input_tip_1").style(ChatFormatting.GRAY).component())
+                    .build();
         return List.of();
     }
 

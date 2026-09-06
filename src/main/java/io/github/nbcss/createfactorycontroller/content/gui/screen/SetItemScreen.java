@@ -16,6 +16,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.Fac
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -27,6 +28,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -35,7 +37,6 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -148,10 +149,12 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                 filterX(), filterY(), FILTER_SLOT_SIZE, FILTER_SLOT_SIZE,
                 () -> filter.isEmpty()
                         ? filterEmptyTooltip()
-                        : FluidCompat.isFluidFilter(filter)
-                                ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(filter),
-                                        minecraft.options.advancedItemTooltips)
-                                : getTooltipFromItem(Minecraft.getInstance(), filter))
+                        : TooltipBuilder.of(font)
+                                .lines(FluidCompat.isFluidFilter(filter)
+                                        ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(filter),
+                                                minecraft.options.advancedItemTooltips)
+                                        : getTooltipFromItem(Minecraft.getInstance(), filter))
+                                .build())
                 .onClick(button -> {
                     setFilterFromCarried(menu.getCarried(), button, true);
                     updateIgnoreDataButtons();
@@ -172,13 +175,13 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         ignoreDataButton.green = !noIgnoreData && ignoreData;
     }
 
-    private List<Component> dataButtonTooltip(Component name, Component desc) {
+    private List<FormattedCharSequence> dataButtonTooltip(Component name, Component desc) {
         boolean shift = hasShiftDown();
-        List<Component> tip = new ArrayList<>();
-        tip.add(name);
-        tip.add(TooltipHelper.holdShift(FontHelper.Palette.YELLOW, shift));
-        if (shift) tip.addAll(TooltipHelper.cutTextComponent(desc, FontHelper.Palette.ALL_GRAY));
-        return tip;
+        TooltipBuilder tip = TooltipBuilder.of(font)
+                .line(name)
+                .line(TooltipHelper.holdShift(FontHelper.Palette.YELLOW, shift));
+        if (shift) tip.lines(TooltipHelper.cutTextComponent(desc, FontHelper.Palette.ALL_GRAY));
+        return tip.build();
     }
 
     @Override
@@ -309,23 +312,24 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     /** Empty-filter-slot hint */
-    private List<Component> filterEmptyTooltip() {
+    private List<FormattedCharSequence> filterEmptyTooltip() {
+        TooltipBuilder tooltip = TooltipBuilder.of(font);
         boolean fluidCandidate = behaviour.filterResolver().acceptsItemDrop()
                 && behaviour.filterResolver().acceptsFluidDrop()
                 && !FluidCompat.fluidInContainer(menu.getCarried()).isEmpty();
         if (fluidCandidate) {
-            return List.of(
-                    Component.translatable("createfactorycontroller.gui.set_item.filter_tip_item")
-                            .withStyle(net.minecraft.ChatFormatting.GRAY),
-                    Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid")
-                            .withStyle(net.minecraft.ChatFormatting.GRAY));
+            return tooltip.line(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_item")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY))
+                    .line(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY))
+                    .build();
         }
         // A fluid-only gauge (dedicated fluid factory gauge) takes a fluid, never an item.
         if (behaviour.filterResolver().acceptsFluidDrop() && !behaviour.filterResolver().acceptsItemDrop())
-            return List.of(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid_only")
-                    .withStyle(net.minecraft.ChatFormatting.GRAY));
-        return List.of(Component.translatable("createfactorycontroller.gui.set_item.filter_tip")
-                .withStyle(net.minecraft.ChatFormatting.GRAY));
+            return tooltip.line(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid_only")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY)).build();
+        return tooltip.line(Component.translatable("createfactorycontroller.gui.set_item.filter_tip")
+                .withStyle(net.minecraft.ChatFormatting.GRAY)).build();
     }
 
     public List<Rect2i> extraGuiAreas() {

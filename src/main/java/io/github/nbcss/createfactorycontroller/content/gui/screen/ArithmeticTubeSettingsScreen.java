@@ -15,6 +15,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAre
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureArithmeticInputPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureArithmeticTubePacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
@@ -32,6 +33,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -546,7 +548,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     }
 
     @Nullable
-    private List<Component> contentTooltip(@Nullable ContentTarget target) {
+    private List<FormattedCharSequence> contentTooltip(@Nullable ContentTarget target) {
         if (target == null) return null;
         return switch (target.kind()) {
             case OPERATOR -> tr("tooltip.operator", ChatFormatting.WHITE);
@@ -554,7 +556,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             case REMOVE -> tr("tooltip.remove", ChatFormatting.WHITE);
             case CONSTANT_FIELD -> target.row() instanceof Row.Input input && !constantEditor.isEditing(input)
                     ? tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC) : null;
-            case ADD_CONNECTION -> List.of(CreateLang.translate("gui.factory_panel.connect_input").component());
+            case ADD_CONNECTION -> TooltipBuilder.of(font)
+                    .line(CreateLang.translate("gui.factory_panel.connect_input").component()).build();
             case ADD_CONSTANT -> tr("tooltip.add_constant", ChatFormatting.WHITE);
             case RESULT -> tr("tooltip.result", ChatFormatting.YELLOW);
             default -> null;
@@ -563,7 +566,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     /** Tooltip for an operand icon slot. */
     @Nullable
-    private List<Component> slotTooltip(Row row) {
+    private List<FormattedCharSequence> slotTooltip(Row row) {
         if (row instanceof Row.Add)
             return tr("tooltip.new_input", row.primary() ? ChatFormatting.BLUE : ChatFormatting.RED);
         if (!(row instanceof Row.Input input))
@@ -573,26 +576,24 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         if (input.input() instanceof ArithmeticTubeBehaviour.ConnectionInput(VirtualComponentPosition source)) {
             var comp = menu.componentAt(source);
             if (comp != null) {
-                List<Component> tip = new ArrayList<>();
-                tip.add(Component.translatable("createfactorycontroller.arithmetic_tube.tooltip.connection")
-                        .withStyle(ChatFormatting.WHITE));
-                tip.add(comp.getName().copy().withColor(comp.getColor()));
-                tip.addAll(comp.infoTooltip());
-                return tip;
+                return TooltipBuilder.of(font)
+                        .line(comp.getName().copy().withColor(comp.getColor()))
+                        .lines(comp.infoTooltip())
+                        .build();
             }
         }
         return null;
     }
 
-    private static List<Component> tr(String key, ChatFormatting... styles) {
-        List<Component> tooltip = new ArrayList<>();
-        tooltip.add(Component.translatable("createfactorycontroller.arithmetic_tube." + key).withStyle(styles));
-        return tooltip;
+    private List<FormattedCharSequence> tr(String key, ChatFormatting... styles) {
+        return TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.arithmetic_tube." + key).withStyle(styles))
+                .build();
     }
 
-    private List<Component> operatorTooltip(ArithmeticOperator op) {
-        List<Component> tip = new ArrayList<>();
-        tip.add(op.displayName().copy().withStyle(ChatFormatting.WHITE));
+    private List<FormattedCharSequence> operatorTooltip(ArithmeticOperator op) {
+        TooltipBuilder tip = TooltipBuilder.of(font)
+                .line(op.displayName().copy().withStyle(ChatFormatting.WHITE));
         var inputs = Component.translatable(
                 "createfactorycontroller.arithmetic_tube.operator_inputs." + op.arity().name().toLowerCase())
                 .withStyle(ChatFormatting.GRAY);
@@ -601,12 +602,12 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             inputs.append(Component.literal("■").withStyle(ChatFormatting.RED));
         else if (op.arity() == ArithmeticOperator.Arity.N_ARY)
             inputs.append(Component.literal("■■").withStyle(ChatFormatting.BLUE));
-        tip.add(inputs);
+        tip.line(inputs);
         ArithmeticTubeBehaviour tube = tube();
         if (tube != null && !tube.canSwitchTo(op))
-            tip.add(Component.translatable("createfactorycontroller.arithmetic_tube.operator_locked")
+            tip.line(Component.translatable("createfactorycontroller.arithmetic_tube.operator_locked")
                     .withStyle(ChatFormatting.DARK_GRAY));
-        return tip;
+        return tip.build();
     }
 
     // ── Interaction ───────────────────────────────────────────────────────────────
@@ -633,7 +634,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         ArithmeticViewportWidget() {
             super(0, 0, 0, 0, (mouseX, mouseY) -> {
                 if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return List.of();
-                List<Component> tooltip = contentTooltip(contentTargetAt(mouseX, mouseY));
+                List<FormattedCharSequence> tooltip = contentTooltip(contentTargetAt(mouseX, mouseY));
                 return tooltip == null ? List.of() : tooltip;
             });
             onClick(this::contentClicked);

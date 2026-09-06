@@ -45,6 +45,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelecto
 import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleConnectionArrowModePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
@@ -80,6 +81,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -320,7 +322,17 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (helpButton != null) removeWidget(helpButton);
         helpButton = new HelpButton(leftPos + imageWidth - HelpButton.WIDTH - 5, topPos + 3,
                 HelpButton.ColorPalette.BRASS, "dashboard.html");
-        buildHelpTooltip().forEach(helpButton::addTooltip);
+        helpButton.addTooltip(Component.empty());
+        helpButton.addTooltip(Component.translatable("createfactorycontroller.gui.help.allowed_components")
+                .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x528FDE))));
+        for (VirtualComponentBehaviour.Type type : ComponentRegistry.types()) {
+            if (type.items().isEmpty()) continue;
+            for (ResourceLocation itemLocation : type.items()) {
+                ItemStack item = new ItemStack(BuiltInRegistries.ITEM.get(itemLocation));
+                helpButton.addTooltip(Component.literal("- ").withStyle(ChatFormatting.GRAY)
+                        .append(item.getHoverName().copy().withColor(type.color())));
+            }
+        }
         addWidget(helpButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
@@ -339,22 +351,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         lastPanFrameMs = 0;
         heldPanKeys.clear();
-    }
-
-    private List<Component> buildHelpTooltip() {
-        List<Component> tooltip = new ArrayList<>();
-        tooltip.add(Component.empty());
-        tooltip.add(Component.translatable("createfactorycontroller.gui.help.allowed_components")
-                .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x528FDE))));
-        for (VirtualComponentBehaviour.Type type : ComponentRegistry.types()) {
-            if (type.items().isEmpty()) continue;
-            for (ResourceLocation itemLocation : type.items()) {
-                ItemStack item = new ItemStack(BuiltInRegistries.ITEM.get(itemLocation));
-                tooltip.add(Component.literal("- ").withStyle(ChatFormatting.GRAY)
-                        .append(item.getHoverName().copy().withColor(type.color())));
-            }
-        }
-        return tooltip;
     }
 
     /** Sends the edited controller name to the server (if changed) and leaves edit mode. */
@@ -451,19 +447,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (hoveredConn != null) {
                 // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
                 if (Util.getMillis() >= connTooltipShowAtMs)
-                    graphics.renderComponentTooltip(font, connectionTooltipLines(), mouseX, mouseY);
+                    graphics.renderTooltip(font, connectionTooltipLines(), mouseX, mouseY);
             } else if (hovered != null)
-                graphics.renderComponentTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
+                graphics.renderTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
             else if (networkSelector.isMouseOver(mouseX, mouseY))
-                graphics.renderComponentTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
+                graphics.renderTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
             else if (indicatorColumn.isMouseOver(mouseX, mouseY))
-                graphics.renderComponentTooltip(font, indicatorColumn.getTooltipLines(mouseX, mouseY), mouseX, mouseY);
+                graphics.renderTooltip(font, indicatorColumn.getTooltipLines(mouseX, mouseY), mouseX, mouseY);
             else if (capacityLabelBounds != null
                     && capacityLabelBounds.contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN))
-                graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.capacity"), mouseX, mouseY);
+                graphics.renderTooltip(font, TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.capacity")).build(), mouseX, mouseY);
             else if (zoomLabelBounds != null
                     && zoomLabelBounds.contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN))
-                graphics.renderTooltip(font, Component.translatable("createfactorycontroller.gui.zoom"), mouseX, mouseY);
+                graphics.renderTooltip(font, TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.zoom")).build(), mouseX, mouseY);
             else if (settingsButton != null && settingsButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, settingsButton.getTooltipText(), mouseX, mouseY);
             else if (blueprintLoadButton != null && blueprintLoadButton.isMouseOver(mouseX, mouseY))
@@ -471,7 +469,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             else if (blueprintSaveButton != null && blueprintSaveButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, blueprintSaveButton.getTooltipText(), mouseX, mouseY);
             else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY))
-                graphics.renderTooltip(font, helpButton.getTooltipText(font, HelpButton.TOOLTIP_WIDTH), mouseX, mouseY);
+                graphics.renderTooltip(font, helpButton.getTooltipText(), mouseX, mouseY);
         }
 
         Minecraft.getInstance().getProfiler().pop();
@@ -796,7 +794,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Tooltip lines for the hovered wire — the widget owns the format; we supply the overlap count and selected index. */
-    private List<Component> connectionTooltipLines() {
+    private List<FormattedCharSequence> connectionTooltipLines() {
         int count = hoverHits.size();
         int sel = 0;
         for (int i = 0; i < count; i++)

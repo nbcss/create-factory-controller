@@ -3,10 +3,13 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -62,7 +65,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
     }
 
     @Override
-    List<Component> inputTooltip(int mouseX, int mouseY) {
+    List<FormattedCharSequence> inputTooltip(int mouseX, int mouseY) {
         int slot = slotAt(mouseX, mouseY);
         if (slot < 0) return List.of();
         if (Screen.hasControlDown()) {
@@ -84,16 +87,18 @@ class CraftingEditor extends GaugeWorkModeEditor {
         }
 
         int dim = s.effectiveCraftDimension();
-        return ConfigureRecipeScreen.withIgnoreDataLine(List.of(
-                        CreateLang.translate("gui.factory_panel.crafting_input")
-                                .color(ScrollInput.HEADER_RGB).component(),
-                        Component.translatable("createfactorycontroller.gui.crafting_unpacked")
-                                .withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim)
-                                .withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
-                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
-                s.craftingCellIgnoresData(hovered));
+        TooltipBuilder tooltip = TooltipBuilder.of(Minecraft.getInstance().font)
+                .line(CreateLang.translate("gui.factory_panel.crafting_input")
+                        .color(ScrollInput.HEADER_RGB).component());
+        if (s.craftingCellIgnoresData(hovered))
+            tooltip.line(CreateLang.translate("gui.filter.ignore_data").style(ChatFormatting.GOLD).component());
+        return tooltip.line(Component.translatable("createfactorycontroller.gui.crafting_unpacked")
+                        .withStyle(ChatFormatting.GRAY))
+                .line(Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim)
+                        .withStyle(ChatFormatting.GRAY))
+                .line(Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                .build();
     }
 
     @Override

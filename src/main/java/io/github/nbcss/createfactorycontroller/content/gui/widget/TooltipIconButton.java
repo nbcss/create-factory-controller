@@ -1,9 +1,12 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import com.simibubi.create.foundation.gui.widget.IconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.createmod.catnip.gui.element.ScreenElement;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 
 import java.util.List;
 import java.util.Objects;
@@ -12,7 +15,7 @@ import java.util.function.Supplier;
 /** Create icon button whose supplied tooltip uses vanilla's deferred tooltip pass. */
 public class TooltipIconButton extends IconButton {
 
-    private Supplier<List<Component>> tooltipSupplier = List::of;
+    private Supplier<List<FormattedCharSequence>> tooltipSupplier = List::of;
     private final InteractiveAreaWidget tooltipArea;
 
     public TooltipIconButton(int x, int y, ScreenElement icon) {
@@ -27,10 +30,10 @@ public class TooltipIconButton extends IconButton {
 
     @Override
     public void setToolTip(Component tooltip) {
-        tooltipSupplier = () -> List.of(tooltip);
+        tooltipSupplier = () -> TooltipBuilder.of(Minecraft.getInstance().font).line(tooltip).build();
     }
 
-    public TooltipIconButton withTooltip(Supplier<List<Component>> tooltip) {
+    public TooltipIconButton withTooltip(Supplier<List<FormattedCharSequence>> tooltip) {
         tooltipSupplier = Objects.requireNonNull(tooltip);
         return this;
     }

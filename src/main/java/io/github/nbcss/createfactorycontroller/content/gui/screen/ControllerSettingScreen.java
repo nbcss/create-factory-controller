@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.ScrollListWindow;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.AllIcons;
@@ -22,6 +23,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -179,24 +181,22 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         Minecraft.getInstance().setScreen(controller);
     }
 
-    private List<Component> selectorTooltip() {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.gui.controller_settings")
-            .withColor(ScrollInput.HEADER_RGB.getRGB()));
+    private List<FormattedCharSequence> selectorTooltip() {
+        TooltipBuilder lines = TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.controller_settings")
+                        .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
         for (int i : ScrollListWindow.rows(options.size(), selected)) {
             if (i == ScrollListWindow.MARKER) {
-                lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+                lines.line(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
                 continue;
             }
-            boolean sel = i == selected;
-            lines.add(Component.literal(sel ? "-> " : "> ").append(options.get(i))
-                .withStyle(sel ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+            lines.selector(Component.literal(options.get(i)), i == selected);
         }
 
-        lines.add(CreateLang.translate("gui.scrollInput.scrollToSelect")
-            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-        return lines;
+        return lines.line(CreateLang.translate("gui.scrollInput.scrollToSelect")
+                        .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                .build();
     }
 
     // ── Render ─────────────────────────────────────────────────────────────────

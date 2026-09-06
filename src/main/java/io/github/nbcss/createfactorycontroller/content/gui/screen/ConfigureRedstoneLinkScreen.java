@@ -15,6 +15,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.Fac
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.gui.element.ScreenElement;
@@ -23,6 +24,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -137,7 +139,9 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
 
         redArea = addRenderableWidget(new InteractiveAreaWidget(
                 panelX + RED_X, panelY + RED_Y, SLOT, SLOT,
-                () -> red.isEmpty() ? freqEmptyTooltip(1) : getTooltipFromItem(Minecraft.getInstance(), red))
+                () -> red.isEmpty()
+                        ? freqEmptyTooltip(1)
+                        : TooltipBuilder.of(font).lines(getTooltipFromItem(Minecraft.getInstance(), red)).build())
                 .onClick(button -> {
                     ItemStack carried = menu.getCarried();
                     red = carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1);
@@ -145,7 +149,9 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
                 }));
         blueArea = addRenderableWidget(new InteractiveAreaWidget(
                 panelX + BLUE_X, panelY + BLUE_Y, SLOT, SLOT,
-                () -> blue.isEmpty() ? freqEmptyTooltip(2) : getTooltipFromItem(Minecraft.getInstance(), blue))
+                () -> blue.isEmpty()
+                        ? freqEmptyTooltip(2)
+                        : TooltipBuilder.of(font).lines(getTooltipFromItem(Minecraft.getInstance(), blue)).build())
                 .onClick(button -> {
                     ItemStack carried = menu.getCarried();
                     blue = carried.isEmpty() ? ItemStack.EMPTY : carried.copyWithCount(1);
@@ -153,18 +159,15 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
                 }));
     }
 
-    private List<Component> modeButtonTooltip() {
-        return List.of(
-                Component.translatable("createfactorycontroller.gui.redstone_link.mode")
-                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
-                Component.literal(receive ? "-> " : "> ")
-                        .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.receive"))
-                        .withStyle(receive ? ChatFormatting.WHITE : ChatFormatting.GRAY),
-                Component.literal(!receive ? "-> " : "> ")
-                        .append(Component.translatable("createfactorycontroller.gui.redstone_link.mode.send"))
-                        .withStyle(!receive ? ChatFormatting.WHITE : ChatFormatting.GRAY),
-                Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+    private List<FormattedCharSequence> modeButtonTooltip() {
+        return TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.redstone_link.mode")
+                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
+                .selector(Component.translatable("createfactorycontroller.gui.redstone_link.mode.receive"), receive)
+                .selector(Component.translatable("createfactorycontroller.gui.redstone_link.mode.send"), !receive)
+                .line(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                .build();
     }
 
     @Override
@@ -244,11 +247,14 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     // ── Frequency slots ────────────────────────────────────────────────────────
 
     /** Empty-slot hint for the given 1-indexed frequency: colored "Freq #N" + gray "Click with item to set". */
-    private static List<Component> freqEmptyTooltip(int index) {
+    private List<FormattedCharSequence> freqEmptyTooltip(int index) {
         ChatFormatting color = index == 1 ? ChatFormatting.RED : ChatFormatting.BLUE;
-        return List.of(
-                Component.translatable("createfactorycontroller.gui.redstone_link.freq_index", index).withStyle(color),
-                Component.translatable("createfactorycontroller.gui.redstone_link.freq_tip").withStyle(ChatFormatting.GRAY));
+        return TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.redstone_link.freq_index", index)
+                        .withStyle(color))
+                .line(Component.translatable("createfactorycontroller.gui.redstone_link.freq_tip")
+                        .withStyle(ChatFormatting.GRAY))
+                .build();
     }
 
     /** JEI ghost / drop targets (screen coords). */

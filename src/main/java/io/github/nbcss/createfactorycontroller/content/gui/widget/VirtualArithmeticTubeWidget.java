@@ -13,6 +13,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ArithmeticTube
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPathResolver;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
@@ -23,6 +24,7 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -30,7 +32,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -183,18 +184,24 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
     }
 
     @Override
-    public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.component.arithmetic_tube").withColor(behaviour.getColor()));
-        lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.operator_prefix",
-                behaviour.getOperator().displayName().copy().withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("createfactorycontroller.arithmetic_tube.output",
-                Component.literal(NumberFormatter.format(behaviour.getOutput())).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
-        lines.add(selected
-                ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
-                : Component.translatable("createfactorycontroller.gui.action_configure").withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component").withStyle(ChatFormatting.DARK_GRAY));
-        return lines;
+    public List<FormattedCharSequence> getTooltip(FactoryControllerMenu menu, boolean selected) {
+        return TooltipBuilder.of(Minecraft.getInstance().font)
+                .line(Component.translatable("createfactorycontroller.component.arithmetic_tube")
+                        .withColor(behaviour.getColor()))
+                .line(Component.translatable("createfactorycontroller.arithmetic_tube.operator_prefix",
+                        behaviour.getOperator().displayName().copy().withStyle(ChatFormatting.WHITE))
+                        .withStyle(ChatFormatting.GRAY))
+                .line(Component.translatable("createfactorycontroller.arithmetic_tube.output",
+                        Component.literal(NumberFormatter.format(behaviour.getOutput()))
+                                .withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY))
+                .line(selected
+                        ? Component.translatable("createfactorycontroller.gui.drag_to_relocate")
+                                .withStyle(ChatFormatting.GRAY)
+                        : Component.translatable("createfactorycontroller.gui.action_configure")
+                                .withStyle(ChatFormatting.GRAY))
+                .line(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                        .withStyle(ChatFormatting.DARK_GRAY))
+                .build();
     }
 
     @Override

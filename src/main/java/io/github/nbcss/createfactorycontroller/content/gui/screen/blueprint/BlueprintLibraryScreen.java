@@ -16,6 +16,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.ActionPromptWi
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.BlueprintPlacePacket;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -33,6 +34,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -326,21 +328,21 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     }
 
     /** The import button's tooltip: a description plus a green/red checklist of the import requirements. */
-    private List<Component> importTooltip() {
+    private List<FormattedCharSequence> importTooltip() {
         SchematicImport.Requirements req = importScan.requirements();
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import"));
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.desc")
-                .withStyle(ChatFormatting.GRAY));
-        lines.add(Component.empty());
-        lines.add(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.requirements")
-                .withColor(0x528FDE));
-        lines.add(requirementLine("two_positions", req.twoPositions()));
-        lines.add(requirementLine("planar", req.planar()));
-        lines.add(requirementLine("within_size", req.withinSize()));
-        lines.add(requirementLine("has_component", req.hasComponent()));
-        lines.add(requirementLine("uniform_facing", req.uniformFacing()));
-        return lines;
+        return TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.blueprint.import"))
+                .wrapped(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.desc")
+                        .withStyle(ChatFormatting.GRAY), Integer.MAX_VALUE)
+                .empty()
+                .line(Component.translatable("createfactorycontroller.gui.blueprint.import.tooltip.requirements")
+                        .withColor(0x528FDE))
+                .line(requirementLine("two_positions", req.twoPositions()))
+                .line(requirementLine("planar", req.planar()))
+                .line(requirementLine("within_size", req.withinSize()))
+                .line(requirementLine("has_component", req.hasComponent()))
+                .line(requirementLine("uniform_facing", req.uniformFacing()))
+                .build();
     }
 
     private static Component requirementLine(String key, boolean met) {
@@ -525,14 +527,14 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                     Component.translatable("createfactorycontroller.gui.blueprint.place"), this::place);
             this.placeButton.withTooltip(() -> {
                 Component blocked = placeBlockedReason();
-                return blocked == null
-                        ? List.of(Component.translatable("createfactorycontroller.gui.blueprint.place"))
-                        : List.of(Component.translatable("createfactorycontroller.gui.blueprint.place"),
-                                blocked.copy().withStyle(ChatFormatting.RED));
+                return TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.blueprint.place"))
+                        .line(blocked == null ? null : blocked.copy().withStyle(ChatFormatting.RED))
+                        .build();
             });
             this.editButton = new TooltipIconButton(0, 0, (gfx, x, y) -> entry.secondaryIcon().render(gfx, x, y));
             this.editButton.withCallback(this::edit);
-            this.editButton.withTooltip(() -> List.of(entry.secondaryTooltip()));
+            this.editButton.withTooltip(() -> TooltipBuilder.of(font).line(entry.secondaryTooltip()).build());
         }
 
         @Nullable
@@ -658,12 +660,13 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
             int localY = mouseY - getY();
             if (localX < nameX() || localX >= nameX() + font.width(ellipsize(entry.name(), nameWidth()))
                     || localY < 6 || localY >= 6 + font.lineHeight) return false;
-            gfx.renderComponentTooltip(font, List.of(
-                    Component.literal(entry.name()).withStyle(ChatFormatting.BLUE),
-                    Component.translatable("createfactorycontroller.gui.blueprint.dimension",
+            gfx.renderTooltip(font, TooltipBuilder.of(font)
+                    .line(Component.literal(entry.name()).withStyle(ChatFormatting.BLUE))
+                    .line(Component.translatable("createfactorycontroller.gui.blueprint.dimension",
                                     Component.literal(info.width() + "x" + info.height())
                                             .withStyle(ChatFormatting.WHITE))
-                            .withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
+                            .withStyle(ChatFormatting.GRAY))
+                    .build(), mouseX, mouseY);
             return true;
         }
 

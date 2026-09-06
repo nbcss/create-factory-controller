@@ -39,6 +39,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListe
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRecipePacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectIngredientPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.DisconnectLinksPacket;
@@ -56,6 +57,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -233,7 +235,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 addressBox.getX(), addressBox.getY(), addressBox.getWidth(), addressBox.getHeight(),
                 () -> addressBox.isFocused()
                         ? List.of()
-                        : addressBox.getValue().isBlank()
+                        : TooltipBuilder.of(font).lines(addressBox.getValue().isBlank()
                                 ? List.of(
                                         CreateLang.translate("gui.factory_panel.recipe_address")
                                                 .color(ScrollInput.HEADER_RGB).component(),
@@ -247,7 +249,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                         CreateLang.translate("gui.factory_panel.recipe_address_given")
                                                 .color(ScrollInput.HEADER_RGB).component(),
                                         CreateLang.text("'" + addressBox.getValue() + "'")
-                                                .style(ChatFormatting.GRAY).component())));
+                                                .style(ChatFormatting.GRAY).component())).build()));
 
         promiseExpiration = new ScrollInput(panelX + PROMISE_TIMEOUT_X, panelY + PANEL_H - 24, PROMISE_TIMEOUT_W, 16)
             .withRange(-1, 31)
@@ -355,15 +357,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                             .color(ScrollInput.HEADER_RGB).component();
                     if (!fluidMode && producedCount > outputStackSize())
                         header.append(stackBreakdown(producedCount, outputStackSize()));
-                    return withIgnoreDataLine(List.of(
-                                    header,
-                                    CreateLang.translate("gui.factory_panel.expected_output_tip")
-                                            .style(ChatFormatting.GRAY).component(),
-                                    CreateLang.translate("gui.factory_panel.expected_output_tip_1")
-                                            .style(ChatFormatting.GRAY).component(),
-                                    CreateLang.translate("gui.factory_panel.expected_output_tip_2")
-                                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()),
-                            behaviour.ignoreData);
+                    TooltipBuilder tooltip = TooltipBuilder.of(font).line(header);
+                    if (behaviour.ignoreData)
+                        tooltip.line(CreateLang.translate("gui.filter.ignore_data")
+                                .style(ChatFormatting.GOLD).component());
+                    return tooltip.line(CreateLang.translate("gui.factory_panel.expected_output_tip")
+                                    .style(ChatFormatting.GRAY).component())
+                            .line(CreateLang.translate("gui.factory_panel.expected_output_tip_1")
+                                    .style(ChatFormatting.GRAY).component())
+                            .line(CreateLang.translate("gui.factory_panel.expected_output_tip_2")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            .build();
                 }).onScroll((scrollX, scrollY) -> {
             int dir = (int) Math.signum(scrollY);
             int step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
@@ -374,20 +378,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 () -> {
                     VirtualGaugeBehaviour behaviour = getBehaviour();
                     if (behaviour == null || behaviour.filter.isEmpty()) return List.of();
-                    List<Component> lines = new ArrayList<>();
-                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier",
+                    TooltipBuilder lines = TooltipBuilder.of(font)
+                            .line(Component.translatable("createfactorycontroller.gui.request_multiplier",
                                     maxRequestMultiplier, structuralMultiplierCap())
-                            .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
-                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
-                            .withStyle(ChatFormatting.GRAY));
-                    lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
-                            .withStyle(ChatFormatting.GRAY));
+                                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
+                            .line(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
+                                    .withStyle(ChatFormatting.GRAY))
+                            .line(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
+                                    .withStyle(ChatFormatting.GRAY));
                     if (workMode != GaugeWorkMode.CRAFTING)
-                        lines.add(Component.translatable("createfactorycontroller.gui.request_multiplier.exclude_tip")
+                        lines.line(Component.translatable("createfactorycontroller.gui.request_multiplier.exclude_tip")
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    lines.add(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-                    return lines;
+                    return lines.line(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            .build();
                 }).onClick(button -> {
             if (button != 0 && button != 1) return false;
             maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
@@ -411,19 +415,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     String seconds = ticks % TICKS_PER_SEC == 0
                             ? String.valueOf(ticks / TICKS_PER_SEC)
                             : String.format(java.util.Locale.ROOT, "%.1f", ticks / (float) TICKS_PER_SEC);
-                    List<Component> lines = new ArrayList<>(List.of(
-                            Component.translatable("createfactorycontroller.gui.request_interval", seconds)
-                                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())),
-                            Component.translatable("createfactorycontroller.gui.request_interval.tip_1")
-                                    .withStyle(ChatFormatting.GRAY),
-                            Component.translatable("createfactorycontroller.gui.request_interval.tip_2")
-                                    .withStyle(ChatFormatting.GRAY),
-                            CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
-                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()));
+                    TooltipBuilder lines = TooltipBuilder.of(font)
+                            .line(Component.translatable("createfactorycontroller.gui.request_interval", seconds)
+                                    .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
+                            .line(Component.translatable("createfactorycontroller.gui.request_interval.tip_1")
+                                    .withStyle(ChatFormatting.GRAY))
+                            .line(Component.translatable("createfactorycontroller.gui.request_interval.tip_2")
+                                    .withStyle(ChatFormatting.GRAY))
+                            .line(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
                     if (customRequestTimer > 0)
-                        lines.add(Component.translatable("createfactorycontroller.gui.request_interval.reset")
+                        lines.line(Component.translatable("createfactorycontroller.gui.request_interval.reset")
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    return lines;
+                    return lines.build();
                 }).onClick(button -> {
             if (customRequestTimer > 0) {
                 setRequestInterval(0);
@@ -444,24 +448,26 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     VirtualGaugeBehaviour behaviour = getBehaviour();
                     int promised = behaviour == null ? 0 : behaviour.promisedCount;
                     if (promised == 0)
-                        return List.of(
-                                CreateLang.translate("gui.factory_panel.no_open_promises")
-                                        .color(ScrollInput.HEADER_RGB).component(),
-                                CreateLang.translate("gui.factory_panel.recipe_promises_tip")
-                                        .style(ChatFormatting.GRAY).component(),
-                                CreateLang.translate("gui.factory_panel.recipe_promises_tip_1")
-                                        .style(ChatFormatting.GRAY).component(),
-                                CreateLang.translate("gui.factory_panel.promise_prevents_oversending")
-                                        .style(ChatFormatting.GRAY).component());
+                        return TooltipBuilder.of(font)
+                                .line(CreateLang.translate("gui.factory_panel.no_open_promises")
+                                        .color(ScrollInput.HEADER_RGB).component())
+                                .line(CreateLang.translate("gui.factory_panel.recipe_promises_tip")
+                                        .style(ChatFormatting.GRAY).component())
+                                .line(CreateLang.translate("gui.factory_panel.recipe_promises_tip_1")
+                                        .style(ChatFormatting.GRAY).component())
+                                .line(CreateLang.translate("gui.factory_panel.promise_prevents_oversending")
+                                        .style(ChatFormatting.GRAY).component())
+                                .build();
                     String promisedLabel = FluidCompat.isFluidFilter(behaviour.filter)
                             ? formatFluidShort(promised) : String.valueOf(promised);
-                    return List.of(
-                            CreateLang.translate("gui.factory_panel.promised_items")
-                                    .color(ScrollInput.HEADER_RGB).component(),
-                            CreateLang.text(FluidCompat.filterName(behaviour.filter).getString() + " x" + promisedLabel)
-                                    .component(),
-                            CreateLang.translate("gui.factory_panel.left_click_reset")
-                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    return TooltipBuilder.of(font)
+                            .line(CreateLang.translate("gui.factory_panel.promised_items")
+                                    .color(ScrollInput.HEADER_RGB).component())
+                            .line(CreateLang.text(FluidCompat.filterName(behaviour.filter).getString() + " x" + promisedLabel)
+                                    .component())
+                            .line(CreateLang.translate("gui.factory_panel.left_click_reset")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            .build();
                 }).onClick(button -> {
             sendConfig(true, false);
             playClickSound();
@@ -469,29 +475,25 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }));
         addRenderableWidget(new InteractiveAreaWidget(
                 panelX + PROMISE_LIMIT_X, panelY + PANEL_H - 24, PROMISE_LIMIT_W, 16,
-                () -> {
-                    List<Component> lines = new ArrayList<>();
-                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.title")
-                            .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
-                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.desc1")
-                            .withStyle(ChatFormatting.GRAY));
-                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.desc2")
-                            .withStyle(ChatFormatting.GRAY));
-                    lines.add(Component.empty());
-                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
-                            .withColor(0xb88218));
-                    lines.add(Component.literal(!promiseLimitByAddress ? "-> " : "> ")
-                            .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_gauge"))
-                            .withStyle(!promiseLimitByAddress ? ChatFormatting.WHITE : ChatFormatting.GRAY));
-                    lines.add(Component.literal(promiseLimitByAddress ? "-> " : "> ")
-                            .append(Component.translatable("createfactorycontroller.gui.open_requests.scope_address"))
-                            .withStyle(promiseLimitByAddress ? ChatFormatting.WHITE : ChatFormatting.GRAY));
-                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    lines.add(Component.translatable("createfactorycontroller.gui.open_requests.click_scope")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    return lines;
-                }).onClick(button -> {
+                () -> TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.open_requests.title")
+                                .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
+                        .line(Component.translatable("createfactorycontroller.gui.open_requests.desc1")
+                                .withStyle(ChatFormatting.GRAY))
+                        .line(Component.translatable("createfactorycontroller.gui.open_requests.desc2")
+                                .withStyle(ChatFormatting.GRAY))
+                        .empty()
+                        .line(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
+                                .withColor(0xb88218))
+                        .selector(Component.translatable("createfactorycontroller.gui.open_requests.scope_gauge"),
+                                !promiseLimitByAddress)
+                        .selector(Component.translatable("createfactorycontroller.gui.open_requests.scope_address"),
+                                promiseLimitByAddress)
+                        .line(Component.translatable("createfactorycontroller.gui.open_requests.scroll_limit")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                        .line(Component.translatable("createfactorycontroller.gui.open_requests.click_scope")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                        .build()).onClick(button -> {
             promiseLimitByAddress = !promiseLimitByAddress;
             playClickSound();
             return true;
@@ -513,22 +515,23 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                     : "createfactorycontroller.gui.threshold.stock_target")
                             .withColor(ScrollInput.HEADER_RGB.getRGB());
                     if (behaviour != null && behaviour.isNumberManaged())
-                        return List.of(title,
-                                Component.translatable("createfactorycontroller.gui.threshold.auto_managed_by_number")
-                                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    List<Component> lines = new ArrayList<>();
-                    lines.add(title);
+                        return TooltipBuilder.of(font)
+                                .line(title)
+                                .line(Component.translatable("createfactorycontroller.gui.threshold.auto_managed_by_number")
+                                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                                .build();
+                    TooltipBuilder lines = TooltipBuilder.of(font).line(title);
                     if (behaviour != null && requestMode.isPassive()) {
                         String targetCount = behaviour.unit.format(g.getPassiveTargetCount(), true);
-                        lines.add(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
+                        lines.line(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
                                         Component.literal(targetCount).withColor(0x9ECFFC))
                                 .withStyle(ChatFormatting.GRAY));
                     }
-                    lines.add(CreateLang.translate("gui.scrollInput.scrollToModify")
-                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-                    lines.add(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
-                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
-                    return lines;
+                    return lines.line(CreateLang.translate("gui.scrollInput.scrollToModify")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            .line(CreateLang.translate("gui.scrollInput.shiftScrollsFaster")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            .build();
                 }).onClick(button -> {
             if (button != 0 && button != 1) return false;
             if (numberManaged()) return true;
@@ -551,13 +554,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 () -> {
                     ThresholdUnit a = fluidMode ? ThresholdUnit.FLUID_MB : ThresholdUnit.ITEMS;
                     ThresholdUnit b = fluidMode ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.STACKS;
-                    return List.of(
-                            CreateLang.translate("schedule.condition.threshold.item_measure")
-                                    .color(ScrollInput.HEADER_RGB).component(),
-                            a.tooltipLine(mode == a),
-                            b.tooltipLine(mode == b),
-                            CreateLang.translate("gui.scrollInput.scrollToSelect")
-                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    return TooltipBuilder.of(font)
+                            .line(CreateLang.translate("schedule.condition.threshold.item_measure")
+                                    .color(ScrollInput.HEADER_RGB).component())
+                            .line(a.tooltipLine(mode == a))
+                            .line(b.tooltipLine(mode == b))
+                            .line(CreateLang.translate("gui.scrollInput.scrollToSelect")
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                            .build();
                 }).onClick(button -> {
             setMode(mode.cycle(1));
             return true;
@@ -571,12 +575,16 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     VirtualGaugeBehaviour behaviour = getBehaviour();
                     if (behaviour == null) return List.of();
                     if (behaviour.filter.isEmpty())
-                        return List.of(CreateLang.translate("gui.factory_panel.unconfigured_input")
-                                .color(ScrollInput.HEADER_RGB).component());
-                    return FluidCompat.isFluidFilter(behaviour.filter)
-                            ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(behaviour.filter),
-                            Minecraft.getInstance().options.advancedItemTooltips)
-                            : getTooltipFromItem(Minecraft.getInstance(), behaviour.filter);
+                        return TooltipBuilder.of(font)
+                                .line(CreateLang.translate("gui.factory_panel.unconfigured_input")
+                                        .color(ScrollInput.HEADER_RGB).component())
+                                .build();
+                    return TooltipBuilder.of(font)
+                            .lines(FluidCompat.isFluidFilter(behaviour.filter)
+                                    ? FluidCompat.fluidTooltip(FluidCompat.getFilterFluid(behaviour.filter),
+                                            Minecraft.getInstance().options.advancedItemTooltips)
+                                    : getTooltipFromItem(Minecraft.getInstance(), behaviour.filter))
+                            .build();
                 }));
         ingredientArea = addRenderableWidget(editor().createInputAreaWidget());
 
@@ -928,66 +936,55 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return Mth.clamp(dim, minCraftDim(), maxCraftDim(defaultCraftDim()));
     }
 
-    /** Inserts a gold "Ignore Data" line directly below the header line of a slot tooltip when the relevant
-     *  gauge ignores item data (reuses Create's filter lang key — no new key needed). */
-    static List<Component> withIgnoreDataLine(List<Component> base, boolean ignoreData) {
-        if (!ignoreData) return base;
-        List<Component> out = new ArrayList<>(base);
-        out.add(1, CreateLang.translate("gui.filter.ignore_data").style(ChatFormatting.GOLD).component());
-        return out;
-    }
-
     /** The crafting toggle's tooltip: the activate hint, plus the current N×N grid size. Rendered last (in
      *  {@link #renderForeground}) so a later-drawn neighbouring widget can't paint over it. */
-    private List<Component> craftingButtonTooltip() {
-        List<Component> tip = new ArrayList<>();
-        tip.add(CreateLang.translate("gui.factory_panel.activate_crafting").component());
+    private List<FormattedCharSequence> craftingButtonTooltip() {
+        TooltipBuilder tip = TooltipBuilder.of(font)
+                .line(CreateLang.translate("gui.factory_panel.activate_crafting").component());
         if (availableCraftingRecipe != null) {
             int dim = effectiveCraftDimension();
-            tip.add(Component.translatable("createfactorycontroller.gui.crafting_dimension", dim, dim)
+            tip.line(Component.translatable("createfactorycontroller.gui.crafting_dimension", dim, dim)
                 .withStyle(ChatFormatting.GRAY));
         }
         if (craftingUsesIgnoreData()) {
-            tip.add(Component.empty());
-            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
+            tip.empty();
+            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
                 .withStyle(ChatFormatting.GOLD));
-            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
+            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
                 .withStyle(ChatFormatting.GOLD));
         }
-        return tip;
+        return tip.build();
     }
 
     /** The custom-arrangement toggle's tooltip. Rendered last (in {@link #renderForeground}) so a later-drawn
      *  neighbouring widget can't paint over it. */
-    private List<Component> customButtonTooltip() {
-        List<Component> tip = new ArrayList<>();
-        tip.add(Component.translatable("createfactorycontroller.gui.custom_arrangement"));
-        tip.add(Component.translatable("createfactorycontroller.gui.custom_arrangement.tip").withStyle(ChatFormatting.GRAY));
+    private List<FormattedCharSequence> customButtonTooltip() {
+        TooltipBuilder tip = TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.custom_arrangement"))
+                .line(Component.translatable("createfactorycontroller.gui.custom_arrangement.tip")
+                        .withStyle(ChatFormatting.GRAY));
         if (craftingUsesIgnoreData()) {
-            tip.add(Component.empty());
-            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
+            tip.empty();
+            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
                 .withStyle(ChatFormatting.GOLD));
-            tip.add(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
+            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
                 .withStyle(ChatFormatting.GOLD));
         }
-        return tip;
+        return tip.build();
     }
 
-    private List<Component> requestModeButtonTooltip() {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.gui.request_mode")
-                .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
+    private List<FormattedCharSequence> requestModeButtonTooltip() {
+        TooltipBuilder lines = TooltipBuilder.of(font)
+                .line(Component.translatable("createfactorycontroller.gui.request_mode")
+                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())));
         for (RequestMode m : RequestMode.values()) {
-            boolean selected = m == requestMode;
-            lines.add(Component.literal(selected ? "-> " : "> ")
-                    .append(Component.translatable(m.translationKey))
-                    .withStyle(selected ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+            lines.selector(Component.translatable(m.translationKey), m == requestMode);
         }
-        lines.add(Component.translatable(requestMode.translationKey + ".desc1").withColor(0x777777));
-        lines.add(Component.translatable(requestMode.translationKey + ".desc2").withColor(0x777777));
-        lines.add(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
-                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-        return lines;
+        return lines.line(Component.translatable(requestMode.translationKey + ".desc1").withColor(0x777777))
+                .line(Component.translatable(requestMode.translationKey + ".desc2").withColor(0x777777))
+                .line(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                .build();
     }
 
     private void updateConfigs() {

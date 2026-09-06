@@ -8,6 +8,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -25,13 +27,15 @@ public final class BlueprintMaterialDisplay {
 
     public static void renderTooltip(GuiGraphics graphics, Font font, BlueprintStorage.Material material,
                               int mouseX, int mouseY) {
-        graphics.renderComponentTooltip(font, tooltip(material), mouseX, mouseY);
+        graphics.renderTooltip(font, tooltip(font, material), mouseX, mouseY);
     }
 
-    public static List<Component> tooltip(BlueprintStorage.Material material) {
-        return material.isUnknown()
-                ? List.of(Component.translatable("createfactorycontroller.gui.blueprint.unknown_item")
-                        .withStyle(ChatFormatting.RED))
-                : Screen.getTooltipFromItem(Minecraft.getInstance(), icon(material));
+    public static List<FormattedCharSequence> tooltip(Font font, BlueprintStorage.Material material) {
+        return TooltipBuilder.of(font)
+                .lines(material.isUnknown()
+                        ? List.of(Component.translatable("createfactorycontroller.gui.blueprint.unknown_item")
+                                .withStyle(ChatFormatting.RED))
+                        : Screen.getTooltipFromItem(Minecraft.getInstance(), icon(material)))
+                .build();
     }
 }

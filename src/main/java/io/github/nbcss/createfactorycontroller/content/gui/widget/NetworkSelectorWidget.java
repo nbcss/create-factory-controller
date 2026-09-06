@@ -7,6 +7,7 @@ import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBloc
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -18,6 +19,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import org.joml.Matrix4f;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -187,19 +189,19 @@ public class NetworkSelectorWidget extends AbstractWidget {
      * Create's scroll-to-select hint.
      *
      */
-    public List<Component> getTooltipLines() {
+    public List<FormattedCharSequence> getTooltipLines() {
         syncSelection();
         List<Entry> entries = buildEntries();
         int state = selectedIndex(entries);
 
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("createfactorycontroller.gui.network_selector")
-                .withColor(ScrollInput.HEADER_RGB.getRGB()));
+        TooltipBuilder tooltip = TooltipBuilder.of(Minecraft.getInstance().font)
+                .line(Component.translatable("createfactorycontroller.gui.network_selector")
+                        .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
         // Fixed-height centred window with "> ..." markers for hidden rows (see ScrollListWindow).
         for (int i : ScrollListWindow.rows(entries.size(), state)) {
             if (i == ScrollListWindow.MARKER) {
-                lines.add(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
+                tooltip.line(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
                 continue;
             }
             Entry e = entries.get(i);
@@ -208,26 +210,26 @@ public class NetworkSelectorWidget extends AbstractWidget {
             // otherwise the selected row is white and the rest gray.
             ChatFormatting color = e.type == Type.NEW_NETWORK ? ChatFormatting.GREEN
                     : selected ? ChatFormatting.WHITE : ChatFormatting.GRAY;
-            lines.add(Component.literal(selected ? "-> " : "> ").append(entryName(e)).withStyle(color));
+            tooltip.line(Component.literal(selected ? "-> " : "> ").append(entryName(e)).withStyle(color));
         }
 
         if (menu.knownNetworks.isEmpty())
-            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_no_network_tip")
+            tooltip.line(Component.translatable("createfactorycontroller.gui.network_selector_no_network_tip")
                     .withStyle(ChatFormatting.RED));
 
         if (heldComponent().isEmpty()) {
             // Empty-handed over a real (known) network → the whole slot is clickable to configure it.
             if (entries.get(state).type == Type.KNOWN)
-                lines.add(Component.translatable("createfactorycontroller.gui.action_configure")
+                tooltip.line(Component.translatable("createfactorycontroller.gui.action_configure")
                         .withStyle(ChatFormatting.GRAY));
-            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_highlight_tip")
+            tooltip.line(Component.translatable("createfactorycontroller.gui.network_selector_scroll_highlight_tip")
                     .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
         } else {
-            lines.add(Component.translatable("createfactorycontroller.gui.network_selector_scroll_tune_tip")
+            tooltip.line(Component.translatable("createfactorycontroller.gui.network_selector_scroll_tune_tip")
                     .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.ITALIC));
         }
 
-        return lines;
+        return tooltip.build();
     }
 
     // ── Interaction ───────────────────────────────────────────────────────────

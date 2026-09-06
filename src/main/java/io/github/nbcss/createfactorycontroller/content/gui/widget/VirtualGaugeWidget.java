@@ -10,6 +10,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Logi
 import io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
@@ -25,6 +26,7 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -32,7 +34,6 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -212,17 +213,17 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
      * reason (no target amount / missing address), matching {@code FactoryPanelBehaviour#getLabel}.
      */
     @Override
-    public List<Component> getTooltip(FactoryControllerMenu menu, boolean selected) {
-        List<Component> lines = new ArrayList<>();
+    public List<FormattedCharSequence> getTooltip(FactoryControllerMenu menu, boolean selected) {
+        TooltipBuilder tooltip = TooltipBuilder.of(Minecraft.getInstance().font);
         if (behaviour.filter.isEmpty()) {
-            lines.add(CreateLang.translate("factory_panel.new_factory_task").color(behaviour.getColor()).component());
+            tooltip.line(CreateLang.translate("factory_panel.new_factory_task").color(behaviour.getColor()).component());
         }else{
             var title = CreateLang.text(FluidCompat.filterName(behaviour.filter).getString()).color(behaviour.getColor());
             if (behaviour.ignoreData) {
                 String label = " (" + CreateLang.translate("gui.filter.ignore_data").string() + ")";
                 title.add(Component.literal(label));
             }
-            lines.add(title.component());
+            tooltip.line(title.component());
         }
         if (!behaviour.filter.isEmpty()) {
             MutableComponent stockLine = Component.translatable("createfactorycontroller.gui.in_stock",
@@ -233,29 +234,29 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
             // already in their own unit and ∞ has no stack meaning.
             if (!FluidCompat.isFluidFilter(behaviour.filter) && !behaviour.isInfiniteStock())
                 stockLine.append(stackBreakdown(behaviour.stockLevel, Math.max(1, behaviour.filter.getMaxStackSize())));
-            lines.add(stockLine);
-            lines.add(Component.translatable("createfactorycontroller.gui.promised",
+            tooltip.line(stockLine);
+            tooltip.line(Component.translatable("createfactorycontroller.gui.promised",
                             Component.literal((behaviour.promisedCount > 0 ? "+" : "") + formatAmount(behaviour.promisedCount))
                                     .withStyle(behaviour.promisedCount > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY))
                     .withStyle(ChatFormatting.GRAY));
         }
-        lines.add(selected
+        tooltip.line(selected
                 ? Component.translatable("createfactorycontroller.gui.drag_to_relocate").withStyle(ChatFormatting.GRAY)
                 : (behaviour.filter.isEmpty()
                         ? Component.translatable("createfactorycontroller.gui.set_item.filter_tip")
                         : Component.translatable("createfactorycontroller.gui.action_configure"))
                         .withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
+        tooltip.line(Component.translatable("createfactorycontroller.gui.action_remove_component")
                 .withStyle(ChatFormatting.DARK_GRAY));
         if (behaviour.waitingForNetwork) {
-            lines.add(CreateLang.translate("factory_panel.some_links_unloaded").style(ChatFormatting.RED).component());
+            tooltip.line(CreateLang.translate("factory_panel.some_links_unloaded").style(ChatFormatting.RED).component());
         }else if (!behaviour.incomingConnections(LogisticsConnection.TYPE).isEmpty() && !behaviour.isActive())
-            lines.add(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
+            tooltip.line(CreateLang.translate("gui.factory_panel.no_target_amount_set").style(ChatFormatting.RED).component());
         else if (behaviour.isMissingAddress())
-            lines.add(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
+            tooltip.line(CreateLang.translate("gui.factory_panel.address_missing").style(ChatFormatting.RED).component());
         else if (behaviour.isRedstonePaused())
-            lines.add(Component.translatable("createfactorycontroller.gui.gauge_status.redstone_paused").withStyle(ChatFormatting.RED));
-        return lines;
+            tooltip.line(Component.translatable("createfactorycontroller.gui.gauge_status.redstone_paused").withStyle(ChatFormatting.RED));
+        return tooltip.build();
     }
 
     // ── Interaction ────────────────────────────────────────────────────────────

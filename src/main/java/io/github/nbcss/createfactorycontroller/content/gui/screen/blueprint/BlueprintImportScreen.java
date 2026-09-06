@@ -11,6 +11,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -60,10 +62,12 @@ public class BlueprintImportScreen extends BlueprintFormScreen {
     }
 
     @Override
-    protected List<Component> networkTooltip(int slot) {
-        return List.of(menu.networkName(networks.get(slot)),
-                Component.translatable("createfactorycontroller.gui.blueprint.drag_to_reorder")
-                        .withStyle(ChatFormatting.GRAY));
+    protected List<FormattedCharSequence> networkTooltip(int slot) {
+        return TooltipBuilder.of(font)
+                .line(menu.networkName(networks.get(slot)))
+                .line(Component.translatable("createfactorycontroller.gui.blueprint.drag_to_reorder")
+                        .withStyle(ChatFormatting.GRAY))
+                .build();
     }
 
     @Override

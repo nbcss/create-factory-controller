@@ -4,6 +4,7 @@ import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.theme.Color;
@@ -11,6 +12,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -118,22 +120,23 @@ public class ConnectionWidget {
      * than one wire sits under the cursor. {@code overlapCount}/{@code selectedIndex} are supplied by the screen, which
      * owns the set of overlapping wires; {@code overlapCount <= 1} shows the name only.
      */
-    public List<Component> getTooltip(ComponentHolder holder, int overlapCount, int selectedIndex, boolean arrowLocked) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(connection.type.displayName());
-        lines.addAll(connection.getInfoTooltip(holder));
-        lines.add(Component.translatable("createfactorycontroller.gui.action_remove_component")
-                .withStyle(ChatFormatting.DARK_GRAY));
+    public List<FormattedCharSequence> getTooltip(ComponentHolder holder, int overlapCount, int selectedIndex,
+                                                   boolean arrowLocked) {
+        TooltipBuilder tooltip = TooltipBuilder.of(Minecraft.getInstance().font)
+                .line(connection.type.displayName())
+                .lines(connection.getInfoTooltip(holder))
+                .line(Component.translatable("createfactorycontroller.gui.action_remove_component")
+                        .withStyle(ChatFormatting.DARK_GRAY));
         if (arrowLocked) {
-            lines.add(Component.empty());
+            tooltip.empty();
             // Arrow-mode boxes: the 4 fixed bends, ■ marking the wire's current mode (auto shows none, until first cycle).
             int active = connection.arrowBendMode;   // 0..3; -1 (auto) highlights nothing
             StringBuilder boxes = new StringBuilder();
             for (int i = 0; i < 4; i++) boxes.append(i == active ? '■' : '□');
-            lines.add(Component.translatable("createfactorycontroller.connection.cycle_arrow", boxes.toString())
+            tooltip.line(Component.translatable("createfactorycontroller.connection.cycle_arrow", boxes.toString())
                     .withStyle(ChatFormatting.GRAY));
         } else if (overlapCount > 1) {
-            lines.add(Component.empty());
+            tooltip.empty();
             StringBuilder suffix = new StringBuilder();
             if (overlapCount <= 6) {
                 // ■ marks the selected wire
@@ -141,12 +144,12 @@ public class ConnectionWidget {
             } else {
                 suffix.append(selectedIndex + 1).append("/").append(overlapCount);
             }
-            lines.add(Component.translatable("createfactorycontroller.connection.overlapping", suffix.toString())
+            tooltip.line(Component.translatable("createfactorycontroller.connection.overlapping", suffix.toString())
                     .withStyle(ChatFormatting.GRAY));
-            lines.add(Component.translatable("createfactorycontroller.connection.scroll_hint")
+            tooltip.line(Component.translatable("createfactorycontroller.connection.scroll_hint")
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
-        return lines;
+        return tooltip.build();
     }
 
     /** Returns true if the canvas-world point lies within the 4 px-wide path strip (segments and turn points). */

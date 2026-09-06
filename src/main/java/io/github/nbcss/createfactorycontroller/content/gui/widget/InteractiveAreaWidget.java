@@ -1,7 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -15,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 /** Invisible rectangular control with a deferred vanilla tooltip and optional mouse handlers. */
 public class InteractiveAreaWidget extends AbstractWidget {
@@ -25,7 +23,7 @@ public class InteractiveAreaWidget extends AbstractWidget {
     @Nullable private ReleaseHandler releaseHandler;
 
     public InteractiveAreaWidget(int x, int y, int width, int height,
-                                 Supplier<List<Component>> tooltipSupplier) {
+                                 Supplier<List<FormattedCharSequence>> tooltipSupplier) {
         this(x, y, width, height, (mouseX, mouseY) -> tooltipSupplier.get());
         Objects.requireNonNull(tooltipSupplier);
     }
@@ -65,16 +63,10 @@ public class InteractiveAreaWidget extends AbstractWidget {
 
     @Override
     protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        List<Component> tooltip = isHovered() ? tooltipProvider.get(mouseX, mouseY) : List.of();
+        List<FormattedCharSequence> lines = isHovered() ? tooltipProvider.get(mouseX, mouseY) : List.of();
         Screen screen = Minecraft.getInstance().screen;
-        if (screen != null && tooltip != null && !tooltip.isEmpty()) {
-            Font font = Minecraft.getInstance().font;
-            List<FormattedCharSequence> lines = tooltip.stream().flatMap(line -> {
-                var split = font.split(line, Integer.MAX_VALUE);
-                return split.isEmpty() ? Stream.of(FormattedCharSequence.EMPTY) : split.stream();
-            }).toList();
+        if (screen != null && lines != null && !lines.isEmpty())
             screen.setTooltipForNextRenderPass(lines, DefaultTooltipPositioner.INSTANCE, false);
-        }
     }
 
     @Override
@@ -124,6 +116,6 @@ public class InteractiveAreaWidget extends AbstractWidget {
 
     @FunctionalInterface
     public interface TooltipProvider {
-        List<Component> get(int mouseX, int mouseY);
+        List<FormattedCharSequence> get(int mouseX, int mouseY);
     }
 }

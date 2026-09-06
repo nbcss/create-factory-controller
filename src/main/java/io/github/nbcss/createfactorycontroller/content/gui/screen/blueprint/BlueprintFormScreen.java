@@ -12,6 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorag
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
@@ -32,6 +33,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -168,7 +170,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
 
     protected void renderNetworkSlotDecoration(GuiGraphics gfx, int slot, int x, int y) {}
 
-    protected List<Component> networkTooltip(int slot) {
+    protected List<FormattedCharSequence> networkTooltip(int slot) {
         return List.of();
     }
 
@@ -274,28 +276,32 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         confirmButton.withCallback(this::trySave);
         confirmButton.withTooltip(() -> {
             Component blocked = confirmBlockedReason();
-            return blocked == null ? List.of(confirmTooltip())
-                    : List.of(confirmTooltip(), blocked.copy().withStyle(ChatFormatting.RED));
+            return TooltipBuilder.of(font)
+                    .line(confirmTooltip())
+                    .line(blocked == null ? null : blocked.copy().withStyle(ChatFormatting.RED))
+                    .build();
         });
         addWidget(confirmButton);
 
         overwriteInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
                 (mouseX, mouseY) -> draggedNetwork < 0 && overwriteExisting && insideViewport(mouseX, mouseY)
-                        ? List.of(Component.translatable(
-                                "createfactorycontroller.gui.blueprint.overwrite_existing"))
+                        ? TooltipBuilder.of(font)
+                                .line(Component.translatable("createfactorycontroller.gui.blueprint.overwrite_existing"))
+                                .build()
                         : List.of()));
         networkInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
                 (mouseX, mouseY) -> draggedNetwork < 0 && networkCount() > 0 && insideViewport(mouseX, mouseY)
-                        ? List.of(
-                                Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"),
-                                Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"),
-                                Component.translatable("createfactorycontroller.gui.blueprint.network_info_3"))
+                        ? TooltipBuilder.of(font)
+                                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"))
+                                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"))
+                                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_3"))
+                                .build()
                         : List.of()));
         contentTooltipArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 0, 0,
                 (mouseX, mouseY) -> {
                     if (draggedNetwork >= 0) return List.of();
                     int material = materialAt(mouseX, mouseY);
-                    if (material >= 0) return BlueprintMaterialDisplay.tooltip(materials().get(material));
+                    if (material >= 0) return BlueprintMaterialDisplay.tooltip(font, materials().get(material));
                     int network = networkAt(mouseX, mouseY);
                     return network >= 0 ? networkTooltip(network) : List.of();
                 }));
