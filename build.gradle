@@ -29,12 +29,8 @@ sourceSets.main.resources {
 repositories {
     mavenCentral()
     maven {
-        name = "Create: Logistics Control"
-        url = "https://maven.pkg.github.com/nbcss/create-logistics-control"
-    }
-    maven {
-        name = "Create: Higher Logistics Patch"
-        url = "https://maven.pkg.github.com/nbcss/create-higher-logistics-patch"
+        name = "nbcss GitHub"
+        url = "https://nbcss.github.io/maven"
     }
     maven {
         name = "NeoForged"
@@ -388,12 +384,7 @@ publishing {
     }
     repositories {
         maven {
-            name = "GitHubPackages"
-            url = "https://maven.pkg.github.com/nbcss/create-factory-controller"
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
+            url = System.getenv("MAVEN_REPO_PATH")
         }
     }
 }

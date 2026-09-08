@@ -8,9 +8,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: maven
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -24,7 +24,19 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Checkout Maven repository
+        uses: nbcss/maven/.github/actions/setup-maven-repo@main
+        with:
+          token: ${{ secrets.MAVEN_REPO_GITHUB_TOKEN }}
+          path: maven-repository
+
       - name: Publish package
         run: ./gradlew publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAVEN_REPO_PATH: ${{ github.workspace }}/maven-repository
+
+      - name: Push to Maven repository
+        uses: nbcss/maven/.github/actions/push-maven-repo@main
+        with:
+          token: ${{ secrets.MAVEN_REPO_GITHUB_TOKEN }}
+          path: maven-repository

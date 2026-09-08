@@ -6,27 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # This mod bundles Create: Logistics Control via Jar-in-Jar and consumes it as a Gradle composite build
-      # (settings.gradle: includeBuild '../create_logistics_control'). Check out both repositories as sibling
-      # directories under the Actions workspace so that relative path resolves.
-      - name: "Checkout Create: Factory Controller"
-        uses: actions/checkout@v4
-        with:
-          path: create_factory_controller
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: "Checkout Create: Higher Logistics Patch"
-        uses: actions/checkout@v4
-        with:
-          repository: nbcss/create-higher-logistics-patch
-          path: create_higher_logistics_patch
-
-      - name: "Checkout Create: Logistics Control"
-        uses: actions/checkout@v4
-        with:
-          repository: nbcss/create-logistics-control
-          path: create_logistics_control
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
       - name: Setup JDK
         uses: actions/setup-java@v5
@@ -38,8 +19,4 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build with Gradle
-        run: >
-          ./gradlew build
-          --include-build ../create_higher_logistics_patch
-          --include-build ../create_logistics_control
-        working-directory: create_factory_controller
+        run: ./gradlew build
