@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id "pl.allegro.tech.build.axion-release" version "1.21.3"
     id 'net.neoforged.moddev' version '2.0.141'
     id 'idea'
 }
@@ -14,7 +15,12 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-version = mod_version
+scmVersion {
+    def minecraftVersion = minecraft_version
+    versionCreator { version, position -> "${version}-neoforge-${minecraftVersion}".toString() }
+}
+
+version = scmVersion.version
 group = mod_group_id
 
 sourceSets.main.resources {
@@ -361,7 +367,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
-            mod_version            : mod_version,
+            mod_version            : version,
             deployer_version       : deployer_version,
     ]
     inputs.properties replaceProperties

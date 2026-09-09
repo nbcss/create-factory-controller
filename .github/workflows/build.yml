@@ -20,3 +20,43 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew build
+
+  maven-publish:
+    needs: build
+    if: >
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: maven
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Display version
+        run: ./gradlew currentVersion -q >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout Maven repository
+        uses: nbcss/maven/.github/actions/setup-maven-repo@main
+        with:
+          token: ${{ secrets.MAVEN_REPO_GITHUB_TOKEN }}
+          path: maven-repository
+
+      - name: Publish package
+        run: ./gradlew publish
+        env:
+          MAVEN_REPO_PATH: ${{ github.workspace }}/maven-repository
+
+      - name: Push to Maven repository
+        uses: nbcss/maven/.github/actions/push-maven-repo@main
+        with:
+          token: ${{ secrets.MAVEN_REPO_GITHUB_TOKEN }}
+          path: maven-repository
