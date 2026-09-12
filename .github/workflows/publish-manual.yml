@@ -21,7 +21,7 @@ jobs:
 
   build-container:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
@@ -61,6 +61,9 @@ jobs:
           containerfiles: ./manual/Containerfile
           tags: ghcr.io/${{ github.repository }}/manual-builder:latest
           oci: 'true'
+          extra-args: |
+            --inherit-annotations false
+            --created-annotation
           annotations: &builder_annotations |
             org.opencontainers.image.description=The container image to build the manual.
             org.opencontainers.image.url=https://github.com/${{ github.repository }}/blob/main/.github/workflows/publish-manual.yml
@@ -77,7 +80,7 @@ jobs:
   build:
     needs: build-container
     if: always() && (needs.build-container.result == 'success' || needs.build-container.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
@@ -98,7 +101,7 @@ jobs:
       - name: Push manual artifact
         run: |
           tar -C manual/build -czf build.tar.gz .
-          podman artifact add --replace \
+          podman artifact add \
             --annotation org.opencontainers.image.description="Manual for $GITHUB_REF_TYPE $GITHUB_REF_NAME." \
             --annotation org.opencontainers.image.url="https://github.com/$GITHUB_REPOSITORY/blob/main/.github/workflows/publish-manual.yml" \
             --annotation org.opencontainers.image.revision="$GITHUB_SHA" \
@@ -110,7 +113,7 @@ jobs:
 
   merge:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       packages: read
       pages: write
@@ -152,7 +155,7 @@ jobs:
 
   deploy:
     needs: merge
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       pages: write
       id-token: write
