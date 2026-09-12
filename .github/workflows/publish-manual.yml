@@ -62,7 +62,7 @@ jobs:
           tags: ghcr.io/${{ github.repository }}/manual-builder:latest
           oci: 'true'
           extra-args: |
-            --inherit-annotations false
+            --inherit-annotations=false
             --created-annotation
           annotations: &builder_annotations |
             org.opencontainers.image.description=The container image to build the manual.
