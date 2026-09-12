@@ -4,7 +4,7 @@ Create: Factory Controller provides a block called the "`factory controller`", w
 
 You do not need to read this manual in full to use the mod. The manual serves to provide a reference to the features of the mod, especially to those that are difficult to explain fully in the UI.
 
-:mod-version: 1.1.1
+:mod-version: 1.2.0
 
 This manual corresponds to version {mod-version} of the mod. Information may be incorrect for other versions.
 

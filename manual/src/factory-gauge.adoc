@@ -51,7 +51,7 @@ Click to move the location of this gauge on the virtual board.
 ❻ Request interval::
 Interval between each request, and option to change it. See <<request-interval>>.
 
-❼ Request multiplier::
+❼ Maximum request multiplier::
 Option to automatically send multiple sets of ingredients in one request. See <<request-multiplier>>.
 
 ❽ Destination address::
@@ -60,7 +60,7 @@ The address to which the ingredients will be packaged and sent.
 ❾ Storage amount::
 The <<term-storage-amount,storage amount>> of this factory gauge.
 
-❿ Target amount::
+❿ Target stock amount::
 The storage amount this factory gauge is configured to reach.
 
 ⓫ Item measure::
@@ -94,7 +94,7 @@ image::gauge-iron-smelting-recipe.svg[ ,384,368]
 
 In its default mode (⓬), a factory gauge repeatedly checks whether its <<term-storage-amount,storage amount>> (❾) is less than the configured target amount (❿⓫). If so, it makes a [#term-request]_request_ for a set of ingredients (❷) to be sent from the networks of the ingredient gauges to the destination address (❽), expecting the output (❶) to later arrive in storage (❾).
 
-The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❷), as well as the type and number of output items expected (❶). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 9 stacks or 64 items, whichever is more.
+The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❷), as well as the type and number of output items expected (❶). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 64 stacks.
 
 .Examples
 [%autowidth,cols="2*"]
@@ -169,13 +169,13 @@ A package with custom arrangement may be unpacked into any block supported by pa
 [#on-demand]
 == On-Demand Production
 
-By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] "maintain stock" mode, which [#term-active]_activates_ (starts making <<term-request,requests>>) when the <<term-storage-amount,storage amount>> is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to image:btn-follow-demand.png[,18,18] "follow demand" mode, which instead activates the gauge when there is downstream demand, that is, when any of its <<term-consumer-gauge,consumer gauges>> is active.
+By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] "maintain stock" mode, which [#term-active]_activates_ (starts making <<term-request,requests>>) when the <<term-storage-amount,storage amount>> is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to image:btn-follow-demand.png[,18,18] "follow demand" mode, which additionally activates the gauge when there is downstream demand.
 
 [#figure-follow-demand]
 .A gauge producing oak planks in "follow demand" mode
 image::gauge-follow-demand-mode.svg[ ,296,48]
 
-In this mode, the target amount (❶) cannot be modified manually. It is automatically set according to downstream [#term-demand]_demand_, that is, the total quantity of the items produced by this gauge defined in the <<term-recipe,recipes>> of all currently <<term-active,active>> consumer gauges.
+The downstream [#term-demand]_demand_ is calculated by observing all of its currently <<term-active,active>> <<term-consumer-gauge,consumer gauges>>, and calculating the total quantity of the item produced by this gauge defined in their <<term-recipe,recipes>>. The gauge activates when the storage amount is below either the demand or the minimum target stock amount (❶).
 
 .An example setup to produce barrels from oak logs
 image::gauge-follow-demand-barrel-example.png[ ,329,198]
@@ -200,7 +200,7 @@ See xref:production-orders.adoc[Production Orders] for details.
 [#request-multiplier]
 == Dynamic Request Multiplier
 
-Normally, the amount of ingredients a factory gauge sends per <<term-request,request>> is fixed to what was defined in its <<term-recipe,recipe>> (<<figure-multiplier>> ❷). Configuring the request multiplier (❶) allows this gauge to automatically pack more ingredients per request as needed.
+Normally, the amount of ingredients a factory gauge sends per <<term-request,request>> is fixed to what was defined in its <<term-recipe,recipe>> (<<figure-multiplier>> ❷). Configuring the maximum request multiplier (❶) allows this gauge to automatically pack more ingredients per request as needed.
 
 [#figure-multiplier]
 .A factory gauge with a request multiplier set
@@ -208,21 +208,21 @@ image::gauge-multiplier.svg[ ,340,154]
 
 Scroll on ❶ to adjust its value. Left-click to set to the maximum allowed value, right-click to reset back to ×1.
 
-With a request multiplier ×N, the factory gauge automatically chooses to request up to N sets of ingredients from its recipe at once, this happens when:
+With a maximum request multiplier ×N, the factory gauge automatically chooses to request up to N sets of ingredients from its recipe at once, this happens when:
 
 * more products than ❸ are needed for the <<term-storage-amount,storage amount>> to reach the target amount; and
 * sufficient ingredients are available from the <<term-ingredient-gauge,ingredient gauges>>.
 
-The value of the request multiplier is limited to ×64, or by the amounts of ingredients and output after multiplying with the multiplier, whichever is less. These amounts may not exceed the usual limits applicable to a <<term-recipe,recipe>>. Hovering on ❶ temporarily displays the amounts after multiplying on ❷ and ❸.
+The value of the maximum request multiplier is limited to ×64, or by the amounts of ingredients and output after multiplying with the multiplier, whichever is less. These amounts may not exceed the usual limits applicable to a <<term-recipe,recipe>>. Hovering on ❶ temporarily displays the amounts after multiplying on ❷ and ❸.
 
 .Previewing the ingredients and output amounts after multiplying
 image::gauge-multiplier-preview.png[]
 
-.Examples of the maximum values of a request multiplier
+.Examples of the maximum values of the maximum request multiplier
 [%header%autowidth,cols="3*"]
 |===
 | Recipe before and after multiplying
-| Maximum request multiplier
+| Maximum setting
 | Limiting factor
 
 | image:gauge-multiplier-limit-basic-recipe.png[,340,154] +
@@ -233,7 +233,7 @@ image:gauge-multiplier-limit-basic-multiplied.png[,340,154]
 | image:gauge-multiplier-limit-craft-recipe.png[,340,154] +
 image:gauge-multiplier-limit-craft-multiplied.png[,340,154]
 | ×8
-| Output exceeding <<term-batch-size,batch size>> × output items in crafting recipe (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)
+| <<term-batch-size,Batch size>> exceeding 64 (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)
 
 | image:gauge-multiplier-limit-arrange-recipe.png[,340,154] +
 image:gauge-multiplier-limit-arrange-multiplied.png[,340,154]
@@ -241,7 +241,9 @@ image:gauge-multiplier-limit-arrange-multiplied.png[,340,154]
 | Ingredients overflowing to another slot (disallowed with <<ingredient-arrange,custom arrangements>>)
 |===
 
-When the recipe is modified, the maximum allowed request multiplier may decrease. The request multiplier automatically adjusts in response.
+When the recipe is modified, the limit of the maximum request multiplier may decrease. The maximum request multiplier automatically adjusts in response.
+
+To exclude an ingredient from multiplication, hold ctrl and click on it.
 
 [#request-interval]
 == Request Interval
@@ -316,7 +318,7 @@ When using the other mods, regular factory gauges gain the ability to monitor an
 
 Fluids do not contain NBT data, therefore when monitoring a fluid, the option to ignore NBT data disappears.
 
-When using a fluid as an ingredient or output, scrolling on the ingredient or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is limited to 10 B per batch.
+When using a fluid as an ingredient or output, scrolling on the ingredient or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is limited to 64 B per batch.
 
 [#ignore-data]
 == Ignore Item NBT Data
