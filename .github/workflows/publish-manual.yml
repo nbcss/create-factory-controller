@@ -60,6 +60,7 @@ jobs:
           context: ./manual
           containerfiles: ./manual/Containerfile
           tags: ghcr.io/${{ github.repository }}/manual-builder:latest
+          oci: 'true'
           annotations: &builder_annotations |
             org.opencontainers.image.description=The container image to build the manual.
             org.opencontainers.image.url=https://github.com/${{ github.repository }}/blob/main/.github/workflows/publish-manual.yml
