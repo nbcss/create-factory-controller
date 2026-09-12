@@ -34,6 +34,14 @@ jobs:
             .github
             manual
 
+      - &podman_login_step
+        name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Check for container changes
         id: filter
         uses: dorny/paths-filter@v4
@@ -45,28 +53,25 @@ jobs:
               - manual/Gemfile
               - manual/Gemfile.lock
 
-      - name: Log in to GitHub Container Registry
+      - name: Build manual-builder image
         if: steps.filter.outputs.container == 'true'
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push manual-builder
-        if: steps.filter.outputs.container == 'true'
-        uses: docker/build-push-action@v7
+        uses: redhat-actions/buildah-build@v3
         with:
           context: ./manual
-          file: ./manual/Containerfile
+          containerfiles: ./manual/Containerfile
           tags: ghcr.io/${{ github.repository }}/manual-builder:latest
-          push: true
           annotations: &builder_annotations |
             org.opencontainers.image.description=The container image to build the manual.
             org.opencontainers.image.url=https://github.com/${{ github.repository }}/blob/main/.github/workflows/publish-manual.yml
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           labels: *builder_annotations
+
+      - name: Push manual-builder image
+        if: steps.filter.outputs.container == 'true'
+        uses: redhat-actions/push-to-registry@v3
+        with:
+          tags: ghcr.io/${{ github.repository }}/manual-builder:latest
 
   build:
     needs: build-container
@@ -84,51 +89,36 @@ jobs:
           fetch-depth: 0
           sparse-checkout: manual
 
+      - *podman_login_step
+
       - name: Build manual
-        run: docker run --rm --volume "${{ github.workspace }}:/work" ghcr.io/${{ github.repository }}/manual-builder:latest rake build
-
-      - &oras_setup_step
-        name: Set up ORAS
-        uses: oras-project/setup-oras@v2
-
-      - &oras_login_step
-        name: Log in to GitHub Container Registry with ORAS
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<< "$GITHUB_TOKEN"
+        run: podman run --rm --volume "$GITHUB_WORKSPACE:/work" "ghcr.io/$GITHUB_REPOSITORY/manual-builder:latest" rake build
 
       - name: Push manual artifact
-        env:
-          REPOSITORY: ${{ github.repository }}
-          REF_NAME: ${{ github.ref_name }}
         run: |
-          set -euo pipefail
           tar -C manual/build -czf build.tar.gz .
-          oras push "ghcr.io/${REPOSITORY}/manual:${REF_NAME}" \
-            --annotation org.opencontainers.image.description="Manual for ${{ github.ref_type }} ${REF_NAME}." \
-            --annotation org.opencontainers.image.url="https://github.com/${REPOSITORY}/blob/main/.github/workflows/publish-manual.yml" \
-            --annotation org.opencontainers.image.revision=${{ github.sha }} \
-            --annotation org.opencontainers.image.source="https://github.com/${REPOSITORY}" \
-            --annotation org.opencontainers.image.version="${REF_NAME}" \
-            build.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip
+          podman artifact add --replace \
+            --annotation org.opencontainers.image.description="Manual for $GITHUB_REF_TYPE $GITHUB_REF_NAME." \
+            --annotation org.opencontainers.image.url="https://github.com/$GITHUB_REPOSITORY/blob/main/.github/workflows/publish-manual.yml" \
+            --annotation org.opencontainers.image.revision="$GITHUB_SHA" \
+            --annotation org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+            --annotation org.opencontainers.image.version="$GITHUB_REF_NAME" \
+            "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME" \
+            build.tar.gz
+          podman artifact push "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME"
 
   merge:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       packages: read
       pages: write
     concurrency: ${{ github.workflow }} merge
     steps:
-      - *oras_setup_step
-      - *oras_login_step
+      - *podman_login_step
 
       - name: Merge manual artifacts
-        env:
-          REPOSITORY: ${{ github.repository }}
         run: |
-          set -euo pipefail
           mkdir -p artifacts
 
           for branch in $MANUAL_BRANCHES; do
@@ -138,13 +128,14 @@ jobs:
               path="manual-${branch}"
             fi
 
-            if ! oras pull "ghcr.io/${REPOSITORY}/manual:${branch}" --output "artifacts/$branch"; then
-              echo "::warning title=Missing manual artifact::No manual artifact found for branch ${branch}; skipping"
+            if ! podman artifact pull "ghcr.io/$GITHUB_REPOSITORY/manual:$branch"; then
+              echo "::warning title=Missing manual artifact::No manual artifact found for branch $branch; skipping"
               continue
             fi
 
-            mkdir -p "_site/${path}"
-            tar -C "_site/${path}" -xzf "artifacts/${branch}/build.tar.gz"
+            podman artifact extract --title build.tar.gz "ghcr.io/$GITHUB_REPOSITORY/manual:$branch" "artifacts/${branch}.tar.gz"
+            mkdir -p "_site/$path"
+            tar -C "_site/$path" -xzf "artifacts/${branch}.tar.gz"
           done
 
           cp _site/manual/404.html _site/404.html
