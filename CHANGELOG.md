@@ -1,3 +1,8 @@
+## 1.2.2
+
+Changes:
+- Cut Amethyst is using stonecutter recipe now.
+
 ## 1.2.1
 
 Features:

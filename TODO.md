@@ -35,7 +35,7 @@
 - [DONE] Highlight upstream and downstream gauges when hover over a gauge
 - [DONE] Allow minimum stock amount in Passive mode gauge
 
-# 1.2.1
+# 1.2.2
 - [TODO] Update Arithmetic tube GUI and connection target selection
 - [TODO] Different controller component tooltip styles
 - [TODO] Behaviour tooltips for arithmetic tube
@@ -45,6 +45,7 @@
 - [TODO] Redstone Output (Compare) of Arithmetic Tube
 - [TODO] Flash animation for number connection when update
 - [TODO] Improve the wording of production order
+- [TODO] Repackager Split/Merge mode of request multiplier
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
