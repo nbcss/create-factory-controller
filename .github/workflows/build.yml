@@ -34,6 +34,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: write
     concurrency: ${{ github.workflow }} javadoc ${{ github.ref }}
     steps:
       - *checkout_step
@@ -85,10 +86,9 @@ jobs:
 
       - name: Dispatch GitHub Pages publish
         if: steps.check.outputs.changed != 'false'
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: github-pages.yml
-          ref: main
+        run: gh workflow run github-pages.yml --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   maven-publish:
     needs: build

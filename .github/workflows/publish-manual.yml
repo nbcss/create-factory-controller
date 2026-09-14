@@ -82,6 +82,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: write
     concurrency: ${{ github.workflow }} build ${{ github.ref }}
     steps:
       - name: Check out repository
@@ -110,7 +111,6 @@ jobs:
           podman artifact push "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME"
 
       - name: Dispatch GitHub Pages publish
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: github-pages.yml
-          ref: main
+        run: gh workflow run github-pages.yml --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
