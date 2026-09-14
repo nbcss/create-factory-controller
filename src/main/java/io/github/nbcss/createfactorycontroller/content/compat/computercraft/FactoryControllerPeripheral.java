@@ -26,7 +26,7 @@ import java.util.UUID;
 
 /**
  * Allow computers from CC: Tweaked to access information from a factory controller.
- * The factory controller act as a peripheral.
+ * The factory controller acts as a peripheral.
  *
  * <p>Lua usage:</p>
  * {@snippet lang="lua" :

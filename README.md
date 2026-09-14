@@ -17,7 +17,6 @@ Additionally, using a factory controller allows you to:
 - Change individual connection's arrow bending path. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#connections)
 - Display information with a display link. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/display-link.html)
 - Import existing gauge walls into a factory controller. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/blueprint.html#import-world)
-- Read a controller's gauges, logic tubes, networks, production orders and promises from a CC: Tweaked computer (read-only).
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
 
@@ -39,7 +38,6 @@ You can also place these in factory controllers:
 
 - Redstone Link [🕮](https://nbcss.github.io/create-factory-controller/manual/en/redstone-link.html)
 - Electron Tube: Act as logical gates for redstone signals. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/electron-tube.html)
-- Arithmetic Tube: New item, for number calculations in factory controller.
 
 This mod does **not**:
 
@@ -64,6 +62,7 @@ See also:
 
 - [Fluid Transport](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#fluid)
 - [Production Orders](https://nbcss.github.io/create-factory-controller/manual/en/production-orders.html#mod-compat)
+- [ComputerCraft (CC: Tweaked) Integration](https://nbcss.github.io/create-factory-controller/javadoc/io/github/nbcss/createfactorycontroller/content/compat/computercraft/package-summary.html)
 
 ## Dependencies
 
