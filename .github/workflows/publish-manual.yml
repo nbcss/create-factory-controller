@@ -108,3 +108,9 @@ jobs:
             "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME" \
             build.tar.gz
           podman artifact push "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME"
+
+      - name: Dispatch GitHub Pages publish
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: github-pages.yml
+          ref: main

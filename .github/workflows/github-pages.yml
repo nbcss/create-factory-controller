@@ -1,19 +1,12 @@
 name: Publish GitHub Pages
 
 on:
-  registry_package:
-    types: [published, updated]
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}
 
 jobs:
   merge:
-    if: >
-      github.event.registry_package.package_type == 'container' &&
-      (
-        format('{0}/{1}', github.event.registry_package.namespace, github.event.registry_package.name) == format('{0}/{1}', github.repository, 'javadoc') ||
-        format('{0}/{1}', github.event.registry_package.namespace, github.event.registry_package.name) == format('{0}/{1}', github.repository, 'manual')
-      )
     runs-on: ubuntu-26.04
     permissions:
       packages: read
@@ -27,7 +20,7 @@ jobs:
           password: ${{ github.token }}
 
       - name: Extract content from artifacts
-        shell: bash -xeuo pipefail
+        shell: bash -xeuo pipefail {0}
         run: |
           mkdir -p "_site"
           for name in javadoc manual; do

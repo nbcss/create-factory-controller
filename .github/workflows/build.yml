@@ -57,7 +57,7 @@ jobs:
 
       - name: Check if Javadoc has changed since last upload
         id: check
-        shell: bash -veuo pipefail
+        shell: bash -veuo pipefail {0}
         continue-on-error: true
         run: |
           manifest="$(skopeo inspect --raw docker://ghcr.io/$GITHUB_REPOSITORY/javadoc:$GITHUB_REF_NAME)"
@@ -82,6 +82,13 @@ jobs:
             "ghcr.io/$GITHUB_REPOSITORY/javadoc:$GITHUB_REF_NAME" \
             build.tar.gz
           podman artifact push "ghcr.io/$GITHUB_REPOSITORY/javadoc:$GITHUB_REF_NAME"
+
+      - name: Dispatch GitHub Pages publish
+        if: steps.check.outputs.changed != 'false'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: github-pages.yml
+          ref: main
 
   maven-publish:
     needs: build
