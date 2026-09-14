@@ -1,0 +1,77 @@
+name: Publish GitHub Pages
+
+on:
+  registry_package:
+    types: [published, updated]
+
+concurrency: ${{ github.workflow }}
+
+jobs:
+  merge:
+    if: >
+      github.event.registry_package.package_type == 'container' &&
+      (
+        format('{0}/{1}', github.event.registry_package.namespace, github.event.registry_package.name) == format('{0}/{1}', github.repository, 'javadoc') ||
+        format('{0}/{1}', github.event.registry_package.namespace, github.event.registry_package.name) == format('{0}/{1}', github.repository, 'manual')
+      )
+    runs-on: ubuntu-26.04
+    permissions:
+      packages: read
+      pages: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Extract content from artifacts
+        shell: bash -xeuo pipefail
+        run: |
+          mkdir -p "_site"
+          for name in javadoc manual; do
+            registry_tags="$(skopeo list-tags "docker://ghcr.io/$GITHUB_REPOSITORY/$name" | jq -r '.Tags[]' || true)"
+            [[ -z "$registry_tags" ]] && echo "::warning ::Missing artifact $name, skipping"
+
+            mkdir -p "artifacts/$name"
+            for tag in $registry_tags; do
+              podman artifact pull "ghcr.io/$GITHUB_REPOSITORY/$name:$tag"
+              podman artifact extract --title build.tar.gz "ghcr.io/$GITHUB_REPOSITORY/$name:$tag" "artifacts/$name/$tag.tar.gz"
+
+              [[ "$tag" == main ]] && path="$name" || path="$name-$tag"
+              mkdir -p "_site/$path"
+              tar -C "_site/$path" -xzf "artifacts/$name/$tag.tar.gz"
+            done
+          done
+
+          cp _site/manual/404.html _site/404.html || true
+
+      - name: Generate job summary
+        run: |
+          echo "Site root:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          ls _site | sed 's/$/  /' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+          include-hidden-files: true
+
+  deploy:
+    needs: merge
+    runs-on: ubuntu-26.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

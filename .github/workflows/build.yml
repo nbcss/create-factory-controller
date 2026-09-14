@@ -1,48 +1,102 @@
-name: Build
+name: Gradle build
 
 on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - name: Checkout repository
+      - &checkout_step
+        name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup JDK
+      - &setup_jdk_step
+        name: Setup JDK
         uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      - &setup_gradle_step
+        name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build with Gradle
         run: ./gradlew build
+
+  javadoc:
+    # Generate Javadoc and upload as an artifact to the container registry.
+    # Consumed by `github-pages.yml` to publish under `javadoc` or `javadoc-$branch`.
+    needs: build
+    if: >
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
+    concurrency: ${{ github.workflow }} javadoc ${{ github.ref }}
+    steps:
+      - *checkout_step
+      - *setup_jdk_step
+      - *setup_gradle_step
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Generate Javadoc
+        run: ./gradlew javadoc
+
+      - name: Package Javadoc
+        run: >
+          tar --sort=name --mtime="@0" --owner=0 --group=0 --numeric-owner
+          -C build/docs/javadoc -czf build.tar.gz .
+
+      - name: Check if Javadoc has changed since last upload
+        id: check
+        shell: bash -veuo pipefail
+        continue-on-error: true
+        run: |
+          manifest="$(skopeo inspect --raw docker://ghcr.io/$GITHUB_REPOSITORY/javadoc:$GITHUB_REF_NAME)"
+          digest="$(jq -r '.layers[] | select(.annotations["org.opencontainers.image.title"] == "build.tar.gz") | .digest' <<< "$manifest")"
+          echo "digest=$digest" | tee -a "$GITHUB_OUTPUT"
+
+          IFS=":" read -r algorithm checksum <<< "$digest"
+          [[ "$algorithm" == sha256 ]] # assert
+
+          new_checksum="$(sha256sum build.tar.gz | cut -d ' ' -f 1)"
+
+          [[ "$checksum" == "$new_checksum" ]] && changed=false || changed=true
+          echo "changed=$changed" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Upload OCI artifact
+        if: steps.check.outputs.changed != 'false'
+        run: |
+          podman artifact add --replace \
+            --annotation org.opencontainers.image.revision="$GITHUB_SHA" \
+            --annotation org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+            --annotation org.opencontainers.image.version="$GITHUB_REF_NAME" \
+            "ghcr.io/$GITHUB_REPOSITORY/javadoc:$GITHUB_REF_NAME" \
+            build.tar.gz
+          podman artifact push "ghcr.io/$GITHUB_REPOSITORY/javadoc:$GITHUB_REF_NAME"
 
   maven-publish:
     needs: build
     if: >
       github.ref == 'refs/heads/main' ||
       startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: maven
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Setup JDK
-        uses: actions/setup-java@v5
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+      - *checkout_step
+      - *setup_jdk_step
+      - *setup_gradle_step
 
       - name: Display version
-        run: ./gradlew currentVersion -q >> "$GITHUB_STEP_SUMMARY"
+        run: ./gradlew currentVersion -q | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout Maven repository
         uses: nbcss/maven/.github/actions/setup-maven-repo@main
