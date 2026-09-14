@@ -79,6 +79,12 @@ repositories {
             includeGroup("org.anti_ad.mc")
         }
     }
+    maven {
+        url = "https://cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
 }
 
 base {
@@ -88,31 +94,17 @@ base {
 // Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// Optional "fluids/energy via packages" addon jars (lib/). CreateFluidLogistic ("fluidlogistics"), CreateFluid
-// ("fluid") and Create: Repackaged ("repackaged") all hook the same package/logistics system and are mutually
-// incompatible at runtime, so exactly ONE is put on the dev runtime, chosen by -PfluidRuntime. We COMPILE against
-// the two fluid-FILTER addons (compileOnly) so both FluidFilterProviders build regardless; repackaged has no
-// compat code yet, so it's runtime-only (for exploration/testing).
+// Optional "fluids/energy via packages" addons. CreateFluidLogistic ("fluidlogistics"), CreateFluid ("fluid")
+// and Create: Repackaged ("repackaged") all hook the same package/logistics system and are mutually incompatible
+// at runtime, so exactly ONE is put on the dev runtime, chosen by -PfluidRuntime. We COMPILE against the two
+// fluid-FILTER addons (compileOnly) so both FluidFilterProviders build regardless; repackaged has no compat code
+// yet, so it's runtime-only (for exploration/testing).
 //   -PfluidRuntime=none      (default) → neither (the base runClient stays addon-free)
-//   -PfluidRuntime=cfl                 → CreateFluidLogistic (newest fluidlogistics jar in lib/)
-//   -PfluidRuntime=cfl-legacy          → CreateFluidLogistic (oldest jar; tests the pre-1.2.5 reflection fallback)
+//   -PfluidRuntime=cfl                 → CreateFluidLogistic current API jar
+//   -PfluidRuntime=cfl-legacy          → CreateFluidLogistic 1.2.0; tests the pre-1.2.5 reflection fallback
 //   -PfluidRuntime=createfluid         → CreateFluid
 //   -PfluidRuntime=repackaged          → Create: Repackaged (+ its required compat_manager from maven)
 // The IntelliJ ".run/" folder ships ready-made buttons for the CFL, CreateFluid and Repackaged variants.
-//
-// CreateFluidLogistic ships TWO API generations (1.2.5 refactored fluids into a "PackageResource" system and removed
-// setFluidVirtual), and lib/ may hold both jars at once. We COMPILE against the NEWEST one; CflFluidProvider adapts to
-// the legacy API by reflection, so a single build runs on either. Pick newest/oldest by a numeric version sort so the
-// two-jar case is unambiguous (a bare fluidlogistics-*.jar fileTree would otherwise put both on the classpath).
-def modVersionKey = { java.io.File f ->
-    def m = (f.name =~ /(\d+(?:\.\d+)+)/)
-    (m ? m[0][1] : "0").tokenize('.').collect { String.format('%05d', it as int) }.join('.')
-}
-def fluidLogisticsJars = fileTree(dir: "lib", include: ["fluidlogistics-*.jar"]).files.sort { modVersionKey(it) }
-def fluidLogisticsJar = fluidLogisticsJars.isEmpty() ? files() : files(fluidLogisticsJars.last())        // newest → compile main + `cfl`
-def fluidLogisticsLegacyJar = fluidLogisticsJars.size() < 2 ? files() : files(fluidLogisticsJars.first()) // oldest → legacyCompat source set + `cfl-legacy`
-def createFluidJar = fileTree(dir: "lib", include: ["fluid-*.jar"])
-def repackagedJar = fileTree(dir: "lib", include: ["repackaged-*.jar"])
 def fluidRuntime = (project.findProperty('fluidRuntime') ?: 'none').toString().toLowerCase()
 
 // The `run-clean` IntelliJ profile passes -PcleanRuntime. It gets an isolated game directory and only the required
@@ -295,34 +287,25 @@ dependencies {
     compileOnly("org.anti_ad.mc:InventoryProfilesNext-neoforge-1.21.1:${ipn_version}") { transitive = false }
 
     // Fluid-logistics addons (optional/soft): CreateFluidLogistic (modid "fluidlogistics") and CreateFluid
-    // (modid "fluid"), consumed from local jars in lib/ (neither is on a maven). We COMPILE against both so both
+    // (modid "fluid"), consumed from CurseMaven. We COMPILE against both so both
     // FluidFilterProviders build; every use of either addon's classes is guarded by ModList.isLoaded(...), so the
     // mod loads and runs fine with either or neither. The two are MUTUALLY INCOMPATIBLE at runtime, so exactly ONE
     // is added to the dev runtime via localRuntime, selected by -PfluidRuntime (see the fluidRuntime def above).
     // localRuntime jars are scanned as mods by NeoForge in dev (unlike a per-run additionalRuntimeClasspath, which
     // is only a library on the module path and never loads as a mod).
-    compileOnly fluidLogisticsJar
-    compileOnly createFluidJar
+    compileOnly "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_curse_file}"
+    compileOnly "curse.maven:create-fluid-${create_fluid_curse_project}:${create_fluid_curse_file}"
     if (fluidRuntime == 'cfl') {
-        localRuntime fluidLogisticsJar
+        localRuntime "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_curse_file}"
     } else if (fluidRuntime == 'cfl-legacy') {
-        localRuntime fluidLogisticsLegacyJar
+        localRuntime "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_legacy_curse_file}"
     } else if (fluidRuntime == 'createfluid') {
-        localRuntime createFluidJar
+        localRuntime "curse.maven:create-fluid-${create_fluid_curse_project}:${create_fluid_curse_file}"
     } else if (fluidRuntime == 'repackaged') {
-        localRuntime repackagedJar
+        localRuntime "curse.maven:repackaged-${repackaged_curse_project}:${repackaged_curse_file}"
         // Create: Repackaged hard-depends on Compat Manager (liukrast maven, not bundled).
         localRuntime("net.liukrast:compat_manager-1.21.1:${compat_manager_version}") { transitive = false }
     }
-}
-
-// The fluid-FILTER addon jars (lib/) aren't on any maven and aren't in the repo, so on a clean checkout (e.g. CI)
-// they're absent and their provider can't compile. When a jar is missing, drop just that one provider source from
-// compilation; FluidCompat instantiates the providers reflectively, so it builds (and at runtime skips any provider
-// whose class was excluded). With the lib/ jars present (dev) nothing is excluded and both providers compile as usual.
-tasks.named('compileJava') {
-    if (fluidLogisticsJar.isEmpty()) exclude '**/compat/fluids/CflFluidProvider.java'
-    if (createFluidJar.isEmpty()) exclude '**/compat/fluids/CreateFluidProvider.java'
 }
 
 // `legacyCompat` source set: providers compiled against an OLDER version of an optional dependency than `main` uses,
@@ -334,8 +317,8 @@ tasks.named('compileJava') {
 // old version is detected at runtime, so its removed-API references are never linked against a newer jar.
 //
 // Currently holds only CflLegacyFluidProvider (pre-1.2.5 CreateFluidLogistic, whose setFluidVirtual filter the 1.2.5
-// refactor removed). To add another legacy provider: drop it in src/legacyCompat/java, add its old jar as
-// `legacyCompatCompileOnly`, and add a matching `exclude` below so a jar-less checkout (e.g. CI) skips just that file.
+// refactor removed). To add another legacy provider: drop it in src/legacyCompat/java and add its old jar as
+// `legacyCompatCompileOnly`.
 sourceSets {
     legacyCompat {
         java { srcDir 'src/legacyCompat/java' }
@@ -346,13 +329,10 @@ neoForge.addModdingDependenciesTo(sourceSets.legacyCompat)
 dependencies {
     legacyCompatCompileOnly "com.simibubi.create:create-1.21.1:${create_version}"  // Create + Registrate (AllItems/ItemEntry)
     legacyCompatCompileOnly sourceSets.main.output                                 // base providers/interfaces (e.g. CflFluidProvider)
-    legacyCompatCompileOnly fluidLogisticsLegacyJar                                // pre-1.2.5 CFL (setFluidVirtual); empty ⇒ harmless
+    legacyCompatCompileOnly "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_legacy_curse_file}"
+    // pre-1.2.5 CFL (setFluidVirtual); empty ⇒ harmless
     // Legacy classes on the dev runtime (they sit unused unless the old version is detected).
     localRuntime files(sourceSets.legacyCompat.output)
-}
-tasks.named('compileLegacyCompatJava') {
-    // On a jar-less checkout the matching old jar is absent, so its API can't resolve — drop just that provider.
-    if (fluidLogisticsLegacyJar.isEmpty()) exclude '**/compat/fluids/CflLegacyFluidProvider.java'
 }
 tasks.named('jar') { from sourceSets.legacyCompat.output }
 
