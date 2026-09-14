@@ -6,7 +6,7 @@ The dashboard UI appears when you interact with a factory controller block. It d
 image::dashboard-ui.svg[ ,430,438]
 
 .Basic interactions
-[cols="2*"]
+[cols="2*.^"]
 |===
 .2+s| Pan view
 | Drag with left mouse button
@@ -126,7 +126,7 @@ Some components, like the xref:redstone-link.adoc[redstone link], have modes of 
 Each factory gauge displays a label, providing relevant information (e.g. items in stock) at a glance. When the labels become distracting or obstruct other components, they can be hidden by pressing Alt. Then only the label of the hovered component is displayed. Press Alt again to show all labels.
 
 .Summary
-[cols="2*"]
+[cols="2*.^"]
 |===
 s| Move component
 | Q on component

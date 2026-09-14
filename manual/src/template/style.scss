@@ -433,6 +433,16 @@ table {
   }
 }
 
+th, td {
+  @each $v in left, right, center {
+    &.halign-#{$v} { text-align: $v; }
+  }
+
+  @each $v in top, middle, bottom {
+    &.valign-#{$v} { vertical-align: $v; }
+  }
+}
+
 // Admonitions
 
 .admonition-block {
