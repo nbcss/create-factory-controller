@@ -97,7 +97,7 @@ In its default mode (⓬), a factory gauge repeatedly checks whether its <<term-
 The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❷), as well as the type and number of output items expected (❶). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 64 stacks.
 
 .Examples
-[%autowidth,cols="2*"]
+[%autowidth,cols="2*.^"]
 |===
 | Smelting raw iron to ingots in 32-item batches
 | image:gauge-batch-smelting-example.png[,251,154]
@@ -219,7 +219,7 @@ The value of the maximum request multiplier is limited to ×64, or by the amount
 image::gauge-multiplier-preview.png[]
 
 .Examples of the maximum values of the maximum request multiplier
-[%header%autowidth,cols="3*"]
+[%header%autowidth,cols="3*.^"]
 |===
 | Recipe before and after multiplying
 | Maximum setting
@@ -295,7 +295,7 @@ Additionally, when a factory controller block is redstone-powered, all factory g
 When you have a compatible fluid transportation mod installed, factory gauges placed in factory controllers may utilize that mod's ability to transport fluids, and use fluids as ingredients or outputs.
 
 .Compatibility of fluid transportation mods
-[%header%autowidth,cols="2*"]
+[%header%autowidth,cols="2*.^"]
 |===
 | Mod | Compatibility
 

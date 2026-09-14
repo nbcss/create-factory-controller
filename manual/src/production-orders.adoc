@@ -36,20 +36,24 @@ Click to cancel the order.
 Type, amount, and status of the ordered items.
 
 .Statuses of ordered items
-[%header%autowidth,cols="3*"]
+[%header%autowidth,cols="3*.^"]
 |===
 | Icon | Name | Description
 
-| | Waiting for ingredients
+^|
+| Waiting for ingredients
 | The responsible gauge does not have sufficient ingredients to produce the item, or they otherwise have not been sent.
 
-| image:production-order-processing.png[,14,14] | Processing
+^| image:production-order-processing.png[,14,14]
+| Processing
 | The responsible gauge has sent the ingredients to produce this item, but it has not arrived in storage.
 
-| image:production-order-sent.png[,14,14] | Sent
+^| image:production-order-sent.png[,14,14]
+| Sent
 | The produced item has arrived in storage, and been dispatched to the destination address.
 
-| image:production-order-invalid.png[,14,14] | [#term-invalid-gauge]#Invalid gauge#
+^| image:production-order-invalid.png[,14,14]
+| [#term-invalid-gauge]#Invalid gauge#
 | The responsible gauge has been destroyed or switched to a mode other than "follow demand and order".
 |===
 

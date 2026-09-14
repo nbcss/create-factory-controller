@@ -3,7 +3,7 @@
 Redstone links enable remote transmission and reception of redstone signals, as described in their in-game ponder. When placed in factory controllers, they may be connected with other components with redstone capabilities, allowing them to interoperate with contraptions outside the factory controller.
 
 .Redstone links placed in factory controllers
-[%autowidth,cols="3*"]
+[%autowidth,cols="3*^.^"]
 |===
 |
 s| Send
