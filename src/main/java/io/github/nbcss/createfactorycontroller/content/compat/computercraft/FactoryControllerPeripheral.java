@@ -25,15 +25,22 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Read-only view of a factory controller for a CC: Tweaked computer -- gauges, logic tubes, networks, production
- * orders and promise counts. Deliberately has no attach/configure/remove/connect methods: a computer can see the
- * controller's state, never drive it.
+ * Allow computers from CC: Tweaked to access information from a factory controller.
+ * The factory controller act as a peripheral.
+ *
+ * <p>Lua usage:</p>
+ * {@snippet lang="lua" :
+ * local fc = peripheral.find("factory_controller")
+ * fc.getInfo()
+ * }
+ *
+ * <p>The controller's state is read-only.</p>
  */
 public class FactoryControllerPeripheral implements IPeripheral {
 
     private final FactoryControllerBlockEntity controller;
 
-    public FactoryControllerPeripheral(FactoryControllerBlockEntity controller) {
+    FactoryControllerPeripheral(FactoryControllerBlockEntity controller) {
         this.controller = controller;
     }
 
@@ -54,6 +61,21 @@ public class FactoryControllerPeripheral implements IPeripheral {
 
     // ── Lua-facing getters ──────────────────────────────────────────────────
 
+    /**
+     * Get general information about the factory controller.
+     * @return {@snippet lang="txt" :
+     * {
+     *     pos: {
+     *         x: int
+     *         y: int
+     *         z: int
+     *     }
+     *     name: string -- Custom name of the controller, if any
+     *     redstonePowered: boolean -- Whether the controller is powered by redstone
+     *     componentCount: int -- The number of components in the factory controller
+     * }
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final Map<String, Object> getInfo() {
         Map<String, Object> info = new LinkedHashMap<>();
@@ -69,6 +91,12 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return info;
     }
 
+    /**
+     * Get the UUIDs of all networks known to the factory controller.
+     * @return {@snippet lang="txt" :
+     * string[] -- Network UUIDs
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final List<String> getNetworks() {
         List<String> networks = new ArrayList<>();
@@ -76,6 +104,15 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return networks;
     }
 
+    /**
+     * Get summaries for all components placed in the factory controller.
+     * @return {@snippet lang="txt" :
+     * {
+     *     pos: string -- Component position as "x,y"
+     *     type: string -- Component type ID
+     * }[]
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final List<Map<String, Object>> getComponents() {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -84,6 +121,28 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return result;
     }
 
+    /**
+     * Get information about all gauges placed in the factory controller.
+     * @return {@snippet lang="txt" :
+     * {
+     *     pos: string -- Component position as "x,y"
+     *     type: string -- Component type ID
+     *     item: string -- Item ID, or an empty string when no item is set
+     *     count: int -- Requested item count
+     *     unit: string -- Gauge unit
+     *     requestMode: string -- Gauge request mode
+     *     workMode: string -- Gauge work mode
+     *     stock: int -- Current stock level
+     *     promised: int -- Current promised item count
+     *     satisfied: boolean -- Whether the gauge is satisfied
+     *     waitingForNetwork: boolean -- Whether the gauge is waiting for a network
+     *     redstonePowered: boolean -- Whether the gauge is powered by redstone
+     *     address: string -- Recipe address, if any
+     *     network: string -- Network UUID, if any
+     *     gaugeId: string -- Gauge UUID, if any
+     * }[]
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final List<Map<String, Object>> getGauges() {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -94,6 +153,17 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return result;
     }
 
+    /**
+     * Get information about all logical tubes attached to the factory controller.
+     * @return {@snippet lang="txt" :
+     * {
+     *     pos: string -- Component position as "x,y"
+     *     type: string -- Component type ID
+     *     mode: string -- Logical tube mode
+     *     powered: boolean -- Whether the logical tube is powered
+     * }[]
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final List<Map<String, Object>> getLogicTubes() {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -107,6 +177,15 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return result;
     }
 
+    /**
+     * Get missing links in the factory controller's known networks.
+     * @return {@snippet lang="txt" :
+     * {
+     *     network: string -- Network UUID
+     *     links: string[] -- Missing link positions as "dimension@x,y,z"
+     * }[]
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final List<Map<String, Object>> getMissingLinks() {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -133,10 +212,17 @@ public class FactoryControllerPeripheral implements IPeripheral {
     //        List<Map<String, Object>> result = new ArrayList<>();
     //        for (ProductionOrderView view : ProductionOrderManager.get(level).viewsForNetwork(net, level.getGameTime()))
     //            result.add(orderSummary(view));
-    //        return result;
-    //    }
+//        return result;
+//    }
 
-    /** Active promises minted by one gauge (its {@code gaugeId}, from {@link #getGauges()}) on a network. */
+    /**
+     * Get the number of active promises associated with one gauge on a network.
+     * @param network Network UUID from {@link #getNetworks()}
+     * @param gaugeId Gauge UUID from {@link #getGauges()}
+     * @return {@snippet lang="txt" :
+     * int -- Active promise count
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final int getPromiseCountForGauge(String network, String gaugeId) {
         Level level = controller.getLevel();
@@ -145,7 +231,14 @@ public class FactoryControllerPeripheral implements IPeripheral {
         return PromiseCounts.owned(net, gaugeId, level.getGameTime());
     }
 
-    /** Active promises targeting a packager address, across every gauge/controller on that network. */
+    /**
+     * Get the number of active promises targeting a packager address on a network.
+     * @param network Network UUID from {@link #getNetworks()}
+     * @param address Packager address
+     * @return {@snippet lang="txt" :
+     * int -- Active promise count
+     * }
+     */
     @LuaFunction(mainThread = true)
     public final int getPromiseCountForAddress(String network, String address) {
         Level level = controller.getLevel();

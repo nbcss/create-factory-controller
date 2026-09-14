@@ -375,6 +375,10 @@ publishing {
     }
 }
 
+tasks.named('javadoc', Javadoc) {
+    include 'io/github/nbcss/createfactorycontroller/content/compat/computercraft/FactoryControllerPeripheral.java'
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
