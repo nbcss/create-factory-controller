@@ -9,6 +9,12 @@ jobs:
       - &checkout_step
         name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+          sparse-checkout: |
+            gradle
+            src
 
       - &setup_jdk_step
         name: Setup JDK

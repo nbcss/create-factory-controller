@@ -8,10 +8,11 @@ RUN apk add --no-cache git icu-libs icu-data-full po4a perl-yaml-tiny
 
 ADD Gemfile Gemfile.lock ./
 
-RUN \
-    apk add --no-cache build-base && \
-    bundle install && \
-    apk del --no-cache build-base && \
-    git config --system --add safe.directory /work
+RUN <<END
+apk add --no-cache build-base
+bundle install
+apk del --no-cache build-base
+git config --system --add safe.directory /work
+END
 
 CMD ["rake"]
