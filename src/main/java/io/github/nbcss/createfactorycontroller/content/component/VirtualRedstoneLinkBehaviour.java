@@ -220,7 +220,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         Level level = controller == null ? null : controller.getLevel();
         if (level == null || level.isClientSide || !registered || !receive) return;
         for (IRedstoneLinkable other : List.copyOf(handler().getNetworkOf(level, this)))
-            if (other != this && other.getTransmittedStrength() > 0)
+            if (other != this && other.isAlive() && other.getTransmittedStrength() > 0)
                 handler().updateNetworkOf(level, other);
     }
 
