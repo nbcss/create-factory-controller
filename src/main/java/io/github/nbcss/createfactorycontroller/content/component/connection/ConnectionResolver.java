@@ -72,13 +72,15 @@ public final class ConnectionResolver {
         return result(type, o.source(), o.sink(), rejectExisting);
     }
 
-    /** Every valid type for this pair in score (priority) order. */
+    /** Every shared, orientable type for this pair in score (priority) order — NOT filtered by validity, so the
+     *  type-override UI can cycle to a currently-invalid choice (e.g. NUMBER into a full tube). Such a choice previews
+     *  red via {@link #resolveAs} and is rejected on release; keeping it in the cycle means the user can always scroll
+     *  back to it. */
     public static List<Connection.Type> possibleTypes(@Nullable VirtualComponentBehaviour a,
                                                       @Nullable VirtualComponentBehaviour b,
                                                       @Nullable VirtualComponentBehaviour creationSink) {
         List<Connection.Type> out = new ArrayList<>();
-        for (Candidate c : candidates(a, b, creationSink))
-            if (validate(c.type(), c.source(), c.sink(), false).isSuccess()) out.add(c.type());
+        for (Candidate c : candidates(a, b, creationSink)) out.add(c.type());
         return out;
     }
 

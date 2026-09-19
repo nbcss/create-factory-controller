@@ -3,10 +3,13 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour.Comparison;
+import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour.RedstoneMode;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.BuiltinOperator;
@@ -21,6 +24,8 @@ import io.github.nbcss.createfactorycontroller.content.packet.ConfigureArithmeti
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
 import net.createmod.catnip.gui.element.GuiGameElement;
+import net.createmod.catnip.gui.element.ScreenElement;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
@@ -44,11 +49,7 @@ import org.joml.Vector2i;
 import org.joml.Vector2ic;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.OptionalDouble;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -81,6 +82,15 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         ResourceLocation ENTRY_BG = resource("arithmetic_tube/entry_background");
         ResourceLocation CONN_VALUE_BOX = resource("arithmetic_tube/connection_value_box");
         ResourceLocation CONSTANT_INPUT_FIELD = resource("arithmetic_tube/constant_input_field");
+        ResourceLocation REDSTONE_INPUT_ICON_ON = resource("arithmetic_tube/redstone_input_icon_on");
+        ResourceLocation REDSTONE_INPUT_ICON_OFF = resource("arithmetic_tube/redstone_input_icon_off");
+        ResourceLocation REDSTONE_OUTPUT_ICON_ON = resource("arithmetic_tube/redstone_output_icon_on");
+        ResourceLocation REDSTONE_OUTPUT_ICON_OFF = resource("arithmetic_tube/redstone_output_icon_off");
+        ResourceLocation REDSTONE_SELECTOR_BG = resource("arithmetic_tube/redstone_entry_selector_background");
+        ResourceLocation REDSTONE_SELECTOR = resource("arithmetic_tube/redstone_entry_selector");
+        ResourceLocation REDSTONE_VALUE_BG = resource("arithmetic_tube/redstone_entry_value_background");
+        ResourceLocation REDSTONE_VALUE_DISABLED = resource("arithmetic_tube/redstone_entry_value_disabled");
+        ResourceLocation REDSTONE_VALUE_INPUT = resource("arithmetic_tube/redstone_entry_value_input");
         ResourceLocation OPERATOR_DROPDOWN_ICON = resource("arithmetic_tube/operator_dropdown_icon");
         ResourceLocation CONSTANT_ICON = resource("icons/constant");
         ResourceLocation ELLIPSIS_ICON = resource("icons/ellipsis");
@@ -105,7 +115,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private static final int OP_ICON = 15;
     private static final int RESULT_H = 20, RESULT_ICON_SIZE = 20, RESULT_GAP = 2;
     private static final int INPUT_H = 20, SLOT = 20, SLOT_GAP = 2, INPUT_ROW_GAP = 4, ROW_BTN = 18;
-    private static final int ADD_PAD_L = 4;
     private static final int ICON16 = 16;
 
     private static final int DD_INSET = 1;
@@ -117,6 +126,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private static final int OP_ICON_COLOR = 0xFFEBEBEB;
     private static final int INPUT_VALUE_COLOR = 0xFFE2E2E2;
     private static final int CONSTANT_VALUE_COLOR = 0xFFF2F2F2;
+    private static final int RESULT_POWERED_COLOR = 0xFFFC8068;
     private static final int NAME_COLOR = 0xF7DFF5;
     private static final int TITLE_COLOR = 0xF9DFFA;
 
@@ -130,10 +140,9 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private int panelX, panelY, panelH;
     private int viewportH;
     private float renderedScroll;
-    private boolean operatorHeld;
     private boolean draggingScrollbar;
     private double scrollbarGrabOffset;
-    private TooltipIconButton closeButton, relocateButton, swapButton;
+    private TooltipIconButton closeButton, relocateButton, swapButton, addConnectionButton, addConstantButton;
     private ArithmeticViewportWidget viewportWidget;
     private OperatorDropdownWidget operatorDropdown;
     private ConstantDropdownWidget constantDropdown;
@@ -142,19 +151,403 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private List<Row> rows = List.of();
     private final ConstantEditor constantEditor = new ConstantEditor();
 
-    private sealed interface Row permits Row.Add, Row.Input {
+    /**
+     * A row in the scrollable body. Each row owns its own layout, rendering, and interaction (render / click / scroll /
+     * tooltip) so hit-testing and rendering share one geometry source — the screen never recomputes a row's regions.
+     * {@code y} is the row's top; {@code mouseX/mouseY} are {@link Integer#MIN_VALUE} when the row isn't hovered.
+     */
+    private sealed interface Row permits InputRow, MissingInputRow, RedstoneInputRow, ResultRow, RedstoneOutputRow {
         boolean primary();
 
-        record Add(boolean primary) implements Row {}
-        record Input(boolean primary, int index, ArithmeticTubeBehaviour.NumberInput input) implements Row {}
+        void render(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY);
+
+        default boolean clicked(ArithmeticTubeBehaviour tube, int y, double mx, double my, int button) { return false; }
+
+        default boolean scrolled(ArithmeticTubeBehaviour tube, int y, double mx, double my, double scrollY) { return false; }
+
+        @Nullable
+        default List<FormattedCharSequence> tooltip(ArithmeticTubeBehaviour tube, int y, double mx, double my) { return null; }
     }
 
-    private enum TargetKind {
-        OPERATOR, SLOT, REMOVE, CONSTANT_FIELD, CONSTANT_MENU, ADD_CONNECTION, ADD_CONSTANT,
-        RESULT, SCROLLBAR, ROW
+    /**
+     * The single redstone-control row (present iff the tube has an incoming REDSTONE edge). Unlike the item rows it
+     * owns its own sub-regions (icon | mode selector | value field) and handles its own render / scroll / click /
+     * tooltip, so the geometry lives in exactly one place instead of being recomputed by both the renderer and a
+     * {@code contentTargetAt} hit-test.
+     */
+    private final class RedstoneInputRow implements Row {
+        @Override public boolean primary() { return false; }
+
+        private int bgX() { return entryX() + SLOT + SLOT_GAP; }
+        private int bgW() { return entryW() - SLOT - SLOT_GAP; }
+        private int modeW() { return bgW() / 2; }
+        private int valueX() { return bgX() + modeW() - 1; }   // 1px overlap so the two panels meet cleanly
+        private int valueW() { return bgW() - modeW() + 1; }
+
+        private boolean overIcon(double mx, double my, int y)  { return inRect(mx, my, entryX(), y, SLOT, SLOT); }
+        private boolean overMode(double mx, double my, int y)  { return inRect(mx, my, bgX(), y, modeW(), INPUT_H); }
+        private boolean overValue(double mx, double my, int y) { return inRect(mx, my, valueX(), y, valueW(), INPUT_H); }
+
+        @Override
+        public void render(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY) {
+            boolean powered = tube.anyRedstonePowered();
+            boolean hold = tube.getRedstoneMode() == RedstoneMode.HOLD;
+            int boxY = y + 1, boxH = 18;
+
+            // signal icon
+            BatchedBlitter.forSprite(powered ? SpriteLocations.REDSTONE_INPUT_ICON_ON : SpriteLocations.REDSTONE_INPUT_ICON_OFF)
+                    .blit(gfx.bufferSource(), gfx.pose(), entryX(), y, SLOT, SLOT);
+
+            int modeX = bgX(), modeW = modeW();
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_SELECTOR_BG).render(gfx, modeX, y, modeW, INPUT_H);
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_SELECTOR).render(gfx, modeX + 1, boxY, modeW - 2, boxH);
+            Component modeLabel = Component.translatable(hold
+                    ? "createfactorycontroller.arithmetic_tube.redstone.hold"
+                    : "createfactorycontroller.arithmetic_tube.redstone.override");
+            gfx.drawString(font, modeLabel, modeX + 8, boxY + (boxH - font.lineHeight) / 2 + 1,
+                    0xFFFFFF, false);
+
+            // right half: value field — background + (disabled overlay in HOLD | input box + value in OVERRIDE)
+            int valX = valueX(), valW = valueW();
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_VALUE_BG).render(gfx, valX, y, valW, INPUT_H);
+            if (hold) {
+                TiledSpriteRenderer.create(SpriteLocations.REDSTONE_VALUE_DISABLED).render(gfx, valX + 1, boxY, valW - 2, boxH);
+            } else {
+                TiledSpriteRenderer.create(SpriteLocations.REDSTONE_VALUE_INPUT).render(gfx, valX + 1, boxY, valW - 2, boxH);
+                int textX = valX + 6, textY = boxY + (boxH - font.lineHeight) / 2 + 1;
+                if (constantEditor.isEditing(ConstantEditor.RedstoneField.OVERRIDE)) {
+                    constantEditor.position(textX, textY, valW - 12);
+                } else {
+                    double v = constantEditor.optimisticRedstone(ConstantEditor.RedstoneField.OVERRIDE, tube.getOverrideValue());
+                    gfx.drawString(font, NumberFormatter.format(v), textX, textY, CONSTANT_VALUE_COLOR, overValue(mouseX, mouseY, y));
+                }
+            }
+        }
+
+        /** Scroll over the mode selector cycles OVERRIDE ⇄ HOLD (handled before the panel scroll). Two states, so the
+         *  scroll direction doesn't matter. */
+        @Override
+        public boolean scrolled(ArithmeticTubeBehaviour tube, int y, double mx, double my, double scrollY) {
+            if (!overMode(mx, my, y)) return false;
+            if (constantEditor.active()) constantEditor.commit();
+            RedstoneMode next = tube.getRedstoneMode() == RedstoneMode.OVERRIDE ? RedstoneMode.HOLD : RedstoneMode.OVERRIDE;
+            sendInput(ConfigureArithmeticInputPacket.SET_REDSTONE_MODE, false, -1, next.ordinal());
+            playClickSound();
+            return true;
+        }
+
+        /** Handles a click on any of the row's regions. Value field (OVERRIDE) starts the editor; mode is scroll-only;
+         *  the icon is display-only. Returns whether the click landed on the row. */
+        @Override
+        public boolean clicked(ArithmeticTubeBehaviour tube, int y, double mx, double my, int button) {
+            if (overValue(mx, my, y)) {
+                if (tube.getRedstoneMode() == RedstoneMode.OVERRIDE) {
+                    constantEditor.setEditingRedstone(valueW() - 12, ConstantEditor.RedstoneField.OVERRIDE);
+                    constantEditor.clearOnSecondary(button);
+                } else if (constantEditor.active()) constantEditor.commit();
+                return true;
+            }
+            if (overMode(mx, my, y)) {   // left/right click both toggle (two modes)
+                if (constantEditor.active()) constantEditor.commit();
+                RedstoneMode next = tube.getRedstoneMode() == RedstoneMode.OVERRIDE ? RedstoneMode.HOLD : RedstoneMode.OVERRIDE;
+                sendInput(ConfigureArithmeticInputPacket.SET_REDSTONE_MODE, false, -1, next.ordinal());
+                playClickSound();
+                return true;
+            }
+            if (overIcon(mx, my, y)) {
+                if (constantEditor.active()) constantEditor.commit();
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        @Nullable
+        public List<FormattedCharSequence> tooltip(ArithmeticTubeBehaviour tube, int y, double mx, double my) {
+            if (overIcon(mx, my, y)) return tr("tooltip.redstone_signal", ChatFormatting.RED);
+            if (overMode(mx, my, y)) {
+                var mode = tube.getRedstoneMode();
+                return TooltipBuilder.of(font)
+                        .line(atComponent("redstone.mode_header").withColor(ScrollInput.HEADER_RGB.getRGB()))
+                        .selector(atComponent("redstone.override"), mode == RedstoneMode.OVERRIDE)
+                        .selector(atComponent("redstone.hold"), mode == RedstoneMode.HOLD)
+                        .wrapped(atComponent(mode == RedstoneMode.OVERRIDE
+                                ? "redstone.override.desc" : "redstone.hold.desc")
+                                .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(TooltipBuilder.SELECTOR_DESCRIPTION_COLOR)))
+                        .line(CreateLang.translate("gui.scrollInput.scrollToModify")
+                                .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                        .build();
+            }
+            return null;
+        }
     }
 
-    private record ContentTarget(TargetKind kind, @Nullable Row row) {}
+    /** An operand row: a wire/constant input, with a value box and a delete button. */
+    private final class InputRow implements Row {
+        private final boolean primary;
+        private final int index;
+        private final ArithmeticTubeBehaviour.NumberInput input;
+
+        InputRow(boolean primary, int index, ArithmeticTubeBehaviour.NumberInput input) {
+            this.primary = primary;
+            this.index = index;
+            this.input = input;
+        }
+
+        @Override public boolean primary() { return primary; }
+        int index() { return index; }
+        ArithmeticTubeBehaviour.NumberInput input() { return input; }
+
+        private int bgX() { return entryX() + SLOT + SLOT_GAP; }
+        private int bgW() { return entryW() - SLOT - SLOT_GAP; }
+        private int deleteX() { return bgX() + bgW() - 1 - ROW_BTN; }
+        private int boxX() { return bgX() + 1; }
+        private int boxW() { return deleteX() - 2 - boxX(); }
+
+        @Override
+        public void render(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY) {
+            int x = entryX();
+            renderSlot(gfx, primary, x, y);
+            // slot content: a constant icon, or the connected component's item
+            if (input instanceof ArithmeticTubeBehaviour.ConstantInput)
+                BatchedBlitter.forSprite(SpriteLocations.CONSTANT_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
+            else if (input instanceof ArithmeticTubeBehaviour.ConnectionInput w) {
+                var comp = menu.componentAt(w.source());
+                if (comp != null) gfx.renderItem(new ItemStack(comp.getItem()), x + 2, y + 2);
+            }
+
+            TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX(), y, bgW(), INPUT_H);
+
+            int delX = deleteX(), delY = y + 1;   // delete button: right, 1px margin
+            boolean removeHovered = inRect(mouseX, mouseY, delX, delY, ROW_BTN, ROW_BTN);
+            TiledSpriteRenderer.create(removeHovered ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL)
+                    .render(gfx, delX, delY, ROW_BTN, ROW_BTN);
+            AllIcons.I_TRASH.render(gfx, delX + (ROW_BTN - ICON16) / 2, delY + (ROW_BTN - ICON16) / 2);
+
+            int boxX = boxX(), boxW = boxW();
+            boolean constant = input instanceof ArithmeticTubeBehaviour.ConstantInput;
+            TiledSpriteRenderer.create(constant ? SpriteLocations.CONSTANT_INPUT_FIELD : SpriteLocations.CONN_VALUE_BOX)
+                    .render(gfx, boxX, y + 1, boxW, 18);
+            int textX = boxX + 6, textY = y + 1 + (18 - font.lineHeight) / 2 + 2;
+            if (constantEditor.isEditing(this)) {
+                constantEditor.position(textX, textY, boxW - 9);
+            } else if (constant) {
+                boolean fieldHovered = inRect(mouseX, mouseY, boxX, y + 1, boxW, 18);
+                double value = input.getValue(tube);
+                value = constantEditor.optimisticValue(this, value).orElse(value);
+                gfx.drawString(font, SpecialConstant.displayValue(value), textX, textY, CONSTANT_VALUE_COLOR, fieldHovered);
+            } else {
+                gfx.drawString(font, NumberFormatter.format(input.getValue(tube)), textX, textY, INPUT_VALUE_COLOR, false);
+            }
+        }
+
+        @Override
+        public boolean clicked(ArithmeticTubeBehaviour tube, int y, double mx, double my, int button) {
+            if (inRect(mx, my, deleteX(), y + 1, ROW_BTN, ROW_BTN)) {
+                sendInput(ConfigureArithmeticInputPacket.REMOVE, primary, index, 0);
+                playClickSound();
+                return true;
+            }
+            if (input instanceof ArithmeticTubeBehaviour.ConstantInput && inRect(mx, my, boxX(), y + 1, boxW(), 18)) {
+                constantEditor.start(this, boxW() - 9);
+                constantEditor.clearOnSecondary(button);
+                return true;
+            }
+            return inRect(mx, my, entryX(), y, entryW(), INPUT_H);   // consume clicks anywhere else on the row
+        }
+
+        @Override
+        @Nullable
+        public List<FormattedCharSequence> tooltip(ArithmeticTubeBehaviour tube, int y, double mx, double my) {
+            if (inRect(mx, my, deleteX(), y + 1, ROW_BTN, ROW_BTN))
+                return tr("tooltip.remove", ChatFormatting.WHITE);
+            if (inRect(mx, my, entryX(), y, SLOT, SLOT)) return slotTooltip();
+            return null;
+        }
+
+        @Nullable
+        private List<FormattedCharSequence> slotTooltip() {
+            if (input instanceof ArithmeticTubeBehaviour.ConstantInput)
+                return tr("tooltip.constant", ChatFormatting.WHITE);
+            if (input instanceof ArithmeticTubeBehaviour.ConnectionInput(VirtualComponentPosition source)) {
+                var comp = menu.componentAt(source);
+                if (comp != null)
+                    return TooltipBuilder.of(font)
+                            .line(comp.getName().copy().withColor(comp.getColor()))
+                            .lines(comp.infoTooltip())
+                            .build();
+            }
+            return null;
+        }
+    }
+
+    /** Placeholder for an operand slot the operator requires but that has no input yet: a blue/red slot plus a
+     *  full-width connection value box reading a non-modifiable NaN. Inputs are added from the bottom-bar buttons. */
+    private final class MissingInputRow implements Row {
+        private final boolean primary;
+
+        MissingInputRow(boolean primary) { this.primary = primary; }
+
+        @Override public boolean primary() { return primary; }
+
+        private int bgX() { return entryX() + SLOT + SLOT_GAP; }
+        private int bgW() { return entryW() - SLOT - SLOT_GAP; }
+
+        @Override
+        public void render(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY) {
+            int x = entryX();
+            renderSlot(gfx, primary, x, y);
+            BatchedBlitter.forSprite(SpriteLocations.ELLIPSIS_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
+
+            TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX(), y, bgW(), INPUT_H);
+            int boxX = bgX() + 1, boxW = bgW() - 2;
+            TiledSpriteRenderer.create(SpriteLocations.CONN_VALUE_BOX).render(gfx, boxX, y + 1, boxW, 18);
+            int textX = boxX + 6, textY = y + 1 + (18 - font.lineHeight) / 2 + 2;
+            gfx.drawString(font, NumberFormatter.format(Double.NaN), textX, textY, INPUT_VALUE_COLOR, false);
+        }
+
+        @Override
+        @Nullable
+        public List<FormattedCharSequence> tooltip(ArithmeticTubeBehaviour tube, int y, double mx, double my) {
+            if (inRect(mx, my, entryX(), y, SLOT, SLOT))
+                return tr("tooltip.required_input", primary ? ChatFormatting.BLUE : ChatFormatting.RED);
+            return null;
+        }
+    }
+
+    /** The numeric-output row: the operator result, display-only. Now a unified {@link Row} (rather than a separate
+     *  screen-level entry) so the redstone-output row can sit directly below it through the same render/hit-test loop. */
+    private final class ResultRow implements Row {
+        @Override public boolean primary() { return false; }
+
+        @Override
+        public void render(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY) {
+            int x = entryX(), w = entryW();
+            BatchedBlitter.forSprite(SpriteLocations.RESULT_ICON).blit(gfx.bufferSource(), gfx.pose(), x, y, RESULT_ICON_SIZE, RESULT_ICON_SIZE);
+
+            int bgX = x + RESULT_ICON_SIZE + RESULT_GAP, bgW = w - RESULT_ICON_SIZE - RESULT_GAP;
+            TiledSpriteRenderer.create(SpriteLocations.RESULT_BG).render(gfx, bgX, y, bgW, RESULT_H);
+
+            int vbX = bgX + 1, vbW = bgW - 2, vbY = y + 1, vbH = 18;
+            TiledSpriteRenderer.create(SpriteLocations.RESULT_VALUE_BOX).render(gfx, vbX, vbY, vbW, vbH);
+
+            int tx = vbX + 6, ty = vbY + (vbH - font.lineHeight) / 2 + 2;
+            int color = tube.anyRedstonePowered() ? RESULT_POWERED_COLOR : INPUT_VALUE_COLOR;
+            gfx.drawString(font, NumberFormatter.format(tube.getOutput()), tx, ty, color, false);
+        }
+
+        @Override
+        @Nullable
+        public List<FormattedCharSequence> tooltip(ArithmeticTubeBehaviour tube, int y, double mx, double my) {
+            if (inRect(mx, my, entryX(), y, RESULT_ICON_SIZE, RESULT_ICON_SIZE))
+                return tr("tooltip.result", ChatFormatting.YELLOW);
+            return null;
+        }
+    }
+
+    /**
+     * The single redstone-output row (present iff the tube has an outgoing REDSTONE edge). A twin of
+     * {@link RedstoneInputRow}: same icon | selector | value layout, but the left half is a comparator selector (scroll
+     * cycles the six comparisons, direction-sensitive) and the right half is an always-editable threshold field.
+     */
+    private final class RedstoneOutputRow implements Row {
+        @Override public boolean primary() { return false; }
+
+        private int bgX() { return entryX() + SLOT + SLOT_GAP; }
+        private int bgW() { return entryW() - SLOT - SLOT_GAP; }
+        private int modeW() { return bgW() / 2; }
+        private int valueX() { return bgX() + modeW() - 1; }   // 1px overlap so the two panels meet cleanly
+        private int valueW() { return bgW() - modeW() + 1; }
+
+        private boolean overIcon(double mx, double my, int y)  { return inRect(mx, my, entryX(), y, SLOT, SLOT); }
+        private boolean overMode(double mx, double my, int y)  { return inRect(mx, my, bgX(), y, modeW(), INPUT_H); }
+        private boolean overValue(double mx, double my, int y) { return inRect(mx, my, valueX(), y, valueW(), INPUT_H); }
+
+        @Override
+        public void render(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int y, int mouseX, int mouseY) {
+            boolean powered = tube.redstoneOutputPowered();
+            int boxY = y + 1, boxH = 18;
+
+            // output signal icon (20x20, lit iff the tube currently sources POWERED)
+            BatchedBlitter.forSprite(powered ? SpriteLocations.REDSTONE_OUTPUT_ICON_ON : SpriteLocations.REDSTONE_OUTPUT_ICON_OFF)
+                    .blit(gfx.bufferSource(), gfx.pose(), entryX(), y, SLOT, SLOT);
+
+            // left half: comparator selector — recessed background + selector element + centered comparison glyph
+            int modeX = bgX(), modeW = modeW();
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_SELECTOR_BG).render(gfx, modeX, y, modeW, INPUT_H);
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_SELECTOR).render(gfx, modeX + 1, boxY, modeW - 2, boxH);
+            String glyph = tube.getOutputComparison().symbol();
+            gfx.drawString(font, glyph, modeX + 8, boxY + (boxH - font.lineHeight) / 2 + 1, 0xFFFFFF, false);
+
+            // right half: threshold value — background + editable input box (no HOLD-style disabled state)
+            int valX = valueX(), valW = valueW();
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_VALUE_BG).render(gfx, valX, y, valW, INPUT_H);
+            TiledSpriteRenderer.create(SpriteLocations.REDSTONE_VALUE_INPUT).render(gfx, valX + 1, boxY, valW - 2, boxH);
+            int textX = valX + 6, textY = boxY + (boxH - font.lineHeight) / 2 + 1;
+            if (constantEditor.isEditing(ConstantEditor.RedstoneField.THRESHOLD)) {
+                constantEditor.position(textX, textY, valW - 12);
+            } else {
+                double v = constantEditor.optimisticRedstone(ConstantEditor.RedstoneField.THRESHOLD, tube.getOutputThreshold());
+                gfx.drawString(font, NumberFormatter.format(v), textX, textY, CONSTANT_VALUE_COLOR, overValue(mouseX, mouseY, y));
+            }
+        }
+
+        /** Scroll over the comparator selector cycles the six comparisons (down → next, matching the left-to-right
+         *  tooltip order), before the panel scroll. */
+        @Override
+        public boolean scrolled(ArithmeticTubeBehaviour tube, int y, double mx, double my, double scrollY) {
+            if (!overMode(mx, my, y)) return false;
+            if (constantEditor.active()) constantEditor.commit();
+            Comparison[] all = Comparison.values();
+            int step = scrollY > 0 ? -1 : 1;
+            Comparison next = all[Math.floorMod(tube.getOutputComparison().ordinal() + step, all.length)];
+            sendInput(ConfigureArithmeticInputPacket.SET_OUTPUT_COMPARISON, false, -1, next.ordinal());
+            playClickSound();
+            return true;
+        }
+
+        @Override
+        public boolean clicked(ArithmeticTubeBehaviour tube, int y, double mx, double my, int button) {
+            if (overValue(mx, my, y)) {
+                constantEditor.setEditingRedstone(valueW() - 12, ConstantEditor.RedstoneField.THRESHOLD);
+                constantEditor.clearOnSecondary(button);
+                return true;
+            }
+            if (overMode(mx, my, y)) {   // left click advances, right click reverts
+                if (constantEditor.active()) constantEditor.commit();
+                Comparison[] all = Comparison.values();
+                int step = button == 1 ? -1 : 1;
+                Comparison next = all[Math.floorMod(tube.getOutputComparison().ordinal() + step, all.length)];
+                sendInput(ConfigureArithmeticInputPacket.SET_OUTPUT_COMPARISON, false, -1, next.ordinal());
+                playClickSound();
+                return true;
+            }
+            if (overIcon(mx, my, y)) {
+                if (constantEditor.active()) constantEditor.commit();
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        @Nullable
+        public List<FormattedCharSequence> tooltip(ArithmeticTubeBehaviour tube, int y, double mx, double my) {
+            if (overIcon(mx, my, y)) return tr("tooltip.redstone_output", ChatFormatting.YELLOW);
+            if (overMode(mx, my, y)) return TooltipBuilder.of(font)
+                    .line(atComponent("output.comparator_header").withColor(ScrollInput.HEADER_RGB.getRGB()))
+                    .line(comparatorLine(tube.getOutputComparison()))
+                    .wrapped(atComponent("output.comparator_desc").withStyle(ChatFormatting.GRAY))
+                    .line(CreateLang.translate("gui.scrollInput.scrollToModify")
+                            .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
+                    .build();;
+            return null;
+        }
+    }
+
+    /** Non-row content targets (rows handle their own hit-testing). */
+    private enum TargetKind { OPERATOR, CONSTANT_MENU, SCROLLBAR }
+
+    private record ContentTarget(TargetKind kind) {}
 
     public ArithmeticTubeSettingsScreen(FactoryControllerScreen controller, VirtualComponentPosition tubePos) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -184,6 +577,26 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         swapButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.SWAP, true, -1, 0); playClickSound(); });
         swapButton.setToolTip(Component.translatable("createfactorycontroller.gui.arithmetic_tube.swap_inputs"));
 
+        addConnectionButton = new TooltipIconButton(0, 0, AllIcons.I_ADD);
+        addConnectionButton.withCallback(() -> { controller.beginConnectionMode(tubePos); Minecraft.getInstance().setScreen(controller); });
+        addConnectionButton.setToolTip(CreateLang.translate("gui.factory_panel.connect_input").component());
+
+        ScreenElement addConstantIcon = (g, ix, iy) -> g.blitSprite(SpriteLocations.ADD_CONSTANT_ICON, ix, iy, ICON16, ICON16);
+        addConstantButton = new TooltipIconButton(0, 0, addConstantIcon);
+        addConstantButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, true, -1, 0); playClickSound(); });
+        addConstantButton.withTooltip(() -> {
+            ArithmeticTubeBehaviour t = tube();
+            boolean canAdd = t != null && t.canAddConstant();
+            var label = Component.translatable("createfactorycontroller.arithmetic_tube.tooltip.add_constant");
+            if (canAdd)   // suffix marks which slot it lands in: primary = blue, secondary = red (matches the operand slots)
+                label.append(Component.literal(" ■").withStyle(t.nextInputIsPrimary() ? ChatFormatting.BLUE : ChatFormatting.RED));
+            TooltipBuilder tip = TooltipBuilder.of(font).line(label);
+            if (!canAdd)
+                tip.line(Component.translatable("createfactorycontroller.arithmetic_tube.tooltip.constant_full")
+                        .withStyle(ChatFormatting.RED));
+            return tip.build();
+        });
+
         operatorDropdown = new OperatorDropdownWidget();
         addWidget(operatorDropdown);
         constantDropdown = new ConstantDropdownWidget();
@@ -193,6 +606,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addWidget(closeButton);
         addWidget(relocateButton);
         addWidget(swapButton);
+        addWidget(addConnectionButton);
+        addWidget(addConstantButton);
 
         recomputeLayout();
         scroll.setValue(0);
@@ -202,9 +617,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     private int rowsHeight(int n) { return n <= 0 ? 0 : n * INPUT_H + (n - 1) * INPUT_ROW_GAP; }
 
-    /** Content height of the stacked body entries (operator, the input rows, result); the dropdown is an overlay. */
+    /** Content height of the stacked body entries (operator + every row, result and redstone rows included); the
+     *  dropdown is an overlay. The result is now one of {@code rows}, so it needs no separate term — the equal row
+     *  constants (RESULT_H==INPUT_H, ENTRY_GAP==INPUT_ROW_GAP) keep this identical to the pre-unification layout. */
     private int contentHeight() {
-        return TOP_PAD + OP_H + ENTRY_GAP + rowsHeight(rows.size()) + ENTRY_GAP + RESULT_H + BOTTOM_PAD;
+        return TOP_PAD + OP_H + ENTRY_GAP + rowsHeight(rows.size()) + BOTTOM_PAD;
     }
 
     /** Recompute panel geometry from the current input rows (the body grows with the number of inputs). */
@@ -223,6 +640,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         boolean binary = t != null && t.getOperator().arity() == ArithmeticOperator.Arity.BINARY;
         swapButton.setX(binary ? panelX + PANEL_W - BOTTOM_CLOSE_GROUP_W + 1 - 5 - ROW_BTN : -1000);
         swapButton.setY(panelY + panelH - 24);
+        int addY = panelY + panelH - 24;
+        addConnectionButton.setX(panelX + 7 + (ROW_BTN + 2));
+        addConnectionButton.setY(addY);
+        addConstantButton.setX(panelX + 7 + 2 * (ROW_BTN + 2));
+        addConstantButton.setY(addY);
+        addConnectionButton.active = true;   // never disabled — a redstone connection is always allowed
+        addConstantButton.active = t != null && t.canAddConstant();
         if (viewportWidget != null)
             viewportWidget.setRectangle(PANEL_W, viewportH, panelX, viewportY());
         if (operatorDropdown != null)
@@ -234,13 +658,19 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private List<Row> buildRows(ArithmeticTubeBehaviour tube) {
         List<Row> list = new ArrayList<>();
         List<ArithmeticTubeBehaviour.NumberInput> prim = tube.getPrimaryInputs();
-        for (int i = 0; i < prim.size(); i++)
-            list.add(new Row.Input(true, i, prim.get(i)));
-        if (prim.size() < tube.getOperator().arity().maxPrimary) list.add(new Row.Add(true));
-        if (tube.getOperator().arity().allowsSecondary) {
+        ArithmeticOperator.Arity arity = tube.getOperator().arity();
+        if (arity == ArithmeticOperator.Arity.BINARY) {
+            // exactly two slots — each is a filled input or a "missing input" placeholder
+            list.add(prim.isEmpty() ? new MissingInputRow(true) : new InputRow(true, 0, prim.get(0)));
             ArithmeticTubeBehaviour.NumberInput sec = tube.getSecondaryInput();
-            list.add(sec != null ? new Row.Input(false, -1, sec) : new Row.Add(false));
+            list.add(sec != null ? new InputRow(false, -1, sec) : new MissingInputRow(false));
+        } else {
+            for (int i = 0; i < prim.size(); i++) list.add(new InputRow(true, i, prim.get(i)));
+            if (prim.isEmpty()) list.add(new MissingInputRow(true));   // one placeholder when nothing is specified
         }
+        if (tube.hasRedstoneInput()) list.add(new RedstoneInputRow());   // sits directly above the result row
+        list.add(new ResultRow());                                       // the numeric output — always present
+        if (tube.hasRedstoneOutput()) list.add(new RedstoneOutputRow()); // sits directly below the result row
         return list;
     }
 
@@ -252,7 +682,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private int opEntryY() { return viewportY() + TOP_PAD - (int) renderedScroll; }   // scrolls with the content
     private int inputStartY() { return opEntryY() + OP_H + ENTRY_GAP; }
     private int rowY(int k) { return inputStartY() + k * (INPUT_H + INPUT_ROW_GAP); }
-    private int resultEntryY() { return inputStartY() + rowsHeight(rows.size()) + ENTRY_GAP; }
 
     private int ddX() { return entryX() + DD_INSET; }
     private int ddW() { return entryW() - 2 * DD_INSET; }
@@ -325,6 +754,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         viewportWidget.render(gfx, mouseX, mouseY, partialTick);
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
+        addConnectionButton.render(gfx, mouseX, mouseY, partialTick);
+        addConstantButton.render(gfx, mouseX, mouseY, partialTick);
         if (tube.getOperator().arity() == ArithmeticOperator.Arity.BINARY) swapButton.render(gfx, mouseX, mouseY, partialTick);
         closeButton.render(gfx, mouseX, mouseY, partialTick);
         GuiGameElement.of(tube.getItem()).scale(2).at(0, 0, 100)
@@ -339,9 +770,9 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         constantDropdown.render(gfx, mouseX, mouseY, partialTick);
     }
 
-    private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, boolean hovered) {
+    private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, boolean hovered, boolean pressed) {
         int x = entryX(), y = opEntryY(), w = entryW();
-        ResourceLocation sprite = (operatorHeld && hovered) ? SpriteLocations.OP_BUTTON_PRESSED
+        ResourceLocation sprite = pressed ? SpriteLocations.OP_BUTTON_PRESSED
                 : (hovered ? SpriteLocations.OP_BUTTON_HOVER : SpriteLocations.OP_BUTTON);
         TiledSpriteRenderer.create(sprite).render(gfx, x, y, w, OP_H);
 
@@ -358,100 +789,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         gfx.blitSprite(SpriteLocations.OPERATOR_DROPDOWN_ICON, x + w - 6 - 7, y + Math.ceilDiv(OP_H - 4, 2), 7, 4);
     }
 
-    private void renderResultEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube) {
-        int x = entryX(), y = resultEntryY(), w = entryW();
-
-        BatchedBlitter.forSprite(SpriteLocations.RESULT_ICON).blit(gfx.bufferSource(), gfx.pose(), x, y, RESULT_ICON_SIZE, RESULT_ICON_SIZE);
-
-        int bgX = x + RESULT_ICON_SIZE + RESULT_GAP, bgW = w - RESULT_ICON_SIZE - RESULT_GAP;
-        TiledSpriteRenderer.create(SpriteLocations.RESULT_BG).render(gfx, bgX, y, bgW, RESULT_H);
-
-        int vbX = bgX + 1, vbW = bgW - 2, vbY = y + 1, vbH = 18;
-        TiledSpriteRenderer.create(SpriteLocations.RESULT_VALUE_BOX).render(gfx, vbX, vbY, vbW, vbH);
-
-        int tx = vbX + 6, ty = vbY + (vbH - font.lineHeight) / 2 + 2;
-        gfx.drawString(font, NumberFormatter.format(tube.getOutput()), tx, ty, INPUT_VALUE_COLOR, false);
-    }
-
     // ── Input rows ──────────────────────
 
-    private void renderInputEntries(GuiGraphics gfx, ArithmeticTubeBehaviour tube, @Nullable ContentTarget hovered) {
-        for (int k = 0; k < rows.size(); k++) {
-            Row row = rows.get(k);
-            if (row instanceof Row.Input input)
-                renderInputRow(gfx, tube, input, rowY(k), hovered);
-            else if (row instanceof Row.Add add)
-                renderAddRow(gfx, tube, add, rowY(k), hovered);
-        }
-    }
-
-    private void renderInputRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Input row, int y,
-                                @Nullable ContentTarget hovered) {
-        int x = entryX();
-        renderSlot(gfx, row.primary(), x, y);
-        // slot content: a constant icon, or the connected component's item
-        if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-            BatchedBlitter.forSprite(SpriteLocations.CONSTANT_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
-        else if (row.input() instanceof ArithmeticTubeBehaviour.ConnectionInput w) {
-            var comp = menu.componentAt(w.source());
-            if (comp != null) gfx.renderItem(new ItemStack(comp.getItem()), x + 2, y + 2);
-        }
-
-        int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-        TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX, y, bgW, INPUT_H);
-
-        int delX = bgX + bgW - 1 - ROW_BTN, delY = y + 1;   // delete button: right, 1px margin
-        boolean removeHovered = hovered != null && hovered.kind() == TargetKind.REMOVE && hovered.row() == row;
-        ResourceLocation sprite1 = removeHovered ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
-        TiledSpriteRenderer.create(sprite1).render(gfx, delX, delY, ROW_BTN, ROW_BTN);
-        AllIcons.I_TRASH.render(gfx, delX + (ROW_BTN - ICON16) / 2, delY + (ROW_BTN - ICON16) / 2);
-
-        int boxX = bgX + 1, boxW = delX - 2 - boxX;
-        boolean constant = row.input() instanceof ArithmeticTubeBehaviour.ConstantInput;
-        ResourceLocation sprite = constant ? SpriteLocations.CONSTANT_INPUT_FIELD : SpriteLocations.CONN_VALUE_BOX;
-        TiledSpriteRenderer.create(sprite).render(gfx, boxX, y + 1, boxW, 18);
-        int textX = boxX + 6, textY = y + 1 + (18 - font.lineHeight) / 2 + 2;
-        if (constantEditor.isEditing(row)) {
-            constantEditor.position(textX, textY, boxW - 9);
-        } else if (row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) {
-            boolean fieldHovered = hovered != null && hovered.kind() == TargetKind.CONSTANT_FIELD && hovered.row() == row;
-            double value = row.input().getValue(tube);
-            value = constantEditor.optimisticValue(row, value).orElse(value);
-            gfx.drawString(font, SpecialConstant.displayValue(value),
-                    textX, textY, CONSTANT_VALUE_COLOR, fieldHovered);
-        } else {
-            gfx.drawString(font, NumberFormatter.format(row.input().getValue(tube)),
-                    textX, textY, INPUT_VALUE_COLOR, false);
-        }
-    }
-
-    // ── ADD-row buttons: 0 = add connection, 1 = add constant ──
-    private int addButtonX(int bgX, int i) { return bgX + ADD_PAD_L + i * (ROW_BTN + 2); }
-    /** Add-entry background width (left pad + two buttons with a 2px gap + 1px right margin). */
-    private int addEntryW() { return ADD_PAD_L + 2 * ROW_BTN + 2 + 1; }
-
-    private void renderAddRow(GuiGraphics gfx, ArithmeticTubeBehaviour tube, Row.Add row, int y,
-                              @Nullable ContentTarget hovered) {
-        int x = entryX();
-        renderSlot(gfx, row.primary(), x, y);
-        BatchedBlitter.forSprite(SpriteLocations.ELLIPSIS_ICON).blit(gfx.bufferSource(), gfx.pose(), x + 2, y + 2, ICON16, ICON16);
-
-        int bgX = x + SLOT + SLOT_GAP, bY = y + 1;
-        int w = addEntryW();
-        TiledSpriteRenderer.create(SpriteLocations.ENTRY_BG).render(gfx, bgX, y, w, INPUT_H);
-
-        int b1X = addButtonX(bgX, 0), b2X = addButtonX(bgX, 1);
-        boolean addConnectionHovered = hovered != null && hovered.kind() == TargetKind.ADD_CONNECTION
-                && hovered.row() == row;
-        ResourceLocation sprite2 = addConnectionHovered ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
-        TiledSpriteRenderer.create(sprite2).render(gfx, b1X, bY, ROW_BTN, ROW_BTN);
-        AllIcons.I_ADD.render(gfx, b1X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2);
-        // add constant: one per operand group (this row's group), so it greys out once this group has one
-        ResourceLocation sprite1 = tube.hasConstant(row.primary()) ? SpriteLocations.BTN_DISABLED
-                : hovered != null && hovered.kind() == TargetKind.ADD_CONSTANT && hovered.row() == row
-                        ? SpriteLocations.BTN_HOVER : SpriteLocations.BTN_NORMAL;
-        TiledSpriteRenderer.create(sprite1).render(gfx, b2X, bY, ROW_BTN, ROW_BTN);
-        gfx.blitSprite(SpriteLocations.ADD_CONSTANT_ICON, b2X + (ROW_BTN - ICON16) / 2, bY + (ROW_BTN - ICON16) / 2, ICON16, ICON16);
+    private void renderInputEntries(GuiGraphics gfx, ArithmeticTubeBehaviour tube, int mouseX, int mouseY) {
+        for (int k = 0; k < rows.size(); k++)
+            rows.get(k).render(gfx, tube, rowY(k), mouseX, mouseY);
     }
 
     private void renderSlot(GuiGraphics gfx, boolean primary, int x, int y) {
@@ -512,38 +854,12 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private ContentTarget contentTargetAt(double mouseX, double mouseY) {
         if (viewportWidget == null || !viewportWidget.isMouseOver(mouseX, mouseY)
                 || operatorDropdown.isOpen() || constantDropdown.isOpen()) return null;
-        if (overScrollbar(mouseX, mouseY)) return new ContentTarget(TargetKind.SCROLLBAR, null);
+        if (overScrollbar(mouseX, mouseY)) return new ContentTarget(TargetKind.SCROLLBAR);
         if (constantEditor.box != null && constantEditor.showMenuButton()
                 && constantEditor.menuButtonBounds().contains(
                         (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN))
-            return new ContentTarget(TargetKind.CONSTANT_MENU, null);
-        if (inOperatorButton(mouseX, mouseY)) return new ContentTarget(TargetKind.OPERATOR, null);
-        for (int k = 0; k < rows.size(); k++) {
-            Row row = rows.get(k);
-            int y = rowY(k), x = entryX();
-            if (inRect(mouseX, mouseY, x, y, SLOT, SLOT))
-                return new ContentTarget(TargetKind.SLOT, row);
-            int bgX = x + SLOT + SLOT_GAP, bgW = entryW() - SLOT - SLOT_GAP;
-            if (row instanceof Row.Input input) {
-                int deleteX = bgX + bgW - 1 - ROW_BTN;
-                if (inRect(mouseX, mouseY, deleteX, y + 1, ROW_BTN, ROW_BTN))
-                    return new ContentTarget(TargetKind.REMOVE, input);
-                int boxX = bgX + 1, boxW = deleteX - 2 - boxX;
-                if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput
-                        && inRect(mouseX, mouseY, boxX, y + 1, boxW, 18))
-                    return new ContentTarget(TargetKind.CONSTANT_FIELD, input);
-                if (inRect(mouseX, mouseY, x, y, entryW(), INPUT_H))
-                    return new ContentTarget(TargetKind.ROW, input);
-            } else {
-                int addConnectionX = addButtonX(bgX, 0), addConstantX = addButtonX(bgX, 1);
-                if (inRect(mouseX, mouseY, addConnectionX, y + 1, ROW_BTN, ROW_BTN))
-                    return new ContentTarget(TargetKind.ADD_CONNECTION, row);
-                if (inRect(mouseX, mouseY, addConstantX, y + 1, ROW_BTN, ROW_BTN))
-                    return new ContentTarget(TargetKind.ADD_CONSTANT, row);
-            }
-        }
-        if (inRect(mouseX, mouseY, entryX(), resultEntryY(), RESULT_ICON_SIZE, RESULT_ICON_SIZE))
-            return new ContentTarget(TargetKind.RESULT, null);
+            return new ContentTarget(TargetKind.CONSTANT_MENU);
+        if (inOperatorButton(mouseX, mouseY)) return new ContentTarget(TargetKind.OPERATOR);
         return null;
     }
 
@@ -552,43 +868,31 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         if (target == null) return null;
         return switch (target.kind()) {
             case OPERATOR -> tr("tooltip.operator", ChatFormatting.WHITE);
-            case SLOT -> slotTooltip(target.row());
-            case REMOVE -> tr("tooltip.remove", ChatFormatting.WHITE);
-            case CONSTANT_FIELD -> target.row() instanceof Row.Input input && !constantEditor.isEditing(input)
-                    ? tr("tooltip.click_to_edit", ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC) : null;
-            case ADD_CONNECTION -> TooltipBuilder.of(font)
-                    .line(CreateLang.translate("gui.factory_panel.connect_input").component()).build();
-            case ADD_CONSTANT -> tr("tooltip.add_constant", ChatFormatting.WHITE);
-            case RESULT -> tr("tooltip.result", ChatFormatting.YELLOW);
             default -> null;
         };
-    }
-
-    /** Tooltip for an operand icon slot. */
-    @Nullable
-    private List<FormattedCharSequence> slotTooltip(Row row) {
-        if (row instanceof Row.Add)
-            return tr("tooltip.new_input", row.primary() ? ChatFormatting.BLUE : ChatFormatting.RED);
-        if (!(row instanceof Row.Input input))
-            return null;
-        if (input.input() instanceof ArithmeticTubeBehaviour.ConstantInput)
-            return tr("tooltip.constant", ChatFormatting.WHITE);
-        if (input.input() instanceof ArithmeticTubeBehaviour.ConnectionInput(VirtualComponentPosition source)) {
-            var comp = menu.componentAt(source);
-            if (comp != null) {
-                return TooltipBuilder.of(font)
-                        .line(comp.getName().copy().withColor(comp.getColor()))
-                        .lines(comp.infoTooltip())
-                        .build();
-            }
-        }
-        return null;
     }
 
     private List<FormattedCharSequence> tr(String key, ChatFormatting... styles) {
         return TooltipBuilder.of(font)
                 .line(Component.translatable("createfactorycontroller.arithmetic_tube." + key).withStyle(styles))
                 .build();
+    }
+
+    private MutableComponent atComponent(String key) {
+        return Component.translatable("createfactorycontroller.arithmetic_tube." + key);
+    }
+
+    private static Component comparatorLine(Comparison current) {
+        MutableComponent line = Component.empty();
+        Comparison[] all = Comparison.values();
+        for (int i = 0; i < all.length; i++) {
+            if (i > 0) line.append(Component.literal(" "));
+            Comparison c = all[i];
+            boolean selected = c == current;
+            line.append(Component.literal(selected ? "[" + c.symbol() + "]" : c.symbol())
+                    .withStyle(selected ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+        }
+        return line;
     }
 
     private List<FormattedCharSequence> operatorTooltip(ArithmeticOperator op) {
@@ -634,18 +938,28 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         ArithmeticViewportWidget() {
             super(0, 0, 0, 0, (mouseX, mouseY) -> {
                 if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return List.of();
+                ArithmeticTubeBehaviour tube = tube();
+                if (tube != null)
+                    for (int k = 0; k < rows.size(); k++) {
+                        List<FormattedCharSequence> rt = rows.get(k).tooltip(tube, rowY(k), mouseX, mouseY);
+                        if (rt != null) return rt;
+                    }
                 List<FormattedCharSequence> tooltip = contentTooltip(contentTargetAt(mouseX, mouseY));
                 return tooltip == null ? List.of() : tooltip;
             });
             onClick(this::contentClicked);
             onScroll((mouseX, mouseY, scrollX, scrollY) -> {
-                if (operatorDropdown.isOpen() || constantDropdown.isOpen() || maxScroll() <= 0) return false;
+                if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return false;
+                ArithmeticTubeBehaviour tube = tube();
+                if (tube != null)
+                    for (int k = 0; k < rows.size(); k++)
+                        if (rows.get(k).scrolled(tube, rowY(k), mouseX, mouseY, scrollY)) return true;
+                if (maxScroll() <= 0) return false;
                 double target = Mth.clamp(scroll.getChaseTarget() - scrollY * 18, 0, maxScroll());
                 scroll.chase(target, 0.5, Chaser.EXP);
                 return true;
             });
             onRelease((mouseX, mouseY, button) -> {
-                operatorHeld = false;
                 if (button == 0 && draggingScrollbar) {
                     draggingScrollbar = false;
                     return true;
@@ -664,9 +978,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             int hoverX = contentHovered ? mouseX : Integer.MIN_VALUE;
             int hoverY = contentHovered ? mouseY : Integer.MIN_VALUE;
             gfx.enableScissor(getX(), getY(), getRight(), getBottom());
-            renderOperatorEntry(gfx, tube, hovered != null && hovered.kind() == TargetKind.OPERATOR);
-            renderInputEntries(gfx, tube, hovered);
-            renderResultEntry(gfx, tube);
+            // Pressed whenever the left mouse button is physically held over the operator button — in any case,
+            // whether or not the dropdown is open (read the raw button state so it doesn't depend on a click landing).
+            boolean leftDown = GLFW.glfwGetMouseButton(
+                    Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+            boolean opPressed = leftDown && inOperatorButton(mouseX, mouseY);
+            renderOperatorEntry(gfx, tube, hovered != null && hovered.kind() == TargetKind.OPERATOR, opPressed);
+            renderInputEntries(gfx, tube, hoverX, hoverY);
             constantEditor.render(gfx, hoverX, hoverY, partialTick,
                     hovered != null && hovered.kind() == TargetKind.CONSTANT_MENU);
             gfx.disableScissor();
@@ -677,8 +995,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         private boolean contentClicked(double mouseX, double mouseY, int button) {
             if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return false;
             ContentTarget target = contentTargetAt(mouseX, mouseY);
-            if (target == null) return false;
-            if (button == 0 && target.kind() == TargetKind.SCROLLBAR) {
+            if (target != null && button == 0 && target.kind() == TargetKind.SCROLLBAR) {
                 draggingScrollbar = true;
                 int thumbY = scrollbarThumbY(), thumbH = scrollbarThumbHeight();
                 boolean onThumb = mouseY >= thumbY && mouseY < thumbY + thumbH;
@@ -686,7 +1003,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 if (!onThumb) dragScrollbarTo(mouseY);
                 return true;
             }
-            if (target.kind() == TargetKind.CONSTANT_MENU && button == 0) {
+            if (target != null && target.kind() == TargetKind.CONSTANT_MENU && button == 0) {
                 constantDropdown.toggle();
                 return true;
             }
@@ -700,39 +1017,15 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 return constantEditor.box.mouseClicked(mouseX, mouseY, button);
             }
             if (constantEditor.active()) constantEditor.commit();
-            if (target.kind() == TargetKind.OPERATOR) {
-                operatorHeld = button == 0;
+            if (target != null && target.kind() == TargetKind.OPERATOR) {
                 operatorDropdown.open();
                 return true;
             }
-            if (target.kind() == TargetKind.REMOVE && target.row() instanceof Row.Input input) {
-                sendInput(ConfigureArithmeticInputPacket.REMOVE, input.primary(), input.index(), 0);
-                playClickSound();
-                return true;
-            }
-            if (target.kind() == TargetKind.CONSTANT_FIELD && target.row() instanceof Row.Input input) {
-                int bgX = entryX() + SLOT + SLOT_GAP;
-                int deleteX = bgX + entryW() - SLOT - SLOT_GAP - 1 - ROW_BTN;
-                int fieldWidth = deleteX - 2 - (bgX + 1);
-                constantEditor.start(input, fieldWidth - 9);
-                return true;
-            }
-            if (target.kind() == TargetKind.ADD_CONNECTION && target.row() instanceof Row.Add add) {
-                sendInput(ConfigureArithmeticInputPacket.PREPARE_WIRE, add.primary(), -1, 0);
-                controller.beginConnectionMode(tubePos);
-                Minecraft.getInstance().setScreen(controller);
-                return true;
-            }
-            if (target.kind() == TargetKind.ADD_CONSTANT && target.row() instanceof Row.Add add) {
-                ArithmeticTubeBehaviour tube = tube();
-                if (tube != null && !tube.hasConstant(add.primary())) {
-                    sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, add.primary(), -1, 0);
-                    playClickSound();
-                }
-                return true;
-            }
-            return target.kind() == TargetKind.SLOT && target.row() instanceof Row.Input
-                    || target.kind() == TargetKind.ROW;
+            ArithmeticTubeBehaviour tube = tube();
+            if (tube != null)
+                for (int k = 0; k < rows.size(); k++)
+                    if (rows.get(k).clicked(tube, rowY(k), mouseX, mouseY, button)) return true;
+            return false;
         }
 
         @Override
@@ -1025,9 +1318,13 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
         private static final int MAX_LENGTH = 18;
 
+        enum RedstoneField { OVERRIDE, THRESHOLD }
+
         @Nullable private EditBox box;
         private boolean editPrimary;
         private int editIndex = -1;
+        /** Which redstone value field the box edits, or {@code null} while it edits a constant slot. */
+        @Nullable private RedstoneField redstoneField;
 
         private static final int NO_COMMIT = -2;
 
@@ -1036,17 +1333,37 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         private boolean commitPrimary;
         private int commitIndex = NO_COMMIT;
         private double commitValue;
+        /** Optimistic post-commit for a redstone value field ({@code null} = inactive). */
+        @Nullable private RedstoneField redstoneCommitField;
+        private double redstoneCommitValue;
 
         public boolean active() { return box != null; }
 
-        public boolean isEditing(Row.Input row) {
-            return box != null && row.primary() == editPrimary && row.index() == editIndex;
+        public boolean isEditing(InputRow row) {
+            return box != null && redstoneField == null && row.primary() == editPrimary && row.index() == editIndex;
+        }
+
+        public boolean isEditing(RedstoneField field) {
+            return box != null && redstoneField == field;
         }
 
         public void discardIfRowGone(List<Row> rows) {
-            if (box != null &&
-                    rows.stream().noneMatch(row -> row instanceof Row.Input input && isEditing(input))
-            ) remove();
+            if (box == null) return;
+            if (redstoneField == RedstoneField.OVERRIDE) {
+                if (rows.stream().noneMatch(row -> row instanceof RedstoneInputRow)) remove();
+                return;
+            }
+            if (redstoneField == RedstoneField.THRESHOLD) {
+                if (rows.stream().noneMatch(row -> row instanceof RedstoneOutputRow)) remove();
+                return;
+            }
+            if (rows.stream().noneMatch(row -> row instanceof InputRow input && isEditing(input))) remove();
+        }
+
+        /** Right-click on a value field clears it at once, so the first right-click clears (not the second). Call
+         *  right after starting/while editing a field. */
+        public void clearOnSecondary(int button) {
+            if (button == 1 && box != null) box.setValue("");
         }
 
         public void position(int x, int y, int width) {
@@ -1067,7 +1384,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         }
 
         /** The optimistic post-commit value for a just-edited constant, if the server sync has not caught up yet. */
-        public OptionalDouble optimisticValue(Row.Input row, double currentValue) {
+        public OptionalDouble optimisticValue(InputRow row, double currentValue) {
             if (!(row.input() instanceof ArithmeticTubeBehaviour.ConstantInput) || !matchesCommit(row))
                 return OptionalDouble.empty();
             if (Double.compare(currentValue, commitValue) == 0) {
@@ -1077,14 +1394,15 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             return OptionalDouble.of(commitValue);
         }
 
-        private boolean matchesCommit(Row.Input row) {
+        private boolean matchesCommit(InputRow row) {
             return commitIndex != NO_COMMIT &&
                     row.primary() == commitPrimary &&
                     row.index() == commitIndex;
         }
 
-        public void start(Row.Input row, int width) {
+        public void start(InputRow row, int width) {
             commit();   // commit any prior edit
+            redstoneField = null;
             editPrimary = row.primary();
             editIndex = row.index();
 
@@ -1105,10 +1423,49 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             box.setHighlightPos(0);
         }
 
+        /** Start editing a redstone value field (OVERRIDE constant / output THRESHOLD). */
+        public void setEditingRedstone(int width, RedstoneField field) {
+            commit();
+            redstoneField = field;
+            editPrimary = false;
+            editIndex = -1;
+
+            box = new EditBox(font, 0, 0, Math.max(10, width), font.lineHeight, Component.empty());
+            box.setBordered(false);
+            box.setTextColor(CONSTANT_VALUE_COLOR);
+            box.setMaxLength(MAX_LENGTH);
+            box.setFilter(input -> FLOAT_LITERAL_PATTERN.matcher(input).matches());
+
+            ArithmeticTubeBehaviour tube = tube();
+            double value = tube == null ? 0
+                    : field == RedstoneField.OVERRIDE ? tube.getOverrideValue() : tube.getOutputThreshold();
+            box.setValue(NumberFormatter.format(value));
+
+            setFocused(viewportWidget);
+            box.setFocused(true);
+            box.setHighlightPos(0);
+        }
+
         public void commit() {
             if (box == null) return;
             if (constantDropdown != null) constantDropdown.close();
             String input = box.getValue();
+
+            if (redstoneField != null) {
+                double value;
+                try {
+                    value = input.isEmpty() ? 0 : Double.parseDouble(input);
+                } catch (NumberFormatException e) {
+                    value = 0;
+                }
+                sendInput(redstoneField == RedstoneField.OVERRIDE
+                        ? ConfigureArithmeticInputPacket.SET_REDSTONE_VALUE
+                        : ConfigureArithmeticInputPacket.SET_OUTPUT_THRESHOLD, false, -1, value);
+                redstoneCommitField = redstoneField;
+                redstoneCommitValue = value;
+                remove();
+                return;
+            }
 
             double value;
             var specialValue = SpecialConstant.LOOKUP.get(input.toLowerCase(Locale.ROOT));
@@ -1131,15 +1488,26 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             remove();
         }
 
+        /** Optimistic redstone value (per field) until the config sync catches up (avoids a one-tick flash-back). */
+        public double optimisticRedstone(RedstoneField field, double currentValue) {
+            if (redstoneCommitField != field) return currentValue;
+            if (Double.compare(currentValue, redstoneCommitValue) == 0) {
+                redstoneCommitField = null;   // the sync caught up
+                return currentValue;
+            }
+            return redstoneCommitValue;
+        }
+
         public void remove() {
             if (box == null) return;
             box = null;
+            redstoneField = null;
             if (constantDropdown != null) constantDropdown.close();
             setFocused(null);
         }
 
         private boolean showMenuButton() {
-            return box != null && box.getValue().length() <= MAX_LENGTH - 2;
+            return box != null && redstoneField == null && box.getValue().length() <= MAX_LENGTH - 2;
         }
 
         private Rect2i menuButtonBounds() {

@@ -12,15 +12,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Edits an Arithmetic Tube's input operands from the settings GUI. {@code op}: {@link #ADD_CONSTANT},
- * {@link #SET_CONSTANT}, {@link #REMOVE}, {@link #PREPARE_WIRE}. {@code primary} picks the slot group (primary /
- * secondary); {@code index} is the primary-list index (ignored for secondary); {@code value} the constant value.
+ * Edits an Arithmetic Tube's input operands from the settings GUI.
  */
 public record ConfigureArithmeticInputPacket(BlockPos pos, VirtualComponentPosition tube,
                                              int op, boolean primary, int index, double value)
     implements CustomPacketPayload {
 
-    public static final int ADD_CONSTANT = 0, SET_CONSTANT = 1, REMOVE = 2, PREPARE_WIRE = 3, SWAP = 4, LOOP = 5;
+    public static final int ADD_CONSTANT = 0, SET_CONSTANT = 1, REMOVE = 2, SWAP = 3,
+                            SET_REDSTONE_MODE = 4, SET_REDSTONE_VALUE = 5,
+                            SET_OUTPUT_COMPARISON = 6, SET_OUTPUT_THRESHOLD = 7;
 
     public static final Type<ConfigureArithmeticInputPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "configure_arithmetic_input"));

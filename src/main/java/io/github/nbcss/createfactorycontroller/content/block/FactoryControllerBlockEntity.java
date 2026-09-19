@@ -31,7 +31,6 @@ import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
-import io.github.nbcss.createfactorycontroller.content.packet.ConfigureArithmeticInputPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelDeltaPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
@@ -1004,15 +1003,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** Applies an operator-tube input edit from the settings GUI (see {@code ConfigureArithmeticInputPacket}). */
     public void configureArithmeticInput(VirtualComponentPosition pos, int op, boolean primary, int index, double value) {
-        if (!(components.get(pos) instanceof ArithmeticTubeBehaviour tube)) return;
-        switch (op) {
-            case ConfigureArithmeticInputPacket.ADD_CONSTANT -> tube.addConstant(primary, value);
-            case ConfigureArithmeticInputPacket.SET_CONSTANT -> tube.setConstant(primary, index, value);
-            case ConfigureArithmeticInputPacket.REMOVE -> tube.removeInput(primary, index);
-            case ConfigureArithmeticInputPacket.PREPARE_WIRE -> tube.prepareWire(primary);
-            case ConfigureArithmeticInputPacket.SWAP -> tube.swapInputs();
-            case ConfigureArithmeticInputPacket.LOOP -> tube.setLoopEnabled(value != 0);
-        }
+        if (components.get(pos) instanceof ArithmeticTubeBehaviour tube) tube.configureInput(op, primary, index, value);
     }
 
     /** Cycles a component's connection arrow-bend mode. */

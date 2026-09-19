@@ -186,12 +186,6 @@ public interface VirtualComponentBehaviour {
      *  caps its ingredient slots; a link rejects a link partner.) */
     ValidationResult validateAsSink(Connection.Type type, VirtualComponentBehaviour source);
 
-    /** Whether this component can still take another input (used to gate entering connection mode from it). Most
-     *  components have no fixed input cap; the Arithmetic Tube overrides this with its operator's arity. */
-    default boolean canAcceptMoreInput() {
-        return true;
-    }
-
     /** For component to look up other components. */
     void setHolder(ComponentHolder holder);
 

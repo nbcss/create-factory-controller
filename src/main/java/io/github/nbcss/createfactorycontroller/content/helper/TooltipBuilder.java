@@ -13,6 +13,7 @@ import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
 public final class TooltipBuilder {
+    public static final int SELECTOR_DESCRIPTION_COLOR = 0x777777;
     private final Font font;
     private final List<FormattedCharSequence> tooltip;
 
@@ -23,6 +24,10 @@ public final class TooltipBuilder {
 
     public static TooltipBuilder of(Font font) {
         return new TooltipBuilder(font);
+    }
+
+    public TooltipBuilder wrapped(@Nullable Component component) {
+        return wrapped(component, Integer.MAX_VALUE);
     }
 
     public TooltipBuilder wrapped(@Nullable Component component, int maxWidth) {

@@ -418,9 +418,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     TooltipBuilder lines = TooltipBuilder.of(font)
                             .line(Component.translatable("createfactorycontroller.gui.request_interval", seconds)
                                     .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
-                            .line(Component.translatable("createfactorycontroller.gui.request_interval.tip_1")
-                                    .withStyle(ChatFormatting.GRAY))
-                            .line(Component.translatable("createfactorycontroller.gui.request_interval.tip_2")
+                            .wrapped(Component.translatable("createfactorycontroller.gui.request_interval.tips")
                                     .withStyle(ChatFormatting.GRAY))
                             .line(CreateLang.translate("gui.factory_panel.scroll_to_change_amount")
                                     .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
@@ -521,7 +519,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                                 .build();
                     TooltipBuilder lines = TooltipBuilder.of(font).line(title);
-                    if (behaviour != null && requestMode.isPassive()) {
+                    if (behaviour != null && requestMode.isPassive() && g != null) {
                         String targetCount = behaviour.unit.format(g.getPassiveTargetCount(), true);
                         lines.line(Component.translatable("createfactorycontroller.gui.threshold.minimum_target.hint",
                                         Component.literal(targetCount).withColor(0x9ECFFC))
@@ -980,8 +978,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         for (RequestMode m : RequestMode.values()) {
             lines.selector(Component.translatable(m.translationKey), m == requestMode);
         }
-        return lines.line(Component.translatable(requestMode.translationKey + ".desc1").withColor(0x777777))
-                .line(Component.translatable(requestMode.translationKey + ".desc2").withColor(0x777777))
+        return lines.line(Component.translatable(requestMode.translationKey + ".desc1")
+                        .withColor(TooltipBuilder.SELECTOR_DESCRIPTION_COLOR))
+                .line(Component.translatable(requestMode.translationKey + ".desc2")
+                        .withColor(TooltipBuilder.SELECTOR_DESCRIPTION_COLOR))
                 .line(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                 .build();

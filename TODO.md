@@ -36,6 +36,8 @@
 - [DONE] Allow minimum stock amount in Passive mode gauge
 
 # 1.2.2
+- [TODO] Generic self-loop connection
+- [TODO] Cancel connection/move mode approach or keybinding
 - [TODO] Update Arithmetic tube GUI and connection target selection
 - [TODO] Different controller component tooltip styles
 - [TODO] Behaviour tooltips for arithmetic tube
