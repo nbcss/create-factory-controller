@@ -124,6 +124,7 @@ public class CreateFactoryController {
 
         ProductionOrderManager.registerEvents();
         OrderableGaugeRegistry.registerEvents();
+        ConfigDataFixer.registerEvents();
 
         ArrangementUnpackingHandler.register();
 
@@ -132,7 +133,6 @@ public class CreateFactoryController {
             CcTweakedIntegration.register(modEventBus);
         }
 
-        modEventBus.addListener(ConfigDataFixer::migrate);
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
