@@ -948,6 +948,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void renderConnectionTargets(GuiGraphics graphics, Connection connection) {
         if (!ClientConfig.renderConnectedComponentOutlines()) return;
+        if (connection.isLoop()) {
+            renderSplitTarget(graphics, connection.from,
+                    ConnectedTargetRole.INPUT.defaultColor(), ConnectedTargetRole.OUTPUT.defaultColor());
+            return;
+        }
         renderTarget(graphics, connection.from, ConnectedTargetRole.INPUT.defaultColor());
         renderTarget(graphics, connection.to, ConnectedTargetRole.OUTPUT.defaultColor());
     }
@@ -1002,10 +1007,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Blits the 16×16 {@code target} sprite tinted {@code rgb}, filling the cell exactly. */
     private void renderTarget(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
+        targetAnimations.discard(pos, TARGET_HALF_1_SPRITE);
+        targetAnimations.discard(pos, TARGET_HALF_2_SPRITE);
         renderTargetSprite(graphics, pos, TARGET_SPRITE, rgb, false);
     }
 
     private void renderSplitTarget(GuiGraphics graphics, VirtualComponentPosition pos, int inputColor, int outputColor) {
+        targetAnimations.discard(pos, TARGET_SPRITE);
         renderTargetSprite(graphics, pos, TARGET_HALF_1_SPRITE, inputColor, false);
         renderTargetSprite(graphics, pos, TARGET_HALF_2_SPRITE, outputColor, false);
     }
@@ -1040,6 +1048,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     private void renderTransientTargetAboveGhost(GuiGraphics graphics, VirtualComponentPosition pos, int rgb) {
         targetAnimations.discard(pos, TARGET_SPRITE);
+        targetAnimations.discard(pos, TARGET_HALF_1_SPRITE);
+        targetAnimations.discard(pos, TARGET_HALF_2_SPRITE);
         drawTargetSprite(graphics, pos, TARGET_SPRITE, rgb, true, 1, 1);
     }
 

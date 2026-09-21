@@ -8,6 +8,9 @@ Changes:
 - Components support loop connection (self-connect) now.
 - Number connection value update would play flash animation now.
 
+Create: Higher Logistics Patch
+- Fixed Create bug #10054
+
 ## 1.2.1
 
 Features:
