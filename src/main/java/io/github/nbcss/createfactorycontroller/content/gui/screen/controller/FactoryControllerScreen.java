@@ -576,6 +576,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int bgEndY   = Math.floorDiv(maxY, backgroundTileSize) * backgroundTileSize + backgroundTileSize;
         graphics.pose().pushPose();
         graphics.pose().scale(backgroundScale, backgroundScale, 1);
+        RenderSystem.enableBlend();
         TiledSpriteRenderer.create(BACKGROUND_TEXTURE_PATH.withSuffix(ClientConfig.getControllerBackground() + ".png"), 0, 0,
                         new GuiSpriteScaling.Tile(CANVAS_COMPONENT_SIZE, CANVAS_COMPONENT_SIZE))
                 .render(graphics,
