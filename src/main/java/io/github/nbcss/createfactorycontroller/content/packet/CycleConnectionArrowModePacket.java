@@ -14,8 +14,13 @@ import net.minecraft.server.level.ServerPlayer;
 
 
 public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosition from, VirtualComponentPosition to,
-                                             String connectionType)
+                                             String connectionType, int action)
     implements CustomPacketPayload {
+
+    /** Cycle the wire's arrow-path mode (a loop advances its path location clockwise; a normal wire steps its 4 bends). */
+    public static final int PATH = 0;
+    /** Flip a loop wire's arrow direction (which arm the wire exits, moving the arrowhead only); ignored otherwise. */
+    public static final int DIRECTION = 1;
 
     public static final Type<CycleConnectionArrowModePacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "cycle_connection_arrow_mode"));
@@ -33,6 +38,7 @@ public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosit
             POS_CODEC, CycleConnectionArrowModePacket::from,
             POS_CODEC, CycleConnectionArrowModePacket::to,
             ByteBufCodecs.STRING_UTF8, CycleConnectionArrowModePacket::connectionType,
+            ByteBufCodecs.VAR_INT, CycleConnectionArrowModePacket::action,
             CycleConnectionArrowModePacket::new
         );
 
@@ -45,7 +51,11 @@ public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosit
             if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             Connection.Type type = Connection.Type.get(packet.connectionType());
             if (type == null) return;
-            be.cycleConnectionArrowMode(packet.from(), packet.to(), type);
+            if (packet.action() == DIRECTION) {
+                be.flipLoopDirection(packet.from(), packet.to(), type);
+            }else {
+                be.cycleConnectionArrowMode(packet.from(), packet.to(), type);
+            }
         });
     }
 }

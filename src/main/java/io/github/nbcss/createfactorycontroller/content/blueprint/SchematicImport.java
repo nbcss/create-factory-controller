@@ -205,7 +205,7 @@ public final class SchematicImport {
             VirtualComponentPosition to = gaugeCell.get(panel.getPanelPosition());
             panel.targetedBy.forEach((source, connection) -> {
                 VirtualComponentPosition from = gaugeCell.get(source);
-                if (from == null || from.equals(to)) return;
+                if (from == null || to == null) return;
                 LogisticsConnection wire = new LogisticsConnection(from, to, connection.amount);
                 wire.arrowBendMode = connection.arrowBendMode;
                 graph.add(wire);

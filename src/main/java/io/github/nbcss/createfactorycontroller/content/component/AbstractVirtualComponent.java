@@ -142,9 +142,10 @@ public abstract class AbstractVirtualComponent implements VirtualComponentBehavi
     @Override
     public void cycleOperationMode() {}
 
-    /** The connections whose arrow-bend this component's cycle-arrow key cycles. By default its outgoing wires; gauges
-     *  also include incoming redstone (whose RECEIVE-link end can't cycle — see {@code VirtualGaugeBehaviour}). */
+    /** The connections whose arrow-bend this component's cycle-arrow key cycles. */
     public List<Connection> connectionsToCycle() {
-        return new ArrayList<>(outgoingConnections());
+        List<Connection> out = new ArrayList<>();
+        for (Connection c : outgoingConnections()) if (!c.isLoop()) out.add(c);
+        return out;
     }
 }

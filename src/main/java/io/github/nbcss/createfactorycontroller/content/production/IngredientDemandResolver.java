@@ -154,6 +154,7 @@ public final class IngredientDemandResolver {
                 ItemStack ingredient = src == null ? ItemStack.EMPTY : src.filter;
                 if (ingredient.isEmpty()) continue;
                 int childId = intern(ingredient);
+                if (childId == id) continue;   // a self-loop (item requires itself) must not add a self-cycle
                 boolean excluded = source.mode != GaugeWorkMode.CRAFTING
                     && conn.excludeFromRequestMultiplier;
                 edges.get(id).add(new long[]{childId, (long) conn.amount() * batch, excluded ? 1 : 0});

@@ -1,10 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
-import net.minecraft.client.Minecraft;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 
 import java.util.ArrayList;
@@ -23,6 +22,12 @@ public final class ConnectionPathResolver {
 
     /** Whether the cell-bounding rectangle of the two connection ends overlaps the visible canvas rectangle. */
     public static boolean spanVisible(VirtualComponentPosition a, VirtualComponentPosition b, Rect2i visibleArea) {
+        if (a.equals(b)) {
+            return Rect2i.fromBounds(
+                    (a.x() - 1) * CELL, (a.y() - 1) * CELL,
+                    (a.x() + 2) * CELL, (a.y() + 2) * CELL
+            ).intersects(visibleArea, Rect2i.Boundary.EXCLUSIVE);
+        }
         return Rect2i.fromBounds(
                 Math.min(a.x(), b.x()) * CELL,
                 Math.min(a.y(), b.y()) * CELL,
@@ -31,23 +36,17 @@ public final class ConnectionPathResolver {
         ).intersects(visibleArea, Rect2i.Boundary.EXCLUSIVE);
     }
 
-    /**
-     * Resolves the cell-space path for {@code conn}, or {@code null} if the endpoints are identical.
-     * Auto bend (-1) tries the four modes in canonical order and picks the first clear path.
-     */
-    @Nullable
+    /** Resolves the cell-space path for {@code conn}. Auto mode picks the first clear bend or loop quadrant. */
     public static List<Vector2i> resolvePath(Connection conn, Set<VirtualComponentPosition> occupied) {
         return resolvePath(conn.from, conn.to, conn.arrowBendMode, occupied);
     }
 
     /** As {@link #resolvePath(Connection, Set)} but from raw endpoints + bend mode, for previewing a wire that has not
      *  been created yet. {@code arrowBendMode} {@code -1} auto-picks the first clear bend. */
-    @Nullable
     public static List<Vector2i> resolvePath(VirtualComponentPosition from, VirtualComponentPosition to,
                                              int arrowBendMode, Set<VirtualComponentPosition> occupied) {
-        if (from.equals(to)) return null;
-
-        assert Minecraft.getInstance().level != null;
+        if (from.equals(to))
+            return buildLoopPath(from, arrowBendMode < 0 ? autoLoopOrientation(from, occupied) : (arrowBendMode & 7));
 
         int mode;
         if (arrowBendMode < 0) {
@@ -98,6 +97,48 @@ public final class ConnectionPathResolver {
             }
             default -> List.of(new Vector2i(fx, fy), new Vector2i(fx, ty), new Vector2i(tx, ty));
         };
+    }
+
+    /** CW-first arm of each loop quadrant: top-right, bottom-right, bottom-left, top-left. */
+    private static final Vector2i[] QUADRANT_ARMS = {
+            new Vector2i(0, -1), new Vector2i(1, 0), new Vector2i(0, 1), new Vector2i(-1, 0)
+    };
+
+    public static List<Vector2i> buildLoopPath(VirtualComponentPosition cell, int orientation) {
+        Vector2i a = QUADRANT_ARMS[(orientation >> 1) & 3];
+        Vector2i b = new Vector2i(-a.y, a.x);              // 90° CW from a — the quadrant's other arm
+        Vector2i exit = (orientation & 1) == 0 ? a : b;    // direction picks the exit arm (same square either way)
+        Vector2i back = (orientation & 1) == 0 ? b : a;
+        Vector2i c = new Vector2i(cell.x(), cell.y());
+        List<Vector2i> path = new ArrayList<>(5);
+        path.add(new Vector2i(c));
+        path.add(new Vector2i(c).add(exit));
+        path.add(new Vector2i(c).add(exit).add(back));
+        path.add(new Vector2i(c).add(back));
+        path.add(new Vector2i(c));
+        return path;
+    }
+
+    /**
+     * Picks the first loop orientation whose three decorative cells are all
+     * in-board and unoccupied, or {@code 0} if none is clear.
+     */
+    public static int autoLoopOrientation(VirtualComponentPosition cell, Set<VirtualComponentPosition> occupied) {
+        for (int quadrant = 0; quadrant < QUADRANT_ARMS.length; quadrant++) {
+            Vector2i a = QUADRANT_ARMS[quadrant];
+            Vector2i b = new Vector2i(-a.y, a.x);
+            if (loopCellClear(cell, a.x, a.y, occupied)
+                    && loopCellClear(cell, a.x + b.x, a.y + b.y, occupied)
+                    && loopCellClear(cell, b.x, b.y, occupied))
+                return quadrant * 2;   // auto starts with direction 0; direction 1 occupies the same cells
+        }
+        return 0;
+    }
+
+    private static boolean loopCellClear(VirtualComponentPosition cell, int dx, int dy,
+                                         Set<VirtualComponentPosition> occupied) {
+        VirtualComponentPosition p = new VirtualComponentPosition(cell.x() + dx, cell.y() + dy);
+        return !occupied.contains(p) && !FactoryControllerBlockEntity.isOutBoard(p);
     }
 
     /** True if the cell-space polyline passes through no occupied cell other than its endpoints. */

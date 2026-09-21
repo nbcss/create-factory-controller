@@ -115,7 +115,6 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
         boolean[] secondary = new boolean[Face.VALUES.length];
         for (Connection c : behaviour.incomingConnections(NumberConnection.TYPE)) {
             List<Vector2i> path = ConnectionPathResolver.resolvePath(c, occupied);
-            if (path == null || path.size() < 2) continue;
             int face = entryFace(path).ordinal();
             if (behaviour.isSecondarySource(c.from)) secondary[face] = true;
             else primary[face] = true;

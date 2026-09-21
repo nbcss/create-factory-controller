@@ -1,7 +1,11 @@
 ## 1.2.2
 
+Features:
+- Introduced redstone input/output functionalities for Arithmetic Tube.
+
 Changes:
 - Cut Amethyst is using stonecutter recipe now.
+- Components support loop connection (self-connect) now.
 
 ## 1.2.1
 

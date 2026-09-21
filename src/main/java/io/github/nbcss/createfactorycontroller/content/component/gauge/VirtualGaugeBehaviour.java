@@ -667,6 +667,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         long demand = 0;
         for (Connection connection : outgoingConnections(LogisticsConnection.TYPE)) {
             if (!(connection instanceof LogisticsConnection conn)) continue;
+            if (conn.to.equals(position())) continue;   // a self-loop is not its own downstream consumer
             if (!(controller.components.get(conn.to) instanceof VirtualGaugeBehaviour parent)) continue;
             if (!parent.canRequestIngredients()) continue;
             int parentBatch = parent.mode == GaugeWorkMode.CRAFTING ? Math.max(1, parent.craftBatch) : 1;

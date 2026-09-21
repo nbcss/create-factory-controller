@@ -779,8 +779,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             connArrowLocked = false;   // the wire is gone (e.g. removed) → drop the lock and fall through
         }
         if (hoverHits.isEmpty()) {
-            selectedConnection = null;
-            connTooltipShowAtMs = Long.MAX_VALUE;
+            clearConnectionHover();
             return null;
         }
         ConnectionWidget keep = null;
@@ -791,6 +790,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (connTooltipShowAtMs == Long.MAX_VALUE)
             connTooltipShowAtMs = Util.getMillis() + ClientConfig.connectionTooltipDelay();
         return keep;
+    }
+
+    private void clearConnectionHover() {
+        hoveredConn = null;
+        selectedConnection = null;
+        hoverHits.clear();
+        connTooltipShowAtMs = Long.MAX_VALUE;
+        connArrowLocked = false;
     }
 
     /** Tooltip lines for the hovered wire — the widget owns the format; we supply the overlap count and selected index. */
@@ -828,6 +835,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         VirtualComponentPosition source = connectionMode.isActive() ? connectionMode.initiator() : pendingRelocateTarget;
         if (source != null) renderTarget(graphics, source, TARGET_GREEN);
 
+        // Loop connection preview
+        if (connectionMode.isInitiatorHovered(hoveredPosition)) {
+            ConnectionResolver.Result loop = connectionMode.resolveLoopPreview(menu, hoveredPosition);
+            if (loop != null) renderLoopPreview(graphics, source, loop);
+            return;
+        }
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
         final VirtualComponentWidget hoveredWidget = componentWidgetAt(hoveredPosition);
         final VirtualComponentBehaviour hovered = hoveredWidget == null ? null : hoveredWidget.behaviour();
@@ -841,12 +854,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     assert result.source() != null;
                     List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(
                             result.source(), result.sink(), connectionMode.previewBendMode(), occupiedCells());
-                    if (path != null) {
-                        float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
-                        float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);   // 1.0 at phase 0, 0.6 at half
-                        int color = Math.round(alpha * 255) << 24 | (result.type().color() & 0xFFFFFF);
-                        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics.bufferSource(), graphics.pose());
-                    }
+                    assert result.type() != null;
+                    renderConnectionPreview(graphics, path, result.type());
                 }
                 renderTarget(graphics, hoveredPosition, result.ok() ? TARGET_WHITE : TARGET_RED);
             }
@@ -882,6 +891,29 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         }
         graphics.flush();
+    }
+
+    private void renderLoopPreview(GuiGraphics graphics, VirtualComponentPosition cell,
+                                   ConnectionResolver.Result result) {
+        if (result.ok()) {
+            int bend = connectionMode.previewBendMode();
+            if (bend < 0) bend = ConnectionPathResolver.autoLoopOrientation(cell, occupiedCells());
+            List<org.joml.Vector2i> path = ConnectionPathResolver.buildLoopPath(cell, bend);
+            renderConnectionPreview(graphics, path, result.type());
+            renderTarget(graphics, cell, TARGET_WHITE);
+        } else {
+            renderTarget(graphics, cell, TARGET_RED);
+        }
+        graphics.flush();
+    }
+
+    private void renderConnectionPreview(GuiGraphics graphics,
+                                         List<org.joml.Vector2i> path,
+                                         Connection.Type type) {
+        float phase = (Util.getMillis() % PREVIEW_FLASH_MS) / (float) PREVIEW_FLASH_MS;
+        float alpha = 0.85f + 0.15f * Mth.cos(phase * Mth.TWO_PI);
+        int color = Math.round(alpha * 255) << 24 | (type.color() & 0xFFFFFF);
+        VirtualConnectionRenderer.create(path, color, false).drawPath(graphics.bufferSource(), graphics.pose());
     }
 
     private void renderConnectionNeighbours(GuiGraphics graphics, VirtualComponentWidget hovered) {
@@ -1106,6 +1138,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Enters "add connection" mode: the next board gauge clicked becomes an input to {@code target}. */
     public void beginConnectionMode(VirtualComponentPosition target) {
+        clearConnectionHover();
         connectionMode.begin(target);
 
         setPersistentPrompt(Component.translatable("createfactorycontroller.connection.mode_prompt")
@@ -1238,6 +1271,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             playDenySound();
             return;
         }
+        // A loop with no chosen orientation stays auto (-1): the renderer re-picks a clear orientation each frame,
+        // just like an auto-bend normal wire, so it dodges components placed on its path later.
         PacketDistributor.sendToServer(new AddConnectionPacket(menu.controllerPos, result.type().name(),
                 result.source(), result.sink(), completion.bendMode()));
         showConnectionMessage(result);
@@ -1749,6 +1784,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
+        if (connectionMode.isActive() && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            connectionMode.clear();
+            persistentActionPrompt = null;
+            setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
+                    .style(ChatFormatting.WHITE).component(), 3000);
+            return true;
+        }
+
         if (isPanKey(keyCode)) heldPanKeys.add(keyCode);
 
         VirtualComponentBehaviour hover = componentAt(hoveredPosition);
@@ -1779,12 +1822,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 connArrowLocked = true;
                 playWrenchSound();
                 PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
-                        hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name()));
+                        hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name(),
+                        CycleConnectionArrowModePacket.PATH));
                 return true;
             }
 
             if (connectionMode.isActive()) {
-                if (connectionMode.cycleBend(menu, hoveredPosition)) playWrenchSound();
+                if (connectionMode.cyclePath(menu, hoveredPosition, () ->
+                        ConnectionPathResolver.autoLoopOrientation(connectionMode.initiator(), occupiedCells()))) {
+                    playWrenchSound();
+                }
                 return true;
             }
 
@@ -1803,6 +1850,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
 
         if (CreateFactoryControllerClient.CYCLE_OPERATION_MODE.matches(keyCode, scanCode)) {
+            // Loop preview: switch-mode flips the arrow direction instead of cycling the initiator's op mode.
+            if (connectionMode.flipLoopDirection(menu, hoveredPosition, () ->
+                    ConnectionPathResolver.autoLoopOrientation(connectionMode.initiator(), occupiedCells()))) {
+                playWrenchSound();
+                return true;
+            }
+            // A committed loop wire: switch-mode flips its arrow direction (reverse is a no-op for a self-edge).
+            if (hoveredConn != null && hoveredConn.connection.isLoop()) {
+                revealConnectionTooltip();
+                connArrowLocked = true;
+                Connection conn = hoveredConn.connection;
+                playWrenchSound();
+                PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
+                        conn.from, conn.to, conn.type.name(), CycleConnectionArrowModePacket.DIRECTION));
+                return true;
+            }
             if (hoveredConn != null && hoveredConn.connection.type.reversible()) {
                 revealConnectionTooltip();
                 Connection conn = hoveredConn.connection;
@@ -1853,7 +1916,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             for (var conn : sink.behaviour().incomingConnections()) {
                 if (!ConnectionPathResolver.spanVisible(conn.from, conn.to, visibleArea)) continue;
                 List<org.joml.Vector2i> path = ConnectionPathResolver.resolvePath(conn, occupied);
-                if (path != null) result.add(new ConnectionWidget(conn, path));
+                result.add(new ConnectionWidget(conn, path));
             }
         }
         return result;

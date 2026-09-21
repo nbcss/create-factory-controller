@@ -7,8 +7,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -137,9 +139,10 @@ public class ConnectionGraph {
     /** Re-keys every wire touching {@code from} to {@code to} (a component relocation); updates each moved wire's
      *  stored endpoints to match. {@code to} must be empty. */
     public void rename(VirtualComponentPosition from, VirtualComponentPosition to) {
-        List<Connection> affected = new ArrayList<>();
+        // A self-loop is in both views (from as sink AND as source), so dedup by identity to re-key it once.
+        Set<Connection> affected = new LinkedHashSet<>();
         affected.addAll(incomingConnections(from));   // from as sink
-        affected.addAll(outgoingConnections(from));   // from as source (disjoint — no self-loops)
+        affected.addAll(outgoingConnections(from));   // from as source
         for (Connection conn : affected) remove(conn.to, conn.from, conn.type);
         for (Connection conn : affected) {
             if (conn.from.equals(from)) conn.from = to;

@@ -84,6 +84,45 @@ public final class ConnectionResolver {
         return out;
     }
 
+    // ── Self-loop (a component wired to itself) ────────────────────────────────
+
+    /** Every type on which {@code c} can form a self-loop. */
+    public static List<Connection.Type> loopTypes(@Nullable VirtualComponentBehaviour c) {
+        List<Connection.Type> out = new ArrayList<>();
+        for (LoopCandidate lc : loopCandidates(c)) out.add(lc.type());
+        return out;
+    }
+
+    /** Resolves a self-loop on {@code c} using its highest-scoring {@code BOTH}-role type. */
+    public static Result resolveLoop(@Nullable VirtualComponentBehaviour c) {
+        if (c == null) return Result.fail(ConnectionResolver::aborted);
+        List<LoopCandidate> candidates = loopCandidates(c);
+        if (candidates.isEmpty()) return Result.fail(() -> cannotConnect(c, c));   // nothing can loop here
+        return resolveLoopAs(c, candidates.getFirst().type());
+    }
+
+    /** Resolves a self-loop on {@code c} constrained to one explicit {@code type}. */
+    public static Result resolveLoopAs(@Nullable VirtualComponentBehaviour c, @Nullable Connection.Type type) {
+        if (c == null || type == null) return Result.fail(ConnectionResolver::aborted);
+        ConnectionCapability port = portOf(c, type);
+        if (port == null || !port.role().canSource() || !port.role().canSink())
+            return Result.fail(() -> cannotConnect(c, c));
+        return new Result(type, c.position(), c.position(), validateOriented(type, c, c, true));
+    }
+
+    /** A {@code BOTH}-role port type usable for a loop, tagged with its priority score (sourceOrder × sinkOrder). */
+    private record LoopCandidate(Connection.Type type, double score) {}
+
+    private static List<LoopCandidate> loopCandidates(@Nullable VirtualComponentBehaviour c) {
+        List<LoopCandidate> out = new ArrayList<>();
+        if (c == null) return out;
+        for (ConnectionCapability p : c.ports())
+            if (p.role().canSource() && p.role().canSink())   // Role.BOTH — can be both ends of its own wire
+                out.add(new LoopCandidate(p.type(), p.sourceOrder() * p.sinkOrder()));
+        out.sort(Comparator.comparingDouble(LoopCandidate::score).reversed());
+        return out;
+    }
+
     /** A shared type oriented to its one legal direction, tagged with its priority {@link #score}. */
     private record Candidate(Connection.Type type, VirtualComponentBehaviour source,
                              VirtualComponentBehaviour sink, double score) {}
@@ -143,6 +182,14 @@ public final class ConnectionResolver {
                                              boolean rejectExisting) {
         if (type == null || source == null || sink == null || source.position().equals(sink.position()))
             return ValidationResult.fail(ConnectionResolver::aborted);
+        return validateOriented(type, source, sink, rejectExisting);
+    }
+
+    /** The validity check for an explicit oriented {@code source → sink} of {@code type}. */
+    private static ValidationResult validateOriented(Connection.Type type,
+                                             VirtualComponentBehaviour source,
+                                             VirtualComponentBehaviour sink,
+                                             boolean rejectExisting) {
         ConnectionCapability sourcePort = portOf(source, type);
         ConnectionCapability sinkPort = portOf(sink, type);
         if (sourcePort == null || sinkPort == null || !sourcePort.role().canSource() || !sinkPort.role().canSink())

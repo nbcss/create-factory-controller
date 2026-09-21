@@ -26,6 +26,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPathResolver;
 import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixer;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
@@ -877,17 +878,24 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         Connection.Type type = Connection.Type.get(typeName);
         VirtualComponentBehaviour source = components.get(sourcePos);
         VirtualComponentBehaviour sink = components.get(sinkPos);
-        if (type == null || source == null || sink == null || sourcePos.equals(sinkPos)) {
+        if (type == null || source == null || sink == null) {
             playDenySound();
             return;
         }
-        // The client resolved type/source/sink; the server only validates that exact setup is still legal.
-        if (!ConnectionResolver.validate(type, source, sink).isSuccess()) {
+        boolean loop = sourcePos.equals(sinkPos);
+        // The client resolved type/source/sink; the server only validates that exact setup is still legal. A loop
+        // (source == sink) uses the loop resolver, which admits a self-edge on a BOTH-role port.
+        boolean valid = loop
+                ? ConnectionResolver.resolveLoopAs(source, type).ok()
+                : ConnectionResolver.validate(type, source, sink).isSuccess();
+        if (!valid) {
             playDenySound();
             return;
         }
         Connection conn = type.create(source, sink);
-        conn.arrowBendMode = arrowBendMode < 0 ? -1 : arrowBendMode % 4;   // client-chosen preview bend (or -1 = auto)
+        // -1 stays auto for both (a loop then auto-picks a clear orientation each render); otherwise a loop stores a
+        // concrete 0..7 and a normal wire one of the four bends.
+        conn.arrowBendMode = arrowBendMode < 0 ? -1 : (loop ? (arrowBendMode & 7) : (arrowBendMode % 4));
         connectionGraph.add(conn);
         syncConnection(ConnectionKey.of(conn));
         if (sink.onConnectionSetChanged(type)) syncComponentFull(sinkPos);
@@ -924,14 +932,30 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         setChanged();
     }
 
-    /** Cycles one specific wire's arrow-bend mode through the four fixed bends (0 → 1 → 2 → 3 → 0; auto excluded, and
-     *  exited on the first press). Purely visual, so (like {@link #cycleArrowMode}) it only re-syncs — no re-fold/settle. */
+    /** Cycles one specific wire's arrow-path mode (include loop connection). */
     public void cycleConnectionArrowMode(VirtualComponentPosition from, VirtualComponentPosition to, Connection.Type type) {
         Connection conn = connectionGraph.get(from, to, type);
         if (conn == null) return;
-        conn.arrowBendMode = (conn.arrowBendMode + 1) % 4;   // auto (-1) → 0 on the first press
+        if (conn.isLoop())
+            conn.arrowBendMode = (loopBendMode(conn) + 2) % 8;   // lock the auto-resolved location
+        else
+            conn.arrowBendMode = (conn.arrowBendMode + 1) % 4;     // auto (-1) → 0 on the first press
         setChanged();
         syncConnection(ConnectionKey.of(conn));
+    }
+
+    /** Flips a loop wire's arrow direction. */
+    public void flipLoopDirection(VirtualComponentPosition from, VirtualComponentPosition to, Connection.Type type) {
+        Connection conn = connectionGraph.get(from, to, type);
+        if (conn == null || !conn.isLoop()) return;
+        conn.arrowBendMode = (loopBendMode(conn) & 7) ^ 1;
+        setChanged();
+        syncConnection(ConnectionKey.of(conn));
+    }
+
+    private int loopBendMode(Connection conn) {
+        if (conn.arrowBendMode >= 0) return conn.arrowBendMode;
+        return ConnectionPathResolver.autoLoopOrientation(conn.from, new HashSet<>(components.keySet()));
     }
 
     /** Swaps the direction of the wire {@code from → to} (→ {@code to → from}), if the reversed orientation is legal

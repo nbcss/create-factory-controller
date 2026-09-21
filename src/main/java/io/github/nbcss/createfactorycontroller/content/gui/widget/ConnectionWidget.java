@@ -129,8 +129,8 @@ public class ConnectionWidget {
                         .withStyle(ChatFormatting.DARK_GRAY));
         if (arrowLocked) {
             tooltip.empty();
-            // Arrow-mode boxes: the 4 fixed bends, ■ marking the wire's current mode (auto shows none, until first cycle).
-            int active = connection.arrowBendMode;   // 0..3; -1 (auto) highlights nothing
+            // Arrow-mode boxes, ■ marks the current one
+            int active = connection.isLoop() ? (connection.arrowBendMode >> 1) : connection.arrowBendMode;
             StringBuilder boxes = new StringBuilder();
             for (int i = 0; i < 4; i++) boxes.append(i == active ? '■' : '□');
             tooltip.line(Component.translatable("createfactorycontroller.connection.cycle_arrow", boxes.toString())

@@ -22,7 +22,7 @@ public abstract class Connection {
     public final Type type;
     public VirtualComponentPosition from;
     public VirtualComponentPosition to;
-    public int arrowBendMode; // -1 = auto, 0-3 = fixed bend direction
+    public int arrowBendMode; // -1 = auto; fixed: non-loop 0..3, loop 0..7
 
     protected Connection(Type type,
                          VirtualComponentPosition from,
@@ -36,6 +36,10 @@ public abstract class Connection {
 
     protected Connection(Type type, VirtualComponentPosition from, VirtualComponentPosition to) {
         this(type, from, to, -1);
+    }
+
+    public boolean isLoop() {
+        return from.equals(to);
     }
 
     protected Connection(CompoundTag tag) {
@@ -80,7 +84,7 @@ public abstract class Connection {
 
     /** Whether this wire may be flipped ({@code from → to} becomes {@code to → from}) */
     public boolean canReverse(ComponentHolder holder) {
-        if (!type.reversible()) return false;
+        if (isLoop() || !type.reversible()) return false;   // a self-loop has no meaningful direction to flip
         VirtualComponentBehaviour newSource = holder.componentAt(to);
         VirtualComponentBehaviour newSink = holder.componentAt(from);
         return newSource != null && newSink != null

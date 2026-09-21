@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.IntSupplier;
 
 /** State and resolution for an in-progress connection gesture. */
 public final class ConnectionModeState {
@@ -49,14 +50,34 @@ public final class ConnectionModeState {
                                              @Nullable VirtualComponentPosition hoveredPosition) {
         if (!isActive()) return null;
         updateHovered(hoveredPosition);
-        if (hoveredPosition == null || hoveredPosition.equals(initiator)) return null;
+        if (hoveredPosition == null) return null;
 
         VirtualComponentBehaviour source = components.componentAt(initiator);
+        if (source == null) return null;
+
+        if (hoveredPosition.equals(initiator)) //loop
+            return desiredType != null
+                    ? ConnectionResolver.resolveLoopAs(source, desiredType)
+                    : ConnectionResolver.resolveLoop(source);
+
         VirtualComponentBehaviour hovered = components.componentAt(hoveredPosition);
-        if (source == null || hovered == null) return null;
+        if (hovered == null) return null;
         return desiredType != null
                 ? ConnectionResolver.resolveAs(hovered, source, source, desiredType)
                 : ConnectionResolver.resolve(hovered, source, source);
+    }
+
+    /** Resolves the current self-hover as a loop, or returns null when the hover cannot represent a loop. */
+    @Nullable
+    public ConnectionResolver.Result resolveLoopPreview(ComponentHolder components,
+                                                        @Nullable VirtualComponentPosition hoveredPosition) {
+        if (!isInitiatorHovered(hoveredPosition)) return null;
+        ConnectionResolver.Result result = resolve(components, hoveredPosition);
+        return result != null && result.type() != null ? result : null;
+    }
+
+    public boolean isInitiatorHovered(@Nullable VirtualComponentPosition hoveredPosition) {
+        return isActive() && hoveredPosition != null && hoveredPosition.equals(initiator);
     }
 
     public boolean cycleType(ComponentHolder components,
@@ -64,14 +85,22 @@ public final class ConnectionModeState {
                              int direction) {
         if (!isActive()) return false;
         updateHovered(hoveredPosition);
-        if (hoveredPosition == null || hoveredPosition.equals(initiator)) return false;
+        if (hoveredPosition == null) return false;
 
         VirtualComponentBehaviour source = components.componentAt(initiator);
-        VirtualComponentBehaviour hovered = components.componentAt(hoveredPosition);
-        if (source == null || hovered == null) return false;
+        if (source == null) return false;
 
-        List<Connection.Type> possible = ConnectionResolver.possibleTypes(hovered, source, source);
-        Connection.Type defaultType = ConnectionResolver.resolve(hovered, source, source).type();
+        List<Connection.Type> possible;
+        Connection.Type defaultType;
+        if (hoveredPosition.equals(initiator)) {   // loop type picker
+            possible = ConnectionResolver.loopTypes(source);
+            defaultType = ConnectionResolver.resolveLoop(source).type();
+        } else {
+            VirtualComponentBehaviour hovered = components.componentAt(hoveredPosition);
+            if (hovered == null) return false;
+            possible = ConnectionResolver.possibleTypes(hovered, source, source);
+            defaultType = ConnectionResolver.resolve(hovered, source, source).type();
+        }
         boolean hasChoice = possible.size() >= 2 || (possible.size() == 1 && !possible.contains(defaultType));
         if (!hasChoice) return false;
 
@@ -84,11 +113,26 @@ public final class ConnectionModeState {
         return true;
     }
 
-    public boolean cycleBend(ComponentHolder components,
-                             @Nullable VirtualComponentPosition hoveredPosition) {
+    /** Cycles the current preview path, using four bends for a regular wire or four quadrants for a loop. */
+    public boolean cyclePath(ComponentHolder components, @Nullable VirtualComponentPosition hoveredPosition,
+                             IntSupplier autoLoopOrientation) {
         ConnectionResolver.Result result = resolve(components, hoveredPosition);
-        if (result == null || !result.ok()) return false;
+        if (result == null) return false;
+        if (isInitiatorHovered(hoveredPosition) && result.type() != null) {
+            previewBendMode = ((previewBendMode < 0 ? autoLoopOrientation.getAsInt() : previewBendMode) + 2) % 8;
+            return true;
+        }
+        if (!result.ok()) return false;
         previewBendMode = (previewBendMode + 1) % 4;
+        return true;
+    }
+
+    /** Flips a loop preview's arrow direction while keeping its quadrant. */
+    public boolean flipLoopDirection(ComponentHolder components, @Nullable VirtualComponentPosition hoveredPosition,
+                                     IntSupplier autoLoopOrientation) {
+        if (resolveLoopPreview(components, hoveredPosition) == null) return false;
+        int orientation = previewBendMode < 0 ? autoLoopOrientation.getAsInt() : previewBendMode;
+        previewBendMode = (orientation & 7) ^ 1;
         return true;
     }
 
@@ -97,15 +141,30 @@ public final class ConnectionModeState {
                              @Nullable VirtualComponentBehaviour clicked) {
         VirtualComponentPosition sourcePosition = initiator;
         if (sourcePosition == null) return new Completion(CompletionStatus.INVALID, null, -1);
-        if (clicked == null || clickedPosition.equals(sourcePosition)) {
-            clear();
-            return new Completion(CompletionStatus.ABORTED, null, -1);
-        }
 
         VirtualComponentBehaviour source = components.componentAt(sourcePosition);
         if (source == null) {
             clear();
             return new Completion(CompletionStatus.INVALID, null, -1);
+        }
+
+        // Clicking the initiator itself makes a loop.
+        if (clickedPosition.equals(sourcePosition)) {
+            if (ConnectionResolver.loopTypes(source).isEmpty()) {
+                clear();
+                return new Completion(CompletionStatus.ABORTED, null, -1);
+            }
+            ConnectionResolver.Result result = desiredType != null
+                    ? ConnectionResolver.resolveLoopAs(source, desiredType)
+                    : ConnectionResolver.resolveLoop(source);
+            int bendMode = previewBendMode;
+            clear();
+            return new Completion(CompletionStatus.RESOLVED, result, bendMode);
+        }
+
+        if (clicked == null) {
+            clear();
+            return new Completion(CompletionStatus.ABORTED, null, -1);
         }
 
         boolean usePreview = clickedPosition.equals(previewTarget);

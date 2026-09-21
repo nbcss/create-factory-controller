@@ -65,7 +65,7 @@ public final class PassiveDemandSolver {
             for (Connection c : g.incomingConnections()) {
                 if (!(c instanceof LogisticsConnection lc)) continue;   // ingredient wires only
                 Integer si = idx.get(c.from);
-                if (si == null) continue;
+                if (si == null || si == i) continue;   // skip a self-loop: it must not add a self-cycle to the graph
                 boolean excluded = g.mode != GaugeWorkMode.CRAFTING && lc.excludeFromRequestMultiplier;
                 edges.get(i).add(new long[]{ si, (long) lc.amount() * batch, excluded ? 1 : 0 });
                 indeg[si]++;
