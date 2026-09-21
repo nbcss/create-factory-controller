@@ -56,6 +56,8 @@ public class LogisticsConnection extends Connection {
                     sinkBehaviour.getFilterName()).style(ChatFormatting.GREEN).component();
         }
     };
+    private static final int FLASH_OK   = 0xEAF2EC;
+    private static final int FLASH_FAIL = 0xE5654B;
 
     public int amount;
     /** When true this ingredient is sent once per request instead of being scaled by the request multiplier. */
@@ -92,6 +94,16 @@ public class LogisticsConnection extends Connection {
         if (behaviour.satisfied || behaviour.redstonePowered)
             return -1;
         return gameTime - behaviour.lastRequestTick;
+    }
+
+    @Override
+    public boolean hasFlowAnimation() {
+        return true;
+    }
+
+    @Override
+    public int getFlashColor(ComponentHolder holder) {
+        return success ? FLASH_OK : FLASH_FAIL;
     }
 
     @Override

@@ -36,18 +36,19 @@
 - [DONE] Allow minimum stock amount in Passive mode gauge
 
 # 1.2.2
+- [DONE] Update Arithmetic tube GUI and connection target selection
 - [DONE] Generic self-loop connection
+- [DONE] Refactor connection type priority
+- [DONE] Redstone Control of Arithmetic Tube
+- [DONE] Redstone Output (Compare) of Arithmetic Tube
+- [DONE] Flash animation for number connection when update
 - [TODO] Cancel connection/move mode approach or keybinding
-- [TODO] Update Arithmetic tube GUI and connection target selection
 - [TODO] Different controller component tooltip styles
 - [TODO] Behaviour tooltips for arithmetic tube
-- [TODO] Refactor connection type priority
 - [TODO] Connection type selection tooltip
-- [TODO] Redstone Control of Arithmetic Tube
-- [TODO] Redstone Output (Compare) of Arithmetic Tube
-- [TODO] Flash animation for number connection when update
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier
+- [TODO] Blueprint file in folder
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190

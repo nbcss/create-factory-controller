@@ -187,7 +187,7 @@ public record SyncPanelDeltaPacket(BlockPos pos,
                 try {
                     Connection conn = Connection.fromClient(SyncCodecs.wrap(body, registries));
                     if (conn == null) { broken = true; continue; }
-                    menu.putConnection(conn);
+                    menu.putConnection(conn, mc.level.getGameTime());
                     refolds.add(new Refold(conn.to, conn.type));
                 } catch (Exception e) {
                     broken = true;

@@ -2,7 +2,6 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
-import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
@@ -34,8 +33,6 @@ public class ConnectionWidget {
     /** How far the strip reaches into an endpoint (source/sink) cell — the drawn line stub is 2 px deep. */
     private static final int STUB = 2;
     private static final int HIGHLIGHT_COLOR = 0xCCFFFFFF;   // 80% white
-    private static final int FLASH_OK   = 0xEAF2EC;
-    private static final int FLASH_FAIL = 0xE5654B;
     private static final float FLASH_DECAY = 8f;
 
     public final Connection connection;
@@ -165,16 +162,16 @@ public class ConnectionWidget {
         int color = connection.getConnectionColor(holder);
         net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
         long animationTick = connection.getFlashTick(holder, level != null ? level.getGameTime() : -1);
-        boolean animated = animationTick >= 0;
-        if (animated) {
+        boolean flashing = animationTick >= 0;
+        if (flashing) {
             float age = animationTick + AnimationTickHolder.getPartialTicks();
             float glow = Mth.clamp(1f - age / FLASH_DECAY, 0f, 1f);
             if (glow > 0f) {
                 float p = 1f - (1f - glow) * (1f - glow);
-                boolean success = connection instanceof LogisticsConnection lc && lc.success;
-                color = Color.mixColors(color, success ? FLASH_OK : FLASH_FAIL, p);
+                color = Color.mixColors(color, connection.getFlashColor(holder), p);
             }
         }
+        boolean animated = flashing && connection.hasFlowAnimation();
         VirtualConnectionRenderer.create(path, color, animated).drawPath(gfx.bufferSource(), gfx.pose());
     }
 

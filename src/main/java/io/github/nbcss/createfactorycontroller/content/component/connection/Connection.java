@@ -68,8 +68,16 @@ public abstract class Connection {
 
     public int getConnectionColor(ComponentHolder holder) { return 0x888898; }
 
+    public int getFlashColor(ComponentHolder holder) { return 0; }
+
     /** Ticks since this connection last "flash", for the client flash animation, or -1 for none. */
     public long getFlashTick(ComponentHolder holder, long gameTime) { return -1; }
+
+    /** Whether a flashing connection should also use the flowing wire texture. */
+    public boolean hasFlowAnimation() { return false; }
+
+    /** Carries client-only presentation state across a synced connection replacement. */
+    public void onClientSynced(@Nullable Connection previous, long gameTime) {}
 
     /** Accept a value pushed by the source for a signal type; returns whether it changed (drives sink notification in
      *  {@code publish}). Non-signal types carry no signal value and ignore it. */

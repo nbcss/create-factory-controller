@@ -270,7 +270,9 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     }
 
     /** Delta apply: add-or-replace one wire (the graph keeps one wire per endpoint pair per type). */
-    public void putConnection(Connection conn) {
+    public void putConnection(Connection conn, long gameTime) {
+        Connection previous = connectionGraph.get(conn.from, conn.to, conn.type);
+        conn.onClientSynced(previous, gameTime);
         connectionGraph.add(conn);
     }
 

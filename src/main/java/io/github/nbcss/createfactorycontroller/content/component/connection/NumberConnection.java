@@ -17,6 +17,7 @@ import java.util.List;
 public class NumberConnection extends Connection {
     public static final int COLOR = 0xB265E6;
     private static final int INACTIVE_COLOR = 0x888898;
+    private static final int FLASH_COLOR = 0xe5bdff;
 
     public static final Type TYPE = new Type("NUMBER", COLOR) {
         @Override
@@ -43,6 +44,7 @@ public class NumberConnection extends Connection {
     public record NumberValue(double value) implements ConnectionValue {}
 
     private double value = 0.0;
+    private long lastUpdateTick = -1;
 
     public NumberConnection(VirtualComponentPosition from, VirtualComponentPosition to) {
         super(TYPE, from, to);
@@ -56,6 +58,22 @@ public class NumberConnection extends Connection {
     @Override
     public int getConnectionColor(ComponentHolder holder) {
         return Double.isNaN(value) ? INACTIVE_COLOR : COLOR;
+    }
+
+    @Override
+    public int getFlashColor(ComponentHolder holder) {
+        return FLASH_COLOR;
+    }
+
+    @Override
+    public long getFlashTick(ComponentHolder holder, long gameTime) {
+        return gameTime < 0 || lastUpdateTick < 0 ? -1 : gameTime - lastUpdateTick;
+    }
+
+    @Override
+    public void onClientSynced(Connection previous, long gameTime) {
+        if (!(previous instanceof NumberConnection old)) return;
+        lastUpdateTick = Double.compare(old.value, value) == 0 ? old.lastUpdateTick : gameTime;
     }
 
     @Override

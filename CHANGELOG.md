@@ -6,6 +6,7 @@ Features:
 Changes:
 - Cut Amethyst is using stonecutter recipe now.
 - Components support loop connection (self-connect) now.
+- Number connection value update would play flash animation now.
 
 ## 1.2.1
 
