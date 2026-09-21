@@ -8,7 +8,7 @@ import net.createmod.catnip.gui.element.ScreenElement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.gui.widget.ScrollListWindow;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipScrollList;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.packet.BlueprintPlacePacket;
 import net.minecraft.ChatFormatting;
@@ -177,8 +177,8 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
                 .line(Component.translatable("createfactorycontroller.gui.blueprint.network_slot", slot + 1)
                         .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
-        for (int i : ScrollListWindow.rows(options.size() + 1, state)) {
-            if (i == ScrollListWindow.MARKER) {
+        for (int i : TooltipScrollList.rows(options.size() + 1, state)) {
+            if (i == TooltipScrollList.MARKER) {
                 lines.line(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
                 continue;
             }

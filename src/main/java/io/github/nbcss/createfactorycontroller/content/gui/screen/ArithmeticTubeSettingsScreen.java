@@ -16,6 +16,7 @@ import io.github.nbcss.createfactorycontroller.content.component.arithmetic.Buil
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.VerticalScrollView;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
@@ -28,8 +29,6 @@ import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.world.item.ItemStack;
-import net.createmod.catnip.animation.LerpedFloat;
-import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -38,7 +37,6 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.Mth;
 import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -108,7 +106,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private static final int HEADER_H = 16;
     private static final int BOTTOM_H = 30;
     private static final int BOTTOM_CLOSE_GROUP_W = 32;
-    private static final int SCROLLBAR_X = PANEL_W - 6;
     private static final int POINTER_W = 11, POINTER_H = 18;
 
     private static final int SIDE_PAD = 10;
@@ -137,15 +134,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition tubePos;
-    private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
 
     private int panelX, panelY, panelH;
     private int viewportH;
-    private float renderedScroll;
-    private boolean draggingScrollbar;
-    private double scrollbarGrabOffset;
     private TooltipIconButton closeButton, relocateButton, swapButton, addConnectionButton, addConstantButton;
-    private ArithmeticViewportWidget viewportWidget;
+    private VerticalScrollView viewportWidget;
     private OperatorDropdownWidget operatorDropdown;
     private ConstantDropdownWidget constantDropdown;
 
@@ -546,7 +539,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     }
 
     /** Non-row content targets (rows handle their own hit-testing). */
-    private enum TargetKind { OPERATOR, CONSTANT_MENU, SCROLLBAR }
+    private enum TargetKind { OPERATOR, CONSTANT_MENU }
 
     private record ContentTarget(TargetKind kind) {}
 
@@ -602,7 +595,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addWidget(operatorDropdown);
         constantDropdown = new ConstantDropdownWidget();
         addWidget(constantDropdown);
-        viewportWidget = new ArithmeticViewportWidget();
+        viewportWidget = new VerticalScrollView(0, 0, 0, 0, new ArithmeticViewportContent());
         addWidget(viewportWidget);
         addWidget(closeButton);
         addWidget(relocateButton);
@@ -611,9 +604,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addWidget(addConstantButton);
 
         recomputeLayout();
-        scroll.setValue(0);
-        scroll.chase(0, 0.5, Chaser.EXP);
-        renderedScroll = 0;
+        viewportWidget.reset();
     }
 
     private int rowsHeight(int n) { return n <= 0 ? 0 : n * INPUT_H + (n - 1) * INPUT_ROW_GAP; }
@@ -694,7 +685,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     }
     private int viewportY() { return panelY + HEADER_H; }
     private Rect2i viewportBounds() { return Rect2i.fromXYWH(panelX, viewportY(), PANEL_W, viewportH); }
-    private int opEntryY() { return viewportY() + TOP_PAD - (int) renderedScroll; }   // scrolls with the content
+    private int opEntryY() { return viewportY() + TOP_PAD; }
     private Rect2i operatorBounds() { return Rect2i.fromXYWH(entryPosition(opEntryY()), new Vector2i(entryW(), OP_H)); }
     private int inputStartY() { return opEntryY() + OP_H + ENTRY_GAP; }
     private int rowY(int k) { return inputStartY() + k * (INPUT_H + INPUT_ROW_GAP); }
@@ -714,44 +705,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 dropdownBounds.y() + DD_TOP_PAD + index / DD_COLS * DD_BTN,
                 DD_BTN, DD_BTN
         );
-    }
-
-    private double maxScroll() { return Math.max(0, contentHeight() - viewportH); }
-
-    // ── Scrollbar ────────────────────
-
-    private void renderScrollbar(GuiGraphics gfx, boolean hovered) {
-        if (maxScroll() <= 0) return;
-        Rect2i track = scrollbarTrackBounds(), thumb = scrollbarThumbBounds();
-        gfx.fill(track.minX(), track.minY(), track.maxX(), track.maxY(), 0x503D3C48);
-        int thumbColor = hovered ? 0xFFE2E2E2 : 0xFFC6C6C6;
-        gfx.fill(thumb.minX(), thumb.minY(), thumb.maxX(), thumb.maxY(), thumbColor);
-    }
-
-    private boolean overScrollbar(double mx, double my) {
-        return maxScroll() > 0 && scrollbarTrackBounds().contains(mx, my, HALF_OPEN);
-    }
-
-    private Rect2i scrollbarTrackBounds() { return Rect2i.fromXYWH(panelX + SCROLLBAR_X, viewportY(), 3, viewportH); }
-    private int scrollbarThumbHeight() { return Math.max(12, (int) (viewportH * (viewportH / (double) contentHeight()))); }
-    private int scrollbarTravel() { return Math.max(0, viewportH - scrollbarThumbHeight()); }
-
-    private int scrollbarThumbY() {
-        double max = maxScroll();
-        return max <= 0 ? viewportY() : viewportY() + (int) Math.round(scrollbarTravel() * (renderedScroll / max));
-    }
-
-    private Rect2i scrollbarThumbBounds() { return Rect2i.fromXYWH(panelX + SCROLLBAR_X, scrollbarThumbY(), 3, scrollbarThumbHeight()); }
-
-    private void dragScrollbarTo(double mouseY) {
-        double max = maxScroll();
-        int travel = scrollbarTravel();
-        if (max <= 0 || travel <= 0) return;
-        double thumbTop = Mth.clamp(mouseY - scrollbarGrabOffset, viewportY(), viewportY() + travel);
-        float value = (float) ((thumbTop - viewportY()) / travel * max);
-        scroll.setValue(value);
-        scroll.chase(value, 0.5, Chaser.EXP);
-        renderedScroll = value;
     }
 
     private ArithmeticTubeBehaviour tube() {
@@ -774,8 +727,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 .render(gfx, panelX + PANEL_W - BOTTOM_CLOSE_GROUP_W + 1, panelY + panelH - BOTTOM_H, 2, BOTTOM_H);
         gfx.blitSprite(SpriteLocations.BOTTOM_BAR_POINTER_RIGHT,
                 panelX + PANEL_W - 3, panelY + panelH - BOTTOM_H + (BOTTOM_H - POINTER_H) / 2, POINTER_W, POINTER_H);
-        renderedScroll = Mth.clamp(scroll.getValue(partialTick), 0, (float) maxScroll());
-
         RenderSystem.enableBlend();
 
         viewportWidget.render(gfx, mouseX, mouseY, partialTick);
@@ -880,9 +831,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     @Nullable
     private ContentTarget contentTargetAt(double mouseX, double mouseY) {
-        if (viewportWidget == null || !viewportWidget.isMouseOver(mouseX, mouseY)
-                || operatorDropdown.isOpen() || constantDropdown.isOpen()) return null;
-        if (overScrollbar(mouseX, mouseY)) return new ContentTarget(TargetKind.SCROLLBAR);
+        if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return null;
         if (constantEditor.box != null && constantEditor.showMenuButton()
                 && constantEditor.menuButtonBounds().contains(
                         mouseX, mouseY, HALF_OPEN))
@@ -950,50 +899,21 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         return -1;
     }
 
-    private class ArithmeticViewportWidget extends InteractiveAreaWidget {
-        ArithmeticViewportWidget() {
-            super(0, 0, 0, 0, (mouseX, mouseY) -> {
-                if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return List.of();
-                ArithmeticTubeBehaviour tube = tube();
-                if (tube != null)
-                    for (int k = 0; k < rows.size(); k++) {
-                        List<FormattedCharSequence> rt = rows.get(k).tooltip(tube, rowY(k), mouseX, mouseY);
-                        if (rt != null) return rt;
-                    }
-                List<FormattedCharSequence> tooltip = contentTooltip(contentTargetAt(mouseX, mouseY));
-                return tooltip == null ? List.of() : tooltip;
-            });
-            onClick(this::contentClicked);
-            onScroll((mouseX, mouseY, scrollX, scrollY) -> {
-                if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return false;
-                ArithmeticTubeBehaviour tube = tube();
-                if (tube != null)
-                    for (int k = 0; k < rows.size(); k++)
-                        if (rows.get(k).scrolled(tube, rowY(k), mouseX, mouseY, scrollY)) return true;
-                if (maxScroll() <= 0) return false;
-                double target = Mth.clamp(scroll.getChaseTarget() - scrollY * 18, 0, maxScroll());
-                scroll.chase(target, 0.5, Chaser.EXP);
-                return true;
-            });
-            onRelease((mouseX, mouseY, button) -> {
-                if (button == 0 && draggingScrollbar) {
-                    draggingScrollbar = false;
-                    return true;
-                }
-                return false;
-            });
+    private class ArithmeticViewportContent implements VerticalScrollView.Content {
+        @Override
+        public int getHeight() {
+            return contentHeight();
         }
 
         @Override
-        protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
             ArithmeticTubeBehaviour tube = tube();
             if (tube == null) return;
             ContentTarget hovered = contentTargetAt(mouseX, mouseY);
-            boolean contentHovered = hovered != null || isHovered()
+            boolean contentHovered = hovered != null || viewportWidget.isHovered()
                     && !operatorDropdown.isOpen() && !constantDropdown.isOpen();
             int hoverX = contentHovered ? mouseX : Integer.MIN_VALUE;
             int hoverY = contentHovered ? mouseY : Integer.MIN_VALUE;
-            gfx.enableScissor(getX(), getY(), getRight(), getBottom());
             // Pressed whenever the left mouse button is physically held over the operator button — in any case,
             // whether or not the dropdown is open (read the raw button state so it doesn't depend on a click landing).
             boolean leftDown = GLFW.glfwGetMouseButton(
@@ -1003,22 +923,25 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             renderInputEntries(gfx, tube, hoverX, hoverY);
             constantEditor.render(gfx, hoverX, hoverY, partialTick,
                     hovered != null && hovered.kind() == TargetKind.CONSTANT_MENU);
-            gfx.disableScissor();
-            renderScrollbar(gfx, hovered != null && hovered.kind() == TargetKind.SCROLLBAR);
-            super.renderWidget(gfx, mouseX, mouseY, partialTick);
         }
 
-        private boolean contentClicked(double mouseX, double mouseY, int button) {
+        @Override
+        public List<FormattedCharSequence> tooltip(int mouseX, int mouseY) {
+            if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return List.of();
+            ArithmeticTubeBehaviour tube = tube();
+            if (tube != null)
+                for (int k = 0; k < rows.size(); k++) {
+                    List<FormattedCharSequence> rt = rows.get(k).tooltip(tube, rowY(k), mouseX, mouseY);
+                    if (rt != null) return rt;
+                }
+            List<FormattedCharSequence> tooltip = ArithmeticTubeSettingsScreen.this.contentTooltip(contentTargetAt(mouseX, mouseY));
+            return tooltip == null ? List.of() : tooltip;
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return false;
             ContentTarget target = contentTargetAt(mouseX, mouseY);
-            if (target != null && button == 0 && target.kind() == TargetKind.SCROLLBAR) {
-                draggingScrollbar = true;
-                Rect2i thumb = scrollbarThumbBounds();
-                boolean onThumb = thumb.contains(mouseX, mouseY, HALF_OPEN);
-                scrollbarGrabOffset = onThumb ? mouseY - thumb.y() : thumb.h() / 2.0;
-                if (!onThumb) dragScrollbarTo(mouseY);
-                return true;
-            }
             if (target != null && target.kind() == TargetKind.CONSTANT_MENU && button == 0) {
                 constantDropdown.toggle();
                 return true;
@@ -1045,17 +968,17 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         }
 
         @Override
-        public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-            if (button == 0 && draggingScrollbar) {
-                dragScrollbarTo(mouseY);
-                return true;
-            }
+        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+            if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return false;
+            ArithmeticTubeBehaviour tube = tube();
+            if (tube != null)
+                for (int k = 0; k < rows.size(); k++)
+                    if (rows.get(k).scrolled(tube, rowY(k), mouseX, mouseY, scrollY)) return true;
             return false;
         }
 
         @Override
         public void setFocused(boolean focused) {
-            super.setFocused(focused);
             if (constantEditor.box != null) constantEditor.box.setFocused(focused);
         }
 
@@ -1266,7 +1189,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     protected void containerTick() {
         super.containerTick();
         controller.tickComponentWidgets();
-        scroll.tickChaser();
+        if (viewportWidget != null) viewportWidget.tick();
     }
 
     @Override

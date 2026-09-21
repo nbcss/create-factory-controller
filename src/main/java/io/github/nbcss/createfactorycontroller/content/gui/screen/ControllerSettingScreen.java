@@ -1,6 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen;
 
-import io.github.nbcss.createfactorycontroller.content.gui.widget.ScrollListWindow;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipScrollList;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
@@ -186,8 +186,8 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
                 .line(Component.translatable("createfactorycontroller.gui.controller_settings")
                         .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
-        for (int i : ScrollListWindow.rows(options.size(), selected)) {
-            if (i == ScrollListWindow.MARKER) {
+        for (int i : TooltipScrollList.rows(options.size(), selected)) {
+            if (i == TooltipScrollList.MARKER) {
                 lines.line(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
                 continue;
             }

@@ -8,14 +8,14 @@ import java.util.List;
 /**
  * Shared windowing for the scroll-selector hover tooltips (network selector, background-setting selector).
  */
-public final class ScrollListWindow {
+public final class TooltipScrollList {
 
     /** A {@code "> ..."} row (hidden options) rather than a concrete option index. */
     public static final int MARKER = -1;
     /** Fixed option-area height (rows), markers included, whenever there are at least this many options. */
     public static final int SIZE = 7;
 
-    private ScrollListWindow() {}
+    private TooltipScrollList() {}
 
     public static List<Integer> rows(int n, int selected) {
         List<Integer> rows = new ArrayList<>();

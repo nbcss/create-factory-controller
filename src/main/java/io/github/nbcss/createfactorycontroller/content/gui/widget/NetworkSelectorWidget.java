@@ -199,8 +199,8 @@ public class NetworkSelectorWidget extends AbstractWidget {
                         .withColor(ScrollInput.HEADER_RGB.getRGB()));
 
         // Fixed-height centred window with "> ..." markers for hidden rows (see ScrollListWindow).
-        for (int i : ScrollListWindow.rows(entries.size(), state)) {
-            if (i == ScrollListWindow.MARKER) {
+        for (int i : TooltipScrollList.rows(entries.size(), state)) {
+            if (i == TooltipScrollList.MARKER) {
                 tooltip.line(Component.literal("> ...").withStyle(ChatFormatting.GRAY));
                 continue;
             }

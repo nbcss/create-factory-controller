@@ -4,7 +4,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
-import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -12,12 +11,11 @@ import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorag
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.VerticalScrollView;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
-import net.createmod.catnip.animation.LerpedFloat;
-import net.createmod.catnip.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
@@ -83,7 +81,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private static final int NETWORK_ROW_STEP = NETWORK_CELL_H + NETWORK_ROW_SEPARATOR_H;
     private static final int NO_NETWORK_COLOR = 0xFFCCCCCC;
     private static final int COMPACT_FONT_COLOR = 0xFFDDE5FF;
-    private static final int SCROLLBAR_X = 198;
 
     protected final FactoryControllerScreen controller;
 
@@ -92,9 +89,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private SpacedMultiLineEditBox noteBox;
     private TooltipIconButton discardButton;
     private TooltipIconButton confirmButton;
-    private InteractiveAreaWidget overwriteInfoArea;
-    private InteractiveAreaWidget networkInfoArea;
-    private InteractiveAreaWidget contentTooltipArea;
+    private VerticalScrollView scrollView;
 
     private int panelX;
     private int panelY;
@@ -113,10 +108,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private int networkLabelY;
     private int networkBoxY;
     private int networkBoxH;
-    private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
-    private float renderedScroll;
-    private boolean draggingScrollbar;
-    private double scrollbarGrabOffset;
     private int draggedNetwork = -1;
     private int hoveredNetworkDrop = -1;
     private boolean validName;
@@ -262,10 +253,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         noteBox.setValue(oldNote);
         noteBox.setValueListener(value -> relayout());
 
-        if (editable()) {
-            addWidget(nameBox);
-            addWidget(noteBox);
-        }
+        scrollView = new VerticalScrollView(0, 0, 0, 0, new BlueprintScrollContent());
+        addWidget(scrollView);
 
         discardButton = new TooltipIconButton(0, 0, discardIcon());
         discardButton.withCallback(this::discard);
@@ -282,27 +271,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
                     .build();
         });
         addWidget(confirmButton);
-
-        overwriteInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
-                (mouseX, mouseY) -> draggedNetwork < 0 && overwriteExisting && insideViewport(mouseX, mouseY)
-                        ? TooltipBuilder.of(font)
-                                .line(Component.translatable("createfactorycontroller.gui.blueprint.overwrite_existing"))
-                                .build()
-                        : List.of()));
-        networkInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
-                (mouseX, mouseY) -> draggedNetwork < 0 && networkCount() > 0 && insideViewport(mouseX, mouseY)
-                        ? TooltipBuilder.of(font)
-                                .wrapped(Component.translatable("createfactorycontroller.gui.blueprint.network_info"))
-                                .build()
-                        : List.of()));
-        contentTooltipArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 0, 0,
-                (mouseX, mouseY) -> {
-                    if (draggedNetwork >= 0) return List.of();
-                    int material = materialAt(mouseX, mouseY);
-                    if (material >= 0) return BlueprintMaterialDisplay.tooltip(font, materials().get(material));
-                    int network = networkAt(mouseX, mouseY);
-                    return network >= 0 ? networkTooltip(network) : List.of();
-                }));
 
         nameBox.setResponder(value -> {
             overwriteExisting = false;
@@ -365,11 +333,10 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         panelY = (height - panelH) / 2;
         viewportY = panelY + HEADER_H;
         viewportH = panelH - HEADER_H - BOTTOM_H - 1;
-        float clamped = Mth.clamp(scroll.getChaseTarget(), 0, (float) maxScroll());
-        scroll.chase(clamped, 0.5, Chaser.EXP);
-        if (maxScroll() == 0) scroll.setValue(0);
-        renderedScroll = Mth.clamp(scroll.getValue(), 0, (float) maxScroll());
-        positionWidgets(renderedScroll);
+        if (scrollView != null) {
+            scrollView.setRectangle(PANEL_W, viewportH, panelX, viewportY);
+        }
+        positionWidgets();
     }
 
     private int boxYAfter(int labelY) {
@@ -381,9 +348,9 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         return boxY + boxHeight + 1 + ELEMENT_TO_LABEL_GAP;
     }
 
-    private void positionWidgets(float currentScroll) {
+    private void positionWidgets() {
         if (nameBox == null) return;
-        int contentTop = viewportY - (int) currentScroll;
+        int contentTop = viewportY;
         nameBox.setX(panelX + ELEMENT_X);
         nameBox.setY(contentTop + nameY);
         noteBox.setX(panelX + ELEMENT_X);
@@ -393,22 +360,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         discardButton.setY(panelY + panelH - 24);
         confirmButton.setX(panelX + PANEL_W - 25);
         confirmButton.setY(panelY + panelH - 24);
-        if (overwriteInfoArea != null) {
-            Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
-            overwriteInfoArea.setPosition(panelX + LABEL_X + font.width(nameTitle) + 2,
-                    contentTop + nameLabelY + (font.lineHeight - 8) / 2);
-        }
-        if (networkInfoArea != null) {
-            Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
-            networkInfoArea.setPosition(panelX + LABEL_X + font.width(networkTitle) + 2,
-                    contentTop + networkLabelY + (font.lineHeight - 8) / 2);
-        }
-        if (contentTooltipArea != null)
-            contentTooltipArea.setRectangle(PANEL_W - 14, viewportH, panelX + 7, viewportY);
-    }
-
-    private double maxScroll() {
-        return Math.max(0, contentHeight - viewportH);
     }
 
     @Override
@@ -421,12 +372,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     protected void containerTick() {
         super.containerTick();
         controller.tickComponentWidgets();
-        scroll.tickChaser();
-        float clamped = Mth.clamp(scroll.getChaseTarget(), 0, (float) maxScroll());
-        if (clamped != scroll.getChaseTarget()) scroll.chase(clamped, 0.5, Chaser.EXP);
-        if (Math.abs(scroll.getValue() - scroll.getChaseTarget()) < 0.5F)
-            scroll.setValue(scroll.getChaseTarget());
-        positionWidgets(scroll.getValue());
+        if (scrollView != null) scrollView.tick();
+        positionWidgets();
         boolean nameFocused = nameBox.isFocused();
         if (nameFocused && !nameWasFocused) overwriteExisting = false;
         if (!nameFocused && nameWasFocused) refreshOverwriteState();
@@ -468,22 +415,17 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         TiledSpriteRenderer.create(BOTTOM_VDIV).render(gfx, panelX + PANEL_W - 53,
                 panelY + panelH - BOTTOM_H, 2, BOTTOM_H);
 
-        renderedScroll = Mth.clamp(scroll.getValue(partialTick), 0, (float) maxScroll());
-        positionWidgets(renderedScroll);
-        gfx.enableScissor(panelX + 7, viewportY, panelX + PANEL_W - 7, viewportY + viewportH);
-        renderContent(gfx, mouseX, mouseY, partialTick, renderedScroll);
-        gfx.disableScissor();
-
-        renderScrollbar(gfx, renderedScroll, mouseX, mouseY);
+        positionWidgets();
+        scrollView.render(gfx, mouseX, mouseY, partialTick);
         discardButton.render(gfx, mouseX, mouseY, partialTick);
         confirmButton.render(gfx, mouseX, mouseY, partialTick);
         helpButton.render(gfx, mouseX, mouseY, partialTick);
     }
 
-    private void renderContent(GuiGraphics gfx, int mouseX, int mouseY, float partialTick, float currentScroll) {
+    private void renderContent(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         int x = panelX + ELEMENT_X;
         int labelX = panelX + LABEL_X;
-        int top = viewportY - (int) currentScroll;
+        int top = viewportY;
         int textColor = 0xFFFFFF;
 
         Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
@@ -605,17 +547,6 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         gfx.pose().popPose();
     }
 
-    private void renderScrollbar(GuiGraphics gfx, float currentScroll, int mouseX, int mouseY) {
-        if (maxScroll() <= 0) return;
-        int thumbY = scrollbarThumbY(currentScroll);
-        int thumbH = scrollbarThumbHeight();
-        gfx.fill(panelX + SCROLLBAR_X, viewportY,
-                panelX + SCROLLBAR_X + 3, viewportY + viewportH, 0x503D3C48);
-        int thumbColor = overScrollbar(mouseX, mouseY) ? 0xFFE2E2E2 : 0xFFC6C6C6;
-        gfx.fill(panelX + SCROLLBAR_X, thumbY,
-                panelX + SCROLLBAR_X + 3, thumbY + thumbH, thumbColor);
-    }
-
     @Override
     protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         Component title = getTitle();
@@ -631,130 +562,134 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     @Override
     protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {}
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && overScrollbar(mouseX, mouseY)) {
-            draggingScrollbar = true;
-            int thumbY = scrollbarThumbY(renderedScroll);
-            int thumbH = scrollbarThumbHeight();
-            if (mouseY >= thumbY && mouseY < thumbY + thumbH) {
-                scrollbarGrabOffset = mouseY - thumbY;
-            } else {
-                scrollbarGrabOffset = thumbH / 2.0;
-                dragScrollbarTo(mouseY);
-            }
-            return true;
-        }
-        if (button == 0 && networksDraggable() && insideViewport(mouseX, mouseY)) {
-            int network = networkAt(mouseX, mouseY);
-            if (network >= 0) {
-                nameBox.setFocused(false);
-                noteBox.setFocused(false);
-                setFocused(null);
-                draggedNetwork = hoveredNetworkDrop = network;
-                return true;
-            }
-        }
-        nameBox.setFocused(false);
-        noteBox.setFocused(false);
-
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (button == 0 && draggingScrollbar) {
-            dragScrollbarTo(mouseY);
-            return true;
-        }
-        if (button == 0 && draggedNetwork >= 0) {
-            hoveredNetworkDrop = networkAt(mouseX, mouseY);
-            return true;
-        }
-        return insideViewport(mouseX, mouseY) && super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0 && draggingScrollbar) {
-            draggingScrollbar = false;
-            return true;
-        }
-        if (button == 0 && draggedNetwork >= 0) {
-            int releasedTarget = networkAt(mouseX, mouseY);
-            if (releasedTarget >= 0 && releasedTarget != draggedNetwork)
-                moveNetwork(draggedNetwork, releasedTarget);
-            draggedNetwork = hoveredNetworkDrop = -1;
-            return true;
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int network = networkAt(mouseX, mouseY);
-        if (network >= 0 && scrollNetworkSlot(network, scrollY)) return true;
-        if (insideViewport(mouseX, mouseY) && maxScroll() > 0) {
-            double target = Mth.clamp(scroll.getChaseTarget() - scrollY * 18, 0, maxScroll());
-            scroll.chase(target, 0.5, Chaser.EXP);
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-    }
-
-    private int scrollbarThumbHeight() {
-        return Math.max(12, (int) (viewportH * (viewportH / (double) contentHeight)));
-    }
-
-    private int scrollbarTravel() {
-        return Math.max(0, viewportH - scrollbarThumbHeight());
-    }
-
-    private int scrollbarThumbY(float currentScroll) {
-        double max = maxScroll();
-        if (max <= 0) return viewportY;
-        return viewportY + (int) Math.round(scrollbarTravel() * (currentScroll / max));
-    }
-
-    private void dragScrollbarTo(double mouseY) {
-        double max = maxScroll();
-        int travel = scrollbarTravel();
-        if (max <= 0 || travel <= 0) return;
-        double thumbTop = Mth.clamp(mouseY - scrollbarGrabOffset, viewportY, viewportY + travel);
-        float value = (float) ((thumbTop - viewportY) / travel * max);
-        scroll.setValue(value);
-        scroll.chase(value, 0.5, Chaser.EXP);
-        renderedScroll = value;
-        positionWidgets(value);
-    }
-
-    private boolean overScrollbar(double x, double y) {
-        return maxScroll() > 0 && x >= panelX + SCROLLBAR_X - 2 && x < panelX + SCROLLBAR_X + 5
-                && y >= viewportY && y < viewportY + viewportH;
-    }
-
-    private boolean insideViewport(double x, double y) {
-        return x >= panelX + 7 && x < panelX + PANEL_W - 7 && y >= viewportY && y < viewportY + viewportH;
-    }
-
     private int materialAt(double mouseX, double mouseY) {
         int x = (int) mouseX - (panelX + ELEMENT_X);
-        int y = (int) mouseY - (viewportY - (int) renderedScroll + materialBoxY);
+        int y = (int) mouseY - (viewportY + materialBoxY);
         if (x < 0 || x >= ELEMENT_W || y < 0 || y >= materialBoxH) return -1;
         int index = y / SLOT * SLOTS_PER_ROW + x / SLOT;
         return index < materials().size() ? index : -1;
     }
 
     private int networkAt(double mouseX, double mouseY) {
-        if (networkCount() == 0 || !insideViewport(mouseX, mouseY)) return -1;
+        if (networkCount() == 0) return -1;
         int x = (int) mouseX - (panelX + ELEMENT_X);
-        int y = (int) mouseY - (viewportY - (int) renderedScroll + networkBoxY);
+        int y = (int) mouseY - (viewportY + networkBoxY);
         if (x < 0 || x >= ELEMENT_W || y < 0 || y >= networkBoxH) return -1;
         int row = y / NETWORK_ROW_STEP;
         int rowY = y % NETWORK_ROW_STEP;
         if (rowY < NETWORK_SLOT_Y || rowY == NETWORK_CELL_H) return -1;
         int index = row * SLOTS_PER_ROW + x / SLOT;
         return index < networkCount() ? index : -1;
+    }
+
+    private class BlueprintScrollContent implements VerticalScrollView.Content {
+        @Override
+        public int getHeight() {
+            return contentHeight;
+        }
+
+        @Override
+        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            renderContent(gfx, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        public List<FormattedCharSequence> tooltip(int mouseX, int mouseY) {
+            if (draggedNetwork >= 0) return List.of();
+            Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
+            if (overwriteExisting && iconBounds(nameTitle, nameLabelY).contains(mouseX, mouseY))
+                return TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.blueprint.overwrite_existing"))
+                        .build();
+            Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
+            if (networkCount() > 0 && iconBounds(networkTitle, networkLabelY).contains(mouseX, mouseY))
+                return TooltipBuilder.of(font)
+                        .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"))
+                        .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"))
+                        .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_3"))
+                        .build();
+            int material = materialAt(mouseX, mouseY);
+            if (material >= 0) return BlueprintMaterialDisplay.tooltip(font, materials().get(material));
+            int network = networkAt(mouseX, mouseY);
+            return network >= 0 ? networkTooltip(network) : List.of();
+        }
+
+        private net.minecraft.client.renderer.Rect2i iconBounds(Component label, int labelY) {
+            return new net.minecraft.client.renderer.Rect2i(
+                    panelX + LABEL_X + font.width(label) + 2,
+                    viewportY + labelY + (font.lineHeight - 8) / 2,
+                    8, 8);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (button == 0 && networksDraggable()) {
+                int network = networkAt(mouseX, mouseY);
+                if (network >= 0) {
+                    clearTextFocus();
+                    BlueprintFormScreen.this.setFocused(scrollView);
+                    draggedNetwork = hoveredNetworkDrop = network;
+                    return true;
+                }
+            }
+            if (editable() && nameBox.mouseClicked(mouseX, mouseY, button)) {
+                noteBox.setFocused(false);
+                nameBox.setFocused(true);
+                BlueprintFormScreen.this.setFocused(scrollView);
+                return true;
+            }
+            if (editable() && noteBox.mouseClicked(mouseX, mouseY, button)) {
+                nameBox.setFocused(false);
+                noteBox.setFocused(true);
+                BlueprintFormScreen.this.setFocused(scrollView);
+                return true;
+            }
+            clearTextFocus();
+            return false;
+        }
+
+        @Override
+        public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+            if (button == 0 && draggedNetwork >= 0) {
+                hoveredNetworkDrop = networkAt(mouseX, mouseY);
+                return true;
+            }
+            if (editable() && nameBox.isFocused()) return nameBox.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+            if (editable() && noteBox.isFocused()) return noteBox.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+            return false;
+        }
+
+        @Override
+        public boolean mouseReleased(double mouseX, double mouseY, int button) {
+            if (button == 0 && draggedNetwork >= 0) {
+                int releasedTarget = networkAt(mouseX, mouseY);
+                if (releasedTarget >= 0 && releasedTarget != draggedNetwork)
+                    moveNetwork(draggedNetwork, releasedTarget);
+                draggedNetwork = hoveredNetworkDrop = -1;
+                return true;
+            }
+            if (editable() && nameBox.isFocused()) return nameBox.mouseReleased(mouseX, mouseY, button);
+            return editable() && noteBox.mouseReleased(mouseX, mouseY, button);
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+            int network = networkAt(mouseX, mouseY);
+            return network >= 0 && scrollNetworkSlot(network, scrollY);
+        }
+    }
+
+    private void clearTextFocus() {
+        if (nameBox == null || noteBox == null) return;
+        nameBox.setFocused(false);
+        noteBox.setFocused(false);
+        setFocused(null);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (scrollView != null && !scrollView.isMouseOver(mouseX, mouseY)) clearTextFocus();
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
@@ -774,7 +709,15 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             setFocused(null);
             return true;
         }
+        if (nameBox.isFocused()) return nameBox.keyPressed(keyCode, scanCode, modifiers);
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (noteBox.isFocused()) return noteBox.charTyped(codePoint, modifiers);
+        if (nameBox.isFocused()) return nameBox.charTyped(codePoint, modifiers);
+        return super.charTyped(codePoint, modifiers);
     }
 
     @Override
