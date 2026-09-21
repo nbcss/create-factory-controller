@@ -604,9 +604,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
             if (networkCount() > 0 && iconBounds(networkTitle, networkLabelY).contains(mouseX, mouseY))
                 return TooltipBuilder.of(font)
-                        .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"))
-                        .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"))
-                        .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_3"))
+                        .wrapped(Component.translatable("createfactorycontroller.gui.blueprint.network_info"))
                         .build();
             int material = materialAt(mouseX, mouseY);
             if (material >= 0) return BlueprintMaterialDisplay.tooltip(font, materials().get(material));
