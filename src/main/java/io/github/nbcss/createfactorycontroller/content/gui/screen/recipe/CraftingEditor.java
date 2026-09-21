@@ -92,9 +92,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                         .color(ScrollInput.HEADER_RGB).component());
         if (s.craftingCellIgnoresData(hovered))
             tooltip.line(CreateLang.translate("gui.filter.ignore_data").style(ChatFormatting.GOLD).component());
-        return tooltip.line(Component.translatable("createfactorycontroller.gui.crafting_unpacked")
-                        .withStyle(ChatFormatting.GRAY))
-                .line(Component.translatable("createfactorycontroller.gui.crafting_crafters", dim, dim)
+        return tooltip.wrapped(Component.translatable("createfactorycontroller.gui.crafting_description", dim, dim)
                         .withStyle(ChatFormatting.GRAY))
                 .line(Component.translatable("createfactorycontroller.gui.crafting_hold_ctrl_dim")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))

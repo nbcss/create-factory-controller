@@ -382,9 +382,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                             .line(Component.translatable("createfactorycontroller.gui.request_multiplier",
                                     maxRequestMultiplier, structuralMultiplierCap())
                                     .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
-                            .line(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_1")
-                                    .withStyle(ChatFormatting.GRAY))
-                            .line(Component.translatable("createfactorycontroller.gui.request_multiplier.tip_2")
+                            .wrapped(Component.translatable("createfactorycontroller.gui.request_multiplier.tip")
                                     .withStyle(ChatFormatting.GRAY));
                     if (workMode != GaugeWorkMode.CRAFTING)
                         lines.line(Component.translatable("createfactorycontroller.gui.request_multiplier.exclude_tip")
@@ -476,9 +474,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 () -> TooltipBuilder.of(font)
                         .line(Component.translatable("createfactorycontroller.gui.open_requests.title")
                                 .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(ScrollInput.HEADER_RGB.getRGB())))
-                        .line(Component.translatable("createfactorycontroller.gui.open_requests.desc1")
-                                .withStyle(ChatFormatting.GRAY))
-                        .line(Component.translatable("createfactorycontroller.gui.open_requests.desc2")
+                        .wrapped(Component.translatable("createfactorycontroller.gui.open_requests.desc")
                                 .withStyle(ChatFormatting.GRAY))
                         .empty()
                         .line(Component.translatable("createfactorycontroller.gui.open_requests.count_header")
@@ -946,9 +942,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
         if (craftingUsesIgnoreData()) {
             tip.empty();
-            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
-                .withStyle(ChatFormatting.GOLD));
-            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
+            tip.wrapped(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip")
                 .withStyle(ChatFormatting.GOLD));
         }
         return tip.build();
@@ -963,9 +957,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                         .withStyle(ChatFormatting.GRAY));
         if (craftingUsesIgnoreData()) {
             tip.empty();
-            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip1")
-                .withStyle(ChatFormatting.GOLD));
-            tip.line(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip2")
+            tip.wrapped(Component.translatable("createfactorycontroller.gui.ingredient_ignore_data_tip")
                 .withStyle(ChatFormatting.GOLD));
         }
         return tip.build();
@@ -978,9 +970,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         for (RequestMode m : RequestMode.values()) {
             lines.selector(Component.translatable(m.translationKey), m == requestMode);
         }
-        return lines.line(Component.translatable(requestMode.translationKey + ".desc1")
-                        .withColor(TooltipBuilder.SELECTOR_DESCRIPTION_COLOR))
-                .line(Component.translatable(requestMode.translationKey + ".desc2")
+        return lines.wrapped(Component.translatable(requestMode.translationKey + ".desc")
                         .withColor(TooltipBuilder.SELECTOR_DESCRIPTION_COLOR))
                 .line(Component.translatable("createfactorycontroller.gui.request_mode.change_tip")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))

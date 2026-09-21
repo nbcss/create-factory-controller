@@ -292,9 +292,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         networkInfoArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 8, 8,
                 (mouseX, mouseY) -> draggedNetwork < 0 && networkCount() > 0 && insideViewport(mouseX, mouseY)
                         ? TooltipBuilder.of(font)
-                                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_1"))
-                                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_2"))
-                                .line(Component.translatable("createfactorycontroller.gui.blueprint.network_info_3"))
+                                .wrapped(Component.translatable("createfactorycontroller.gui.blueprint.network_info"))
                                 .build()
                         : List.of()));
         contentTooltipArea = addRenderableOnly(new InteractiveAreaWidget(0, 0, 0, 0,
