@@ -32,7 +32,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -49,6 +53,7 @@ import org.joml.Vector2ic;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -138,7 +143,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private int panelX, panelY, panelH;
     private int viewportH;
     private TooltipIconButton closeButton, relocateButton, swapButton, addConnectionButton, addConstantButton;
-    private VerticalScrollView viewportWidget;
+    private VerticalScrollView scrollView;
+    private ArithmeticScrollContent scrollContent;
     private OperatorDropdownWidget operatorDropdown;
     private ConstantDropdownWidget constantDropdown;
 
@@ -592,11 +598,10 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         });
 
         operatorDropdown = new OperatorDropdownWidget();
-        addWidget(operatorDropdown);
         constantDropdown = new ConstantDropdownWidget();
-        addWidget(constantDropdown);
-        viewportWidget = new VerticalScrollView(0, 0, 0, 0, new ArithmeticViewportContent());
-        addWidget(viewportWidget);
+        scrollContent = new ArithmeticScrollContent();
+        scrollView = new VerticalScrollView(0, 0, 0, 0, scrollContent);
+        addWidget(scrollView);
         addWidget(closeButton);
         addWidget(relocateButton);
         addWidget(swapButton);
@@ -604,7 +609,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addWidget(addConstantButton);
 
         recomputeLayout();
-        viewportWidget.reset();
+        scrollView.reset();
     }
 
     private int rowsHeight(int n) { return n <= 0 ? 0 : n * INPUT_H + (n - 1) * INPUT_ROW_GAP; }
@@ -639,9 +644,10 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addConstantButton.setY(addY);
         addConnectionButton.active = true;   // never disabled — a redstone connection is always allowed
         addConstantButton.active = t != null && t.canAddConstant();
-        if (viewportWidget != null) {
+        if (scrollView != null) {
             Rect2i viewport = viewportBounds();
-            viewportWidget.setRectangle(viewport.w(), viewport.h(), viewport.x(), viewport.y());
+            scrollContent.setRectangle(viewport.w(), contentHeight(), viewport.x(), viewport.y());
+            scrollView.setRectangle(viewport.w(), viewport.h(), viewport.x(), viewport.y());
         }
         if (operatorDropdown != null)
             operatorDropdown.updateBounds();
@@ -729,7 +735,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 panelX + PANEL_W - 3, panelY + panelH - BOTTOM_H + (BOTTOM_H - POINTER_H) / 2, POINTER_W, POINTER_H);
         RenderSystem.enableBlend();
 
-        viewportWidget.render(gfx, mouseX, mouseY, partialTick);
+        scrollView.render(gfx, mouseX, mouseY, partialTick);
 
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
         addConnectionButton.render(gfx, mouseX, mouseY, partialTick);
@@ -738,14 +744,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         closeButton.render(gfx, mouseX, mouseY, partialTick);
         GuiGameElement.of(tube.getItem()).scale(2).at(0, 0, 100)
                 .render(gfx, panelX + PANEL_W + 13, panelY + panelH - 30);
-        if (operatorDropdown.isOpen()) {
-            gfx.flush();
-            RenderSystem.clear(256, Minecraft.ON_OSX);
-        }
-        operatorDropdown.updateBounds();
-        operatorDropdown.render(gfx, mouseX, mouseY, partialTick);
-        constantDropdown.updateBounds();
-        constantDropdown.render(gfx, mouseX, mouseY, partialTick);
     }
 
     private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, boolean hovered, boolean pressed) {
@@ -899,18 +897,17 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         return -1;
     }
 
-    private class ArithmeticViewportContent implements VerticalScrollView.Content {
-        @Override
-        public int getHeight() {
-            return contentHeight();
+    private class ArithmeticScrollContent extends AbstractWidget {
+        ArithmeticScrollContent() {
+            super(0, 0, 0, 0, Component.empty());
         }
 
         @Override
-        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+        protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
             ArithmeticTubeBehaviour tube = tube();
             if (tube == null) return;
             ContentTarget hovered = contentTargetAt(mouseX, mouseY);
-            boolean contentHovered = hovered != null || viewportWidget.isHovered()
+            boolean contentHovered = hovered != null || scrollView.isHovered()
                     && !operatorDropdown.isOpen() && !constantDropdown.isOpen();
             int hoverX = contentHovered ? mouseX : Integer.MIN_VALUE;
             int hoverY = contentHovered ? mouseY : Integer.MIN_VALUE;
@@ -921,21 +918,40 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             boolean opPressed = leftDown && operatorBounds().contains(mouseX, mouseY, HALF_OPEN);
             renderOperatorEntry(gfx, tube, hovered != null && hovered.kind() == TargetKind.OPERATOR, opPressed);
             renderInputEntries(gfx, tube, hoverX, hoverY);
+            RenderSystem.clear(256, Minecraft.ON_OSX); // clear depth buffer for dropdown menu to render atop
             constantEditor.render(gfx, hoverX, hoverY, partialTick,
                     hovered != null && hovered.kind() == TargetKind.CONSTANT_MENU);
+            if (scrollView.isHovered()) renderTooltip(mouseX, mouseY);
         }
 
         @Override
-        public List<FormattedCharSequence> tooltip(int mouseX, int mouseY) {
-            if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return List.of();
+        public void visitWidgets(@NotNull Consumer<AbstractWidget> consumer) {
+            consumer.accept(this);
+            operatorDropdown.updateBounds();
+            consumer.accept(operatorDropdown);
+            constantDropdown.updateBounds();
+            consumer.accept(constantDropdown);
+        }
+
+        private void renderTooltip(int mouseX, int mouseY) {
+            if (operatorDropdown.isOpen() || constantDropdown.isOpen()) return;
             ArithmeticTubeBehaviour tube = tube();
             if (tube != null)
                 for (int k = 0; k < rows.size(); k++) {
                     List<FormattedCharSequence> rt = rows.get(k).tooltip(tube, rowY(k), mouseX, mouseY);
-                    if (rt != null) return rt;
+                    if (rt != null) {
+                        setTooltip(rt);
+                        return;
+                    }
                 }
             List<FormattedCharSequence> tooltip = ArithmeticTubeSettingsScreen.this.contentTooltip(contentTargetAt(mouseX, mouseY));
-            return tooltip == null ? List.of() : tooltip;
+            setTooltip(tooltip == null ? List.of() : tooltip);
+        }
+
+        private void setTooltip(List<FormattedCharSequence> lines) {
+            Screen screen = Minecraft.getInstance().screen;
+            if (screen != null && !lines.isEmpty())
+                screen.setTooltipForNextRenderPass(lines, DefaultTooltipPositioner.INSTANCE, false);
         }
 
         @Override
@@ -951,7 +967,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                     constantEditor.box.setValue("");
                     return true;
                 }
-                ArithmeticTubeSettingsScreen.this.setFocused(viewportWidget);
+                ArithmeticTubeSettingsScreen.this.setFocused(scrollView);
                 constantEditor.box.setFocused(true);
                 return constantEditor.box.mouseClicked(mouseX, mouseY, button);
             }
@@ -996,6 +1012,9 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         public boolean charTyped(char codePoint, int modifiers) {
             return constantEditor.box != null && constantEditor.box.charTyped(codePoint, modifiers);
         }
+
+        @Override
+        protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {}
     }
 
     private class OperatorDropdownWidget extends InteractiveAreaWidget {
@@ -1140,11 +1159,12 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        int contentMouseY = (int) (mouseY + scrollView.getScroll());
         if (constantEditor.active()
-                && !constantEditor.box.isMouseOver(mouseX, mouseY)
-                && !(constantDropdown.isOpen() && constantEditor.menuBounds().contains(mouseX, mouseY, HALF_OPEN))
+                && !constantEditor.box.isMouseOver(mouseX, contentMouseY)
+                && !(constantDropdown.isOpen() && constantEditor.menuBounds().contains(mouseX, contentMouseY, HALF_OPEN))
                 && !(button == 0 && constantEditor.showMenuButton()
-                        && constantEditor.menuButtonBounds().contains(mouseX, mouseY, HALF_OPEN))) {
+                        && constantEditor.menuButtonBounds().contains(mouseX, contentMouseY, HALF_OPEN))) {
             constantEditor.commit();
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -1152,7 +1172,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (viewportWidget != null && viewportWidget.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+        if (scrollView != null && scrollView.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -1189,7 +1209,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     protected void containerTick() {
         super.containerTick();
         controller.tickComponentWidgets();
-        if (viewportWidget != null) viewportWidget.tick();
+        if (scrollView != null) scrollView.tick();
     }
 
     @Override
@@ -1356,7 +1376,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             double value = ((ArithmeticTubeBehaviour.ConstantInput) row.input()).value();
             box.setValue(SpecialConstant.displayValue(value));
 
-            setFocused(viewportWidget);
+            setFocused(scrollView);
             box.setFocused(true);
             box.setHighlightPos(0);
         }
@@ -1379,7 +1399,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                     : field == RedstoneField.OVERRIDE ? tube.getOverrideValue() : tube.getOutputThreshold();
             box.setValue(NumberFormatter.format(value));
 
-            setFocused(viewportWidget);
+            setFocused(scrollView);
             box.setFocused(true);
             box.setHighlightPos(0);
         }

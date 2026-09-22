@@ -3,22 +3,17 @@ package io.github.nbcss.createfactorycontroller.content.gui.widget;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Renderable;
-import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.layouts.LayoutElement;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector2i;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.github.nbcss.createfactorycontroller.content.helper.Rect2i.Boundary.HALF_OPEN;
 
@@ -36,21 +31,23 @@ public class VerticalScrollView extends AbstractWidget {
     private static final int THUMB_COLOR = 0xFFC6C6C6;
     private static final int THUMB_HOVER_COLOR = 0xFFE2E2E2;
 
-    private final Content content;
+    private final LayoutElement content;
     private final LerpedFloat scroll = LerpedFloat.linear().startWithValue(0);
     private boolean draggingScrollbar;
     private double scrollbarGrabOffset;
 
-    public VerticalScrollView(int x, int y, int width, int height, Content content) {
+    public VerticalScrollView(int x, int y, int width, int height, LayoutElement content) {
         super(x, y, width, height, Component.empty());
         this.content = Objects.requireNonNull(content);
     }
 
+    /** Return the scroll position to the top of the content. */
     public void reset() {
         scroll.setValue(0);
         scroll.chase(0, 0.5, Chaser.EXP);
     }
 
+    /** Advance and clamp the smooth scroll animation. */
     public void tick() {
         scroll.tickChaser();
         float clamped = Mth.clamp(scroll.getChaseTarget(), 0, (float) maxScroll());
@@ -60,85 +57,34 @@ public class VerticalScrollView extends AbstractWidget {
             scroll.setValue(scroll.getChaseTarget());
     }
 
+    /** Get the current scroll amount. */
     public float getScroll() {
-        return currentScroll();
+        return Mth.clamp(scroll.getValue(), 0, (float) maxScroll());
     }
 
-    public double maxScroll() {
+    /** Get the render-interpolated scroll amount. */
+    private float getInterpolatedScroll(float partialTick) {
+        return Mth.clamp(scroll.getValue(partialTick), 0, (float) maxScroll());
+    }
+
+    /** Get the largest valid scroll offset. */
+    public int maxScroll() {
         return Math.max(0, content.getHeight() - getHeight());
     }
 
     @Override
     protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        float currentScroll = currentScroll(partialTick);
+        float currentScroll = getInterpolatedScroll(partialTick);
 
         Rect2i viewport = viewportBounds();
         gfx.enableScissor(viewport.minX(), viewport.minY(), viewport.maxX(), viewport.maxY());
         gfx.pose().pushPose();
         gfx.pose().translate(0, -currentScroll, 0);
-        content.render(gfx, mouseX, contentMouseY(mouseY, currentScroll), partialTick);
+        content.visitWidgets(widget -> widget.render(gfx, mouseX, contentMouseY(mouseY, currentScroll), partialTick));
         gfx.pose().popPose();
         gfx.disableScissor();
 
         renderScrollbar(gfx, overScrollbar(mouseX, mouseY), currentScroll);
-        renderTooltip(mouseX, mouseY, currentScroll);
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!active || !visible || !isMouseOver(mouseX, mouseY)) return false;
-        float currentScroll = currentScroll();
-        if (button == 0 && overScrollbar(mouseX, mouseY)) {
-            draggingScrollbar = true;
-            Rect2i thumb = scrollbarThumbBounds(currentScroll);
-            boolean onThumb = thumb.contains(mouseX, mouseY, HALF_OPEN);
-            scrollbarGrabOffset = onThumb ? mouseY - thumb.y() : thumb.h() / 2.0;
-            if (!onThumb) dragScrollbarTo(mouseY);
-            return true;
-        }
-        return content.mouseClicked(mouseX, contentMouseY(mouseY, currentScroll), button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (!active || !visible) return false;
-        if (button == 0 && draggingScrollbar) {
-            dragScrollbarTo(mouseY);
-            return true;
-        }
-        float currentScroll = currentScroll();
-        return isMouseOver(mouseX, mouseY)
-                && content.mouseDragged(mouseX, contentMouseY(mouseY, currentScroll), button, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (!active || !visible) return false;
-        if (button == 0 && draggingScrollbar) {
-            draggingScrollbar = false;
-            return true;
-        }
-        float currentScroll = currentScroll();
-        return content.mouseReleased(mouseX, contentMouseY(mouseY, currentScroll), button);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (!active || !visible || !isMouseOver(mouseX, mouseY)) return false;
-        float currentScroll = currentScroll();
-        if (content.mouseScrolled(mouseX, contentMouseY(mouseY, currentScroll), scrollX, scrollY)) return true;
-        if (maxScroll() <= 0) return false;
-        double target = Mth.clamp(scroll.getChaseTarget() - scrollY * SCROLL_STEP, 0, maxScroll());
-        scroll.chase(target, 0.5, Chaser.EXP);
-        return true;
-    }
-
-    private void renderTooltip(int mouseX, int mouseY, float currentScroll) {
-        if (!isHovered() || overScrollbar(mouseX, mouseY)) return;
-        List<FormattedCharSequence> lines = content.tooltip(mouseX, contentMouseY(mouseY, currentScroll));
-        Screen screen = Minecraft.getInstance().screen;
-        if (screen != null && lines != null && !lines.isEmpty())
-            screen.setTooltipForNextRenderPass(lines, DefaultTooltipPositioner.INSTANCE, false);
     }
 
     private void renderScrollbar(GuiGraphics gfx, boolean hovered, float currentScroll) {
@@ -149,19 +95,86 @@ public class VerticalScrollView extends AbstractWidget {
         gfx.fill(thumb.minX(), thumb.minY(), thumb.maxX(), thumb.maxY(), hovered ? THUMB_HOVER_COLOR : THUMB_COLOR);
     }
 
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!active || !visible || !isMouseOver(mouseX, mouseY)) return false;
+        float currentScroll = getScroll();
+        if (button == 0 && overScrollbar(mouseX, mouseY)) {
+            draggingScrollbar = true;
+            Rect2i thumb = scrollbarThumbBounds(currentScroll);
+            boolean onThumb = thumb.contains(mouseX, mouseY, HALF_OPEN);
+            scrollbarGrabOffset = onThumb ? mouseY - thumb.y() : thumb.h() / 2.0;
+            if (!onThumb) dragScrollbarTo(mouseY);
+            return true;
+        }
+        return dispatchToWidgets(widget -> widget.mouseClicked(mouseX, contentMouseY(mouseY, currentScroll), button));
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (!active || !visible) return false;
+        if (button == 0 && draggingScrollbar) {
+            dragScrollbarTo(mouseY);
+            return true;
+        }
+        float currentScroll = getScroll();
+        return isMouseOver(mouseX, mouseY)
+                && dispatchToWidgets(widget -> widget.mouseDragged(mouseX, contentMouseY(mouseY, currentScroll), button, dragX, dragY));
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (!active || !visible) return false;
+        if (button == 0 && draggingScrollbar) {
+            draggingScrollbar = false;
+            return true;
+        }
+        float currentScroll = getScroll();
+        return dispatchToWidgets(widget -> widget.mouseReleased(mouseX, contentMouseY(mouseY, currentScroll), button));
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!active || !visible || !isMouseOver(mouseX, mouseY)) return false;
+        float currentScroll = getScroll();
+        if (dispatchToWidgets(widget -> widget.mouseScrolled(mouseX, contentMouseY(mouseY, currentScroll), scrollX, scrollY)))
+            return true;
+        if (maxScroll() <= 0) return false;
+        double target = Mth.clamp(scroll.getChaseTarget() - scrollY * SCROLL_STEP, 0, maxScroll());
+        scroll.chase(target, 0.5, Chaser.EXP);
+        return true;
+    }
+
+    @Override
+    public void setFocused(boolean focused) {
+        super.setFocused(focused);
+        content.visitWidgets(widget -> widget.setFocused(focused));
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return dispatchToWidgets(widget -> widget.keyPressed(keyCode, scanCode, modifiers));
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        return dispatchToWidgets(widget -> widget.keyReleased(keyCode, scanCode, modifiers));
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        return dispatchToWidgets(widget -> widget.charTyped(codePoint, modifiers));
+    }
+
     private int scrollbarThumbHeight() {
         int contentHeight = content.getHeight();
         if (contentHeight <= 0) return getHeight();
         return Math.max(THUMB_MIN_HEIGHT, (int) (getHeight() * (getHeight() / (double) contentHeight)));
     }
 
+    /** Get the vertical range the scrollbar thumb can travel. */
     private int scrollbarTravel() {
         return Math.max(0, getHeight() - scrollbarThumbHeight());
-    }
-
-    private int scrollbarThumbY(float currentScroll) {
-        double max = maxScroll();
-        return max <= 0 ? getY() : getY() + (int) Math.round(scrollbarTravel() * (currentScroll / max));
     }
 
     private void dragScrollbarTo(double mouseY) {
@@ -185,66 +198,35 @@ public class VerticalScrollView extends AbstractWidget {
 
     private Rect2i scrollbarTrackBounds() {
         return Rect2i.fromXYWH(
-                new Vector2i(getRight() - SCROLLBAR_RIGHT_MARGIN - SCROLLBAR_WIDTH, getY()),
-                new Vector2i(SCROLLBAR_WIDTH, getHeight()));
+                getRight() - SCROLLBAR_RIGHT_MARGIN - SCROLLBAR_WIDTH, getY(),
+                SCROLLBAR_WIDTH, getHeight());
     }
 
     private Rect2i scrollbarThumbBounds(float currentScroll) {
+        double maxScroll = maxScroll();
+        Rect2i scrollbarTrackBounds = scrollbarTrackBounds();
+        int thumbY = maxScroll <= 0 ? 0 : (int) Math.round(scrollbarTravel() * (currentScroll / maxScroll));
         return Rect2i.fromXYWH(
-                scrollbarTrackBounds().x(), scrollbarThumbY(currentScroll),
+                scrollbarTrackBounds.x(), scrollbarTrackBounds.y() + thumbY,
                 SCROLLBAR_WIDTH, scrollbarThumbHeight());
-    }
-
-    private float currentScroll() {
-        return Mth.clamp(scroll.getValue(), 0, (float) maxScroll());
-    }
-
-    private float currentScroll(float partialTick) {
-        return Mth.clamp(scroll.getValue(partialTick), 0, (float) maxScroll());
     }
 
     private int contentMouseY(double mouseY, float currentScroll) {
         return (int) (mouseY + currentScroll);
     }
 
-    @Override
-    public void setFocused(boolean focused) {
-        super.setFocused(focused);
-        content.setFocused(focused);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        return content.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        return content.keyReleased(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean charTyped(char codePoint, int modifiers) {
-        return content.charTyped(codePoint, modifiers);
+    /** Send an event to content widgets until one handles it. */
+    private boolean dispatchToWidgets(Function<AbstractWidget, Boolean> event) {
+        var visitor = new Consumer<AbstractWidget>() {
+            boolean handled;
+            @Override public void accept(AbstractWidget widget) {
+                if (!handled) handled = event.apply(widget);
+            }
+        };
+        content.visitWidgets(visitor);
+        return visitor.handled;
     }
 
     @Override
     protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {}
-
-    public interface Content extends Renderable, GuiEventListener {
-
-        int getHeight();
-
-        default List<FormattedCharSequence> tooltip(int mouseX, int mouseY) {
-            return List.of();
-        }
-
-        @Override
-        default void setFocused(boolean focused) {}
-
-        @Override
-        default boolean isFocused() {
-            return false;
-        }
-    }
 }

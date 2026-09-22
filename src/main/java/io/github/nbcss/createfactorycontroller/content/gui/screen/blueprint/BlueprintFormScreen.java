@@ -27,6 +27,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultilineTextField;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
@@ -90,6 +91,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
     private TooltipIconButton discardButton;
     private TooltipIconButton confirmButton;
     private VerticalScrollView scrollView;
+    private BlueprintScrollContent scrollContent;
 
     private int panelX;
     private int panelY;
@@ -253,7 +255,8 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         noteBox.setValue(oldNote);
         noteBox.setValueListener(value -> relayout());
 
-        scrollView = new VerticalScrollView(0, 0, 0, 0, new BlueprintScrollContent());
+        scrollContent = new BlueprintScrollContent();
+        scrollView = new VerticalScrollView(0, 0, 0, 0, scrollContent);
         addWidget(scrollView);
 
         discardButton = new TooltipIconButton(0, 0, discardIcon());
@@ -334,6 +337,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         viewportY = panelY + HEADER_H;
         viewportH = panelH - HEADER_H - BOTTOM_H - 1;
         if (scrollView != null) {
+            scrollContent.setRectangle(PANEL_W, contentHeight, panelX, viewportY);
             scrollView.setRectangle(PANEL_W, viewportH, panelX, viewportY);
         }
         positionWidgets();
@@ -582,34 +586,46 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         return index < networkCount() ? index : -1;
     }
 
-    private class BlueprintScrollContent implements VerticalScrollView.Content {
-        @Override
-        public int getHeight() {
-            return contentHeight;
+    private class BlueprintScrollContent extends AbstractWidget {
+        BlueprintScrollContent() {
+            super(0, 0, 0, 0, Component.empty());
         }
 
         @Override
-        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+        protected void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
             renderContent(gfx, mouseX, mouseY, partialTick);
+            if (scrollView.isHovered()) renderTooltip(mouseX, mouseY);
         }
 
-        @Override
-        public List<FormattedCharSequence> tooltip(int mouseX, int mouseY) {
-            if (draggedNetwork >= 0) return List.of();
+        private void renderTooltip(int mouseX, int mouseY) {
+            if (draggedNetwork >= 0) return;
             Component nameTitle = Component.translatable("createfactorycontroller.gui.blueprint.name");
-            if (overwriteExisting && iconBounds(nameTitle, nameLabelY).contains(mouseX, mouseY))
-                return TooltipBuilder.of(font)
+            if (overwriteExisting && iconBounds(nameTitle, nameLabelY).contains(mouseX, mouseY)) {
+                setTooltip(TooltipBuilder.of(font)
                         .line(Component.translatable("createfactorycontroller.gui.blueprint.overwrite_existing"))
-                        .build();
+                        .build());
+                return;
+            }
             Component networkTitle = Component.translatable("createfactorycontroller.gui.blueprint.networks");
-            if (networkCount() > 0 && iconBounds(networkTitle, networkLabelY).contains(mouseX, mouseY))
-                return TooltipBuilder.of(font)
+            if (networkCount() > 0 && iconBounds(networkTitle, networkLabelY).contains(mouseX, mouseY)) {
+                setTooltip(TooltipBuilder.of(font)
                         .wrapped(Component.translatable("createfactorycontroller.gui.blueprint.network_info"))
-                        .build();
+                        .build());
+                return;
+            }
             int material = materialAt(mouseX, mouseY);
-            if (material >= 0) return BlueprintMaterialDisplay.tooltip(font, materials().get(material));
+            if (material >= 0) {
+                setTooltip(BlueprintMaterialDisplay.tooltip(font, materials().get(material)));
+                return;
+            }
             int network = networkAt(mouseX, mouseY);
-            return network >= 0 ? networkTooltip(network) : List.of();
+            if (network >= 0) setTooltip(networkTooltip(network));
+        }
+
+        private void setTooltip(List<FormattedCharSequence> lines) {
+            Screen screen = Minecraft.getInstance().screen;
+            if (screen != null && !lines.isEmpty())
+                screen.setTooltipForNextRenderPass(lines, DefaultTooltipPositioner.INSTANCE, false);
         }
 
         private net.minecraft.client.renderer.Rect2i iconBounds(Component label, int labelY) {
@@ -675,6 +691,9 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
             int network = networkAt(mouseX, mouseY);
             return network >= 0 && scrollNetworkSlot(network, scrollY);
         }
+
+        @Override
+        protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {}
     }
 
     private void clearTextFocus() {
