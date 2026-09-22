@@ -42,6 +42,8 @@
 - [DONE] Redstone Control of Arithmetic Tube
 - [DONE] Redstone Output (Compare) of Arithmetic Tube
 - [DONE] Flash animation for number connection when update
+- [TODO] Factory Controller Terminal item
+- [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Cancel connection/move mode approach or keybinding
 - [TODO] Different controller component tooltip styles
 - [TODO] Behaviour tooltips for arithmetic tube
@@ -58,7 +60,6 @@
 - [TODO] Component Search
 - [TODO] Add tracker UI to show managed address, gauges, promises
 - [TBC] Fix gauge sound overload?
-- [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
 - [TODO] More redstone units (timer etc.)
@@ -68,7 +69,6 @@
 - [TODO] Redstone Requester
 - [TODO] Multi-package request
 - [TODO] Alternative production order icon formatting
-- [TODO] Connection type selector
 - [TODO] Better handle of custom grid layout (width)
 - [TODO] Custom filter setting in gauge
 - [TODO] Short-cut controls (Ctrl-A, Ctrl-S etc.)
@@ -90,7 +90,6 @@
 - [TODO] Set max item data length limit per gauge in configuration; increase component limit.
 - [TODO] Connection tab in recipe / redstone link setting screen
 - [TODO] Item monitoring mode in Display Link Mode
-- [TODO] Remote Interface Item
 - [TODO] Infinite Request
 - [TODO] Show Active Promise Timer
 - [TODO] Connected controller blocks form a group

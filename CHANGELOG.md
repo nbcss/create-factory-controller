@@ -8,6 +8,9 @@ Changes:
 - Components support loop connection (self-connect) now.
 - Number connection value update would play flash animation now.
 
+Create: Logistics Control
+- Fixed recipes which only consist of fluid ingredients cannot carry filter label
+
 Create: Higher Logistics Patch
 - Fixed Create bug #10054
 
