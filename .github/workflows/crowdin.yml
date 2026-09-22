@@ -35,6 +35,7 @@ jobs:
           crowdin_branch_name: main
           localization_branch_name: l10n_crowdin
           create_pull_request: false
+          skip_ref_checkout: true
           project_id: ${{ secrets.CROWDIN_PROJECT_ID }}
           token: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
         env:
