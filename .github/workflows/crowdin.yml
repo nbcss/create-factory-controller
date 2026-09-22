@@ -1,0 +1,40 @@
+name: Crowdin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/*/resources/assets/*/lang/*.json
+      - crowdin.yml
+      - .github/workflows/crowdin.yml
+  workflow_dispatch:
+    inputs:
+      upload_sources:        {type: boolean, required: true, default: false}
+      upload_translations:   {type: boolean, required: true, default: false}
+      download_translations: {type: boolean, required: true, default: true}
+
+concurrency: ${{ github.workflow }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Sync with Crowdin
+        uses: crowdin/github-action@v3
+        with:
+          upload_sources: ${{ github.event_name == 'push' || inputs.upload_sources }}
+          upload_translations: ${{ inputs.upload_translations }}
+          download_translations: ${{ inputs.download_translations }}
+          crowdin_branch_name: main
+          localization_branch_name: l10n_crowdin
+          project_id: ${{ secrets.CROWDIN_PROJECT_ID }}
+          token: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
