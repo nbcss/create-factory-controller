@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - src/*/resources/assets/*/lang/*.json
+      - src/*/resources/assets/*/lang/en_us.json
       - crowdin.yml
       - .github/workflows/crowdin.yml
   workflow_dispatch:
