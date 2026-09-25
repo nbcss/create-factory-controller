@@ -1,0 +1,83 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 16],
+	"render_type": "cutout",
+	"textures": {
+		"0": "createfactorycontroller:block/factory_controller_terminal",
+		"particle": "createfactorycontroller:block/factory_controller_terminal"
+	},
+	"elements": [
+		{
+			"name": "Base",
+			"from": [2, 0, 7],
+			"to": [14, 1, 15],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 0, 1]},
+			"faces": {
+				"north": {"uv": [10, 5, 16, 6], "texture": "#0"},
+				"east": {"uv": [12, 4, 16, 5], "texture": "#0"},
+				"south": {"uv": [10, 5, 16, 6], "texture": "#0"},
+				"west": {"uv": [12, 4, 16, 5], "texture": "#0"},
+				"up": {"uv": [8, 16, 2, 8], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [16, 8, 10, 16], "texture": "#0"}
+			}
+		},
+		{
+			"name": "Antenna",
+			"from": [7, 0.5, 0],
+			"to": [13, 0.5, 7],
+			"faces": {
+				"up": {"uv": [4.5, 1, 7.5, 8], "texture": "#0"},
+				"down": {"uv": [4.5, 8, 7.5, 1], "texture": "#0"}
+			}
+		},
+		{
+			"name": "Redstone Antenna",
+			"from": [4, 0, 3],
+			"to": [5, 1, 7],
+			"rotation": {"angle": 0, "axis": "y", "origin": [3, 0, 3]},
+			"faces": {
+				"north": {"uv": [3, 3, 3.5, 4], "texture": "#0"},
+				"east": {"uv": [3, 3, 3.5, 8], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [3, 3, 3.5, 8], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [3, 3, 3.5, 8], "texture": "#0"},
+				"down": {"uv": [3, 8, 3.5, 3], "texture": "#0"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [90, 0, 0],
+			"translation": [-3, 4, 4],
+			"scale": [0.6, 0.6, 0.6]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [90, 0, 0],
+			"translation": [-3, 4, 4],
+			"scale": [0.6, 0.6, 0.6]
+		},
+		"firstperson_righthand": {
+			"rotation": [90, 0, 0],
+			"translation": [0, 1, 0]
+		},
+		"firstperson_lefthand": {
+			"rotation": [90, 0, 0],
+			"translation": [0, 1, 0]
+		},
+		"ground": {
+			"translation": [0, 8, 0]
+		},
+		"gui": {
+			"rotation": [45, 20, 0],
+			"translation": [-1, 4.5, 0]
+		},
+		"fixed": {
+			"rotation": [90, 0, -180],
+			"translation": [0, 0, -7]
+		},
+		"on_shelf": {
+			"rotation": [90, 0, 0],
+			"translation": [0, 0, 4]
+		}
+	}
+}
