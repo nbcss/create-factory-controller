@@ -35,6 +35,7 @@ public class HelpButton extends GraphicButton {
         BRASS(0x5E3201, 0xFFEB8C, "factory_controller/tiny_button/base_brass"),
         LOGISTICS(0x44485A, 0xA8C4DF, "factory_controller/tiny_button/base_logistics"),
         ROSE(0x741A41, 0xF6D4C2, "factory_controller/tiny_button/base_rose"),
+        ARITHMETIC(0x743691, 0xBF66CF, "factory_controller/tiny_button/base_arithmetic"),
         STOCK_KEEPER(0xB59370, 0xF8F8EC, "factory_controller/tiny_button/base_stock_keeper"),
         ;
 

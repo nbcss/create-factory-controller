@@ -14,6 +14,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.BuiltinOperator;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VerticalScrollView;
@@ -143,6 +144,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     private int panelX, panelY, panelH;
     private int viewportH;
     private TooltipIconButton closeButton, relocateButton, swapButton, addConnectionButton, addConstantButton;
+    private HelpButton helpButton;
     private VerticalScrollView scrollView;
     private ArithmeticScrollContent scrollContent;
     private OperatorDropdownWidget operatorDropdown;
@@ -610,6 +612,10 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
         recomputeLayout();
         scrollView.reset();
+
+        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
+                HelpButton.ColorPalette.ARITHMETIC, "arithmetic-tube.html");
+        addWidget(helpButton);
     }
 
     private int rowsHeight(int n) { return n <= 0 ? 0 : n * INPUT_H + (n - 1) * INPUT_ROW_GAP; }
@@ -742,8 +748,12 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addConstantButton.render(gfx, mouseX, mouseY, partialTick);
         if (tube.getOperator().arity() == ArithmeticOperator.Arity.BINARY) swapButton.render(gfx, mouseX, mouseY, partialTick);
         closeButton.render(gfx, mouseX, mouseY, partialTick);
+        helpButton.render(gfx, mouseX, mouseY, partialTick);
+
         GuiGameElement.of(tube.getItem()).scale(2).at(0, 0, 100)
                 .render(gfx, panelX + PANEL_W + 13, panelY + panelH - 30);
+
+        helpButton.renderTooltip(gfx, font, mouseX, mouseY);
     }
 
     private void renderOperatorEntry(GuiGraphics gfx, ArithmeticTubeBehaviour tube, boolean hovered, boolean pressed) {
