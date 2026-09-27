@@ -129,9 +129,14 @@ if (cleanRuntime && withFactoryLogistics)
 if (withFactoryLogistics && withDeployer)
     throw new GradleException("-PfactoryLogistics requires -PnoDeployer (Create Factory Logistics and Deployer are mutually exclusive)")
 
+def isRunInvocation = System.getProperty('idea.sync.active') == 'true' || gradle.startParameter.taskNames.any {
+    def name = it.tokenize(':').last()
+    name.startsWith('run') || (name.startsWith('prepare') && name.endsWith('Run')) || name.endsWith('.main()')
+}
+
 neoForge {
     // Specify the version of NeoForge to use.
-    version = project.neo_version
+    version = isRunInvocation ? project.neo_run_version : project.neo_version
 
     parchment {
         mappingsVersion = project.parchment_mappings_version

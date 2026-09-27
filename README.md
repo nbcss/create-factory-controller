@@ -69,7 +69,7 @@ See also:
 | Dependency              | Version  |
 |-------------------------|----------|
 | Minecraft               | 1.21.1   |
-| NeoForge                | 21.1.234 |
+| NeoForge                | 21.1.227 |
 | Create                  | 6.0.10   |
 | Deployer (Recommended)  | 0.1.2    |
 

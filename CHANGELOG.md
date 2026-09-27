@@ -7,12 +7,15 @@ Changes:
 - Cut Amethyst is using stonecutter recipe now.
 - Components support loop connection (self-connect) now.
 - Number connection value update would play flash animation now.
+- Downgrade neoforge version requirement to 227.
 
 Create: Logistics Control
 - Fixed recipes which only consist of fluid ingredients cannot carry filter label
+- Added filter label to packages created by Create: Mobile Package and Create: Phantom's portable stock ticker
 
 Create: Higher Logistics Patch
 - Fixed Create bug #10054
+- Fixed Create bug #10634
 
 ## 1.2.1
 

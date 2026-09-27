@@ -51,6 +51,7 @@
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier
 - [TODO] Blueprint file in folder
+- [TODO] Pattern item could take stock keeper category filter
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
