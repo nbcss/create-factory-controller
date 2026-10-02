@@ -42,7 +42,8 @@
 - [DONE] Redstone Control of Arithmetic Tube
 - [DONE] Redstone Output (Compare) of Arithmetic Tube
 - [DONE] Flash animation for number connection when update
-- [TODO] Factory Controller Terminal item
+- [DONE] Factory Controller Terminal item
+- [TODO] Increase component cap limit
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Cancel connection/move mode approach or keybinding
 - [TODO] Different controller component tooltip styles

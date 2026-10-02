@@ -71,7 +71,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
     @Override
     public int connectedTargetColor(ConnectedTargetRole role, VirtualComponentPosition neighbour,
                                     List<Connection> connections) {
-        if (role == ConnectedTargetRole.INPUT)
+        if (role == ConnectedTargetRole.INPUT && connections.stream().anyMatch(c -> c.type == NumberConnection.TYPE))
             return behaviour.isSecondarySource(neighbour) ? SECONDARY_INPUT_COLOR : PRIMARY_INPUT_COLOR;
         return VirtualComponentWidget.super.connectedTargetColor(role, neighbour, connections);
     }

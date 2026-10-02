@@ -64,7 +64,7 @@
   "createfactorycontroller.arithmetic_tube.redstone_output.mode_header": "Redstone output condition",
   "createfactorycontroller.arithmetic_tube.redstone_output.desc": "Compare the result with the set value,\nand output a redstone signal\nwhen the comparison is satisfied",
   "createfactorycontroller.gui.arithmetic_tube.swap_inputs": "Swap inputs",
-  "createfactorycontroller.gui.arithmetic_tube_settings": "Arithmetic Tube",
+  "createfactorycontroller.gui.arithmetic_tube_settings": "Arithmetic Tube Settings",
   "createfactorycontroller.arithmetic_tube.operator.sum": "Sum",
   "createfactorycontroller.arithmetic_tube.operator.product": "Product",
   "createfactorycontroller.arithmetic_tube.operator.max": "Maximum",
