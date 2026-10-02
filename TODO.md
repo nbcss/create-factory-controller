@@ -44,15 +44,16 @@
 - [DONE] Flash animation for number connection when update
 - [DONE] Factory Controller Terminal item
 - [DONE] Increase component cap limit
+- [DOING] Behaviour tooltips for add connection button
+- [DOING] Connection type selection tooltip
 - [TODO] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Cancel connection/move mode approach or keybinding
 - [TODO] Different controller component tooltip styles
-- [TODO] Behaviour tooltips for arithmetic tube
-- [TODO] Connection type selection tooltip
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier
 - [TODO] Blueprint file in folder
 - [TODO] Pattern item could take stock keeper category filter
+- [TODO] Rework blueprint import system
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
