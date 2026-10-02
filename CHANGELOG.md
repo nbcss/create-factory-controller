@@ -9,6 +9,7 @@ Changes:
 - Components support loop connection (self-connect) now.
 - Number connection value update would play flash animation now.
 - Downgrade neoforge version requirement to 227.
+- Increase the maximum component cap to 8192 (but not recommended to use that amount of components).
 
 Create: Logistics Control
 - Fixed recipes which only consist of fluid ingredients cannot carry filter label

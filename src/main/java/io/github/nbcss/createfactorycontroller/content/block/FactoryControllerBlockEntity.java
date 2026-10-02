@@ -434,7 +434,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     /**
      * Upper bound on a decompressed controller board
      */
-    private static final long MAX_BOARD_NBT_BYTES = 16L * 1024 * 1024;
+    private static final long MAX_BOARD_NBT_BYTES = 64L * 1024 * 1024;
 
     /** Reads a gzip-compressed board tag with our board-sized accounter quota ({@link #MAX_BOARD_NBT_BYTES}). */
     private static CompoundTag readCompressedBoard(byte[] compressed) throws IOException {
