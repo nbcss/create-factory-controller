@@ -27,6 +27,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPathResolver;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixer;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
@@ -118,11 +119,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /**
      * Folds every sink flagged since the last drain, exactly once each. This coalesces a sink fed by several sources
-     * that all changed in the same tick into a single fold (each source's {@code publish} has already written its edge
-     * value), so there is no per-source double-fold and no mid-tick glitch. The loop lets a fold that cascades — a SEND
-     * link folding fires its network transmit, which pushes a wired RECEIVE link, which publishes — settle in the same
-     * pass; the iteration cap breaks any redstone feedback cycle (interim — full cycle handling is deferred). Called in
-     * the controller tick and after each structural mutation, before its sync.
+     * that all changed in the same tick into a single fold.
      */
     public void settleConnections() {
         int guard = components.size() + 1;
@@ -207,6 +204,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void tick() {
         super.tick();
         if (level == null || level.isClientSide()) return;
+        lastTickTime = level.getGameTime();
 
         for (VirtualComponentBehaviour component : components.values())
             component.preTick();
@@ -390,6 +388,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     // ── Gauge attach ───────────────────────────────────────────────────────
 
     public void attachComponent(VirtualComponentPosition pos, Player player, @Nullable UUID selectedNetwork) {
+        if (!ControllerAccessor.canTransferItems(player)) { playDenySound(); return; }
         ItemStack carried = player.containerMenu.getCarried();
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(carried.getItem());
 
@@ -451,6 +450,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                                List<UUID> assignments, @Nullable BlockPos boxMin, @Nullable BlockPos boxMax,
                                ServerPlayer player) {
         if (level == null || level.isClientSide()) return;
+        if (!ControllerAccessor.canTransferItems(player)) { playDenySound(); return; }
 
         CompoundTag root;
         try {
@@ -621,6 +621,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     // ── Component remove ───────────────────────────────────────────────────────
 
     public void removeComponent(VirtualComponentPosition pos, Player player) {
+        if (!ControllerAccessor.canTransferItems(player)) { playDenySound(); return; }
         VirtualComponentBehaviour behaviour = components.remove(pos);
         if (behaviour == null) return;
 
@@ -1038,6 +1039,14 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     // ── Rename ───────────────────────────────────────────────────────────────
 
+    /** Game time of the last server tick; -1 before the first. */
+    private long lastTickTime = -1;
+
+    public boolean isTicking() {
+        // Slack of 2: the checking player may tick before this level's block entities in the same server tick
+        return level != null && lastTickTime >= 0 && level.getGameTime() - lastTickTime <= 2;
+    }
+
     /** Sets the controller's custom name (blank clears it). Clamped to {@link #MAX_NAME_LENGTH}. */
     public void setCustomName(String name) {
         String trimmed = name == null ? "" : name.strip();
@@ -1046,6 +1055,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         customName = trimmed;
         setChanged();
         syncHeader();
+        // Refresh the world BE copy so a terminal HUD looking at this controller shows the new name.
+        if (level != null && !level.isClientSide()) {
+            BlockState state = getBlockState();
+            level.sendBlockUpdated(getBlockPos(), state, state, Block.UPDATE_CLIENTS);
+        }
     }
 
     // ── Sounds ──────────────────────────────────────────────────────────────
@@ -1092,15 +1106,15 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** Ships this tick's accumulated changes to every player with this controller's menu open: the full
      *  snapshot when escalated (or requested via resync), else one delta. Bumps {@link #syncRevision} only
-     *  when something is actually sent; with no viewers the marks are dropped — the next menu open carries
-     *  full state anyway. */
+     *  when something is actually sent. */
     private void syncMenuToPlayers() {
         if (level == null || level.isClientSide()) return;
         ServerLevel serverLevel = (ServerLevel) level;
         List<ServerPlayer> viewers = new ArrayList<>();
         for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers())
             if (player.containerMenu instanceof FactoryControllerMenu menu
-                    && menu.controllerPos.equals(getBlockPos()))
+                    && menu.activeControllerPos().equals(getBlockPos())
+                    && level.dimension().equals(menu.activeControllerDimension()))
                 viewers.add(player);
         if (viewers.isEmpty()) {
             deltaTracker.clear();
@@ -1180,7 +1194,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         if (server == null) return;
         for (ServerPlayer player : server.getPlayerList().getPlayers())
             if (player.containerMenu instanceof FactoryControllerMenu menu
-                    && player.level().getBlockEntity(menu.controllerPos) instanceof FactoryControllerBlockEntity be
+                    && ControllerAccessor.getBlockEntity(player, menu.activeControllerPos())
+                       instanceof FactoryControllerBlockEntity be
                     && be.networks.contains(network))
                 be.syncNetworks();
     }
@@ -1206,7 +1221,11 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.write(tag, registries, clientPacket);
 
-        if (clientPacket) return;
+        if (clientPacket) {
+            // for controller hover name with terminal item
+            if (!customName.isBlank()) tag.putString("CustomName", customName);
+            return;
+        }
 
         tag.putInt("Ver", DATA_VERSION);
         if (!customName.isBlank()) tag.putString("CustomName", customName);

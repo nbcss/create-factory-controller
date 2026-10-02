@@ -265,6 +265,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
      * Shift-click: remove this gauge from the board (server refunds the item in survival).
      */
     public void remove(FactoryControllerScreen screen) {
+        if (screen.isItemTransferDenied()) return;
         PacketDistributor.sendToServer(
                 new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
     }

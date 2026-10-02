@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -37,7 +38,7 @@ public record CycleOperationModePacket(BlockPos pos, VirtualComponentPosition pa
     public static void handle(CycleOperationModePacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
+            if (!(ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             be.cycleOperationMode(packet.panelPos());
         });
     }

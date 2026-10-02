@@ -213,6 +213,7 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
 
     @Override
     public void remove(FactoryControllerScreen screen) {
+        if (screen.isItemTransferDenied()) return;
         PacketDistributor.sendToServer(new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
     }
 }

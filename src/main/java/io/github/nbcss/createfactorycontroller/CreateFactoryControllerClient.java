@@ -4,12 +4,14 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
+import io.github.nbcss.createfactorycontroller.content.render.TerminalHoverTip;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersTab;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -19,6 +21,9 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
@@ -28,6 +33,8 @@ import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
 import net.liukrast.deployer.lib.helper.ClientRegisterHelpers;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
 
 
 @Mod(value = CreateFactoryController.MODID, dist = Dist.CLIENT)
@@ -90,9 +97,10 @@ public class CreateFactoryControllerClient {
             // Deployer is optional: only register the keeper TAB when it's present
             if (DeployerCompat.isLoaded())
                 ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
-            Item controllerItem = CFCItems.FACTORY_CONTROLLER.get();
-            TooltipModifier.REGISTRY.register(controllerItem,
-                new ItemDescription.Modifier(controllerItem, FontHelper.Palette.STANDARD_CREATE));
+            // Create's shift-to-expand description (from the item's .tooltip.summary/conditionN/behaviourN keys).
+            for (Item item : List.of(CFCItems.FACTORY_CONTROLLER.get(), CFCItems.FACTORY_CONTROLLER_TERMINAL.get()))
+                TooltipModifier.REGISTRY.register(item,
+                    new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE));
         });
     }
 
@@ -112,6 +120,18 @@ public class CreateFactoryControllerClient {
         event.register(DRAG_SELECTION);
         event.register(TOGGLE_ALWAYS_SHOW_LABEL);
         event.register(SELECTION_MODE);
+    }
+
+    @SubscribeEvent
+    static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
+        event.registerAbove(VanillaGuiLayers.HOTBAR,
+                ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "terminal_hover_tip"),
+                TerminalHoverTip.INSTANCE);
+    }
+
+    @SubscribeEvent
+    static void onClientTick(ClientTickEvent.Post event) {
+        TerminalHoverTip.INSTANCE.tick();
     }
 
     @SubscribeEvent

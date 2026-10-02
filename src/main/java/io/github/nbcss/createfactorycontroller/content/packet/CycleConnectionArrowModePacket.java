@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import net.minecraft.core.BlockPos;
@@ -48,7 +49,7 @@ public record CycleConnectionArrowModePacket(BlockPos pos, VirtualComponentPosit
     public static void handle(CycleConnectionArrowModePacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
+            if (!(ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             Connection.Type type = Connection.Type.get(packet.connectionType());
             if (type == null) return;
             if (packet.action() == DIRECTION) {

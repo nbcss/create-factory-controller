@@ -17,4 +17,7 @@ public interface PanelSyncListener {
 
     /** Re-index any cached panel view against the freshly synced menu state. */
     void onPanelSync();
+
+    /** The controller board screen this screen belongs to (itself for the board). */
+    FactoryControllerScreen boardScreen();
 }

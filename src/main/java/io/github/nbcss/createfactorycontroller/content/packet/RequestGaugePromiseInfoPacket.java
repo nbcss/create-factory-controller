@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import net.minecraft.core.BlockPos;
@@ -38,7 +39,7 @@ public record RequestGaugePromiseInfoPacket(BlockPos pos, VirtualComponentPositi
     public static void handle(RequestGaugePromiseInfoPacket packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
+            if (!(ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             if (!(be.components.get(packet.gaugePos()) instanceof VirtualGaugeBehaviour g) || g.gaugeId == null) return;
             long now = player.level().getGameTime();
             // Route through the gauge so a fluid gauge reports its fluid-backend counts, not the item cache.

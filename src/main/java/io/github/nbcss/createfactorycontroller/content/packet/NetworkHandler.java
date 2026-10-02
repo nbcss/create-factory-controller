@@ -38,11 +38,14 @@ public final class NetworkHandler {
         registrar.playToServer(RequestPanelResyncPacket.TYPE, RequestPanelResyncPacket.STREAM_CODEC, RequestPanelResyncPacket::handle);
         registrar.playToServer(ReturnCarriedPacket.TYPE, ReturnCarriedPacket.STREAM_CODEC, ReturnCarriedPacket::handle);
         registrar.playToServer(BlueprintPlacePacket.TYPE, BlueprintPlacePacket.STREAM_CODEC, BlueprintPlacePacket::handle);
+        registrar.playToServer(SelectTerminalControllerPacket.TYPE, SelectTerminalControllerPacket.STREAM_CODEC, SelectTerminalControllerPacket::handle);
+        registrar.playToServer(UnlinkTerminalControllerPacket.TYPE, UnlinkTerminalControllerPacket.STREAM_CODEC, UnlinkTerminalControllerPacket::handle);
         registrar.playToClient(SyncPanelStatePacket.TYPE, SyncPanelStatePacket.STREAM_CODEC, SyncPanelStatePacket::handle);
         registrar.playToClient(SyncPanelDeltaPacket.TYPE, SyncPanelDeltaPacket.STREAM_CODEC, SyncPanelDeltaPacket::handle);
         registrar.playToClient(SyncProductionOrdersPacket.TYPE, SyncProductionOrdersPacket.STREAM_CODEC, SyncProductionOrdersPacket::handle);
         registrar.playToClient(IngredientCheckResultPacket.TYPE, IngredientCheckResultPacket.STREAM_CODEC, IngredientCheckResultPacket::handle);
         registrar.playToClient(GaugeInfoPacket.TYPE, GaugeInfoPacket.STREAM_CODEC, GaugeInfoPacket::handle);
         registrar.playToClient(OrderNotificationPacket.TYPE, OrderNotificationPacket.STREAM_CODEC, OrderNotificationPacket::handle);
+        registrar.playToClient(TerminalStatePacket.TYPE, TerminalStatePacket.STREAM_CODEC, TerminalStatePacket::handle);
     }
 }

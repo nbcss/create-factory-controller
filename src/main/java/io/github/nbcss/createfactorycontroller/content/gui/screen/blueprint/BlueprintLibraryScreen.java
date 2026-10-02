@@ -298,6 +298,11 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     }
 
     @Override
+    public FactoryControllerScreen boardScreen() {
+        return controller;
+    }
+
+    @Override
     public void onPanelSync() {
         controller.onPanelSync();
     }
@@ -539,6 +544,8 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
         @Nullable
         private Component placeBlockedReason() {
+            Component transferDenied = controller.itemTransferDeniedReason();
+            if (transferDenied != null) return transferDenied;
             if (info.hasUnknownItems())
                 return Component.translatable("createfactorycontroller.gui.blueprint.unknown_items");
             if (info.placements().isEmpty() || entry.oversized())

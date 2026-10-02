@@ -7,6 +7,7 @@ import io.github.nbcss.createfactorycontroller.content.component.ComponentRegist
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
 import io.github.nbcss.createfactorycontroller.content.helper.ConfigDataFixer;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerTerminalMenu;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTweakedCompat;
 import io.github.nbcss.createfactorycontroller.content.compat.computercraft.CcTweakedIntegration;
@@ -15,6 +16,7 @@ import io.github.nbcss.createfactorycontroller.content.component.connection.Conn
 import io.github.nbcss.createfactorycontroller.content.displaylink.FactoryControllerDisplaySource;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionTarget;
+import io.github.nbcss.createfactorycontroller.content.item.terminal.TerminalLinks;
 import io.github.nbcss.createfactorycontroller.content.packet.NetworkHandler;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
@@ -75,6 +77,14 @@ public class CreateFactoryController {
                 .networkSynchronized(ByteBufCodecs.BOOL)
                 .build());
 
+    /** Controller remote interface item's links */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<TerminalLinks>> TERMINAL_LINKS =
+        DATA_COMPONENTS.register("terminal_links", () ->
+            DataComponentType.<TerminalLinks>builder()
+                .persistent(TerminalLinks.CODEC)
+                .networkSynchronized(TerminalLinks.STREAM_CODEC)
+                .build());
+
     // ── Sound Events ───────────────────────────────────────────────────────
     public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
         DeferredRegister.create(Registries.SOUND_EVENT, MODID);
@@ -98,6 +108,8 @@ public class CreateFactoryController {
         DeferredRegister.create(Registries.MENU, MODID);
     public static final DeferredHolder<MenuType<?>, MenuType<FactoryControllerMenu>> FACTORY_CONTROLLER_MENU =
         MENU_TYPES.register("factory_controller", () -> IMenuTypeExtension.create(FactoryControllerMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<FactoryControllerTerminalMenu>> FACTORY_CONTROLLER_TERMINAL_MENU =
+        MENU_TYPES.register("factory_controller_terminal", () -> IMenuTypeExtension.create(FactoryControllerTerminalMenu::new));
 
     // ── Display Link sources (registered into Create's display-source registry) ──
     public static final DeferredRegister<DisplaySource> DISPLAY_SOURCES =
@@ -153,6 +165,7 @@ public class CreateFactoryController {
 
     private void registerScreens(RegisterMenuScreensEvent event) {
         event.register(FACTORY_CONTROLLER_MENU.get(), FactoryControllerScreen::new);
+        event.register(FACTORY_CONTROLLER_TERMINAL_MENU.get(), FactoryControllerScreen::new);
     }
 
     private void registerShaders(RegisterShadersEvent event) {

@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -41,7 +42,7 @@ public record AddConnectionPacket(BlockPos pos, String connectionType,
     public static void handle(AddConnectionPacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
+            if (!(ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             be.addConnection(packet.connectionType(), packet.source(), packet.sink(), packet.arrowBendMode());
         });
     }

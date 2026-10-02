@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.registry;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem;
+import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerTerminalItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
@@ -27,6 +28,10 @@ public final class CFCItems {
 
     public static final DeferredItem<Item> ARRANGEMENT_MARKER =
             ITEMS.register("arrangement_marker", () -> new Item(new Item.Properties()));
+
+    public static final DeferredItem<FactoryControllerTerminalItem> FACTORY_CONTROLLER_TERMINAL =
+            ITEMS.register("controller_remote", () ->
+                    new FactoryControllerTerminalItem(new Item.Properties().stacksTo(1)));
 
     private CFCItems() {}
 

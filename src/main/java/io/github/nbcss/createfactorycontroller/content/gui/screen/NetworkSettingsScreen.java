@@ -178,6 +178,11 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     @Override
+    public FactoryControllerScreen boardScreen() {
+        return controller;
+    }
+
+    @Override
     public void onPanelSync() {
         controller.onPanelSync();
     }

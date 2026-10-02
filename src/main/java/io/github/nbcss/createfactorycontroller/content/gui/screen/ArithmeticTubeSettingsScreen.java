@@ -1214,6 +1214,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
     // ── Overlay plumbing ─────────────────────
 
     @Override public void onPanelSync() { controller.onPanelSync(); }
+    @Override public FactoryControllerScreen boardScreen() { return controller; }
 
     @Override
     protected void containerTick() {

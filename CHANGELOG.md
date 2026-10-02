@@ -2,6 +2,7 @@
 
 Features:
 - Introduced redstone input/output functionalities for Arithmetic Tube.
+- Added "Factory Controller Terminal", which can link up to 3 controllers and update controller settings remotely.
 
 Changes:
 - Cut Amethyst is using stonecutter recipe now.

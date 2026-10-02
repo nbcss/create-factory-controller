@@ -424,6 +424,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     // ── Overlay plumbing ─────────────────────
 
     @Override public void onPanelSync() { controller.onPanelSync(); }
+    @Override public FactoryControllerScreen boardScreen() { return controller; }
 
     @Override
     protected void containerTick() {

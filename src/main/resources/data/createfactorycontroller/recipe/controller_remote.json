@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " T ",
+    "AAA",
+    "PCP"
+  ],
+  "key": {
+    "T": {
+      "item": "create:transmitter"
+    },
+    "A": {
+      "item": "createfactorycontroller:cut_amethyst"
+    },
+    "P": {
+      "item": "create:precision_mechanism"
+    },
+    "C": {
+      "item": "create:linked_controller"
+    }
+  },
+  "result": {
+    "id": "createfactorycontroller:controller_remote",
+    "count": 1
+  }
+}

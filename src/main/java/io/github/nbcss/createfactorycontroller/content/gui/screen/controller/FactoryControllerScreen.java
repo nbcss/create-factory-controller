@@ -20,6 +20,7 @@ import io.github.nbcss.createfactorycontroller.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerTerminalMenu;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
@@ -57,6 +58,8 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.AttachComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.SelectTerminalControllerPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.UnlinkTerminalControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.BatchMoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacket;
@@ -137,8 +140,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     /** Session-cache key: dimension id + controller position (e.g. {@code minecraft:overworld@10, 64, -20}). */
     private String viewKey() {
+        // A terminal may view a controller in another dimension; prefer the controller's own dimension.
+        var controllerDim = menu.activeControllerDimension();
         var level = Minecraft.getInstance().level;
-        String dim = level != null ? level.dimension().location().toString() : "?";
+        String dim = controllerDim != null ? controllerDim.location().toString()
+                : level != null ? level.dimension().location().toString() : "?";
         return dim + "@" + menu.controllerPos.toShortString();
     }
 
@@ -163,6 +169,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Nullable private GraphicButton blueprintLoadButton = null;
     @Nullable private GraphicButton blueprintSaveButton = null;
     @Nullable private HelpButton helpButton = null;
+    /** Left-edge controller tabs; non-null only for a terminal (hidden while it has no links). */
+    @Nullable private TerminalTabStrip tabStrip = null;
 
     // Decorative controller block model in the board's bottom-left corner (purely cosmetic).
     private static final int CONTROLLER_MODEL_SCALE = 4;
@@ -349,8 +357,78 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 selectorX,
                 selectorY + 28);
 
+        if (menu instanceof FactoryControllerTerminalMenu) {
+            if (tabStrip != null)
+                removeWidget(tabStrip);
+            else
+                tabStrip = new TerminalTabStrip(
+                        index -> PacketDistributor.sendToServer(new SelectTerminalControllerPacket(index)),
+                        index -> PacketDistributor.sendToServer(new UnlinkTerminalControllerPacket(index)),
+                        menu::controllerDisplayName);
+            tabStrip.anchor(leftPos, topPos);
+            refreshTabStrip();
+            addWidget(tabStrip);
+        }
+
         lastPanFrameMs = 0;
         heldPanKeys.clear();
+        applySignalState();
+    }
+
+    /** Syncs the terminal tab strip with the menu's links / selected index. */
+    private void refreshTabStrip() {
+        if (tabStrip != null && menu instanceof FactoryControllerTerminalMenu term)
+            tabStrip.setLinks(term.links, term.activeIndex);
+    }
+
+    /**
+     * Applies a terminal state push (a tab switch/unlink retarget, or the controller going live / dropping out)
+     * to this open screen without reopening the menu, so the cursor keeps its place.
+     */
+    public void applyTerminalState(Runnable apply, boolean retarget) {
+        if (retarget) VIEW_CACHE.put(viewKey(), new ViewCacheEntry(viewX, viewY, zoomLevel));
+        apply.run();
+
+        clearSelection();
+        connectionMode.clear();
+        pendingRelocateTarget = null;
+        abortBlueprintPlacement();
+        persistentActionPrompt = null;
+        hoveredConn = null;
+        selectedConnection = null;
+        connArrowLocked = false;
+
+        if (retarget) {
+            // Each controller keeps its own camera, like reopening it would.
+            ViewCacheEntry saved = VIEW_CACHE.getIfPresent(viewKey());
+            viewX = saved != null ? saved.x() : 0;
+            viewY = saved != null ? saved.y() : 0;
+            zoomLevel = saved != null ? saved.zoom() : 0;
+            clampView();
+        }
+        if (nameBox != null) {
+            nameBox.setFocused(false);
+            nameBox.setValue(menu.controllerName);
+        }
+        refreshTabStrip();
+        applySignalState();
+        onPanelSync();
+    }
+
+    /** Shows or hides the live-controller UI (player inventory, rename field) to match the terminal's signal.
+     *  Without one, a carried item goes back to the inventory — there is nowhere to put it. */
+    private void applySignalState() {
+        boolean signal = menu.hasSignal();
+        if (playerInventory != null) playerInventory.setHidden(!signal);
+        if (nameBox != null) {
+            nameBox.visible = nameBox.active = signal;
+            if (!signal) nameBox.setFocused(false);
+        }
+        if (!signal) {
+            heldPanKeys.clear();
+            isDragging = false;
+            if (!menu.getCarried().isEmpty()) PacketDistributor.sendToServer(new ReturnCarriedPacket());
+        }
     }
 
     /** Sends the edited controller name to the server (if changed) and leaves edit mode. */
@@ -450,9 +528,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     graphics.renderTooltip(font, connectionTooltipLines(), mouseX, mouseY);
             } else if (hovered != null)
                 graphics.renderTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
-            else if (networkSelector.isMouseOver(mouseX, mouseY))
+            else if (menu.hasSignal() && networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
-            else if (indicatorColumn.isMouseOver(mouseX, mouseY))
+            else if (menu.hasSignal() && indicatorColumn.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, indicatorColumn.getTooltipLines(mouseX, mouseY), mouseX, mouseY);
             else if (capacityLabelBounds != null
                     && capacityLabelBounds.contains(mouseX, mouseY, Rect2i.Boundary.HALF_OPEN))
@@ -470,6 +548,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 graphics.renderTooltip(font, blueprintSaveButton.getTooltipText(), mouseX, mouseY);
             else if (helpButton != null && helpButton.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, helpButton.getTooltipText(), mouseX, mouseY);
+            else if (tabStrip != null && tabStrip.tabAt(mouseX, mouseY) >= 0)
+                graphics.renderComponentTooltip(font, tabStrip.tooltipAt(mouseX, mouseY), mouseX, mouseY);
         }
 
         Minecraft.getInstance().getProfiler().pop();
@@ -479,13 +559,16 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         renderBoard(graphics, mouseX, mouseY, partialTick, false);
 
-        // Decorative controller block model anchored in the bottom-left corner, drawn over the board.
         RenderSystem.enableBlend();
-        GuiGameElement.of(new ItemStack(CFCItems.FACTORY_CONTROLLER.get()))
+        GuiGameElement.of(new ItemStack(menu instanceof FactoryControllerTerminalMenu
+                        ? CFCItems.FACTORY_CONTROLLER_TERMINAL.get() : CFCItems.FACTORY_CONTROLLER.get()))
                 .scale(CONTROLLER_MODEL_SCALE)
                 .render(graphics, leftPos - 74, topPos + imageHeight - 80);
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);
+
+        // for remote interface gui
+        if (tabStrip != null) tabStrip.render(graphics, mouseX, mouseY, partialTick);
 
         // Inventory panel + its expand button, lifted above canvas gauge icons.
         RenderSystem.disableDepthTest();
@@ -553,7 +636,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int maxY = (int) Math.ceil(viewY + (canvas.maxY() - centerY) / getZoomFactor());
         Rect2i visibleArea = Rect2i.fromBounds(minX, minY, maxX, maxY);
 
-        hoveredPosition = isInCanvasArea(mouseX, mouseY) ? at(mouseX, mouseY, centerX, centerY) : null;
+        // No live controller: nothing on the board is hoverable, so no target reticle or carried-item ghost.
+        hoveredPosition = menu.hasSignal() && isInCanvasArea(mouseX, mouseY)
+                ? at(mouseX, mouseY, centerX, centerY) : null;
 
         profiler.push("canvas");
 
@@ -693,13 +778,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             graphics.flush();
         }
 
+        if (!menu.hasSignal())
+            renderNoSignal(graphics, canvas);
+
         // Frame
         RenderSystem.enableBlend();
         TiledSpriteRenderer.create(FRAME_SPRITE).render(graphics, leftPos, topPos, imageWidth, imageHeight);
         RenderSystem.disableBlend();
 
         // Title
-        if (nameBox != null) {
+        if (!menu.hasSignal()) {
+            nameAreaBounds = null;
+            Component title = Component.translatable("item.createfactorycontroller.controller_remote");
+            graphics.drawString(font, title, leftPos + imageWidth / 2 - font.width(title) / 2, topPos + 4,
+                    NAME_COLOR, false);
+        } else if (nameBox != null) {
             boolean blank = nameBox.getValue().isBlank();
             String shownStr = !nameBox.isFocused() && blank
                     ? menu.controllerDisplayName().getString()
@@ -709,6 +802,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             nameBox.setX(x);
             nameBox.setWidth(Math.max(textW + (nameBox.isFocused() ? 6 : 0), 1));
             nameAreaBounds = Rect2i.fromXYWH(x, topPos, textW + 5 + RENAME_BUTTON_SIZE, 14);
+            if (!nameBox.isFocused()) nameBox.moveCursorToStart(false);
             nameBox.render(graphics, mouseX, mouseY, partialTick);
             if (!nameBox.isFocused()) {
                 if (blank)
@@ -722,6 +816,29 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         }
 
+        if (menu.hasSignal()) renderBoardStatus(graphics, mouseX, mouseY, partialTick);
+        else capacityLabelBounds = zoomLabelBounds = null;
+
+        if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
+        if (blueprintLoadButton != null) blueprintLoadButton.render(graphics, mouseX, mouseY, partialTick);
+        if (blueprintSaveButton != null) blueprintSaveButton.render(graphics, mouseX, mouseY, partialTick);
+
+        if (helpButton != null && !inOverlay) helpButton.render(graphics, mouseX, mouseY, partialTick);
+
+        graphics.flush();
+        RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
+
+        profiler.pop();
+
+        if (inOverlay) {
+            graphics.fill(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY(), 0xB0101010);
+        }
+
+        profiler.pop();
+    }
+
+    /** Network selector, indicator column and the capacity / zoom labels (top-left of the board). */
+    private void renderBoardStatus(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         networkSelector.render(graphics, mouseX, mouseY, partialTick);
         indicatorColumn.render(graphics, mouseX, mouseY, partialTick);
 
@@ -750,23 +867,22 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         graphics.drawString(font, zoomStr, zoomTextX, row1Y, 0xFFE2E2E2, true);
         zoomLabelBounds = Rect2i.fromXYWH(labelX, row1Y,
                 zoomTextX + font.width(zoomStr) - labelX, font.lineHeight);
+    }
 
-        if (settingsButton != null) settingsButton.render(graphics, mouseX, mouseY, partialTick);
-        if (blueprintLoadButton != null) blueprintLoadButton.render(graphics, mouseX, mouseY, partialTick);
-        if (blueprintSaveButton != null) blueprintSaveButton.render(graphics, mouseX, mouseY, partialTick);
-
-        if (helpButton != null && !inOverlay) helpButton.render(graphics, mouseX, mouseY, partialTick);
-
-        graphics.flush();
-        RenderSystem.clear(256, Minecraft.ON_OSX);   // 256 = GL_DEPTH_BUFFER_BIT
-
-        profiler.pop();
-
-        if (inOverlay) {
-            graphics.fill(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY(), 0xB0101010);
-        }
-
-        profiler.pop();
+    /** Terminal "no signal" board: a dimmed canvas with two centered lines. */
+    private void renderNoSignal(@NotNull GuiGraphics graphics, Rect2i canvas) {
+        graphics.fill(canvas.minX(), canvas.minY(), canvas.maxX(), canvas.maxY(), 0x94101010);
+        int cx = (canvas.minX() + canvas.maxX()) / 2;
+        int cy = (canvas.minY() + canvas.maxY()) / 2;
+        boolean hasLinks = menu instanceof FactoryControllerTerminalMenu t && !t.links.isEmpty();
+        Component title = Component.translatable("createfactorycontroller.terminal.no_signal")
+                .withStyle(ChatFormatting.RED);
+        Component sub = Component.translatable(hasLinks
+                ? "createfactorycontroller.terminal.no_signal.destroyed"
+                : "createfactorycontroller.terminal.no_signal.link_first")
+                .withStyle(ChatFormatting.GRAY);
+        graphics.drawCenteredString(font, title, cx, cy - font.lineHeight - 1, 0xFFFFFF);
+        graphics.drawCenteredString(font, sub, cx, cy + 2, 0xFFFFFF);
     }
 
     /**
@@ -874,7 +990,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Holding a component
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
-            boolean valid = hovered == null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition);
+            // A terminal that can't transfer items can't place it either: no ghost, red reticle.
+            boolean valid = hovered == null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition)
+                    && canTransferItems();
             if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
             renderTransientTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
@@ -1165,7 +1283,30 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .withStyle(ChatFormatting.WHITE));
     }
 
+    @Nullable
+    public Component itemTransferDeniedReason() {
+        if (!(menu instanceof FactoryControllerTerminalMenu term)) return null;
+        if (!term.hasSignal()) return Component.translatable("createfactorycontroller.terminal.unable_to_access");
+        if (term.placementAllowed) return null;
+        var player = Minecraft.getInstance().player;
+        if (player != null && player.isCreative()) return null;
+        return Component.translatable("createfactorycontroller.terminal.unable_to_transfer");
+    }
+
+    public boolean canTransferItems() {
+        return itemTransferDeniedReason() == null;
+    }
+
+    public boolean isItemTransferDenied() {
+        Component reason = itemTransferDeniedReason();
+        if (reason == null) return false;
+        setTimedPrompt(reason.copy().withStyle(ChatFormatting.RED), 3000);
+        playDenySound();
+        return true;
+    }
+
     public void beginBlueprintPlacement(BlueprintPlacement placement) {
+        if (isItemTransferDenied()) return;
         clearSelection();
         connectionMode.clear();
         pendingRelocateTarget = null;
@@ -1242,6 +1383,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      *  when not carrying a component. Reached from the drag-selection release path (every empty-cell press starts one). */
     private void attachCarriedAt(VirtualComponentPosition cell, ItemStack carried) {
         if (!ComponentRegistry.containsItem(carried) || componentWidgetAt(cell) != null) return;
+        if (isItemTransferDenied()) return;
         if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
             setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
                     FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
@@ -1327,7 +1469,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (nameBox != null) {
             boolean inNameBar = nameAreaBounds != null && nameAreaBounds.contains(
                     (int) mouseX, (int) mouseY, Rect2i.Boundary.HALF_OPEN);
-            if (!nameBox.isFocused() && inNameBar) {
+            if (!nameBox.isFocused() && inNameBar && menu.hasSignal()) {
                 nameBox.setFocused(true);
                 nameBox.setCursorPosition(nameBox.getValue().length());
                 nameBox.setHighlightPos(0);   // select all
@@ -1338,7 +1480,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 commitName();
         }
 
-        if (menu.getCarried().isEmpty() && networkSelector.isMouseOver(mouseX, mouseY)) {
+        if (menu.hasSignal() && menu.getCarried().isEmpty() && networkSelector.isMouseOver(mouseX, mouseY)) {
             UUID net = networkSelector.getSelectedNetwork();
             if (net != null && menu.knownNetworks.contains(net)) {
                 clearSelection();
@@ -1346,9 +1488,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
         }
-        if (indicatorColumn.isMouseOver(mouseX, mouseY)) return true;
+        if (menu.hasSignal() && indicatorColumn.isMouseOver(mouseX, mouseY)) return true;
 
         if (isInCanvasArea(mouseX, mouseY)) {
+            if (!menu.hasSignal()) return true;
             Rect2i canvas = canvasArea();
             int centerX = canvas.minX() + canvas.w() / 2;
             int centerY = canvas.minY() + canvas.h() / 2;
@@ -1414,6 +1557,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 double worldX = viewX + (mouseX - centerX) / getZoomFactor();
                 double worldY = viewY + (mouseY - centerY) / getZoomFactor();
                 if (hasShiftDown()) {
+                    // Check once so a blocked terminal gives one prompt and keeps the selection.
+                    if (isItemTransferDenied()) return true;
                     if (selected.contains(clicked)){
                         for (VirtualComponentPosition p : new ArrayList<>(selected)) {
                             VirtualComponentWidget w = componentWidgetAt(p);
@@ -1506,6 +1651,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!menu.hasSignal()) return false;
         if (networkSelector.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
 
         if (isInCanvasArea(mouseX, mouseY)) {
@@ -1514,9 +1660,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerY = canvas.minY() + canvas.h() / 2;
 
             if (hasShiftDown()) {
-                // In connection mode shift+scroll is reserved for the wire-type picker: change the type when the
-                // hovered partner offers a choice, and consume the scroll either way — so it never falls through to
-                // the network selector, even over an empty cell or a single-type / unconnectable target.
                 if (connectionMode.isActive()) {
                     connectionMode.cycleType(menu, hoveredPosition, (int) Math.signum(-scrollY));
                     return true;
@@ -1756,6 +1899,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return true;
     }
 
+    @Override
+    public FactoryControllerScreen boardScreen() {
+        return this;
+    }
+
     /** Called by SyncPanelStatePacket after menu.gauges/knownNetworks are refreshed. */
     @Override
     public void onPanelSync() {
@@ -1766,10 +1914,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public int guiWidth()  { return imageWidth; }
     public int guiHeight() { return imageHeight; }
 
-    /** JEI exclusion zone covering the cosmetic controller model in the bottom-left corner. */
+    /** JEI exclusion zones: the cosmetic controller model in the bottom-left corner, and the terminal tab strip. */
     @Override
     public List<net.minecraft.client.renderer.Rect2i> getExtraAreas() {
-        return List.of(new net.minecraft.client.renderer.Rect2i(leftPos - 74, topPos + imageHeight - 80, 74, 80));
+        var model = new net.minecraft.client.renderer.Rect2i(leftPos - 74, topPos + imageHeight - 80, 74, 80);
+        if (tabStrip == null || !tabStrip.visible) return List.of(model);
+        return List.of(model, tabStrip.area());
     }
 
     @Override
@@ -1789,6 +1939,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (nameBox.keyPressed(keyCode, scanCode, modifiers) || nameBox.canConsumeInput())
                 return true;
         }
+
+        if (!menu.hasSignal()) return super.keyPressed(keyCode, scanCode, modifiers);
 
         if (pendingPlacement != null && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             cancelBlueprintPlacement();

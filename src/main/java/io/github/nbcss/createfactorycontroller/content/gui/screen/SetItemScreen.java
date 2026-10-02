@@ -195,6 +195,11 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private int filterY()   { return panelY + 28; }
 
     @Override
+    public FactoryControllerScreen boardScreen() {
+        return controller;
+    }
+
+    @Override
     public void onPanelSync() {
         controller.onPanelSync();
     }

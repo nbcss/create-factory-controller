@@ -188,6 +188,11 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     }
 
     @Override
+    public FactoryControllerScreen boardScreen() {
+        return controller;
+    }
+
+    @Override
     public void onPanelSync() {
         controller.onPanelSync();
     }

@@ -14,6 +14,7 @@ public final class ServerConfig {
     public static final ModConfigSpec.BooleanValue CHECK_INGREDIENTS_ON_SEND;
     public static final ModConfigSpec.BooleanValue PRESERVE_CONTROLLER_DATA;
     public static final ModConfigSpec.BooleanValue PASSIVE_TOTAL_DEMAND;
+    public static final ModConfigSpec.BooleanValue ALLOW_COMPONENT_PLACEMENT_IN_TERMINAL;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -47,6 +48,10 @@ public final class ServerConfig {
                         "for deep production chains.")
                 .translation("createfactorycontroller.config.passive_total_demand")
                 .define("passiveTotalDemand", false);
+        ALLOW_COMPONENT_PLACEMENT_IN_TERMINAL = builder
+                .comment("Allow adding/removing components and placing blueprints from a Factory Controller Terminal.")
+                .translation("createfactorycontroller.config.allow_component_placement_in_terminal")
+                .define("allowComponentPlacementInTerminal", false);
         SPEC = builder.build();
     }
 
@@ -70,5 +75,9 @@ public final class ServerConfig {
 
     public static boolean passiveTotalDemand() {
         return PASSIVE_TOTAL_DEMAND.get();
+    }
+
+    public static boolean allowComponentPlacementInTerminal() {
+        return ALLOW_COMPONENT_PLACEMENT_IN_TERMINAL.get();
     }
 }

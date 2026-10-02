@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -39,7 +40,7 @@ public record RequestPanelResyncPacket(BlockPos pos) implements CustomPacketPayl
             // Only a player actually viewing this controller may trigger its (heavier) full re-send.
             if (!(player.containerMenu instanceof FactoryControllerMenu menu)
                     || !menu.controllerPos.equals(packet.pos())) return;
-            if (player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)
+            if (ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)
                 be.syncEverything();
         });
     }

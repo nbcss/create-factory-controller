@@ -12,10 +12,13 @@ import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.NotNull;
@@ -36,7 +39,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";
     public boolean controllerPowered = false;
-    public final BlockPos controllerPos;
+    /** Position of the controller this menu currently drives. Mutable so a terminal can retarget it. */
+    public BlockPos controllerPos;
 
     // ── Client-side sync tokens ──
     /** BE-instance token; a delta from a different BE load can never match it. */
@@ -47,34 +51,49 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
      *  Cleared when the full snapshot arrives ({@link #applyFullSync}). */
     public boolean resyncPending = false;
 
-    // Server-side: reference to the actual BE
-    @Nullable private final FactoryControllerBlockEntity blockEntity;
+    // Server-side: reference to the actual BE (null for a terminal with no live controller)
+    @Nullable protected FactoryControllerBlockEntity blockEntity;
 
     // Inventory state used for slot rebuilding.
     // Slots are re-created on each repositionSlots() call because Slot.x/y are final.
     private final Inventory cachedPlayerInventory;
     private static final int OFF_SCREEN = -2000;
 
-    /** Server-side constructor. */
+    /** Server-side constructor for a controller opened at its block. */
     public FactoryControllerMenu(int syncId, Inventory playerInventory, FactoryControllerBlockEntity be) {
-        super(CreateFactoryController.FACTORY_CONTROLLER_MENU.get(), syncId);
+        this(CreateFactoryController.FACTORY_CONTROLLER_MENU.get(), syncId, playerInventory, be, be.getBlockPos());
+    }
+
+    /** Server-side constructor shared with subclasses. {@code be} may be null (a terminal whose selected
+     *  controller is unloaded/broken). */
+    protected FactoryControllerMenu(MenuType<?> type, int syncId, Inventory playerInventory,
+                                    @Nullable FactoryControllerBlockEntity be, BlockPos controllerPos) {
+        super(type, syncId);
         this.blockEntity = be;
-        this.controllerPos = be.getBlockPos();
+        this.controllerPos = controllerPos;
         this.cachedPlayerInventory = playerInventory;
 
         // Snapshot data from BE for client sync
-        setComponents(be.components.values());
-        this.knownNetworks.addAll(be.networks);
-        this.missingLinkStatuses = be.missingLinkStatuses();
-        this.controllerName = be.customName;
-        this.controllerPowered = be.isRedstonePowered();
+        if (be != null) {
+            setComponents(be.components.values());
+            this.knownNetworks.addAll(be.networks);
+            this.missingLinkStatuses = be.missingLinkStatuses();
+            this.controllerName = be.customName;
+            this.controllerPowered = be.isRedstonePowered();
+        }
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
 
     /** Client-side constructor (called via IMenuTypeExtension). */
     public FactoryControllerMenu(int syncId, Inventory playerInventory, RegistryFriendlyByteBuf buf) {
-        super(CreateFactoryController.FACTORY_CONTROLLER_MENU.get(), syncId);
+        this(CreateFactoryController.FACTORY_CONTROLLER_MENU.get(), syncId, playerInventory, buf);
+    }
+
+    /** Client-side constructor shared with subclasses. Reads the common board layout, leaving the buffer
+     *  positioned after it so a subclass can append and read its own fields. */
+    protected FactoryControllerMenu(MenuType<?> type, int syncId, Inventory playerInventory, RegistryFriendlyByteBuf buf) {
+        super(type, syncId);
         this.blockEntity = null;
         this.controllerPos = buf.readBlockPos();
         this.cachedPlayerInventory = playerInventory;
@@ -137,6 +156,11 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     /** Reposition the player inventory for the active overlay. */
     public void repositionSlots(int originX, int hotbarY, boolean expanded) {
         rebuildSlots(originX, hotbarY, expanded);
+    }
+
+    /** Parks every player slot off-screen (client-side; the inventory panel is hidden). */
+    public void hideSlots() {
+        rebuildSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
 
     @Override
@@ -313,21 +337,46 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
 
     /** Called by NeoForge when the server opens this menu for a player. */
     public static void writeExtraData(FactoryControllerBlockEntity be, RegistryFriendlyByteBuf buf) {
-        buf.writeBlockPos(be.getBlockPos());
-        buf.writeVarInt(be.syncEpoch());
-        buf.writeVarInt(be.syncRevision());
+        writeEmptyBoardLayout(buf, be.getBlockPos(), be.syncEpoch(), be.syncRevision(),
+            be.customName, be.isRedstonePowered());
+    }
+
+    /** Writes the common menu-open header with an empty board (the real board follows via {@code syncEverything}).
+     *  Shared with the terminal menu, which appends its own fields after this. */
+    protected static void writeEmptyBoardLayout(RegistryFriendlyByteBuf buf, BlockPos pos, int epoch, int revision,
+                                                String name, boolean powered) {
+        buf.writeBlockPos(pos);
+        buf.writeVarInt(epoch);
+        buf.writeVarInt(revision);
 
         buf.writeVarInt(0);
         buf.writeVarInt(0);
         buf.writeVarInt(0);
         MissingLinkStatus.writeList(buf, List.of());
 
-        buf.writeUtf(be.customName);
-        buf.writeBoolean(be.isRedstonePowered());
+        buf.writeUtf(name);
+        buf.writeBoolean(powered);
     }
 
     public boolean isRedstonePowered() {
         return controllerPowered;
+    }
+
+    /** Position of the controller this menu drives; overridden identity for terminal retargeting. */
+    public BlockPos activeControllerPos() {
+        return controllerPos;
+    }
+
+    /** Dimension of the controller this menu drives (server-side; null on the client or with no live BE). */
+    @Nullable
+    public ResourceKey<Level> activeControllerDimension() {
+        return blockEntity != null && blockEntity.getLevel() != null
+            ? blockEntity.getLevel().dimension() : null;
+    }
+
+    /** True while this menu can drive a live controller. */
+    public boolean hasSignal() {
+        return true;
     }
 
     /** Controller display name: the custom name, or the default translated block name when unset. */

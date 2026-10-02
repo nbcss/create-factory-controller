@@ -42,6 +42,8 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
     private int slotOriginX;
     private int hotbarY;
     private boolean expanded;
+    /** Hidden: not drawn or clickable, and every player slot parked off-screen (terminal with no signal). */
+    private boolean hidden;
 
     public CollapsiblePlayerInventory(FactoryControllerMenu menu, Font font, Component title) {
         super(0, 0, TEXTURE_WIDTH, TEXTURE_TITLE_HEIGHT + TEXTURE_HEIGHT - TEXTURE_HOTBAR_Y, Component.empty());
@@ -58,7 +60,15 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
         reposition();
     }
 
+    public void setHidden(boolean hidden) {
+        if (this.hidden == hidden) return;
+        this.hidden = hidden;
+        visible = active = !hidden;
+        reposition();
+    }
+
     public boolean blocksCanvas(double mouseX, double mouseY) {
+        if (hidden) return false;
         int bottom = menuTop + hotbarY + TEXTURE_HEIGHT - TEXTURE_HOTBAR_Y - 7;
         return mouseX >= getX() && mouseX < getX() + getWidth()
                 && mouseY >= getY() && mouseY < bottom;
@@ -68,7 +78,8 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
         setX(menuLeft + slotOriginX - TEXTURE_SLOT_LEFT);
         setY(menuTop + hotbarY - (expanded ? TEXTURE_HOTBAR_Y : TEXTURE_TITLE_HEIGHT));
         height = expanded ? TEXTURE_HEIGHT : TEXTURE_TITLE_HEIGHT + TEXTURE_HEIGHT - TEXTURE_HOTBAR_Y;
-        menu.repositionSlots(slotOriginX, hotbarY, expanded);
+        if (hidden) menu.hideSlots();
+        else menu.repositionSlots(slotOriginX, hotbarY, expanded);
     }
 
     private int buttonX() {
@@ -111,7 +122,7 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!isValidClickButton(button) || !isButtonHovered(mouseX, mouseY)) return false;
+        if (hidden || !isValidClickButton(button) || !isButtonHovered(mouseX, mouseY)) return false;
         expanded = !expanded;
         reposition();
         playDownSound(Minecraft.getInstance().getSoundManager());

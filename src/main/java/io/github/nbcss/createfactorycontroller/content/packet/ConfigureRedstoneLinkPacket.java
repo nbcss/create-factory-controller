@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -50,7 +51,7 @@ public record ConfigureRedstoneLinkPacket(BlockPos pos, VirtualComponentPosition
     public static void handle(ConfigureRedstoneLinkPacket packet, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!(player.level().getBlockEntity(packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
+            if (!(ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             if (be.componentAt(packet.panelPos()) instanceof VirtualRedstoneLinkBehaviour link)
                 link.configure(packet.receive(), packet.red(), packet.blue());
         });
