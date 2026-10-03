@@ -12,8 +12,9 @@ Changes:
 - Increase the maximum component cap to 8192 (but not recommended to use that amount of components).
 
 Create: Logistics Control
-- Fixed recipes which only consist of fluid ingredients cannot carry filter label
-- Added filter label to packages created by Create: Mobile Package and Create: Phantom's portable stock ticker
+- Fluid product could carry filter label now.
+- Fixed recipes which only consist of fluid ingredients cannot carry filter label.
+- Added filter label to packages created by Create: Mobile Package and Create: Phantom's portable stock ticker.
 
 Create: Higher Logistics Patch
 - Fixed Create bug #10054
