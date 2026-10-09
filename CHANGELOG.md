@@ -3,13 +3,15 @@
 Features:
 - Introduced redstone input/output functionalities for Arithmetic Tube.
 - Added "Factory Controller Terminal", which can link up to 3 controllers and update controller settings remotely.
+- Components support loop connection (self-connect) now.
+- Number connection value update would play flash animation now.
+- Allow Shift-Scroll to change connection type in connection mode.
 
 Changes:
 - Cut Amethyst is using stonecutter recipe now.
-- Components support loop connection (self-connect) now.
-- Number connection value update would play flash animation now.
+- Change connection button layout of arithmetic tube GUI.
 - Downgrade neoforge version requirement to 227.
-- Increase the maximum component cap to 8192 (but not recommended to use that amount of components).
+- Increase the maximum component cap to 8192 (but not recommended to use >1024 components).
 
 Create: Logistics Control
 - Fluid product could carry filter label now.

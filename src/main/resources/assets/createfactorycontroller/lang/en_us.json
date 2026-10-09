@@ -21,6 +21,10 @@
   "createfactorycontroller.connection.mode_prompt": "Click a component to connect...",
   "createfactorycontroller.connection.already_connected": "Components are already connected",
   "createfactorycontroller.connection.cannot_connect": "%1$s cannot connect to %2$s",
+  "createfactorycontroller.connection.unable_to_connect": "Unable to connect to %s",
+  "createfactorycontroller.connection.unable_to_have_more": "Unable to create %s",
+  "createfactorycontroller.connection.click_to_connect": "Click to create %s",
+  "createfactorycontroller.connection.cycle_type_hint": "Shift-Scroll to cycle %s",
 
   "createfactorycontroller.display_source.factory_controller_pending_orders": "Pending Orders",
 

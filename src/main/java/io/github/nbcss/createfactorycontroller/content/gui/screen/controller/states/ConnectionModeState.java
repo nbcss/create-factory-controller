@@ -5,6 +5,9 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionResolver;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -90,17 +93,12 @@ public final class ConnectionModeState {
         VirtualComponentBehaviour source = components.componentAt(initiator);
         if (source == null) return false;
 
-        List<Connection.Type> possible;
-        Connection.Type defaultType;
-        if (hoveredPosition.equals(initiator)) {   // loop type picker
-            possible = ConnectionResolver.loopTypes(source);
-            defaultType = ConnectionResolver.resolveLoop(source).type();
-        } else {
-            VirtualComponentBehaviour hovered = components.componentAt(hoveredPosition);
-            if (hovered == null) return false;
-            possible = ConnectionResolver.possibleTypes(hovered, source, source);
-            defaultType = ConnectionResolver.resolve(hovered, source, source).type();
-        }
+        boolean loop = hoveredPosition.equals(initiator);
+        VirtualComponentBehaviour target = loop ? source : components.componentAt(hoveredPosition);
+        if (target == null) return false;
+        TypeChoice choice = typeChoice(source, target, loop);
+        List<Connection.Type> possible = choice.possible();
+        Connection.Type defaultType = choice.defaultType();
         boolean hasChoice = possible.size() >= 2 || (possible.size() == 1 && !possible.contains(defaultType));
         if (!hasChoice) return false;
 
@@ -111,6 +109,53 @@ public final class ConnectionModeState {
                 : Math.floorMod(index + direction, possible.size());
         desiredType = possible.get(index);
         return true;
+    }
+
+    /** Status lines describing what clicking the hovered cell would do. */
+    public List<Component> hoverPrompt(ComponentHolder components, @Nullable VirtualComponentPosition hoveredPosition) {
+        if (!isActive()) return List.of();
+        updateHovered(hoveredPosition);
+        if (hoveredPosition == null) return List.of();
+        VirtualComponentBehaviour source = components.componentAt(initiator);
+        if (source == null) return List.of();
+
+        boolean loop = hoveredPosition.equals(initiator);
+        VirtualComponentBehaviour target = loop ? source : components.componentAt(hoveredPosition);
+        if (target == null) return List.of();
+
+        TypeChoice choice = typeChoice(source, target, loop);
+        if (choice.possible().isEmpty()) {
+            if (loop) return List.of();
+            return List.of(Component.translatable("createfactorycontroller.connection.unable_to_connect",
+                            target.getName().copy().withColor(target.getColor()))
+                    .withStyle(ChatFormatting.RED));
+        }
+
+        Connection.Type current = desiredType != null ? desiredType : choice.defaultType();
+        assert current != null;
+        ConnectionResolver.Result result = loop
+                ? ConnectionResolver.resolveLoopAs(source, current)
+                : ConnectionResolver.resolveAs(target, source, source, current);
+        Component status = Component.translatable(result.ok()
+                        ? "createfactorycontroller.connection.click_to_connect"
+                        : "createfactorycontroller.connection.unable_to_have_more",
+                        current.displayName())
+                .withStyle(result.ok() ? ChatFormatting.WHITE : ChatFormatting.RED);
+        if (choice.possible().size() < 2) return List.of(status);
+
+        MutableComponent squares = Component.empty();
+        for (Connection.Type type : choice.possible())
+            squares.append(Component.literal(type.equals(current) ? "■" : "□").withColor(type.color()));
+        return List.of(status, Component.translatable("createfactorycontroller.connection.cycle_type_hint",
+                squares.withStyle(ChatFormatting.GRAY)));
+    }
+
+    private static TypeChoice typeChoice(VirtualComponentBehaviour source, VirtualComponentBehaviour target,
+                                         boolean loop) {
+        return loop
+                ? new TypeChoice(ConnectionResolver.loopTypes(source), ConnectionResolver.resolveLoop(source).type())
+                : new TypeChoice(ConnectionResolver.possibleTypes(target, source, source),
+                                 ConnectionResolver.resolve(target, source, source).type());
     }
 
     /** Cycles the current preview path, using four bends for a regular wire or four quadrants for a loop. */
@@ -192,4 +237,6 @@ public final class ConnectionModeState {
     public record Completion(CompletionStatus status,
                              @Nullable ConnectionResolver.Result result,
                              int bendMode) {}
+
+    private record TypeChoice(List<Connection.Type> possible, @Nullable Connection.Type defaultType) {}
 }

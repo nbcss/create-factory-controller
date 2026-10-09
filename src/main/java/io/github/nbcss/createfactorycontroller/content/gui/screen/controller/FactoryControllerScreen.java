@@ -210,8 +210,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private final ConnectionModeState connectionMode = new ConnectionModeState();
     @Nullable private VirtualComponentPosition pendingRelocateTarget = null;
     @Nullable private BlueprintPlacement pendingPlacement = null;
-    /** Long-lived mode prompt (connect / relocate). */
-    @Nullable private Component persistentActionPrompt = null;
+    /** Long-lived mode prompt (connect / relocate / placement), one entry per line; empty = none. */
+    private List<Component> persistentActionPrompt = List.of();
     /** Most recent transient result/chime. */
     @Nullable private Component temporaryActionPrompt = null;
     /** Wall-clock expiry of {@link #temporaryActionPrompt}; it fades during its final second. */
@@ -393,7 +393,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         connectionMode.clear();
         pendingRelocateTarget = null;
         abortBlueprintPlacement();
-        persistentActionPrompt = null;
+        clearPersistentPrompt();
         hoveredConn = null;
         selectedConnection = null;
         connArrowLocked = false;
@@ -574,8 +574,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         RenderSystem.disableDepthTest();
         if (playerInventory != null) playerInventory.render(graphics, mouseX, mouseY, partialTick);
 
-        Component persistentPrompt = selectionStatusPrompt(mouseX, mouseY);
-        if (persistentPrompt == null) persistentPrompt = persistentActionPrompt;
+        List<Component> persistentLines = persistentPromptLines(mouseX, mouseY);
 
         Component temporaryPrompt = temporaryActionPrompt;
         int temporaryAlpha = 255;
@@ -589,7 +588,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         }
 
-        if (persistentPrompt != null || (temporaryPrompt != null && temporaryAlpha > 4)) {
+        if (!persistentLines.isEmpty() || (temporaryPrompt != null && temporaryAlpha > 4)) {
             int invTop;
             invTop = playerInventory != null ? playerInventory.getY() : height;
             // 8-direction outline (like the gauge count labels) so the prompt reads over any canvas content;
@@ -598,12 +597,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             graphics.pose().translate(0, 0, 200);
             Matrix4f matrix = graphics.pose().last().pose();
             int baseY = invTop - 14;
-            if (persistentPrompt != null)
-                drawActionPrompt(graphics, matrix, persistentPrompt, baseY, 255);
-            if (temporaryPrompt != null && temporaryAlpha > 4) {
-                int temporaryY = persistentPrompt == null ? baseY : baseY - font.lineHeight - 2;
-                drawActionPrompt(graphics, matrix, temporaryPrompt, temporaryY, temporaryAlpha);
-            }
+            int step = font.lineHeight + 2;
+            int lineCount = persistentLines.size();
+            for (int i = 0; i < lineCount; i++)
+                drawActionPrompt(graphics, matrix, persistentLines.get(i), baseY - (lineCount - 1 - i) * step, 255);
+            if (temporaryPrompt != null && temporaryAlpha > 4)
+                drawActionPrompt(graphics, matrix, temporaryPrompt, baseY - lineCount * step, temporaryAlpha);
             graphics.flush();
             graphics.pose().popPose();
         }
@@ -1228,6 +1227,14 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         }
     }
 
+    /** Selection count beats live connection-hover feedback, which beats the stored mode prompt. */
+    private List<Component> persistentPromptLines(double mouseX, double mouseY) {
+        Component selection = selectionStatusPrompt(mouseX, mouseY);
+        if (selection != null) return List.of(selection);
+        List<Component> hover = connectionMode.hoverPrompt(menu, hoveredPosition);
+        return hover.isEmpty() ? persistentActionPrompt : hover;
+    }
+
     @Nullable
     private Component selectionStatusPrompt(double mouseX, double mouseY) {
         int count = effectiveSelectedCount(mouseX, mouseY);
@@ -1319,7 +1326,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     public void abortBlueprintPlacement() {
         if (pendingPlacement == null) return;
         pendingPlacement = null;
-        persistentActionPrompt = null;
+        clearPersistentPrompt();
     }
 
     private void cancelBlueprintPlacement() {
@@ -1343,8 +1350,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** A prompt that stays until the mode ends (no fade). */
-    private void setPersistentPrompt(Component prompt) {
-        persistentActionPrompt = prompt;
+    private void setPersistentPrompt(Component... lines) {
+        persistentActionPrompt = List.of(lines);
+    }
+
+    private void clearPersistentPrompt() {
+        persistentActionPrompt = List.of();
     }
 
     /** Replaces the transient channel with a prompt that fades out after {@code durationMs}. */
@@ -1406,7 +1417,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                                     @Nullable VirtualComponentWidget clickedWidget) {
         ConnectionModeState.Completion completion = connectionMode.finish(
                 menu, clickedPos, clickedWidget == null ? null : clickedWidget.behaviour());
-        persistentActionPrompt = null;
+        clearPersistentPrompt();
         if (completion.status() == ConnectionModeState.CompletionStatus.ABORTED) {
             setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
                     .style(ChatFormatting.WHITE).component(), 3000);
@@ -1439,7 +1450,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void completeRelocate(VirtualComponentPosition clicked, @Nullable VirtualComponentWidget widget) {
         VirtualComponentPosition from = pendingRelocateTarget;
         pendingRelocateTarget = null;
-        persistentActionPrompt = null;
+        clearPersistentPrompt();
         VirtualComponentBehaviour moving = componentAt(from);
         Component name = moving == null ? Component.empty() : moving.getName();
         if (widget == null && !FactoryControllerBlockEntity.isOutBoard(clicked)) {
@@ -1949,7 +1960,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (connectionMode.isActive() && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             connectionMode.clear();
-            persistentActionPrompt = null;
+            clearPersistentPrompt();
             setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
                     .style(ChatFormatting.WHITE).component(), 3000);
             return true;
