@@ -122,6 +122,11 @@ jobs:
         env:
           MAVEN_REPO_PATH: ${{ github.workspace }}/maven-repository
 
+      - name: Cleanup snapshots
+        uses: nbcss/maven/.github/actions/cleanup-snapshots
+        with:
+          path: maven-repository
+
       - name: Push to Maven repository
         uses: nbcss/maven/.github/actions/push-maven-repo@main
         with:
