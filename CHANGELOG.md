@@ -18,6 +18,9 @@ Changes:
 - Added blueprint description to blueprint entry tooltip.
 - Press ESC during connection/move mode in controller screen would exit the mode instead of close controller.
 
+Bugfixes:
+- Fixed connection rendering may rarely render incorrect seam.
+
 Create: Logistics Control
 - Fluid product could carry filter label now.
 - Fixed recipes which only consist of fluid ingredients cannot carry filter label.

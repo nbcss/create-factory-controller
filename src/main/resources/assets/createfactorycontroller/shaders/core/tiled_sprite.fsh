@@ -13,9 +13,10 @@ flat in vec2 spriteBottomRight;
 out vec4 fragColor;
 
 void main() {
-    vec2 texCoord0 = mod(targetCoord, spriteBottomRight - spriteTopLeft) + spriteTopLeft;
+    vec2 spriteSize = spriteBottomRight - spriteTopLeft;
+    vec2 texel = clamp(floor(mod(targetCoord, spriteSize)), vec2(0.0), spriteSize - 1.0) + spriteTopLeft;
 
-    vec4 color = texture(Sampler0, texCoord0 / textureSize(Sampler0, 0));
+    vec4 color = texture(Sampler0, (texel + 0.5) / vec2(textureSize(Sampler0, 0)));
     if (color.a == 0.0) {
         discard;
     }
