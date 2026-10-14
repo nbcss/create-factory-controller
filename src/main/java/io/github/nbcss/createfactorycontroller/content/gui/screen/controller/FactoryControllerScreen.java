@@ -73,7 +73,9 @@ import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorag
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.ComponentPath;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -1933,6 +1935,12 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         var model = new net.minecraft.client.renderer.Rect2i(leftPos - 74, topPos + imageHeight - 80, 74, 80);
         if (tabStrip == null || !tabStrip.visible) return List.of(model);
         return List.of(model, tabStrip.area());
+    }
+
+    @Override
+    @Nullable
+    public ComponentPath nextFocusPath(FocusNavigationEvent event) {
+        return null;
     }
 
     @Override
