@@ -673,6 +673,11 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
                                     Component.literal(info.width() + "x" + info.height())
                                             .withStyle(ChatFormatting.WHITE))
                             .withStyle(ChatFormatting.GRAY))
+                    .when(!info.note().isEmpty())
+                    .wrapped(Component.translatable("createfactorycontroller.gui.blueprint.description")
+                            .withStyle(ChatFormatting.GRAY).append(
+                                    Component.literal("\n" + info.note()).withStyle(ChatFormatting.DARK_GRAY)
+                    ), 150)
                     .build(), mouseX, mouseY);
             return true;
         }

@@ -219,6 +219,7 @@
   "createfactorycontroller.gui.blueprint.edit": "Edit",
   "createfactorycontroller.gui.blueprint.empty_library": "No saved blueprints",
   "createfactorycontroller.gui.blueprint.dimension": "Dimension: %1$s",
+  "createfactorycontroller.gui.blueprint.description": "Description:",
   "createfactorycontroller.gui.blueprint.saved": "Saved: %1$s",
   "createfactorycontroller.gui.blueprint.overwrite_existing": "Overwriting existing file",
   "createfactorycontroller.gui.blueprint.save_failed": "Save failed: %1$s",

@@ -46,8 +46,7 @@
 - [DONE] Increase component cap limit
 - [DONE] Connection type selection tooltip
 - [DONE] Cancel connection/move mode approach or keybinding
-- [TODO] Behaviour tooltips for add connection button
-- [TODO] Improve BP System: Blueprint tooltip includes more info
+- [DONE] Improve BP System: Blueprint tooltip includes more info
 - [TODO] Different controller component tooltip styles
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier

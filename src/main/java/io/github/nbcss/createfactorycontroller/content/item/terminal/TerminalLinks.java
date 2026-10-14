@@ -17,7 +17,7 @@ import java.util.List;
  */
 public record TerminalLinks(List<RemoteControllerLink> links, int activeIndex) {
 
-    public static final int MAX_LINKS = 3;
+    public static final int MAX_LINKS = 4;
 
     public static final TerminalLinks EMPTY = new TerminalLinks(List.of(), 0);
 

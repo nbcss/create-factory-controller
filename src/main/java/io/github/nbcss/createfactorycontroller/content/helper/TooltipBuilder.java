@@ -16,6 +16,7 @@ public final class TooltipBuilder {
     public static final int SELECTOR_DESCRIPTION_COLOR = 0x777777;
     private final Font font;
     private final List<FormattedCharSequence> tooltip;
+    private boolean condition = true;
 
     private TooltipBuilder(Font font) {
         this.font = font;
@@ -26,11 +27,17 @@ public final class TooltipBuilder {
         return new TooltipBuilder(font);
     }
 
+    public TooltipBuilder when(boolean condition) {
+        this.condition = condition;
+        return this;
+    }
+
     public TooltipBuilder wrapped(@Nullable Component component) {
         return wrapped(component, Integer.MAX_VALUE);
     }
 
     public TooltipBuilder wrapped(@Nullable Component component, int maxWidth) {
+        if (!condition) {condition = true; return this; }
         if (component == null) return this;
         List<FormattedCharSequence> lines = font.split(component, maxWidth);
         if (lines.isEmpty()) tooltip.add(FormattedCharSequence.EMPTY);
@@ -39,22 +46,26 @@ public final class TooltipBuilder {
     }
 
     public TooltipBuilder selector(Component component, boolean selected) {
+        if (!condition) {condition = true; return this; }
         tooltip.add(Component.literal(selected ? "-> " : "> ").append(component)
                 .withStyle(selected ? ChatFormatting.WHITE : ChatFormatting.GRAY).getVisualOrderText());
         return this;
     }
 
     public TooltipBuilder line(@Nullable Component component) {
+        if (!condition) {condition = true; return this; }
         if (component != null) tooltip.add(component.getVisualOrderText());
         return this;
     }
 
     public TooltipBuilder lines(Iterable<? extends Component> components) {
+        if (!condition) {condition = true; return this; }
         for (Component component : components) line(component);
         return this;
     }
 
     public TooltipBuilder empty() {
+        if (!condition) {condition = true; return this; }
         tooltip.add(FormattedCharSequence.EMPTY);
         return this;
     }
