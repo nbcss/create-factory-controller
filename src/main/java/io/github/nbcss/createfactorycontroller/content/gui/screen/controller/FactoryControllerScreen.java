@@ -882,6 +882,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .withStyle(ChatFormatting.GRAY);
         graphics.drawCenteredString(font, title, cx, cy - font.lineHeight - 1, 0xFFFFFF);
         graphics.drawCenteredString(font, sub, cx, cy + 2, 0xFFFFFF);
+        if (hasLinks)
+            graphics.drawCenteredString(font, Component.translatable("createfactorycontroller.terminal.no_signal.unlink_hint")
+                    .withStyle(ChatFormatting.DARK_GRAY), cx, cy + 2 + font.lineHeight + 3, 0xFFFFFF);
     }
 
     /**
@@ -1963,6 +1966,21 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             clearPersistentPrompt();
             setTimedPrompt(CreateLang.translate("factory_panel.connection_aborted")
                     .style(ChatFormatting.WHITE).component(), 3000);
+            return true;
+        }
+
+        if (pendingRelocateTarget != null && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            VirtualComponentBehaviour moving = componentAt(pendingRelocateTarget);
+            Component name = moving == null ? Component.empty() : moving.getName();
+            pendingRelocateTarget = null;
+            clearPersistentPrompt();
+            setTimedPrompt(Component.translatable("createfactorycontroller.gui.relocation_aborted", name)
+                    .withStyle(ChatFormatting.WHITE), 3000);
+            return true;
+        }
+
+        if (batchMove.isActive() && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            batchMove.cancel();
             return true;
         }
 

@@ -44,10 +44,10 @@
 - [DONE] Flash animation for number connection when update
 - [DONE] Factory Controller Terminal item
 - [DONE] Increase component cap limit
-- [DOING] Behaviour tooltips for add connection button
-- [DOING] Connection type selection tooltip
+- [DONE] Connection type selection tooltip
+- [DONE] Cancel connection/move mode approach or keybinding
+- [TODO] Behaviour tooltips for add connection button
 - [TODO] Improve BP System: Blueprint tooltip includes more info
-- [TODO] Cancel connection/move mode approach or keybinding
 - [TODO] Different controller component tooltip styles
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier

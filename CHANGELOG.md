@@ -6,12 +6,15 @@ Features:
 - Components support loop connection (self-connect) now.
 - Number connection value update would play flash animation now.
 - Allow Shift-Scroll to change connection type in connection mode.
+- Added help button for Arithmetic Tube Screen.
+- Added transparent controller background.
 
 Changes:
 - Cut Amethyst is using stonecutter recipe now.
 - Change connection button layout of arithmetic tube GUI.
 - Downgrade neoforge version requirement to 227.
 - Increase the maximum component cap to 8192 (but not recommended to use >1024 components).
+- Press ESC during connection/move mode in controller screen would exit the mode instead of close controller.
 
 Create: Logistics Control
 - Fluid product could carry filter label now.

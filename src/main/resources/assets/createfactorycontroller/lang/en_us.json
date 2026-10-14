@@ -305,6 +305,7 @@
   "createfactorycontroller.terminal.no_signal": "No signal",
   "createfactorycontroller.terminal.no_signal.link_first": "Link to a Factory Controller first",
   "createfactorycontroller.terminal.no_signal.destroyed": "Controller is destroyed or unloaded",
+  "createfactorycontroller.terminal.no_signal.unlink_hint": "Shift-Click controller tab to unlink",
   "createfactorycontroller.terminal.unable_to_access": "Unable to access the controller",
   "createfactorycontroller.terminal.unable_to_transfer": "Items cannot be transferred through the terminal",
   "itemGroup.createfactorycontroller.factory_controller": "Create: Factory Controller",
