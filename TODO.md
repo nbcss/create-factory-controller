@@ -53,6 +53,7 @@
 - [TODO] Blueprint file in folder
 - [TODO] Pattern item could take stock keeper category filter
 - [TODO] Rework blueprint import system
+- [TODO] Custom controller tab icon in terminal
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190

@@ -7,6 +7,7 @@ Features:
 - Number connection value update would play flash animation now.
 - Allow Shift-Scroll to change connection type in connection mode.
 - Added help button for Arithmetic Tube Screen.
+- Added client config to adjust controller screen horizontal margin.
 - Added transparent controller background.
 
 Changes:

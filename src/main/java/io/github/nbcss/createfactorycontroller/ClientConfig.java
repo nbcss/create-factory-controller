@@ -20,6 +20,7 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue RENDER_CONNECTED_COMPONENT_OUTLINES;
     public static final ModConfigSpec.BooleanValue ENABLE_SMOOTH_ANIMATION;
     public static final ModConfigSpec.IntValue CONNECTION_TOOLTIP_DELAY;
+    public static final ModConfigSpec.IntValue CONTROLLER_SCREEN_SIDE_MARGIN;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -75,6 +76,10 @@ public final class ClientConfig {
                 .comment("Delay in milliseconds before a hovered connection's tooltip appears.")
                 .translation("createfactorycontroller.config.connection_tooltip_delay")
                 .defineInRange("connectionTooltipDelay", 250, 0, 1000);
+        CONTROLLER_SCREEN_SIDE_MARGIN = builder
+                .comment("Horizontal margin (in pixels) kept on each side of the Controller screen.")
+                .translation("createfactorycontroller.config.controller_screen_side_margin")
+                .defineInRange("controllerScreenSideMargin", 160, 40, 200);
         SPEC = builder.build();
     }
 
@@ -122,6 +127,10 @@ public final class ClientConfig {
 
     public static int connectionTooltipDelay() {
         return CONNECTION_TOOLTIP_DELAY.get();
+    }
+
+    public static int controllerScreenSideMargin() {
+        return CONTROLLER_SCREEN_SIDE_MARGIN.get();
     }
 
     public static String getControllerBackground() {

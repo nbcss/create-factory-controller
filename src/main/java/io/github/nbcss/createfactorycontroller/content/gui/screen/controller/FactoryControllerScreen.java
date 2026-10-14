@@ -100,7 +100,6 @@ import java.util.*;
 @IPNIgnore
 public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
     // Responsive sizing — all in GUI-scaled pixels.
-    private static final int SIDE_MARGIN = 160;
     private static final int VERTICAL_MARGIN = 10;
     private static final int MIN_IMAGE_W = 215;
     private static final int MIN_IMAGE_H = 200;
@@ -263,7 +262,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         int scaledW = window.getGuiScaledWidth();
         int scaledH = window.getGuiScaledHeight();
 
-        int imageW = Math.max(MIN_IMAGE_W, scaledW - 2 * SIDE_MARGIN);
+        int imageW = Math.max(MIN_IMAGE_W, scaledW - 2 * ClientConfig.controllerScreenSideMargin());
         int imageH = Math.max(MIN_IMAGE_H, scaledH - 2 * VERTICAL_MARGIN);
 
         setWindowSize(imageW, imageH);

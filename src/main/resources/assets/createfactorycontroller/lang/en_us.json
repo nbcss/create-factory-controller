@@ -276,6 +276,8 @@
   "createfactorycontroller.config.enable_smooth_animation.tooltip": "Show smooth transition animations (such as selected target components) in the Controller GUI.",
   "createfactorycontroller.config.connection_tooltip_delay": "Connection tooltip delay",
   "createfactorycontroller.config.connection_tooltip_delay.tooltip": "Delay in milliseconds before a hovered connection's tooltip appears.",
+  "createfactorycontroller.config.controller_screen_side_margin": "Controller screen side margin",
+  "createfactorycontroller.config.controller_screen_side_margin.tooltip": "Horizontal margin (in pixels) kept on each side of the Controller screen.",
   "createfactorycontroller.config.preserve_controller_data": "Preserve controller data in item",
   "createfactorycontroller.config.preserve_controller_data.tooltip": "Keep a Factory Controller's board setup on the dropped item when broken, and restore it when re-placed. When off, the controller drops empty and its gauges drop as separate items.",
   "createfactorycontroller.config.passive_total_demand": "[Experimental] Full Passive Demand Strategy",
