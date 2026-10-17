@@ -610,12 +610,11 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addWidget(addConnectionButton);
         addWidget(addConstantButton);
 
+        helpButton = new HelpButton(0, 0, HelpButton.ColorPalette.ARITHMETIC, "arithmetic-tube.html");
+        addWidget(helpButton);
+
         recomputeLayout();
         scrollView.reset();
-
-        helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
-                HelpButton.ColorPalette.ARITHMETIC, "arithmetic-tube.html");
-        addWidget(helpButton);
     }
 
     private int rowsHeight(int n) { return n <= 0 ? 0 : n * INPUT_H + (n - 1) * INPUT_ROW_GAP; }
@@ -640,6 +639,8 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         closeButton.setY(panelY + panelH - 24);
         relocateButton.setX(panelX + 7);
         relocateButton.setY(panelY + panelH - 24);
+        helpButton.setX(panelX + PANEL_W - HelpButton.WIDTH - 5);
+        helpButton.setY(panelY + 3);
         swapButton.visible = t != null && t.getOperator().arity() == ArithmeticOperator.Arity.BINARY;
         swapButton.setX(panelX + PANEL_W - BOTTOM_CLOSE_GROUP_W + 1 - 5 - ROW_BTN);
         swapButton.setY(panelY + panelH - 24);
