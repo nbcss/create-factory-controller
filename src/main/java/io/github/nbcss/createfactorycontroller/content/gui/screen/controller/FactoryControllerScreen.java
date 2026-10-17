@@ -52,6 +52,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.CycleConnectionArr
 import io.github.nbcss.createfactorycontroller.content.packet.CycleOperationModePacket;
 import net.minecraft.core.registries.BuiltInRegistries;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
+import io.github.nbcss.createfactorycontroller.content.render.CustomComponentTooltip;
 import io.github.nbcss.createfactorycontroller.content.render.VirtualConnectionRenderer;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.createmod.catnip.gui.element.GuiGameElement;
@@ -526,9 +527,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (hoveredConn != null) {
                 // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
                 if (Util.getMillis() >= connTooltipShowAtMs)
-                    graphics.renderTooltip(font, connectionTooltipLines(), mouseX, mouseY);
+                    CustomComponentTooltip.render(graphics, font, connectionTooltipLines(), hoveredConn.connection.type.color(),
+                            mouseX, mouseY);
             } else if (hovered != null)
-                graphics.renderTooltip(font, hovered.getTooltip(menu, selected.contains(hoveredPosition)), mouseX, mouseY);
+                CustomComponentTooltip.render(graphics, font, hovered.getTooltip(menu, selected.contains(hoveredPosition)),
+                        hovered.behaviour().getColor(), mouseX, mouseY);
             else if (menu.hasSignal() && networkSelector.isMouseOver(mouseX, mouseY))
                 graphics.renderTooltip(font, networkSelector.getTooltipLines(), mouseX, mouseY);
             else if (menu.hasSignal() && indicatorColumn.isMouseOver(mouseX, mouseY))

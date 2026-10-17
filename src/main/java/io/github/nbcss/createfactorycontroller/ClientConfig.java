@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller;
 
+import io.github.nbcss.createfactorycontroller.content.ComponentTooltipStyle;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -20,6 +21,8 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue RENDER_CONNECTED_COMPONENT_OUTLINES;
     public static final ModConfigSpec.BooleanValue ENABLE_SMOOTH_ANIMATION;
     public static final ModConfigSpec.IntValue CONNECTION_TOOLTIP_DELAY;
+    public static final ModConfigSpec.EnumValue<ComponentTooltipStyle> COMPONENT_TOOLTIP_STYLE;
+    public static final ModConfigSpec.IntValue ENHANCED_TOOLTIP_BACKGROUND_OPACITY;
     public static final ModConfigSpec.IntValue CONTROLLER_SCREEN_SIDE_MARGIN;
 
     static {
@@ -76,6 +79,14 @@ public final class ClientConfig {
                 .comment("Delay in milliseconds before a hovered connection's tooltip appears.")
                 .translation("createfactorycontroller.config.connection_tooltip_delay")
                 .defineInRange("connectionTooltipDelay", 250, 0, 1000);
+        COMPONENT_TOOLTIP_STYLE = builder
+                .comment("Style of component and connection tooltips in the Controller GUI.")
+                .translation("createfactorycontroller.config.component_tooltip_style")
+                .defineEnum("componentTooltipStyle", ComponentTooltipStyle.ENHANCED);
+        ENHANCED_TOOLTIP_BACKGROUND_OPACITY = builder
+                .comment("Background opacity of Enhanced-style component and connection tooltips.")
+                .translation("createfactorycontroller.config.enhanced_tooltip_background_opacity")
+                .defineInRange("enhancedTooltipBackgroundOpacity", 191, 0, 255);   // 75%
         CONTROLLER_SCREEN_SIDE_MARGIN = builder
                 .comment("Horizontal margin (in pixels) kept on each side of the Controller screen.")
                 .translation("createfactorycontroller.config.controller_screen_side_margin")
@@ -127,6 +138,14 @@ public final class ClientConfig {
 
     public static int connectionTooltipDelay() {
         return CONNECTION_TOOLTIP_DELAY.get();
+    }
+
+    public static ComponentTooltipStyle componentTooltipStyle() {
+        return COMPONENT_TOOLTIP_STYLE.get();
+    }
+
+    public static int enhancedTooltipBackgroundOpacity() {
+        return ENHANCED_TOOLTIP_BACKGROUND_OPACITY.get();
     }
 
     public static int controllerScreenSideMargin() {

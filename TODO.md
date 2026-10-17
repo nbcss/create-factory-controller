@@ -47,7 +47,7 @@
 - [DONE] Connection type selection tooltip
 - [DONE] Cancel connection/move mode approach or keybinding
 - [DONE] Improve BP System: Blueprint tooltip includes more info
-- [TODO] Different controller component tooltip styles
+- [DONE] Different controller component tooltip styles
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier
 - [TODO] Blueprint file in folder

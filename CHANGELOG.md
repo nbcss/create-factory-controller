@@ -9,6 +9,7 @@ Features:
 - Added help button for Arithmetic Tube Screen.
 - Added client config to adjust controller screen horizontal margin.
 - Added transparent controller background.
+- Added Enhanced controller component tooltip style (configurable).
 
 Changes:
 - Cut Amethyst is using stonecutter recipe now.
