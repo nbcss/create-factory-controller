@@ -89,11 +89,11 @@ When components are selected, drag on any of them to move all selected component
 [#connections]
 == Creating and Modifying Connections
 
-Components may be connected to one another. Refer to a specific component's documentation for the functionality provided by connections.
+Components may be connected to one another, or to itself. Refer to a specific component's documentation for the functionality provided by connections.
 
-To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] "add connection" button, and then click A. Alternatively, press the C key while hovering B, then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen.
+To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] "add connection" button, and then click A. Alternatively, press the C key while hovering B, then click A. Some pairs of components may be connected by multiple types of connections, which can be selected by holding shift and scrolling. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen.
 
-A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them.
+Connections can be removed by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them.
 
 .Selecting overlapping connections
 image::dashboard-select-overlapping-connections.png[ ,357,400]
