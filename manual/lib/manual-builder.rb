@@ -142,7 +142,7 @@ class ManualBuilder
       @page_toc = Util.html_strip @page_toc, strip_class: true
 
       @authors = Util.git_file_authors(source_path_tmpl.(name: name, lang: languages.default))
-      @translators = Util.git_file_authors(po_path_tmpl.(name: name, lang: lang)) - @authors unless languages.default?(lang)
+      @translators = Util.git_file_authors(po_path_tmpl.(name: name, lang: lang)) - @authors - %w(Weblate) unless languages.default?(lang)
 
       super
     end
