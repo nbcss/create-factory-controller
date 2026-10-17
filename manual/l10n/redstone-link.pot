@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"POT-Creation-Date: 2026-10-18 00:07+1100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,6 +20,12 @@ msgstr ""
 #: ../src/electron-tube.adoc:31 ../src/redstone-link.adoc:38
 #, no-wrap
 msgid "Configuration"
+msgstr ""
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:24 ../src/redstone-link.adoc:22
+#, no-wrap
+msgid "Operating Principle"
 msgstr ""
 
 #. type: Title =
@@ -90,12 +96,6 @@ msgstr ""
 #: ../src/redstone-link.adoc:19
 #, no-wrap
 msgid "image:redstone-link-receive-powered.png[,64,64]"
-msgstr ""
-
-#. type: Title ==
-#: ../src/redstone-link.adoc:22
-#, no-wrap
-msgid "Operating Principle"
 msgstr ""
 
 #. type: #principle
@@ -189,6 +189,43 @@ msgid ""
 msgstr ""
 
 #. type: #configuration
-#: ../src/redstone-link.adoc:58
+#: ../src/redstone-link.adoc:59
 msgid "❻ Confirm button:: Click to confirm settings and close the screen."
+msgstr ""
+
+#. type: Title ==
+#: ../src/redstone-link.adoc:61
+#, no-wrap
+msgid "Signal Strength"
+msgstr ""
+
+#. type: #signal-strength
+#: ../src/redstone-link.adoc:64
+msgid ""
+"Inside factory controllers, redstone connections do not carry strength "
+"information of redstone signals. Instead, connect to redstone links via "
+"number connections to send and receive signal strengths, represented as "
+"integers between 0-15."
+msgstr ""
+
+#. type: #signal-strength
+#: ../src/redstone-link.adoc:66
+msgid ""
+"When connected as the sink of number connections, a redstone link clamps the "
+"number between 0-15 and rounds down, before sending the signal strength. The "
+"largest number is selected among multiple inputs, and a powered redstone "
+"connection is considered to have a strength of 15."
+msgstr ""
+
+#. type: #signal-strength
+#: ../src/redstone-link.adoc:68
+msgid ""
+"A client setting can be turned on to display the signal strengths on the "
+"labels of redstone links."
+msgstr ""
+
+#. type: Block title
+#: ../src/redstone-link.adoc:69
+#, no-wrap
+msgid "Sending the xref:arithmetic-tube.adoc[sum] of signal strengths from 2 other redstone links"
 msgstr ""

@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-15 11:43+1000\n"
+"POT-Creation-Date: 2026-10-17 23:56+1100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -269,8 +269,9 @@ msgstr ""
 #. type: #connections
 #: ../src/dashboard.adoc:93
 msgid ""
-"Components may be connected to one another. Refer to a specific component's "
-"documentation for the functionality provided by connections."
+"Components may be connected to one another, or to itself. Refer to a "
+"specific component's documentation for the functionality provided by "
+"connections."
 msgstr ""
 
 #. type: #connections
@@ -279,15 +280,16 @@ msgid ""
 "To connect component A to B, click on B to open its UI, click on the "
 "image:btn-add-connection.png[,18,18] \"add connection\" button, and then "
 "click A. Alternatively, press the C key while hovering B, then click A. Some "
-"components may only act as the source or sink of a connection, in which case "
-"a valid direction is automatically chosen."
+"pairs of components may be connected by multiple types of connections, which "
+"can be selected by holding shift and scrolling. Some components may only act "
+"as the source or sink of a connection, in which case a valid direction is "
+"automatically chosen."
 msgstr ""
 
 #. type: #connections
 #: ../src/dashboard.adoc:97
 msgid ""
-"A component's UI may allow you to remove its connections. They can also be "
-"removed using the dashboard by hovering over them and shift-clicking. When "
+"Connections can be removed by hovering over them and shift-clicking. When "
 "multiple connections overlap, hold shift and scroll while hovering over a "
 "spot with overlapping connections to select one of them."
 msgstr ""

@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-15 11:43+1000\n"
+"POT-Creation-Date: 2026-10-18 00:07+1100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,14 +18,14 @@ msgstr ""
 
 #. type: Table
 #: ../src/components.adoc:17 ../src/components.adoc:22
-#: ../src/components.adoc:27 ../src/factory-gauge.adoc:303
-#: ../src/factory-gauge.adoc:309
+#: ../src/components.adoc:27 ../src/factory-gauge.adoc:316
+#: ../src/factory-gauge.adoc:322
 #, no-wrap
 msgid "Yes"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:20 ../src/factory-gauge.adoc:307
+#: ../src/components.adoc:20 ../src/factory-gauge.adoc:320
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr ""
@@ -171,7 +171,7 @@ msgstr ""
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:56
 msgid ""
-"❼ Request multiplier:: Option to automatically send multiple sets of "
+"❼ Maximum request multiplier:: Option to automatically send multiple sets of "
 "ingredients in one request. See <<request-multiplier>>."
 msgstr ""
 
@@ -192,8 +192,8 @@ msgstr ""
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:65
 msgid ""
-"❿ Target amount:: The storage amount this factory gauge is configured to "
-"reach."
+"❿ Target stock amount:: The storage amount this factory gauge is configured "
+"to reach."
 msgstr ""
 
 #. type: #figure-recipe-settings
@@ -286,8 +286,7 @@ msgid ""
 "items expected (❶). The number of each ingredient may be adjusted by "
 "scrolling on ❷, and can be more than 1 stack, but the total number of all "
 "ingredients is limited to 9 stacks. The number of output items can also be "
-"adjusted by scrolling on ❶, limited to 9 stacks or 64 items, whichever is "
-"more."
+"adjusted by scrolling on ❶, limited to 64 stacks."
 msgstr ""
 
 #. type: Block title
@@ -538,9 +537,8 @@ msgid ""
 "<<term-request,requests>>) when the <<term-storage-amount,storage amount>> "
 "is below the configured target amount. By clicking <<figure-follow-demand>> "
 "❷, you may switch it to image:btn-follow-demand.png[,18,18] \"follow "
-"demand\" mode, which instead activates the gauge when there is downstream "
-"demand, that is, when any of its <<term-consumer-gauge,consumer gauges>> is "
-"active."
+"demand\" mode, which additionally activates the gauge when there is "
+"downstream demand."
 msgstr ""
 
 #. type: Block title
@@ -552,10 +550,12 @@ msgstr ""
 #. type: #figure-follow-demand
 #: ../src/factory-gauge.adoc:179
 msgid ""
-"In this mode, the target amount (❶) cannot be modified manually. It is "
-"automatically set according to downstream [#term-demand]_demand_, that is, "
-"the total quantity of the items produced by this gauge defined in the <<term-"
-"recipe,recipes>> of all currently <<term-active,active>> consumer gauges."
+"The downstream [#term-demand]_demand_ is calculated by observing all of its "
+"currently <<term-active,active>> <<term-consumer-gauge,consumer gauges>>, "
+"and calculating the total quantity of the item produced by this gauge "
+"defined in their <<term-recipe,recipes>>. The gauge activates when the "
+"storage amount is below either the demand or the minimum target stock amount "
+"(❶)."
 msgstr ""
 
 #. type: Block title
@@ -634,8 +634,9 @@ msgstr ""
 msgid ""
 "Normally, the amount of ingredients a factory gauge sends per <<term-"
 "request,request>> is fixed to what was defined in its <<term-recipe,recipe>> "
-"(<<figure-multiplier>> ❷). Configuring the request multiplier (❶) allows "
-"this gauge to automatically pack more ingredients per request as needed."
+"(<<figure-multiplier>> ❷). Configuring the maximum request multiplier (❶) "
+"allows this gauge to automatically pack more ingredients per request as "
+"needed."
 msgstr ""
 
 #. type: Block title
@@ -654,9 +655,9 @@ msgstr ""
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:212
 msgid ""
-"With a request multiplier ×N, the factory gauge automatically chooses to "
-"request up to N sets of ingredients from its recipe at once, this happens "
-"when:"
+"With a maximum request multiplier ×N, the factory gauge automatically "
+"chooses to request up to N sets of ingredients from its recipe at once, this "
+"happens when:"
 msgstr ""
 
 #. type: #figure-multiplier
@@ -676,11 +677,11 @@ msgstr ""
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:217
 msgid ""
-"The value of the request multiplier is limited to ×64, or by the amounts of "
-"ingredients and output after multiplying with the multiplier, whichever is "
-"less. These amounts may not exceed the usual limits applicable to a <<term-"
-"recipe,recipe>>. Hovering on ❶ temporarily displays the amounts after "
-"multiplying on ❷ and ❸."
+"The value of the maximum request multiplier is limited to ×64, or by the "
+"amounts of ingredients and output after multiplying with the multiplier, "
+"whichever is less. These amounts may not exceed the usual limits applicable "
+"to a <<term-recipe,recipe>>. Hovering on ❶ temporarily displays the amounts "
+"after multiplying on ❷ and ❸."
 msgstr ""
 
 #. type: Block title
@@ -692,7 +693,7 @@ msgstr ""
 #. type: Block title
 #: ../src/factory-gauge.adoc:221
 #, no-wrap
-msgid "Examples of the maximum values of a request multiplier"
+msgid "Examples of the maximum values of the maximum request multiplier"
 msgstr ""
 
 #. type: Table
@@ -704,7 +705,7 @@ msgstr ""
 #. type: Table
 #: ../src/factory-gauge.adoc:226
 #, no-wrap
-msgid "Maximum request multiplier"
+msgid "Maximum setting"
 msgstr ""
 
 #. type: Table
@@ -750,7 +751,7 @@ msgstr ""
 #. type: Table
 #: ../src/factory-gauge.adoc:238
 #, no-wrap
-msgid "Output exceeding <<term-batch-size,batch size>> × output items in crafting recipe (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)"
+msgid "<<term-batch-size,Batch size>> exceeding 64 (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)"
 msgstr ""
 
 #. type: Table
@@ -776,18 +777,24 @@ msgstr ""
 #. type: Plain text
 #: ../src/factory-gauge.adoc:245
 msgid ""
-"When the recipe is modified, the maximum allowed request multiplier may "
-"decrease. The request multiplier automatically adjusts in response."
+"When the recipe is modified, the limit of the maximum request multiplier may "
+"decrease. The maximum request multiplier automatically adjusts in response."
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:247
+msgid ""
+"To exclude an ingredient from multiplication, hold ctrl and click on it."
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:247
+#: ../src/factory-gauge.adoc:249
 #, no-wrap
 msgid "Request Interval"
 msgstr ""
 
 #. type: #request-interval
-#: ../src/factory-gauge.adoc:250
+#: ../src/factory-gauge.adoc:252
 msgid ""
 "A factory gauge waits for a fixed amount of time after making a <<term-"
 "request,request>> before it can make the next one. This interval is "
@@ -796,13 +803,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:251
+#: ../src/factory-gauge.adoc:253
 #, no-wrap
 msgid "A factory gauge with a default request interval"
 msgstr ""
 
 #. type: #request-interval
-#: ../src/factory-gauge.adoc:255
+#: ../src/factory-gauge.adoc:257
 msgid ""
 "You may scroll on ❶ to override the request interval of this factory gauge. "
 "It can be set to a value between 1 and 60 seconds. Click to reset the "
@@ -810,13 +817,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:256
+#: ../src/factory-gauge.adoc:258
 #, no-wrap
 msgid "A factory gauge with the request interval overridden to 2 seconds"
 msgstr ""
 
 #. type: #request-interval
-#: ../src/factory-gauge.adoc:260
+#: ../src/factory-gauge.adoc:262
 msgid ""
 "While the request interval server setting is measured in ticks, the per-"
 "gauge override can only be set with the granularity of 1 second. Without an "
@@ -825,13 +832,13 @@ msgid ""
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:262
+#: ../src/factory-gauge.adoc:264
 #, no-wrap
 msgid "Promise Limits"
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:265
+#: ../src/factory-gauge.adoc:267
 msgid ""
 "Each time a factory gauge makes a <<term-request,request>>, a [#term-"
 "promise]_promise_ is created (also referred to as a [#term-pending-"
@@ -844,13 +851,13 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:266
+#: ../src/factory-gauge.adoc:268
 #, no-wrap
 msgid "UI elements related to promises"
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:271
+#: ../src/factory-gauge.adoc:273
 msgid ""
 "❶ Promised items:: Displays the total number of items recorded in promises "
 "created by all gauges in the same network producing the same item. Click to "
@@ -858,7 +865,7 @@ msgid ""
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:275
+#: ../src/factory-gauge.adoc:277
 #, no-wrap
 msgid ""
 "❷ Expire time:: Scroll to set the time interval for a promise to expire after its creation. Can be 1 to 30 minutes. Promises never expire by default.\n"
@@ -866,7 +873,7 @@ msgid ""
 msgstr ""
 
 #. type: #promise
-#: ../src/factory-gauge.adoc:279
+#: ../src/factory-gauge.adoc:281
 #, no-wrap
 msgid ""
 "❸ Pending requests:: Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests.\n"
@@ -874,43 +881,72 @@ msgid ""
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:281
+#: ../src/factory-gauge.adoc:283
+#, no-wrap
+msgid "Control Signals"
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-gauge.adoc:286 ../src/arithmetic-tube.adoc:139
 #, no-wrap
 msgid "Redstone"
 msgstr ""
 
 #. type: #redstone
-#: ../src/factory-gauge.adoc:284
+#: ../src/factory-gauge.adoc:289
 msgid ""
-"A factory gauge can be connected to some other components, such as "
-"xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone "
-"links], via redstone connections. When connected as the source, it outputs a "
-"redstone signal when the <<term-storage-amount,storage amount>> is equal to "
-"or greater than the target amount. When connected as the sink, the factory "
-"gauge is disabled when it is powered by redstone."
+"A factory gauge can be connected to some other components via redstone "
+"connections, such as with xref:electron-tube.adoc[logical tubes] and "
+"xref:redstone-link.adoc[redstone links]. When connected as the source, it "
+"outputs a redstone signal when the <<term-storage-amount,storage amount>> is "
+"equal to or greater than the target amount. When connected as the sink, the "
+"factory gauge is disabled when it is powered by redstone."
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:285
+#: ../src/factory-gauge.adoc:290
 #, no-wrap
 msgid "A factory gauge disabled by an incoming redstone signal, and outputting a redstone signal"
 msgstr ""
 
 #. type: #redstone
-#: ../src/factory-gauge.adoc:289
+#: ../src/factory-gauge.adoc:294
 msgid ""
 "Additionally, when a factory controller block is redstone-powered, all "
 "factory gauges inside are disabled."
 msgstr ""
 
+#. type: Title ===
+#: ../src/factory-gauge.adoc:296
+#, no-wrap
+msgid "Number Connections"
+msgstr ""
+
+#. type: #number-connection
+#: ../src/factory-gauge.adoc:299
+msgid ""
+"A factory gauge can also be connected to other components via number "
+"connections, such as with xref:arithmetic-tube.adoc[arithmetic tubes]. When "
+"connected as the source, it outputs the <<term-storage-amount,storage "
+"amount>>. When connected as the sink, the input number is rounded down, and "
+"sets the target stock amount. Numbers from multiple input connections are "
+"added before rounding."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-gauge.adoc:300
+#, no-wrap
+msgid "Making the target amount of sticks match the storage amount of iron ingots"
+msgstr ""
+
 #. type: Title ==
-#: ../src/factory-gauge.adoc:291
+#: ../src/factory-gauge.adoc:304
 #, no-wrap
 msgid "Fluid Transport"
 msgstr ""
 
 #. type: #fluid
-#: ../src/factory-gauge.adoc:294
+#: ../src/factory-gauge.adoc:307
 msgid ""
 "When you have a compatible fluid transportation mod installed, factory "
 "gauges placed in factory controllers may utilize that mod's ability to "
@@ -918,55 +954,55 @@ msgid ""
 msgstr ""
 
 #. type: Block title
-#: ../src/factory-gauge.adoc:295
+#: ../src/factory-gauge.adoc:308
 #, no-wrap
 msgid "Compatibility of fluid transportation mods"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:298
+#: ../src/factory-gauge.adoc:311
 #, no-wrap
 msgid "Mod"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:300
+#: ../src/factory-gauge.adoc:313
 #, no-wrap
 msgid "Compatibility"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:301
+#: ../src/factory-gauge.adoc:314
 #, no-wrap
 msgid "Create: FluidLogistic"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:304
+#: ../src/factory-gauge.adoc:317
 #, no-wrap
 msgid "Create: Fluid"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:306
+#: ../src/factory-gauge.adoc:319
 #, no-wrap
 msgid "Yes, but may drop support in the future"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:310
+#: ../src/factory-gauge.adoc:323
 #, no-wrap
 msgid "Create Factory Logistics"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:311
+#: ../src/factory-gauge.adoc:324
 #, no-wrap
 msgid "No, will crash the game"
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:314
+#: ../src/factory-gauge.adoc:327
 msgid ""
 "When using Create: Repackaged, place fluid gauges provided by this mod to "
 "monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
@@ -975,7 +1011,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:316
+#: ../src/factory-gauge.adoc:329
 msgid ""
 "When using the other mods, regular factory gauges gain the ability to "
 "monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set "
@@ -984,29 +1020,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:318
+#: ../src/factory-gauge.adoc:331
 msgid ""
 "Fluids do not contain NBT data, therefore when monitoring a fluid, the "
 "option to ignore NBT data disappears."
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:320
+#: ../src/factory-gauge.adoc:333
 msgid ""
 "When using a fluid as an ingredient or output, scrolling on the ingredient "
 "or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust "
 "by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is "
-"limited to 10 B per batch."
+"limited to 64 B per batch."
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:322
+#: ../src/factory-gauge.adoc:335
 #, no-wrap
 msgid "Ignore Item NBT Data"
 msgstr ""
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:325
+#: ../src/factory-gauge.adoc:338
 msgid ""
 "A factory gauge may be configured in the <<figure-set-item,\"set item\" "
 "screen>> to ignore the NBT data of its <<term-monitored-item,monitored "
@@ -1016,7 +1052,7 @@ msgid ""
 msgstr ""
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:327
+#: ../src/factory-gauge.adoc:340
 msgid ""
 "Items with different NBT data do not stack. Therefore, when an <<term-"
 "ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge may "
@@ -1026,7 +1062,7 @@ msgid ""
 msgstr ""
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:328
+#: ../src/factory-gauge.adoc:341
 msgid ""
 "If either <<crafting,mechanical crafting>> or <<arrange-ingredient,custom "
 "arrangement>> is enabled, the behaviour is different. Each item stack "
