@@ -1,12 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.packet;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerTerminalMenu;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
-import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.TerminalStateClient;
 import io.github.nbcss.createfactorycontroller.content.item.terminal.RemoteControllerLink;
 import io.github.nbcss.createfactorycontroller.content.item.terminal.TerminalLinks;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -54,20 +51,6 @@ public record TerminalStatePacket(int containerId, List<RemoteControllerLink> li
 
     // only runs on the client
     public static void handle(TerminalStatePacket packet, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null) return;
-            if (!(mc.player.containerMenu instanceof FactoryControllerTerminalMenu menu)
-                    || menu.containerId != packet.containerId()) return;
-            // The terminal's board screen, whether it or one of its sub-screens (gauge settings etc.) is showing.
-            FactoryControllerScreen board = mc.screen instanceof PanelSyncListener listener ? listener.boardScreen() : null;
-            if (board == null || board.getMenu() != menu) {
-                menu.applyState(packet);
-                return;
-            }
-            board.applyTerminalState(() -> menu.applyState(packet), packet.retarget());
-            // Signal lost: whatever the sub-screen was editing is gone, so return to the board.
-            if (!packet.signal() && mc.screen != board) mc.setScreen(board);
-        });
+        ctx.enqueueWork(() -> TerminalStateClient.apply(packet));
     }
 }
