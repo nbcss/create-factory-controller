@@ -16,8 +16,10 @@ tasks.named('wrapper', Wrapper).configure {
 }
 
 scmVersion {
-    def minecraftVersion = minecraft_version
-    versionCreator { version, position -> "${version}-neoforge-${minecraftVersion}".toString() }
+    def suffix = "neoforge-${minecraft_version}";
+    versionCreator { version, position -> "${version}-${suffix}".toString() }
+    tag.serializer { config, version -> "v${version}-${suffix}".toString() }
+    tag.deserializer { config, position, tagName -> tagName.find(/[\d.]+/) }
 }
 
 version = scmVersion.version
