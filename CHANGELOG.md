@@ -17,6 +17,7 @@ Changes:
 - Increase the maximum component cap to 8192 (but not recommended to use >1024 components).
 - Added blueprint description to blueprint entry tooltip.
 - Press ESC during connection/move mode in controller screen would exit the mode instead of close controller.
+- Connection cannot be hover-selected when in component selection & blueprint placement state now.
 
 Bugfixes:
 - Fixed connection rendering may rarely render incorrect seam.

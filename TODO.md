@@ -54,6 +54,8 @@
 - [TODO] Pattern item could take stock keeper category filter
 - [TODO] Rework blueprint import system
 - [TODO] Custom controller tab icon in terminal
+- [TODO] Sync request optimization
+- [TODO] Fast initial request
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
@@ -95,7 +97,6 @@
 - [TODO] Item monitoring mode in Display Link Mode
 - [TODO] Infinite Request
 - [TODO] Show Active Promise Timer
-- [TODO] Connected controller blocks form a group
 - [TODO] Better Display Link integration (Stream processing?)
 - [TODO] Improve BP System: Layout preview
 - [TBC] No promise request

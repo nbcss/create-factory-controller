@@ -235,7 +235,8 @@
   "createfactorycontroller.gui.blueprint.network_slot": "Network #%1$s",
   "createfactorycontroller.gui.blueprint.network_unassigned": "Unassigned",
   "createfactorycontroller.gui.blueprint.network_scroll_tip": "Scroll to assign a network",
-  "createfactorycontroller.gui.blueprint.placement_prompt": "Left-Click to place | Right-Click to abort",
+  "createfactorycontroller.gui.blueprint.placement_prompt.place": "Left-Click to place",
+  "createfactorycontroller.gui.blueprint.placement_prompt.abort": "Right-Click to abort",
   "createfactorycontroller.gui.blueprint.placement_aborted": "Placement aborted",
 
   "key.categories.createfactorycontroller": "Create: Factory Controller",

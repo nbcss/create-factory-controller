@@ -684,9 +684,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         hoverHits.clear();
         boolean carrying = !menu.getCarried().isEmpty();   // holding an item skips connection hover entirely
         boolean overComponent = componentWidgetAt(hoveredPosition) != null;
-        // No connection hover while dragging a selection rectangle or a batch relocate.
-        if (isInCanvasArea(mouseX, mouseY) && !carrying && dragSelection == null && !batchMove.isActive()
-                && !connectionMode.isActive() && pendingRelocateTarget == null) {
+
+        boolean connectionHoverAllowed = !carrying && dragSelection == null && !batchMove.isActive()
+                && !connectionMode.isActive() && pendingRelocateTarget == null && pendingPlacement == null
+                && selected.isEmpty();
+        if (connectionHoverAllowed && isInCanvasArea(mouseX, mouseY)) {
             for (ConnectionWidget w : connWidgets) {
                 if (overComponent && !hoveredPosition.equals(w.connection.from)
                                   && !hoveredPosition.equals(w.connection.to)) continue;
@@ -694,7 +696,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             }
         }
 
-        hoveredConn = reconcileConnectionSelection(connWidgets);
+        if (connectionHoverAllowed) {
+            hoveredConn = reconcileConnectionSelection(connWidgets);
+        } else {
+            clearConnectionHover();
+        }
         // Flush the ordinary wires first so the selected wire and its highlight are always composited on top
         for (ConnectionWidget widget : connWidgets)
             if (widget != hoveredConn) widget.render(graphics, menu);
@@ -1222,7 +1228,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (preview != null)
                 preview.render(graphics, new VirtualComponentPosition(batchMove.dx(), batchMove.dy()),
                         componentRenderingHelper, occupiedCells());
-            for (VirtualComponentPosition p : movingCells) {                        // reticle on top of each ghost
+            for (VirtualComponentPosition p : movingCells) {
                 VirtualComponentPosition to = batchMove.destinationOf(p);
                 boolean valid = batchMove.destinationValid(to, selected, componentWidgets.keySet());
                 renderTransientTargetAboveGhost(graphics, to, valid ? TARGET_WHITE : TARGET_RED);
@@ -1323,8 +1329,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         pendingRelocateTarget = null;
         pendingPlacement = placement;
         PacketDistributor.sendToServer(new ReturnCarriedPacket());
-        setPersistentPrompt(Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt")
-                .withStyle(ChatFormatting.WHITE));
+        setPersistentPrompt(
+                Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt.place")
+                        .withStyle(ChatFormatting.WHITE),
+                Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt.abort")
+                        .withStyle(ChatFormatting.WHITE));
     }
 
     public void abortBlueprintPlacement() {

@@ -147,7 +147,7 @@ public final class ConnectionModeState {
         for (Connection.Type type : choice.possible())
             squares.append(Component.literal(type.equals(current) ? "■" : "□").withColor(type.color()));
         return List.of(status, Component.translatable("createfactorycontroller.connection.cycle_type_hint",
-                squares.withStyle(ChatFormatting.GRAY)));
+                squares).withStyle(ChatFormatting.GRAY));
     }
 
     private static TypeChoice typeChoice(VirtualComponentBehaviour source, VirtualComponentBehaviour target,
