@@ -48,6 +48,16 @@
 - [DONE] Cancel connection/move mode approach or keybinding
 - [DONE] Improve BP System: Blueprint tooltip includes more info
 - [DONE] Different controller component tooltip styles
+
+# 1.3.0
+- [TODO] Component Search
+- [TODO] Redstone Requester
+- [TODO] Selector Gauge
+- [TODO] Quick Access
+- [TODO] Controller can transfer component item from/to nearby container blocks
+- [TODO] Add tracker UI to show managed address, gauges, promises
+- [TODO] Expand controller settings screen
+- [TODO] Save gauge settings without close
 - [TODO] Improve the wording of production order
 - [TODO] Repackager Split/Merge mode of request multiplier
 - [TODO] Blueprint file in folder
@@ -61,9 +71,7 @@
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
 - [Patch] Stock Link priority system is broken https://github.com/Creators-of-Create/Create/issues/9689
 - [Patch] Multiple stock link over reduce promises https://github.com/Creators-of-Create/Create/issues/10634
-- [TODO] Hover info format/position customization
-- [TODO] Component Search
-- [TODO] Add tracker UI to show managed address, gauges, promises
+- [TODO] Hover info position customization
 - [TBC] Fix gauge sound overload?
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
@@ -71,15 +79,12 @@
 - [TODO] Controller IO Link
 - [TODO] No-sending production order
 - [TODO] Delta production order
-- [TODO] Redstone Requester
 - [TODO] Multi-package request
 - [TODO] Alternative production order icon formatting
 - [TODO] Better handle of custom grid layout (width)
 - [TODO] Custom filter setting in gauge
 - [TODO] Short-cut controls (Ctrl-A, Ctrl-S etc.)
-- [TODO] Expand controller settings screen
 - [TODO] Change network of existing gauge
-- [TODO] Selector Gauge
 - [TODO] Custom background tile (from block)
 - [TODO] Allow production order as ingredient for JEI crafting
 - [TODO] Custom arrow bend mode
@@ -90,7 +95,6 @@
 - [TODO] Controller disabled (redstone powered) indicator
 - [TODO] Local redstone link mode
 - [TODO] Passive item as gauge target (bridge connection)
-- [TODO] Save gauge settings without close
 - [TODO] Guide GUI
 - [TODO] Set max item data length limit per gauge in configuration; increase component limit.
 - [TODO] Connection tab in recipe / redstone link setting screen
@@ -99,6 +103,7 @@
 - [TODO] Show Active Promise Timer
 - [TODO] Better Display Link integration (Stream processing?)
 - [TODO] Improve BP System: Layout preview
+- [TODO] String processing
 - [TBC] No promise request
 - [TBC] Redstone Frequency from clipboard
 - [TBC] JEI to create gauge
