@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-15 11:43+1000\n"
+"POT-Creation-Date: 2026-10-17 23:56+1100\n"
 "PO-Revision-Date: 2026-09-04 12:27+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/dashboard/zh_Hans/>\n"
@@ -236,17 +236,23 @@ msgstr "创建和修改连接"
 
 #. type: #connections
 #: ../src/dashboard.adoc:93
-msgid "Components may be connected to one another. Refer to a specific component's documentation for the functionality provided by connections."
+#, fuzzy
+#| msgid "Components may be connected to one another. Refer to a specific component's documentation for the functionality provided by connections."
+msgid "Components may be connected to one another, or to itself. Refer to a specific component's documentation for the functionality provided by connections."
 msgstr "组件之间可以建立连接，参见特定组件的文档以了解连接所提供的功能。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:95
-msgid "To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] \"add connection\" button, and then click A. Alternatively, press the C key while hovering B, then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen."
+#, fuzzy
+#| msgid "To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] \"add connection\" button, and then click A. Alternatively, press the C key while hovering B, then click A. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen."
+msgid "To connect component A to B, click on B to open its UI, click on the image:btn-add-connection.png[,18,18] \"add connection\" button, and then click A. Alternatively, press the C key while hovering B, then click A. Some pairs of components may be connected by multiple types of connections, which can be selected by holding shift and scrolling. Some components may only act as the source or sink of a connection, in which case a valid direction is automatically chosen."
 msgstr "若要将组件 A 连接至组件 B，请打开 B 的配置界面，单击 image:btn-add-connection.png[,18,18]“新建连接”按钮，再单击 A。你也可以在悬浮于 B 上时按 C 键，然后点击 A 。部分组件只能作为连接的输入端或输出端；此时系统会自动选择有效方向。"
 
 #. type: #connections
 #: ../src/dashboard.adoc:97
-msgid "A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them."
+#, fuzzy
+#| msgid "A component's UI may allow you to remove its connections. They can also be removed using the dashboard by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them."
+msgid "Connections can be removed by hovering over them and shift-clicking. When multiple connections overlap, hold shift and scroll while hovering over a spot with overlapping connections to select one of them."
 msgstr "连接通常可以在组件的配置界面中移除。也可在控制台界面中将鼠标悬停在连接线上，再按住 Shift 单击来移除连接。当多条连接线重叠时，按住 Shift 并在重叠位置滚动鼠标滚轮，可依次选择其中一条连接。"
 
 #. type: Block title

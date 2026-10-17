@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-07-26 07:22+1000\n"
+"POT-Creation-Date: 2026-10-18 00:07+1100\n"
 "PO-Revision-Date: 2026-09-04 12:27+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/redstone-link/zh_Hans/>\n"
@@ -23,6 +23,12 @@ msgstr ""
 #, no-wrap
 msgid "Configuration"
 msgstr "配置"
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:24 ../src/redstone-link.adoc:22
+#, no-wrap
+msgid "Operating Principle"
+msgstr "工作原理"
 
 #. type: Title =
 #: ../src/redstone-link.adoc:1
@@ -88,12 +94,6 @@ msgstr "image:redstone-link-send-powered.png[,64,64]"
 #, no-wrap
 msgid "image:redstone-link-receive-powered.png[,64,64]"
 msgstr "image:redstone-link-receive-powered.png[,64,64]"
-
-#. type: Title ==
-#: ../src/redstone-link.adoc:22
-#, no-wrap
-msgid "Operating Principle"
-msgstr "工作原理"
 
 #. type: #principle
 #: ../src/redstone-link.adoc:25
@@ -167,6 +167,33 @@ msgid "❺ Mode switch:: Click to switch between send image:btn-send-mode.png[,1
 msgstr "❺ 模式切换:: 在发送 image:btn-send-mode.png[,18,18] 和接收 image:btn-receive-mode.png[,18,18] 模式之间切换。"
 
 #. type: #configuration
-#: ../src/redstone-link.adoc:58
+#: ../src/redstone-link.adoc:59
 msgid "❻ Confirm button:: Click to confirm settings and close the screen."
 msgstr "❻ 确认按钮:: 保存设置并关闭界面。"
+
+#. type: Title ==
+#: ../src/redstone-link.adoc:61
+#, no-wrap
+msgid "Signal Strength"
+msgstr ""
+
+#. type: #signal-strength
+#: ../src/redstone-link.adoc:64
+msgid "Inside factory controllers, redstone connections do not carry strength information of redstone signals. Instead, connect to redstone links via number connections to send and receive signal strengths, represented as integers between 0-15."
+msgstr ""
+
+#. type: #signal-strength
+#: ../src/redstone-link.adoc:66
+msgid "When connected as the sink of number connections, a redstone link clamps the number between 0-15 and rounds down, before sending the signal strength. The largest number is selected among multiple inputs, and a powered redstone connection is considered to have a strength of 15."
+msgstr ""
+
+#. type: #signal-strength
+#: ../src/redstone-link.adoc:68
+msgid "A client setting can be turned on to display the signal strengths on the labels of redstone links."
+msgstr ""
+
+#. type: Block title
+#: ../src/redstone-link.adoc:69
+#, no-wrap
+msgid "Sending the xref:arithmetic-tube.adoc[sum] of signal strengths from 2 other redstone links"
+msgstr ""

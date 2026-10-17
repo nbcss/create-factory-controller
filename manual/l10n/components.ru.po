@@ -9,7 +9,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-15 11:43+1000\n"
+"POT-Creation-Date: 2026-10-17 23:56+1100\n"
 "PO-Revision-Date: 2026-09-04 12:27+0000\n"
 "Last-Translator: Anonymous <noreply@weblate.org>\n"
 "Language-Team: Russian <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/components/ru/>\n"
@@ -21,22 +21,29 @@ msgstr ""
 "X-Generator: Weblate 2026.7.1\n"
 
 #. type: Table
-#: ../src/index.adoc:14 ../src/components.adoc:14
+#: ../src/index.adoc:18 ../src/components.adoc:14
 #, no-wrap
 msgid "xref:factory-gauge.adoc[Factory Gauge]"
 msgstr "xref:factory-gauge.adoc[Фабричный Контроллер]"
 
 #. type: Table
-#: ../src/index.adoc:15 ../src/components.adoc:29
+#: ../src/index.adoc:19 ../src/components.adoc:24
+#, no-wrap
+msgid "xref:redstone-link.adoc[Redstone Link]"
+msgstr "xref:redstone-link.adoc[Редстоуновый Передатчик Сигнала]"
+
+#. type: Table
+#: ../src/index.adoc:20 ../src/components.adoc:29
 #, no-wrap
 msgid "xref:electron-tube.adoc[Electron Tube]"
 msgstr "xref:electron-tube.adoc[Электронная Лампа]"
 
 #. type: Table
-#: ../src/index.adoc:16 ../src/components.adoc:24
-#, no-wrap
-msgid "xref:redstone-link.adoc[Redstone Link]"
-msgstr "xref:redstone-link.adoc[Редстоуновый Передатчик Сигнала]"
+#: ../src/index.adoc:21 ../src/components.adoc:34
+#, fuzzy, no-wrap
+#| msgid "xref:electron-tube.adoc[Electron Tube]"
+msgid "xref:arithmetic-tube.adoc[Arithmetic Tube]"
+msgstr "xref:electron-tube.adoc[Электронная Лампа]"
 
 #. type: Title =
 #: ../src/components.adoc:1
@@ -88,8 +95,8 @@ msgstr ""
 
 #. type: Table
 #: ../src/components.adoc:17 ../src/components.adoc:22
-#: ../src/components.adoc:27 ../src/factory-gauge.adoc:303
-#: ../src/factory-gauge.adoc:309
+#: ../src/components.adoc:27 ../src/factory-gauge.adoc:316
+#: ../src/factory-gauge.adoc:322
 #, no-wrap
 msgid "Yes"
 msgstr ""
@@ -107,7 +114,7 @@ msgid "xref:factory-gauge.adoc#fluid[Fluid Gauge]"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:20 ../src/factory-gauge.adoc:307
+#: ../src/components.adoc:20 ../src/factory-gauge.adoc:320
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr ""
@@ -125,7 +132,19 @@ msgid "image:icon-electron-tube.png[width=32,height=32]"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:31
+#: ../src/components.adoc:32 ../src/components.adoc:36
 #, no-wrap
 msgid "No"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:33
+#, no-wrap
+msgid "image:icon-arithmetic-tube.png[width=32,height=32]"
+msgstr ""
+
+#. type: Table
+#: ../src/components.adoc:35
+#, no-wrap
+msgid "This mod"
 msgstr ""

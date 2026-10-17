@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-08-20 15:51+1000\n"
+"POT-Creation-Date: 2026-10-17 23:56+1100\n"
 "PO-Revision-Date: 2026-09-04 12:27+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/home/zh_Hans/>\n"
@@ -62,28 +62,35 @@ msgid "xref:factory-gauge.adoc[Factory Gauge]"
 msgstr "xref:factory-gauge.adoc[工厂仪表]"
 
 #. type: Table
-#: ../src/index.adoc:19 ../src/components.adoc:29
+#: ../src/index.adoc:19 ../src/components.adoc:24
+#, no-wrap
+msgid "xref:redstone-link.adoc[Redstone Link]"
+msgstr "xref:redstone-link.adoc[无线红石信号终端]"
+
+#. type: Table
+#: ../src/index.adoc:20 ../src/components.adoc:29
 #, no-wrap
 msgid "xref:electron-tube.adoc[Electron Tube]"
 msgstr "xref:electron-tube.adoc[电子管]"
 
 #. type: Table
-#: ../src/index.adoc:20 ../src/components.adoc:24
-#, no-wrap
-msgid "xref:redstone-link.adoc[Redstone Link]"
-msgstr "xref:redstone-link.adoc[无线红石信号终端]"
+#: ../src/index.adoc:21 ../src/components.adoc:34
+#, fuzzy, no-wrap
+#| msgid "xref:electron-tube.adoc[Electron Tube]"
+msgid "xref:arithmetic-tube.adoc[Arithmetic Tube]"
+msgstr "xref:electron-tube.adoc[电子管]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:21
+#: ../src/index.adoc:22
 msgid "xref:display-link.adoc[Display Link]"
 msgstr "xref:display-link.adoc[显示链接器]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:22
+#: ../src/index.adoc:23
 msgid "xref:blueprint.adoc[Blueprint]"
 msgstr "xref:blueprint.adoc[蓝图]"
 
 #. type: #manual-toc
-#: ../src/index.adoc:22
+#: ../src/index.adoc:23
 msgid "xref:production-orders.adoc[Production Orders]"
 msgstr "xref:production-orders.adoc[生产订单]"
