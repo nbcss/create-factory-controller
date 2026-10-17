@@ -28,4 +28,9 @@ Some items can be placed inside a factory controller. Once placed, they are refe
 | xref:electron-tube.adoc[Electron Tube]
 | Create
 | No
+
+^| image:icon-arithmetic-tube.png[width=32,height=32]
+| xref:arithmetic-tube.adoc[Arithmetic Tube]
+| This mod
+| No
 |===

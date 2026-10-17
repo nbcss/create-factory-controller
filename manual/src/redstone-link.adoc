@@ -56,3 +56,15 @@ Click to switch between send image:btn-send-mode.png[,18,18] and receive image:b
 
 ❻ Confirm button::
 Click to confirm settings and close the screen.
+
+[#signal-strength]
+== Signal Strength
+
+Inside factory controllers, redstone connections do not carry strength information of redstone signals. Instead, connect to redstone links via number connections to send and receive signal strengths, represented as integers between 0-15.
+
+When connected as the sink of number connections, a redstone link clamps the number between 0-15 and rounds down, before sending the signal strength. The largest number is selected among multiple inputs, and a powered redstone connection is considered to have a strength of 15.
+
+A client setting can be turned on to display the signal strengths on the labels of redstone links.
+
+.Sending the xref:arithmetic-tube.adoc[sum] of signal strengths from 2 other redstone links
+image::redstone-link-strength-sum.png[ ,268,208]

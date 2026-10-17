@@ -1,0 +1,167 @@
+= Arithmetic Tube
+:xrefstyle: short
+
+Arithmetic tube is an item added by this mod. It can be placed in factory controllers to to perform arithmetic operations, such as addition, multiplication, division, rounding and trigonometry.
+
+Arithmetic tubes primarily connect with other components via number connections. They may be used to obtain information from or control components such as xref:factory-gauge.adoc#number-connection[factory gauges] and xref:redstone-link.adoc#signal-strength[redstone links].
+
+.Arithmetic tubes with various operators
+image::arithmetic-tube-samples.png[ ,320,256]
+
+.An arithmetic tube calculating the ratio between iron and gold ingots monitored by factory gauges
+image::arithmetic-tube-example.png[ ,206,142]
+
+[#obtaining]
+== Obtaining
+
+.Recipe tree of arithmetic tubes (by EMI)
+image::arithmetic-tube-recipe-tree.png[ ,192,220]
+
+. Cut an amethyst shard into 2 cut amethyst with a stonecutter or mechanical saw.
+. Each cut amethyst can be crafted with an iron plate into an arithmetic tube.
+
+[#principle]
+== Operating Principle
+
+An arithmetic tube can perform various calculations depending on its selected operator. Arithmetic operators can be categorized by the number of inputs they accept, referred to as the [#term-arity]_arity_.
+
+.Arithmetic operators categorized by arity
+[%noheader%autowidth,cols="6*^.^"]
+|===
+<| *N-ary* +
+  (accept any number of inputs)
+| + +
+  Sum
+| × +
+  Product
+| `max` +
+  Maximum
+| `min` +
+  Minimum
+|
+
+<| *Binary* +
+  (accept exactly 2 inputs)
+| - +
+  Subtract
+| ÷ +
+  Divide
+| x^y^ +
+  Power
+| ^y^√x̅ +
+  Root
+| `log` +
+  Logarithm
+
+.2+<| *Unary* +
+  (accept exactly 1 input)
+| \| \| +
+  Absolute
+| ⌈ ⌉ +
+  Celing
+| ⌊ ⌋ +
+  Floor
+| `sgn` +
+  Sign
+|
+
+| `sin` +
+  Sine
+| `cos` +
+  Cosine
+| `tan` +
+  Tangent
+||
+|===
+
+Each input corresponds to an incoming number connection, or a <<constant-input,constant>>. The result is propogated to the output after 1 tick.
+
+Numbers are 64-bit floating point values. They can represent fractional values, but their precision is limited. Slight rounding may occur during calculation. Integers outside the range ±2^53^ may not be exact. Dividing a non-zero number by 0 results in ∞ or -∞.
+
+[#configuration]
+== Basic Configuration
+
+[#figure-arithmetic-tube-settings]
+.Arithmetic tube settings
+image::arithmetic-tube-settings.svg[ ,368,300]
+
+❶ Operator selection menu::
+Click to open a menu to select an arithmetic operator.
+
+❷❸❹ Input entry::
+Shown for each input of this arithmetic tube.
+
+❷ Input source icon::
+Shows the source of this input, such as the component at the other end of the number connection.
+
+❸ Input value::
+Shows the value of this input.
+
+❹ Remove input button::
+Click to remove this input.
+
+❺ Result::
+Shows the result of calculation.
+
+❻ Relocate button::
+Click to move the location of this tube on the virtual board.
+
+❼ Add connection button::
+Click to connect another component as an input, or to a <<redstone,redstone signal>>.
+
+❽ Add constant button::
+Click to add a <<constant-input,constant>>.
+
+❾ Confirm button::
+Click to confirm settings and close this screen.
+
+For binary operators, the 2 inputs are distinguished as primary (blue) and secondary (red) input. Their roles in relation to the operator is typically displayed in ❶. They may be swapped by clicking ❿.
+
+.Arithmetic tube settings with a binary operator
+image::arithmetic-tube-settings-binary.svg[ ,368,300]
+
+Switching between operators with different <<term-arity,arities>> is sometimes disallowed. In that case, remove inputs so that the number of inputs aligns with the new operator.
+
+[#constant-input]
+== Constant
+
+Clicking <<figure-arithmetic-tube-settings>> ❽ creates an editable constant as an input. On a constant input, click ❸ and type to set the constant to arbitrary values. You may enter any number in decimal, or computerized scientific notation (e.g. 1e2 for 100).
+
+.Settings with a constant
+image::arithmetic-tube-constant-input.svg[ ,368,300]
+
+.Editing a constant
+image::arithmetic-tube-constant-input-edit.png[ ,332,44]
+
+Additionally, the special constants π, τ, e, ∞ and -∞ can be entered via the ⏷ dropdown menu, or typed in their literal or English form.
+
+[#redstone]
+== Redstone
+
+An arithmetic tube can also be connected to other components via redstone connections, such as with xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links].
+
+[#redstone-input]
+=== Redstone Input
+
+When connected by redstone as a sink, the behaviour of the arithmetic tube when powered by redstone can be configured.
+
+.Settings with an incoming redstone connection
+image::arithmetic-tube-settings-redstone-input.svg[ ,368,348]
+
+2 options can be selected by scrolling on ❶:
+
+Override::
+When powered by redstone, override the output to the number specified in ❷.
+
+Hold::
+When powered by redstone, hold the output at its current value.
+
+[#redstone-output]
+=== Redstone Output
+
+When connected by redstone as a source, the arithmetic tube can be configured to compare the numerical result with a constant, and output a redstone signal when the comparison is satisfied.
+
+.Settings with an outgoing redstone connection
+image::arithmetic-tube-settings-redstone-output.svg[ ,368,348]
+
+Scroll on ❶ to select a comparator (>, <, =, ≥, ≤, ≠), click ❷ to enter the number to compare to.

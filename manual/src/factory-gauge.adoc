@@ -279,15 +279,26 @@ This option is useful when the <<term-recipe,recipe>> does not reliably produce 
 Displays the number of pending requests created by this gauge image:symbol-gauge.png[,18,16]. Click to switch to displaying pending requests sent to the same address image:symbol-address.png[,18,16]. In either state, scroll to set a limit on the displayed number. When the limit is reached, the gauge pauses sending new requests. +
 Limiting pending requests is useful for preventing excessive packages from overloading transportation lines.
 
-[#redstone]
-== Redstone
+[#control-signal]
+== Control Signals
 
-A factory gauge can be connected to some other components, such as xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links], via redstone connections. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone.
+[#redstone]
+=== Redstone
+
+A factory gauge can be connected to some other components via redstone connections, such as with xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links]. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone.
 
 .A factory gauge disabled by an incoming redstone signal, and outputting a redstone signal
 image::gauge-redstone-io.png[ ,167,203]
 
 Additionally, when a factory controller block is redstone-powered, all factory gauges inside are disabled.
+
+[#number-connection]
+=== Number Connections
+
+A factory gauge can also be connected to other components via number connections, such as with xref:arithmetic-tube.adoc[arithmetic tubes]. When connected as the source, it outputs the <<term-storage-amount,storage amount>>. When connected as the sink, the input number is rounded down, and sets the target stock amount. Numbers from multiple input connections are added before rounding.
+
+.Making the target amount of sticks match the storage amount of iron ingots
+image::gauge-number-io.png[ ,218,204]
 
 [#fluid]
 == Fluid Transport
