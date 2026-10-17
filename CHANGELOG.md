@@ -1,3 +1,9 @@
+## 1.2.3
+
+Bugfixes:
+- Fixed dedicated server crash on load
+- Fixed repackager not properly merge fluid & item packages ordered from stock keeper again
+
 ## 1.2.2
 
 Features:
