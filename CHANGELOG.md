@@ -2,7 +2,7 @@
 
 Features:
 - Introduced redstone input/output functionalities for Arithmetic Tube.
-- Added "Factory Controller Terminal", which can link up to 3 controllers and update controller settings remotely.
+- Added "Remote Controller Terminal", which can link up to 4 controllers and update controller settings remotely.
 - Components support loop connection (self-connect) now.
 - Number connection value update would play flash animation now.
 - Allow Shift-Scroll to change connection type in connection mode.
