@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-17 23:56+1100\n"
-"PO-Revision-Date: 2026-09-04 12:27+0000\n"
+"PO-Revision-Date: 2026-10-17 14:49+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/home/zh_Hans/>\n"
 "Language: zh-hans\n"
@@ -75,10 +75,9 @@ msgstr "xref:electron-tube.adoc[电子管]"
 
 #. type: Table
 #: ../src/index.adoc:21 ../src/components.adoc:34
-#, fuzzy, no-wrap
-#| msgid "xref:electron-tube.adoc[Electron Tube]"
+#, no-wrap
 msgid "xref:arithmetic-tube.adoc[Arithmetic Tube]"
-msgstr "xref:electron-tube.adoc[电子管]"
+msgstr "xref:arithmetic-tube.adoc[算术管]"
 
 #. type: #manual-toc
 #: ../src/index.adoc:22

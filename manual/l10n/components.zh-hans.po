@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-17 23:56+1100\n"
-"PO-Revision-Date: 2026-09-04 12:27+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
+"PO-Revision-Date: 2026-10-17 14:50+0000\n"
+"Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/components/zh_Hans/>\n"
 "Language: zh-hans\n"
 "MIME-Version: 1.0\n"
@@ -38,10 +38,9 @@ msgstr "xref:electron-tube.adoc[电子管]"
 
 #. type: Table
 #: ../src/index.adoc:21 ../src/components.adoc:34
-#, fuzzy, no-wrap
-#| msgid "xref:electron-tube.adoc[Electron Tube]"
+#, no-wrap
 msgid "xref:arithmetic-tube.adoc[Arithmetic Tube]"
-msgstr "xref:electron-tube.adoc[电子管]"
+msgstr "xref:arithmetic-tube.adoc[算术管]"
 
 #. type: Title =
 #: ../src/components.adoc:1
@@ -137,13 +136,12 @@ msgstr "否"
 
 #. type: Table
 #: ../src/components.adoc:33
-#, fuzzy, no-wrap
-#| msgid "image:icon-electron-tube.png[width=32,height=32]"
+#, no-wrap
 msgid "image:icon-arithmetic-tube.png[width=32,height=32]"
-msgstr "image:icon-electron-tube.png[width=32,height=32]"
+msgstr "image:icon-arithmetic-tube.png[width=32,height=32]"
 
 #. type: Table
 #: ../src/components.adoc:35
 #, no-wrap
 msgid "This mod"
-msgstr ""
+msgstr "此模组"

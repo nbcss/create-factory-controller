@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-18 00:07+1100\n"
-"PO-Revision-Date: 2026-09-04 12:27+0000\n"
+"PO-Revision-Date: 2026-10-17 15:05+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/redstone-link/zh_Hans/>\n"
 "Language: zh-hans\n"
@@ -175,25 +175,25 @@ msgstr "❻ 确认按钮:: 保存设置并关闭界面。"
 #: ../src/redstone-link.adoc:61
 #, no-wrap
 msgid "Signal Strength"
-msgstr ""
+msgstr "信号强度"
 
 #. type: #signal-strength
 #: ../src/redstone-link.adoc:64
 msgid "Inside factory controllers, redstone connections do not carry strength information of redstone signals. Instead, connect to redstone links via number connections to send and receive signal strengths, represented as integers between 0-15."
-msgstr ""
+msgstr "在工厂控制台中，红石连接不传递红石信号的强度信息。请使用数字连接来发送和接收信号强度，信号强度以 0 到 15 之间的整数表示。"
 
 #. type: #signal-strength
 #: ../src/redstone-link.adoc:66
 msgid "When connected as the sink of number connections, a redstone link clamps the number between 0-15 and rounds down, before sending the signal strength. The largest number is selected among multiple inputs, and a powered redstone connection is considered to have a strength of 15."
-msgstr ""
+msgstr "作为数字连接的接收端时，无线红石信号终端会将数字限制在 0 到 15 之间并向下取整，然后再发送信号强度。有多个输入时，最大的数值会被选择。充能的红石连接视的强度被视为 15。"
 
 #. type: #signal-strength
 #: ../src/redstone-link.adoc:68
 msgid "A client setting can be turned on to display the signal strengths on the labels of redstone links."
-msgstr ""
+msgstr "有一个客户端设置在开启时，可以使信号强度显示在无线红石信号终端的标签上。"
 
 #. type: Block title
 #: ../src/redstone-link.adoc:69
 #, no-wrap
 msgid "Sending the xref:arithmetic-tube.adoc[sum] of signal strengths from 2 other redstone links"
-msgstr ""
+msgstr "发送另外两个无线红石信号终端的信号强度之xref:arithmetic-tube.adoc[和]"

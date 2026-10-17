@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-18 00:07+1100\n"
-"PO-Revision-Date: 2026-09-04 12:27+0000\n"
+"PO-Revision-Date: 2026-10-17 14:50+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/factory-gauge/zh_Hans/>\n"
 "Language: zh-hans\n"
@@ -136,10 +136,8 @@ msgstr "❻ 请求间隔:: 每次请求间的间隔时间，以及修改它的�
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:56
-#, fuzzy
-#| msgid "❼ Request multiplier:: Option to automatically send multiple sets of ingredients in one request. See <<request-multiplier>>."
 msgid "❼ Maximum request multiplier:: Option to automatically send multiple sets of ingredients in one request. See <<request-multiplier>>."
-msgstr "❼ 请求倍率:: 使一次请求中包含多份原材料的选项。参见<<request-multiplier>>。"
+msgstr "❼ 最大请求倍率:: 使一次请求中包含多份原材料的选项。参见<<request-multiplier>>。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:59
@@ -153,10 +151,8 @@ msgstr "❾ 库存数量:: 此工厂仪表的<<term-storage-amount,库存数量>
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:65
-#, fuzzy
-#| msgid "❿ Target amount:: The storage amount this factory gauge is configured to reach."
 msgid "❿ Target stock amount:: The storage amount this factory gauge is configured to reach."
-msgstr "❿ 目标数量:: 该仪表被设定的使库存达到的数量。"
+msgstr "❿ 目标库存数量:: 该仪表被设定的使库存达到的数量。"
 
 #. type: #figure-recipe-settings
 #: ../src/factory-gauge.adoc:68
@@ -218,10 +214,8 @@ msgstr "在默认工作模式（⓬）下，工厂仪表反复检查其<<term-st
 
 #. type: #figure-iron-smelting-recipe
 #: ../src/factory-gauge.adoc:98
-#, fuzzy
-#| msgid "The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❷), as well as the type and number of output items expected (❶). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 9 stacks or 64 items, whichever is more."
 msgid "The [#term-recipe]_recipe_ of a gauge defines the set of ingredients and their amounts sent per request (❷), as well as the type and number of output items expected (❶). The number of each ingredient may be adjusted by scrolling on ❷, and can be more than 1 stack, but the total number of all ingredients is limited to 9 stacks. The number of output items can also be adjusted by scrolling on ❶, limited to 64 stacks."
-msgstr "仪表的[#term-recipe]__配方__定义了每次请求发送的材料及其数量（❷），以及预计输出的物品的类型和数量（❶）。在 ❷ 上滚动以调整每种材料的数量。每种材料可以超过 1 组，但所有材料的总数被限制为 9 组。输出物品的数量也可以通过在 ❶ 上滚动来调整，它的限制为 9 组或 64 个，以较大者为准。"
+msgstr "仪表的[#term-recipe]__配方__定义了每次请求发送的材料及其数量（❷），以及预计输出的物品的类型和数量（❶）。在 ❷ 上滚动以调整每种材料的数量。每种材料可以超过 1 组，但所有材料的总数被限制为 9 组。输出物品的数量也可以通过在 ❶ 上滚动来调整，它的限制为 64 组。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:99
@@ -390,10 +384,8 @@ msgstr "按需生产"
 
 #. type: #on-demand
 #: ../src/factory-gauge.adoc:173
-#, fuzzy
-#| msgid "By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] \"maintain stock\" mode, which [#term-active]_activates_ (starts making <<term-request,requests>>) when the <<term-storage-amount,storage amount>> is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to image:btn-follow-demand.png[,18,18] \"follow demand\" mode, which instead activates the gauge when there is downstream demand, that is, when any of its <<term-consumer-gauge,consumer gauges>> is active."
 msgid "By default, a factory gauge operates in image:btn-maintain-stock.png[18,18] \"maintain stock\" mode, which [#term-active]_activates_ (starts making <<term-request,requests>>) when the <<term-storage-amount,storage amount>> is below the configured target amount. By clicking <<figure-follow-demand>> ❷, you may switch it to image:btn-follow-demand.png[,18,18] \"follow demand\" mode, which additionally activates the gauge when there is downstream demand."
-msgstr "工厂仪表默认为 image:btn-maintain-stock.png[18,18] “维持库存”模式，在此模式中，当<<term-storage-amount,库存>>低于设置的目标数量时，仪表则会[#term-active]__启动__（开始发送<<term-request,请求>>）。点击 <<figure-follow-demand>> ❷ 可将工作模式切换为 image:btn-follow-demand.png[,18,18] “按需生产”，此时仪表只会在存在下游需求时启动，也就是指该仪表的任何一个<<term-ingredient-gauge,消费端仪表>>被启动时。"
+msgstr "工厂仪表默认为 image:btn-maintain-stock.png[18,18] “维持库存”模式，在此模式中，当<<term-storage-amount,库存>>低于设置的目标数量时，仪表则会[#term-active]__启动__（开始发送<<term-request,请求>>）。点击 <<figure-follow-demand>> ❷ 可将工作模式切换为 image:btn-follow-demand.png[,18,18] “按需生产”，此时仪表在持有在下游需求时也会启动。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:175
@@ -404,7 +396,7 @@ msgstr "处于按需生产模式的橡木木板仪表"
 #. type: #figure-follow-demand
 #: ../src/factory-gauge.adoc:179
 msgid "The downstream [#term-demand]_demand_ is calculated by observing all of its currently <<term-active,active>> <<term-consumer-gauge,consumer gauges>>, and calculating the total quantity of the item produced by this gauge defined in their <<term-recipe,recipes>>. The gauge activates when the storage amount is below either the demand or the minimum target stock amount (❶)."
-msgstr ""
+msgstr "下游[#term-demand]__需求__的计算方法是：观察此仪表所有<<term-active,被启用>>的<<term-consumer-gauge,消费端仪表>>，并计算其<<term-recipe,配方>>中定义的对此仪表的产品数量之和。当库存量低于需求或最低目标库存量（❶）时，此仪表将被启用。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:180
@@ -467,10 +459,8 @@ msgstr "动态请求倍率"
 
 #. type: #request-multiplier
 #: ../src/factory-gauge.adoc:204
-#, fuzzy
-#| msgid "Normally, the amount of ingredients a factory gauge sends per <<term-request,request>> is fixed to what was defined in its <<term-recipe,recipe>> (<<figure-multiplier>> ❷). Configuring the request multiplier (❶) allows this gauge to automatically pack more ingredients per request as needed."
 msgid "Normally, the amount of ingredients a factory gauge sends per <<term-request,request>> is fixed to what was defined in its <<term-recipe,recipe>> (<<figure-multiplier>> ❷). Configuring the maximum request multiplier (❶) allows this gauge to automatically pack more ingredients per request as needed."
-msgstr "通常情况下，工厂仪表每次<<term-request,请求>>所发送的材料数量是固定的，即其<<term-recipe,配方>>中所定义的数量（<<figure-multiplier>> ❷）。配置请求倍率（❶）可以让该仪表根据需要，自动增加每次请求的材料数量。"
+msgstr "通常情况下，工厂仪表每次<<term-request,请求>>所发送的材料数量是固定的，即其<<term-recipe,配方>>中所定义的数量（<<figure-multiplier>> ❷）。配置最大请求倍率（❶）可以让该仪表根据需要，自动增加每次请求的材料数量。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:206
@@ -485,10 +475,8 @@ msgstr "滚动 ❶ 以调整其数值。点击鼠标左键以设置为允许的�
 
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:212
-#, fuzzy
-#| msgid "With a request multiplier ×N, the factory gauge automatically chooses to request up to N sets of ingredients from its recipe at once, this happens when:"
 msgid "With a maximum request multiplier ×N, the factory gauge automatically chooses to request up to N sets of ingredients from its recipe at once, this happens when:"
-msgstr "当请求倍率被设置为 ×N 时，工厂仪表会自动选择一次性请求最多 N 倍配方中的材料，这会在以下情况下发生："
+msgstr "当最大请求倍率被设置为 ×N 时，工厂仪表会自动选择一次性请求最多 N 倍配方中的材料，这会在以下情况下发生："
 
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:214
@@ -502,10 +490,8 @@ msgstr "<<term-ingredient-gauge,材料仪表>>中提供了充足的材料。"
 
 #. type: #figure-multiplier
 #: ../src/factory-gauge.adoc:217
-#, fuzzy
-#| msgid "The value of the request multiplier is limited to ×64, or by the amounts of ingredients and output after multiplying with the multiplier, whichever is less. These amounts may not exceed the usual limits applicable to a <<term-recipe,recipe>>. Hovering on ❶ temporarily displays the amounts after multiplying on ❷ and ❸."
 msgid "The value of the maximum request multiplier is limited to ×64, or by the amounts of ingredients and output after multiplying with the multiplier, whichever is less. These amounts may not exceed the usual limits applicable to a <<term-recipe,recipe>>. Hovering on ❶ temporarily displays the amounts after multiplying on ❷ and ❸."
-msgstr "请求倍率的上限为 ×64，同时也被倍增后的材料和产品的数量所限制，以两者中较小者为准。材料和产品数量不得超过一个<<term-recipe,配方>>通常会受到的限制。将鼠标悬停在 ❶ 上时，会暂时在 ❷ 和 ❸ 上显示倍增后的数量。"
+msgstr "最大请求倍率的上限为 ×64，同时也被倍增后的材料和产品的数量所限制，以两者中较小者为准。材料和产品数量不得超过一个<<term-recipe,配方>>通常会受到的限制。将鼠标悬停在 ❶ 上时，会暂时在 ❷ 和 ❸ 上显示倍增后的数量。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:218
@@ -515,10 +501,9 @@ msgstr "预览倍增后的材料和产品数量"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:221
-#, fuzzy, no-wrap
-#| msgid "Examples of the maximum values of a request multiplier"
+#, no-wrap
 msgid "Examples of the maximum values of the maximum request multiplier"
-msgstr "请求倍率的最大值示例"
+msgstr "最大请求倍率的最大值示例"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:225
@@ -530,7 +515,7 @@ msgstr "倍增前与倍增后的配方"
 #: ../src/factory-gauge.adoc:226
 #, no-wrap
 msgid "Maximum setting"
-msgstr ""
+msgstr "最大设置"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:228
@@ -578,10 +563,9 @@ msgstr "×8"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:238
-#, fuzzy, no-wrap
-#| msgid "Output exceeding <<term-batch-size,batch size>> × output items in crafting recipe (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)"
+#, no-wrap
 msgid "<<term-batch-size,Batch size>> exceeding 64 (ingredients may exceed 9 stacks with <<batch-crafting,batch crafting>>)"
-msgstr "产品数量超过<<term-batch-size,批次尺寸>> × 每次合成的产量（使用<<batch-crafting,批量合成>>时，材料可以超过 9 组）"
+msgstr "<<term-batch-size,批次尺寸>>超过 64（使用<<batch-crafting,批量合成>>时，材料可以超过 9 组）"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:240
@@ -607,15 +591,13 @@ msgstr "材料溢出至其他槽位（在使用<<ingredient-arrange,自定义布
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:245
-#, fuzzy
-#| msgid "When the recipe is modified, the maximum allowed request multiplier may decrease. The request multiplier automatically adjusts in response."
 msgid "When the recipe is modified, the limit of the maximum request multiplier may decrease. The maximum request multiplier automatically adjusts in response."
-msgstr "当配方被修改时，允许的最大请求倍率可能会减少，此时请求倍率会自动相应调整。"
+msgstr "当配方被修改时，允许的最大请求倍率可能会减少，此时最大请求倍率会自动相应调整。"
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:247
 msgid "To exclude an ingredient from multiplication, hold ctrl and click on it."
-msgstr ""
+msgstr "要将某个材料从倍增中排除，可按住 Ctrl 键点击它。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:249
@@ -696,7 +678,7 @@ msgstr ""
 #: ../src/factory-gauge.adoc:283
 #, no-wrap
 msgid "Control Signals"
-msgstr ""
+msgstr "控制信号"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:286 ../src/arithmetic-tube.adoc:139
@@ -706,8 +688,6 @@ msgstr "红石"
 
 #. type: #redstone
 #: ../src/factory-gauge.adoc:289
-#, fuzzy
-#| msgid "A factory gauge can be connected to some other components, such as xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links], via redstone connections. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone."
 msgid "A factory gauge can be connected to some other components via redstone connections, such as with xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links]. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone."
 msgstr "工厂仪表可通过红石连接与xref:electron-tube.adoc[逻辑管]、xref:redstone-link.adoc[无线红石信号终端]等组件连接。作为红石连接的源头端时，当<<term-storage-amount,库存数量>>大于或等于目标数量，工厂仪表会输出红石信号。作为红石连接的目标端时，工厂仪表收到红石信号后会暂停工作。"
 
@@ -726,18 +706,18 @@ msgstr "此外，工厂控制台方块本身被红石充能时，内部的所有
 #: ../src/factory-gauge.adoc:296
 #, no-wrap
 msgid "Number Connections"
-msgstr ""
+msgstr "数字连接"
 
 #. type: #number-connection
 #: ../src/factory-gauge.adoc:299
 msgid "A factory gauge can also be connected to other components via number connections, such as with xref:arithmetic-tube.adoc[arithmetic tubes]. When connected as the source, it outputs the <<term-storage-amount,storage amount>>. When connected as the sink, the input number is rounded down, and sets the target stock amount. Numbers from multiple input connections are added before rounding."
-msgstr ""
+msgstr "工厂仪表也可以通过数字连接与其他组件连接，例如xref:arithmetic-tube.adoc[算术管]。作为连接的源头端时，输出<<term-storage-amount,库存数量>>。作为目标端时，输入值将在向下取整后设置目标库存量。多个输入数值在取整前会相加。"
 
 #. type: Block title
 #: ../src/factory-gauge.adoc:300
 #, no-wrap
 msgid "Making the target amount of sticks match the storage amount of iron ingots"
-msgstr ""
+msgstr "将木棍的目标库存数量设定为铁锭的库存数量"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:304
@@ -815,10 +795,8 @@ msgstr "流体不包含 NBT 数据，因此在监测流体时，“忽略 NBT”
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:333
-#, fuzzy
-#| msgid "When using a fluid as an ingredient or output, scrolling on the ingredient or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is limited to 10 B per batch."
 msgid "When using a fluid as an ingredient or output, scrolling on the ingredient or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is limited to 64 B per batch."
-msgstr "将流体作为原材料或产物时，在对应槽位上滚动默认以 1 B 为单位调整，按住 Shift 滚动以 10 mB 为单位调整，按住 Ctrl 滚动以 1 mB 为单位调整。每批产物流体最多为 10 B。"
+msgstr "将流体作为原材料或产物时，在对应槽位上滚动默认以 1 B 为单位调整，按住 Shift 滚动以 10 mB 为单位调整，按住 Ctrl 滚动以 1 mB 为单位调整。每批产物流体最多为 64 B。"
 
 #. type: Title ==
 #: ../src/factory-gauge.adoc:335
