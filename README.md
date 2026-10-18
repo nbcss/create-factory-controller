@@ -37,7 +37,8 @@ Factory gauges placed in factory controllers also receive a number of functional
 You can also place these in factory controllers:
 
 - Redstone Link [🕮](https://nbcss.github.io/create-factory-controller/manual/en/redstone-link.html)
-- Electron Tube: Act as logical gates for redstone signals. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/electron-tube.html)
+- Electron Tube: Perform boolean logic operations on redstone signals. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/electron-tube.html)
+- Arithmetic Tube: Perform arithmetic calculations on numbers. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/arithmetic-tube.html)
 
 This mod does **not**:
 
