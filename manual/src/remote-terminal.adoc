@@ -30,4 +30,4 @@ Different names (❷) may be given to each factory controller to help you distin
 
 Linked factory controllers can be accessed from any distance or dimension, as long as the block resides in a loaded chunk.
 
-When using the remote dashboard, items may not be transferred. You may move the components and change their settings, but you may not place or remove components. This restriction can be lifted with the server setting "Allow component placement in terminal".
+When using the remote dashboard in non-creative mode, items may not be transferred. You may move the components and change their settings, but you may not place or remove components. This restriction can be lifted with the server setting "Allow component placement in terminal".
