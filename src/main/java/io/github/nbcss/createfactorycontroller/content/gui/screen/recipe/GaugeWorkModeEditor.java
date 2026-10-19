@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
 import net.minecraft.client.gui.GuiGraphics;
@@ -122,7 +123,7 @@ abstract class GaugeWorkModeEditor {
     boolean outputScrolled(int dir, int step) {
         if (s.fluidMode) {
             s.outputCount = ConfigureRecipeScreen.adjustFluidAmount(s.outputCount, dir,
-                    Screen.hasShiftDown(), Screen.hasControlDown(), 1, ConfigureRecipeScreen.FLUID_OUTPUT_CAP_MB);
+                    Screen.hasShiftDown(), Screen.hasControlDown(), 1, VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB);
         } else if (Screen.hasControlDown()) {
             s.outputCount = Mth.clamp(ConfigureRecipeScreen.snapToStack(s.outputCount, dir, s.outputStackSize()),
                     1, s.maxItemOutput());
@@ -141,7 +142,7 @@ abstract class GaugeWorkModeEditor {
     /** Bakes the produced output to its batch-multiplied value ({@code outputCount × batch}) */
     protected void bakeCraftingOutput() {
         s.outputCount = Mth.clamp(s.outputCount * s.effectiveBatch(), 1,
-                s.fluidMode ? ConfigureRecipeScreen.FLUID_OUTPUT_CAP_MB : s.maxItemOutput());
+                s.fluidMode ? VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB : s.maxItemOutput());
     }
 
     /** Handles a mouse release (for drag gestures); {@code true} if consumed. Default: no drag. */

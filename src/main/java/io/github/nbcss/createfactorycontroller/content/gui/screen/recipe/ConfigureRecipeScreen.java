@@ -757,7 +757,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (workMode == GaugeWorkMode.CRAFTING)
             return VirtualGaugeBehaviour.craftingMultiplierCap(effectiveBatch(), 64);
 
-        int outputCap = fluidMode ? FLUID_OUTPUT_CAP_MB : maxItemOutput();
+        int outputCap = fluidMode ? VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB : maxItemOutput();
         int output = Math.max(1, outputCount);
         List<VirtualGaugeBehaviour.ScaleSlot> slots = new ArrayList<>();
         if (workMode == GaugeWorkMode.CUSTOM) {
@@ -1393,8 +1393,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     }
 
     // ── Fluid mode helpers ──────────────────────────────────────────────────────
-    static final int FLUID_OUTPUT_CAP_MB = 64_000;
-
     static int adjustFluidAmount(int cur, int dir, boolean shift, boolean ctrl, int min, int max) {
         int next = cur + dir * (ctrl ? 1 : shift ? 10 : 1000);
         if (!shift && !ctrl && cur % 1000 != 0) {           // 1-bucket step from an off-boundary value
@@ -1645,7 +1643,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         mode = newMode;
         thresholdCount = Mth.clamp(thresholdCount, 0, mode.getMaxRequestCount());
         if (fluidMode) {
-            outputCount = Mth.clamp(outputCount, 1, FLUID_OUTPUT_CAP_MB);
+            outputCount = Mth.clamp(outputCount, 1, VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB);
         }
         playScrollSound();
     }
