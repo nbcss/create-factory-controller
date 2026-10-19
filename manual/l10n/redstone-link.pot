@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-10-18 00:07+1100\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,15 +17,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Title ==
-#: ../src/electron-tube.adoc:31 ../src/redstone-link.adoc:38
-#, no-wrap
-msgid "Configuration"
-msgstr ""
-
-#. type: Title ==
 #: ../src/arithmetic-tube.adoc:24 ../src/redstone-link.adoc:22
 #, no-wrap
 msgid "Operating Principle"
+msgstr ""
+
+#. type: Title ==
+#: ../src/electron-tube.adoc:31 ../src/redstone-link.adoc:38
+#, no-wrap
+msgid "Configuration"
 msgstr ""
 
 #. type: Title =

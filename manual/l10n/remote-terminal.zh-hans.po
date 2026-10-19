@@ -1,0 +1,127 @@
+# Language zh-hans translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
+"PO-Revision-Date: 2026-10-19 22:14+1100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh-hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:15 ../src/factory-controller.adoc:11
+#: ../src/remote-terminal.adoc:9
+#, no-wrap
+msgid "Obtaining"
+msgstr "获取"
+
+#. type: Title =
+#: ../src/remote-terminal.adoc:1
+#, fuzzy, no-wrap
+#| msgid "Create: Factory Controller Manual"
+msgid "Remote Controller Terminal"
+msgstr "机械动力：工厂控制台手册"
+
+#. type: Plain text
+#: ../src/remote-terminal.adoc:4
+msgid ""
+"A reomte controller terminal is handheld device that can access factory "
+"controllers remotely."
+msgstr ""
+
+#. type: Block title
+#: ../src/remote-terminal.adoc:5
+#, no-wrap
+msgid "A remote controller terminal held in hand"
+msgstr ""
+
+#. type: Block title
+#: ../src/remote-terminal.adoc:11
+#, no-wrap
+msgid "Crafting recipe for a remote controller terminal"
+msgstr ""
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:15
+msgid ""
+"A remote controller terminal may be crafted from 1 transmitter, 3 cut "
+"amethyst, 2 precision mechanisms, and 1 linked controller, arranged as "
+"above. Cut an amethyst shard with a stonecutter or mechanical saw to obtain "
+"2 cut amethyst."
+msgstr ""
+
+#. type: Title ==
+#: ../src/remote-terminal.adoc:16
+#, no-wrap
+msgid "Linking"
+msgstr ""
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:19
+msgid ""
+"Each remote controller terminal can link to 1-4 factory controllers. While "
+"holding a terminal, hold shift and right-click on a factory controller to "
+"link the factory controller, If it already linked, doing so unlinks the "
+"factory controller."
+msgstr ""
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:21
+msgid ""
+"During linking, the coordinates of the factory controller is remembered. The "
+"terminal locates the factory controller at these coordinates. If the factory "
+"controller has been moved, or if the chunk it resides in has been unloaded, "
+"it is unable to be accessed."
+msgstr ""
+
+#. type: Title ==
+#: ../src/remote-terminal.adoc:22
+#, no-wrap
+msgid "Usage"
+msgstr ""
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:25
+msgid ""
+"Right-click with a remote controller terminal to open its UI. This shows the "
+"xref:dashboard.adoc[dashboard] of a factory controller it is linked to. Tabs "
+"on the left (❶) are used to switch between multiple linked factory "
+"controllers. Hold shift and click a tab to unlink a factory controller."
+msgstr ""
+
+#. type: Block title
+#: ../src/remote-terminal.adoc:26
+#, fuzzy, no-wrap
+#| msgid "Dashboard UI"
+msgid "Remote dashboard UI"
+msgstr "控制台界面"
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:30
+msgid ""
+"Different names (❷) may be given to each factory controller to help you "
+"distinguish them."
+msgstr ""
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:32
+msgid ""
+"Linked factory controllers can be accessed from any distance or dimension, "
+"as long as the block resides in a loaded chunk."
+msgstr ""
+
+#. type: #obtaining
+#: ../src/remote-terminal.adoc:33
+msgid ""
+"When using the remote dashboard, items may not be transferred. You may move "
+"the components and change their settings, but you may not place or remove "
+"components. This restriction can be lifted with the server setting \"Allow "
+"component placement in terminal\"."
+msgstr ""

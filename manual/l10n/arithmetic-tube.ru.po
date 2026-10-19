@@ -1,0 +1,494 @@
+# Russian translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
+"PO-Revision-Date: 2026-10-19 22:14+1100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. type: Title =
+#: ../src/arithmetic-tube.adoc:1
+#, no-wrap
+msgid "Arithmetic Tube"
+msgstr ""
+
+#. type: Plain text
+#: ../src/arithmetic-tube.adoc:5
+msgid ""
+"Arithmetic tube is an item added by this mod. It can be placed in factory "
+"controllers to to perform arithmetic operations, such as addition, "
+"multiplication, division, rounding and trigonometry."
+msgstr ""
+
+#. type: Plain text
+#: ../src/arithmetic-tube.adoc:7
+msgid ""
+"Arithmetic tubes primarily connect with other components via number "
+"connections. They may be used to obtain information from or control "
+"components such as xref:factory-gauge.adoc#number-connection[factory gauges] "
+"and xref:redstone-link.adoc#signal-strength[redstone links]."
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:8
+#, no-wrap
+msgid "Arithmetic tubes with various operators"
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:11
+#, no-wrap
+msgid "An arithmetic tube calculating the ratio between iron and gold ingots monitored by factory gauges"
+msgstr ""
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:15 ../src/factory-controller.adoc:11
+#: ../src/remote-terminal.adoc:9
+#, no-wrap
+msgid "Obtaining"
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:17
+#, no-wrap
+msgid "Recipe tree of arithmetic tubes (by EMI)"
+msgstr ""
+
+#. type: #obtaining
+#: ../src/arithmetic-tube.adoc:21
+msgid ""
+"Cut an amethyst shard into 2 cut amethyst with a stonecutter or mechanical "
+"saw."
+msgstr ""
+
+#. type: #obtaining
+#: ../src/arithmetic-tube.adoc:22
+msgid ""
+"Each cut amethyst can be crafted with an iron plate into an arithmetic tube."
+msgstr ""
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:24 ../src/redstone-link.adoc:22
+#, no-wrap
+msgid "Operating Principle"
+msgstr ""
+
+#. type: #principle
+#: ../src/arithmetic-tube.adoc:27
+msgid ""
+"An arithmetic tube can perform various calculations depending on its "
+"selected operator. Arithmetic operators can be categorized by the number of "
+"inputs they accept, referred to as the [#term-arity]_arity_."
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:28
+#, no-wrap
+msgid "Arithmetic operators categorized by arity"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:33
+#, no-wrap
+msgid ""
+"*N-ary* +\n"
+"  (accept any number of inputs)"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:35
+#, no-wrap
+msgid ""
+"+ +\n"
+"  Sum"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:37
+#, no-wrap
+msgid ""
+"× +\n"
+"  Product"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:39
+#, no-wrap
+msgid ""
+"`max` +\n"
+"  Maximum"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:41
+#, no-wrap
+msgid ""
+"`min` +\n"
+"  Minimum"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:45
+#, no-wrap
+msgid ""
+"*Binary* +\n"
+"  (accept exactly 2 inputs)"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:47
+#, no-wrap
+msgid ""
+"- +\n"
+"  Subtract"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:49
+#, no-wrap
+msgid ""
+"÷ +\n"
+"  Divide"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:51
+#, no-wrap
+msgid ""
+"x^y^ +\n"
+"  Power"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:53
+#, no-wrap
+msgid ""
+"^y^√x̅ +\n"
+"  Root"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:56
+#, no-wrap
+msgid ""
+"`log` +\n"
+"  Logarithm"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:58
+#, no-wrap
+msgid ""
+"*Unary* +\n"
+"  (accept exactly 1 input)"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:58
+#, no-wrap
+msgid "\\"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:60
+#, no-wrap
+msgid ""
+"+\n"
+"  Absolute"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:62
+#, no-wrap
+msgid ""
+"⌈ ⌉ +\n"
+"  Celing"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:64
+#, no-wrap
+msgid ""
+"⌊ ⌋ +\n"
+"  Floor"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:66
+#, no-wrap
+msgid ""
+"`sgn` +\n"
+"  Sign"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:70
+#, no-wrap
+msgid ""
+"`sin` +\n"
+"  Sine"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:72
+#, no-wrap
+msgid ""
+"`cos` +\n"
+"  Cosine"
+msgstr ""
+
+#. type: Table
+#: ../src/arithmetic-tube.adoc:74
+#, no-wrap
+msgid ""
+"`tan` +\n"
+"  Tangent"
+msgstr ""
+
+#. type: Plain text
+#: ../src/arithmetic-tube.adoc:78
+msgid ""
+"Each input corresponds to an incoming number connection, or a <<constant-"
+"input,constant>>. The result is propogated to the output after 1 tick."
+msgstr ""
+
+#. type: Plain text
+#: ../src/arithmetic-tube.adoc:80
+msgid ""
+"Numbers are 64-bit floating point values. They can represent fractional "
+"values, but their precision is limited. Slight rounding may occur during "
+"calculation. Integers outside the range ±2^53^ may not be exact. Dividing a "
+"non-zero number by 0 results in ∞ or -∞."
+msgstr ""
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:82
+#, no-wrap
+msgid "Basic Configuration"
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:85
+#, no-wrap
+msgid "Arithmetic tube settings"
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:90
+msgid ""
+"❶ Operator selection menu:: Click to open a menu to select an arithmetic "
+"operator."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:93
+msgid "❷❸❹ Input entry:: Shown for each input of this arithmetic tube."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:96
+msgid ""
+"❷ Input source icon:: Shows the source of this input, such as the component "
+"at the other end of the number connection."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:99
+#, fuzzy
+#| msgid "❶ Name:: Shows the name of the blueprint."
+msgid "❸ Input value:: Shows the value of this input."
+msgstr "❶ Имя:: Отображает имя чертежа."
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:102
+#, fuzzy
+#| msgid "❹ Edit button:: Click to edit the blueprint."
+msgid "❹ Remove input button:: Click to remove this input."
+msgstr "❹ Кнопка Редактирования:: Нажмите, чтобы изменить чертеж."
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:105
+#, fuzzy
+#| msgid "❶ Name:: Shows the name of the blueprint."
+msgid "❺ Result:: Shows the result of calculation."
+msgstr "❶ Имя:: Отображает имя чертежа."
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:108
+msgid ""
+"❻ Relocate button:: Click to move the location of this tube on the virtual "
+"board."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:111
+msgid ""
+"❼ Add connection button:: Click to connect another component as an input, or "
+"to a <<redstone,redstone signal>>."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:114
+msgid "❽ Add constant button:: Click to add a <<constant-input,constant>>."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:117
+msgid "❾ Confirm button:: Click to confirm settings and close this screen."
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:119
+msgid ""
+"For binary operators, the 2 inputs are distinguished as primary (blue) and "
+"secondary (red) input. Their roles in relation to the operator is typically "
+"displayed in ❶. They may be swapped by clicking ❿."
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:120
+#, no-wrap
+msgid "Arithmetic tube settings with a binary operator"
+msgstr ""
+
+#. type: #figure-arithmetic-tube-settings
+#: ../src/arithmetic-tube.adoc:124
+msgid ""
+"Switching between operators with different <<term-arity,arities>> is "
+"sometimes disallowed. In that case, remove inputs so that the number of "
+"inputs aligns with the new operator."
+msgstr ""
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:126
+#, no-wrap
+msgid "Constant"
+msgstr ""
+
+#. type: #constant-input
+#: ../src/arithmetic-tube.adoc:129
+msgid ""
+"Clicking <<figure-arithmetic-tube-settings>> ❽ creates an editable constant "
+"as an input. On a constant input, click ❸ and type to set the constant to "
+"arbitrary values. You may enter any number in decimal, or computerized "
+"scientific notation (e.g. 1e2 for 100)."
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:130
+#, no-wrap
+msgid "Settings with a constant"
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:133
+#, no-wrap
+msgid "Editing a constant"
+msgstr ""
+
+#. type: #constant-input
+#: ../src/arithmetic-tube.adoc:137
+msgid ""
+"Additionally, the special constants π, τ, e, ∞ and -∞ can be entered via the "
+"⏷ dropdown menu, or typed in their literal or English form."
+msgstr ""
+
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:139 ../src/factory-controller.adoc:19
+#: ../src/factory-gauge.adoc:286
+#, no-wrap
+msgid "Redstone"
+msgstr ""
+
+#. type: #redstone
+#: ../src/arithmetic-tube.adoc:142
+msgid ""
+"An arithmetic tube can also be connected to other components via redstone "
+"connections, such as with xref:electron-tube.adoc[logical tubes] and "
+"xref:redstone-link.adoc[redstone links]."
+msgstr ""
+
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:144
+#, no-wrap
+msgid "Redstone Input"
+msgstr ""
+
+#. type: #redstone-input
+#: ../src/arithmetic-tube.adoc:147
+msgid ""
+"When connected by redstone as a sink, the behaviour of the arithmetic tube "
+"when powered by redstone can be configured."
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:148
+#, no-wrap
+msgid "Settings with an incoming redstone connection"
+msgstr ""
+
+#. type: #redstone-input
+#: ../src/arithmetic-tube.adoc:152
+msgid "2 options can be selected by scrolling on ❶:"
+msgstr ""
+
+#. type: Labeled list
+#: ../src/arithmetic-tube.adoc:153
+#, no-wrap
+msgid "Override"
+msgstr ""
+
+#. type: #redstone-input
+#: ../src/arithmetic-tube.adoc:155
+msgid ""
+"When powered by redstone, override the output to the number specified in ❷."
+msgstr ""
+
+#. type: Labeled list
+#: ../src/arithmetic-tube.adoc:156
+#, no-wrap
+msgid "Hold"
+msgstr ""
+
+#. type: #redstone-input
+#: ../src/arithmetic-tube.adoc:158
+msgid "When powered by redstone, hold the output at its current value."
+msgstr ""
+
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:160
+#, no-wrap
+msgid "Redstone Output"
+msgstr ""
+
+#. type: #redstone-output
+#: ../src/arithmetic-tube.adoc:163
+msgid ""
+"When connected by redstone as a source, the arithmetic tube can be "
+"configured to compare the numerical result with a constant, and output a "
+"redstone signal when the comparison is satisfied."
+msgstr ""
+
+#. type: Block title
+#: ../src/arithmetic-tube.adoc:164
+#, no-wrap
+msgid "Settings with an outgoing redstone connection"
+msgstr ""
+
+#. type: #redstone-output
+#: ../src/arithmetic-tube.adoc:167
+msgid ""
+"Scroll on ❶ to select a comparator (>, <, =, ≥, ≤, ≠), click ❷ to enter the "
+"number to compare to."
+msgstr ""

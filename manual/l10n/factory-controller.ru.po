@@ -1,0 +1,113 @@
+# Russian translations for Create: Factory Controller Manual package
+# Copyright (C) 2026 Contributors
+# This file is distributed under the same license as the Create: Factory Controller Manual package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
+"PO-Revision-Date: 2026-10-19 22:14+1100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. type: Title ==
+#: ../src/arithmetic-tube.adoc:15 ../src/factory-controller.adoc:11
+#: ../src/remote-terminal.adoc:9
+#, no-wrap
+msgid "Obtaining"
+msgstr ""
+
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:139 ../src/factory-controller.adoc:19
+#: ../src/factory-gauge.adoc:286
+#, no-wrap
+msgid "Redstone"
+msgstr ""
+
+#. type: Title =
+#: ../src/factory-controller.adoc:1
+#, fuzzy, no-wrap
+#| msgid "Create: Factory Controller Manual"
+msgid "Factory Controller"
+msgstr "Руководство Create: Factory Controller"
+
+#. type: Plain text
+#: ../src/factory-controller.adoc:4
+msgid ""
+"The factory controller is the core of this mod. Once placed in the world, "
+"you may interact with the block to open its xref:dashboard.adoc[dashboard], "
+"on which you can place xref:factory-gauge.adoc[factory gauges] and "
+"xref:components.adoc[other components]."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-controller.adoc:5
+#, fuzzy, no-wrap
+#| msgid "Create: Factory Controller Manual"
+msgid "A factory controller block"
+msgstr "Руководство Create: Factory Controller"
+
+#. type: Plain text
+#: ../src/factory-controller.adoc:9
+msgid ""
+"A factory controller block stores all components placed inside. When broken, "
+"the factory controller item retains its contents, and resumes functioning "
+"once placed again."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-controller.adoc:13
+#, fuzzy, no-wrap
+#| msgid "Create: Factory Controller Manual"
+msgid "Crafting recipe for a factory controller"
+msgstr "Руководство Create: Factory Controller"
+
+#. type: #obtaining
+#: ../src/factory-controller.adoc:17
+msgid ""
+"A factory controller may be crafted from 1 factory gauge, 1 redstone link, 1 "
+"stock link, 2 sturdy plates, 1 precision mechanism, 2 brass casings, and 1 "
+"contraption controls, arranged as above."
+msgstr ""
+
+#. type: #redstoe
+#: ../src/factory-controller.adoc:22
+msgid ""
+"When a factory controller block is powered by redstone, all xref:factory-"
+"gauge.adoc[factory gauges] inside are disabled."
+msgstr ""
+
+#. type: Title ==
+#: ../src/factory-controller.adoc:24
+#, no-wrap
+msgid "Display Link"
+msgstr ""
+
+#. type: #display-link
+#: ../src/factory-controller.adoc:27
+msgid ""
+"Display links can be attached to a factory controller block to display "
+"information about this factory controller. See the in-game ponder for the "
+"usage of display links."
+msgstr ""
+
+#. type: Block title
+#: ../src/factory-controller.adoc:28
+#, no-wrap
+msgid "Display boards displaying information about a factory controller"
+msgstr ""
+
+#. type: #display-link
+#: ../src/factory-controller.adoc:31
+msgid ""
+"Each line of the display represents the status of a factory gauge inside the "
+"factory controller. Only factory gauges configured to xref:factory-"
+"gauge.adoc#basic-production[produce] an item are included."
+msgstr ""
