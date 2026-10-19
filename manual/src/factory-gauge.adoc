@@ -310,22 +310,26 @@ When you have a compatible fluid transportation mod installed, factory gauges pl
 |===
 | Mod | Compatibility
 
-| Create: FluidLogistic
-| Yes
+| Create: Repackaged
+| Yes, using fluid gauge
+
+| Create: FluidLogistics ≥ 1.2.8
+| Yes, using fluid factory gauge
+
+| Create: FluidLogistics < 1.2.8
+| Yes, adds fluid capability to factory gauge
 
 | Create: Fluid
-| Yes, but may drop support in the future
-
-| Create: Repackaged
-| Yes
+| Yes, adds fluid capability to factory gauge +
+  (May drop support in the future)
 
 | Create Factory Logistics
 | No, will crash the game
 |===
 
-When using Create: Repackaged, place fluid gauges provided by this mod to monitor and produce fluids. Fluids may be set in the <<figure-set-item,"set item" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI.
+When using mods that add fluid gauges or fluid factory gauges, place one such gauge to monitor and produce fluids. Fluids may be set in the <<figure-set-item,"set item" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI.
 
-When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,"set item" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI.
+When using mods that add fluid capability to regular factory gauges, they can then monitor and produce fluids. Fluids may be set in the <<figure-set-item,"set item" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI.
 
 Fluids do not contain NBT data, therefore when monitoring a fluid, the option to ignore NBT data disappears.
 

@@ -19,6 +19,11 @@ Some items can be placed inside a factory controller. Once placed, they are refe
 | Create: Repackaged
 | Yes
 
+^| image:icon-fluid-gauge.png[width=32,height=32]
+| xref:factory-gauge.adoc#fluid[Fluid Factory Gauge]
+| Create: FluidLogistics
+| Yes
+
 ^| image:icon-redstone-link.png[width=32,height=32]
 | xref:redstone-link.adoc[Redstone Link]
 | Create
