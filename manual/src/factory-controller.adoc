@@ -1,0 +1,31 @@
+= Factory Controller
+
+The factory controller is the core of this mod. Once placed in the world, you may interact with the block to open its xref:dashboard.adoc[dashboard], on which you can place xref:factory-gauge.adoc[factory gauges] and xref:components.adoc[other components].
+
+.A factory controller block
+image::factory-controller.png[ ,154,225]
+
+A factory controller block stores all components placed inside. When broken, the factory controller item retains its contents, and resumes functioning once placed again.
+
+[#obtaining]
+== Obtaining
+
+.Crafting recipe for a factory controller
+image::factory-controller-recipe.png[ ,108,108]
+
+A factory controller may be crafted from 1 factory gauge, 1 redstone link, 1 stock link, 2 sturdy plates, 1 precision mechanism, 2 brass casings, and 1 contraption controls, arranged as above.
+
+[#redstoe]
+== Redstone
+
+When a factory controller block is powered by redstone, all xref:factory-gauge.adoc[factory gauges] inside are disabled.
+
+[#display-link]
+== Display Link
+
+Display links can be attached to a factory controller block to display information about this factory controller. See the in-game ponder for the usage of display links.
+
+.Display boards displaying information about a factory controller
+image::display-link-text.png[ ,480,145]
+
+Each line of the display represents the status of a factory gauge inside the factory controller. Only factory gauges configured to xref:factory-gauge.adoc#basic-production[produce] an item are included.

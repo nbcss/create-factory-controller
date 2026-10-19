@@ -1,6 +1,6 @@
 = Dashboard
 
-The dashboard UI appears when you interact with a factory controller block. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components]).
+The dashboard UI appears when you interact with a xref:factory-controller.adoc[factory controller block]. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] and xref:components.adoc[other components].
 
 .Dashboard UI
 image::dashboard-ui.svg[ ,430,438]

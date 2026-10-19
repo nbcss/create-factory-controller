@@ -12,12 +12,13 @@ This manual corresponds to version {mod-version} of the mod. Information may be 
 == {toc-title}
 
 [#manual-toc]
+. xref:factory-controller.adoc[Factory Controller]
 . xref:dashboard.adoc[Dashboard]
 . xref:components.adoc[Components]
 .. xref:factory-gauge.adoc[Factory Gauge]
 .. xref:redstone-link.adoc[Redstone Link]
 .. xref:electron-tube.adoc[Electron Tube]
 .. xref:arithmetic-tube.adoc[Arithmetic Tube]
-. xref:display-link.adoc[Display Link]
+. xref:remote-terminal.adoc[Remote Terminal]
 . xref:blueprint.adoc[Blueprint]
 . xref:production-orders.adoc[Production Orders]

@@ -1,0 +1,33 @@
+= Remote Controller Terminal
+
+A reomte controller terminal is handheld device that can access factory controllers remotely.
+
+.A remote controller terminal held in hand
+image::remote-in-hand.png[ ,195,210]
+
+[#obtaining]
+== Obtaining
+
+.Crafting recipe for a remote controller terminal
+image::remote-recipe.png[ ,108,108]
+
+A remote controller terminal may be crafted from 1 transmitter, 3 cut amethyst, 2 precision mechanisms, and 1 linked controller, arranged as above. Cut an amethyst shard with a stonecutter or mechanical saw to obtain 2 cut amethyst.
+
+== Linking
+
+Each remote controller terminal can link to 1-4 factory controllers. While holding a terminal, hold shift and right-click on a factory controller to link the factory controller, If it already linked, doing so unlinks the factory controller.
+
+During linking, the coordinates of the factory controller is remembered. The terminal locates the factory controller at these coordinates. If the factory controller has been moved, or if the chunk it resides in has been unloaded, it is unable to be accessed.
+
+== Usage
+
+Right-click with a remote controller terminal to open its UI. This shows the xref:dashboard.adoc[dashboard] of a factory controller it is linked to. Tabs on the left (❶) are used to switch between multiple linked factory controllers. Hold shift and click a tab to unlink a factory controller.
+
+.Remote dashboard UI
+image::remote-dashboard.svg[ ,488,438]
+
+Different names (❷) may be given to each factory controller to help you distinguish them.
+
+Linked factory controllers can be accessed from any distance or dimension, as long as the block resides in a loaded chunk.
+
+When using the remote dashboard, items may not be transferred. You may move the components and change their settings, but you may not place or remove components. This restriction can be lifted with the server setting "Allow component placement in terminal".
