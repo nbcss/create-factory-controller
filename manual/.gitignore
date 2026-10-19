@@ -1,4 +1,5 @@
 /vendor/
 /.bundle/
+/l10n/po4a.cfg
 /translated/
 /build/

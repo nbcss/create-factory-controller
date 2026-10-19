@@ -1,0 +1,13 @@
+[po4a_langs] <%= languages[1..-1].join(' ') %>
+[po4a_paths] $master.pot $lang:$master.$lang.po
+
+[options] --keep 1 --width 0 --wrap-po no \
+  -o tablecells -o noimagetargets \
+  --package-name "Create: Factory Controller Manual" \
+  --package-version "1" \
+  --copyright-holder "Contributors" \
+  --master-language <%= languages[0] %>
+
+<% documents.each do |document| %>
+[type: asciidoc] ../src/<%= document %>.adoc $lang:../translated/$lang/<%= document %>.adoc pot=<%= document %>
+<% end %>

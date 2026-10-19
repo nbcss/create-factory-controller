@@ -13,7 +13,9 @@ require_relative 'lib/manual-builder'
 
 # Get languages from existing localisation file names
 LANGS = Dir.entries('l10n')
-.map{|x| x.split '.' }.filter{|x| x.length >= 3 }.map{|x| x[-2] }
+.map{|x| x.split '.' }
+.filter{|x| x.length >= 3 && %w(yaml po).include?(x[-1]) }
+.map{|x| x[-2] }
 .uniq.sort.map(&:to_sym)
 
 LANGS.prepend :en
@@ -77,13 +79,14 @@ namespace 'po4a' do
 
   desc "Update po4a config"
   task :config do
-    orig = File.read('l10n/po4a.cfg')
-    changed = orig.sub(/(?<=\[po4a_langs\] ).*$/) do
-      LANGS[1..-1].join(' ')
-    end
-    if orig != changed
+    template = ERB.new File.read 'l10n/po4a.cfg.erb'
+    content = template.result_with_hash(
+      languages: LANGS,
+      documents: doc_names,
+    )
+    if content != (File.read('l10n/po4a.cfg') rescue nil)
       puts "Write po4a.cfg" if verbose
-      File.write 'l10n/po4a.cfg', changed
+      File.write 'l10n/po4a.cfg', content
     end
   end
 
