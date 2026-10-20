@@ -4,7 +4,7 @@ name: Build manual
 # 1. On main branch, create a container image containing the dependencies for building the manual.
 # 2. Then for any of the below branches, use the container to build the manual.
 # 3. Upload the manual as artifacts to the container registry,
-#    which are consumed by `github-pages.yml` to be published under `manual` and `manual-$branch`.
+#    which are consumed by `github-pages.yml` to be published under `manual` and `manual:$branch`.
 
 on:
   push:
