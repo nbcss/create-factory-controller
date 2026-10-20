@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-10-18 00:07+1100\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
 "PO-Revision-Date: 2026-09-04 12:27+0000\n"
 "Last-Translator: Prefill add-on <noreply-addon-prefill@weblate.org>\n"
 "Language-Team: Russian <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/factory-gauge/ru/>\n"
@@ -18,16 +18,15 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
 "X-Generator: Weblate 2026.7.1\n"
 
-#. type: Table
-#: ../src/components.adoc:17 ../src/components.adoc:22
-#: ../src/components.adoc:27 ../src/factory-gauge.adoc:316
-#: ../src/factory-gauge.adoc:322
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:139 ../src/factory-controller.adoc:19
+#: ../src/factory-gauge.adoc:286
 #, no-wrap
-msgid "Yes"
+msgid "Redstone"
 msgstr ""
 
 #. type: Table
-#: ../src/components.adoc:20 ../src/factory-gauge.adoc:320
+#: ../src/components.adoc:20 ../src/factory-gauge.adoc:314
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr ""
@@ -670,12 +669,6 @@ msgstr ""
 msgid "Control Signals"
 msgstr ""
 
-#. type: Title ==
-#: ../src/factory-gauge.adoc:286 ../src/arithmetic-tube.adoc:139
-#, no-wrap
-msgid "Redstone"
-msgstr ""
-
 #. type: #redstone
 #: ../src/factory-gauge.adoc:289
 msgid "A factory gauge can be connected to some other components via redstone connections, such as with xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links]. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone."
@@ -739,72 +732,98 @@ msgid "Compatibility"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:314
+#: ../src/factory-gauge.adoc:316
 #, no-wrap
-msgid "Create: FluidLogistic"
+msgid "Yes, using fluid gauge"
 msgstr ""
 
 #. type: Table
 #: ../src/factory-gauge.adoc:317
 #, no-wrap
-msgid "Create: Fluid"
+msgid "Create: FluidLogistics ≥ 1.2.8"
 msgstr ""
 
 #. type: Table
 #: ../src/factory-gauge.adoc:319
 #, no-wrap
-msgid "Yes, but may drop support in the future"
+msgid "Yes, using fluid factory gauge"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:320
+#, no-wrap
+msgid "Create: FluidLogistics < 1.2.8"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:322
+#, no-wrap
+msgid "Yes, adds fluid capability to factory gauge"
 msgstr ""
 
 #. type: Table
 #: ../src/factory-gauge.adoc:323
 #, no-wrap
+msgid "Create: Fluid"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:326
+#, no-wrap
+msgid ""
+"Yes, adds fluid capability to factory gauge +\n"
+"  (May drop support in the future)"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:327
+#, no-wrap
 msgid "Create Factory Logistics"
 msgstr ""
 
 #. type: Table
-#: ../src/factory-gauge.adoc:324
+#: ../src/factory-gauge.adoc:328
 #, no-wrap
 msgid "No, will crash the game"
 msgstr ""
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:327
-msgid "When using Create: Repackaged, place fluid gauges provided by this mod to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
-msgstr ""
-
-#. type: Plain text
-#: ../src/factory-gauge.adoc:329
-msgid "When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
-msgstr ""
-
-#. type: Plain text
 #: ../src/factory-gauge.adoc:331
-msgid "Fluids do not contain NBT data, therefore when monitoring a fluid, the option to ignore NBT data disappears."
+msgid "When using mods that add fluid gauges or fluid factory gauges, place one such gauge to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
 msgstr ""
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:333
+msgid "When using mods that add fluid capability to regular factory gauges, they can then monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:335
+msgid "Fluids do not contain NBT data, therefore when monitoring a fluid, the option to ignore NBT data disappears."
+msgstr ""
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:337
 msgid "When using a fluid as an ingredient or output, scrolling on the ingredient or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is limited to 64 B per batch."
 msgstr ""
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:335
+#: ../src/factory-gauge.adoc:339
 #, no-wrap
 msgid "Ignore Item NBT Data"
 msgstr ""
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:338
+#: ../src/factory-gauge.adoc:342
 msgid "A factory gauge may be configured in the <<figure-set-item,\"set item\" screen>> to ignore the NBT data of its <<term-monitored-item,monitored item>>. When it is ignored, all items of the same type as the monitored item are counted towards the <<term-storage-amount,storage amount>>, regardless of their NBT data."
 msgstr ""
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:340
+#: ../src/factory-gauge.adoc:344
 msgid "Items with different NBT data do not stack. Therefore, when an <<term-ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge may receive the ingredient in more stacks than what appears in the <<term-recipe,recipe>>. If the total number of items in a <<term-request,request>> exceeds 9 stacks, the items are split into multiple packages."
 msgstr ""
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:341
+#: ../src/factory-gauge.adoc:345
 msgid "If either <<crafting,mechanical crafting>> or <<arrange-ingredient,custom arrangement>> is enabled, the behaviour is different. Each item stack defined in the recipe must consist of items with identical NBT data. For a unique set of NBT data possessed by N items in storage, items with this set of NBT data are only sent if N is sufficient to fill one ingredient stack."
 msgstr ""

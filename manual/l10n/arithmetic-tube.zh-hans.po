@@ -3,13 +3,18 @@
 # This file is distributed under the same license as the Create: Factory Controller Manual package.
 # FiveYellowMice <me@fiveyellowmice.com>, 2026.
 msgid ""
-msgstr "Project-Id-Version: Create: Factory Controller Manual 1\nPOT-Creation-Date: 2026-10-18 00:07+1100\nPO-Revision-Date: 2026-10-17 15:05+0000\nLast-Translator: FiveYellowMice <me@fiveyellowmice.com>\nLanguage-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/arithmetic-tube/zh_Hans/>\nLanguage: zh-hans\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPlural-Forms: nplurals=1; plural=0;\nX-Generator: Weblate 2026.7.1\n"
-
-#. type: Title ==
-#: ../src/factory-gauge.adoc:286 ../src/arithmetic-tube.adoc:139
-#, no-wrap
-msgid "Redstone"
-msgstr "红石"
+msgstr ""
+"Project-Id-Version: Create: Factory Controller Manual 1\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
+"PO-Revision-Date: 2026-10-17 15:05+0000\n"
+"Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/arithmetic-tube/zh_Hans/>\n"
+"Language: zh-hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.7.1\n"
 
 #. type: Title =
 #: ../src/arithmetic-tube.adoc:1
@@ -19,19 +24,12 @@ msgstr "算术管"
 
 #. type: Plain text
 #: ../src/arithmetic-tube.adoc:5
-msgid ""
-"Arithmetic tube is an item added by this mod. It can be placed in factory "
-"controllers to to perform arithmetic operations, such as addition, "
-"multiplication, division, rounding and trigonometry."
+msgid "Arithmetic tube is an item added by this mod. It can be placed in factory controllers to to perform arithmetic operations, such as addition, multiplication, division, rounding and trigonometry."
 msgstr "算术管是此模组所添加的物品。它可以被放置于工厂控制器中用于数字运算，例如加法、乘法、除法、四舍五入和三角运算。"
 
 #. type: Plain text
 #: ../src/arithmetic-tube.adoc:7
-msgid ""
-"Arithmetic tubes primarily connect with other components via number "
-"connections. They may be used to obtain information from or control "
-"components such as xref:factory-gauge.adoc#number-connection[factory gauges] "
-"and xref:redstone-link.adoc#signal-strength[redstone links]."
+msgid "Arithmetic tubes primarily connect with other components via number connections. They may be used to obtain information from or control components such as xref:factory-gauge.adoc#number-connection[factory gauges] and xref:redstone-link.adoc#signal-strength[redstone links]."
 msgstr "算术管通常主要数字连接来连接至与其他组件。它们可用于从xref:factory-gauge.adoc#number-connection[工厂仪表]和xref:redstone-link.adoc#signal-strength[无线红石信号终端]之类的组件获取信息或控制它们。"
 
 #. type: Block title
@@ -47,7 +45,8 @@ msgid "An arithmetic tube calculating the ratio between iron and gold ingots mon
 msgstr "正在计算由工厂仪表检测的铁锭和金锭数量的比例的算术管"
 
 #. type: Title ==
-#: ../src/arithmetic-tube.adoc:15
+#: ../src/arithmetic-tube.adoc:15 ../src/factory-controller.adoc:11
+#: ../src/remote-terminal.adoc:9
 #, no-wrap
 msgid "Obtaining"
 msgstr "获取"
@@ -60,15 +59,12 @@ msgstr "算术管的配方树（出自 EMI）"
 
 #. type: #obtaining
 #: ../src/arithmetic-tube.adoc:21
-msgid ""
-"Cut an amethyst shard into 2 cut amethyst with a stonecutter or mechanical "
-"saw."
+msgid "Cut an amethyst shard into 2 cut amethyst with a stonecutter or mechanical saw."
 msgstr "使用切石机或动力锯，将一块紫水晶碎片切割成两块切制紫水晶。"
 
 #. type: #obtaining
 #: ../src/arithmetic-tube.adoc:22
-msgid ""
-"Each cut amethyst can be crafted with an iron plate into an arithmetic tube."
+msgid "Each cut amethyst can be crafted with an iron plate into an arithmetic tube."
 msgstr "每块切制紫水晶都可以与铁板合成，制成一个算术管。"
 
 #. type: Title ==
@@ -79,10 +75,7 @@ msgstr "工作原理"
 
 #. type: #principle
 #: ../src/arithmetic-tube.adoc:27
-msgid ""
-"An arithmetic tube can perform various calculations depending on its "
-"selected operator. Arithmetic operators can be categorized by the number of "
-"inputs they accept, referred to as the [#term-arity]_arity_."
+msgid "An arithmetic tube can perform various calculations depending on its selected operator. Arithmetic operators can be categorized by the number of inputs they accept, referred to as the [#term-arity]_arity_."
 msgstr "根据其选择的运算符，算术管可以进行各种计算。运算符可以按照其接受的输入的数量（称为[#term-arity]__元数__）来分类。"
 
 #. type: Block title
@@ -97,7 +90,9 @@ msgstr "按元数分类的运算符"
 msgid ""
 "*N-ary* +\n"
 "  (accept any number of inputs)"
-msgstr "*N 元* +\n  （接受任意数量的输入）"
+msgstr ""
+"*N 元* +\n"
+"  （接受任意数量的输入）"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:35
@@ -105,7 +100,9 @@ msgstr "*N 元* +\n  （接受任意数量的输入）"
 msgid ""
 "+ +\n"
 "  Sum"
-msgstr "+ +\n  和"
+msgstr ""
+"+ +\n"
+"  和"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:37
@@ -113,7 +110,9 @@ msgstr "+ +\n  和"
 msgid ""
 "× +\n"
 "  Product"
-msgstr "× +\n  积"
+msgstr ""
+"× +\n"
+"  积"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:39
@@ -121,7 +120,9 @@ msgstr "× +\n  积"
 msgid ""
 "`max` +\n"
 "  Maximum"
-msgstr "`max` +\n  最大值"
+msgstr ""
+"`max` +\n"
+"  最大值"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:41
@@ -129,7 +130,9 @@ msgstr "`max` +\n  最大值"
 msgid ""
 "`min` +\n"
 "  Minimum"
-msgstr "`min` +\n  最小值"
+msgstr ""
+"`min` +\n"
+"  最小值"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:45
@@ -137,7 +140,9 @@ msgstr "`min` +\n  最小值"
 msgid ""
 "*Binary* +\n"
 "  (accept exactly 2 inputs)"
-msgstr "*二元* +\n  （接受 2 个输入）"
+msgstr ""
+"*二元* +\n"
+"  （接受 2 个输入）"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:47
@@ -145,7 +150,9 @@ msgstr "*二元* +\n  （接受 2 个输入）"
 msgid ""
 "- +\n"
 "  Subtract"
-msgstr "- +\n  减"
+msgstr ""
+"- +\n"
+"  减"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:49
@@ -153,7 +160,9 @@ msgstr "- +\n  减"
 msgid ""
 "÷ +\n"
 "  Divide"
-msgstr "÷ +\n  除"
+msgstr ""
+"÷ +\n"
+"  除"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:51
@@ -161,7 +170,9 @@ msgstr "÷ +\n  除"
 msgid ""
 "x^y^ +\n"
 "  Power"
-msgstr "x^y^ +\n  冪"
+msgstr ""
+"x^y^ +\n"
+"  冪"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:53
@@ -169,7 +180,9 @@ msgstr "x^y^ +\n  冪"
 msgid ""
 "^y^√x̅ +\n"
 "  Root"
-msgstr "^y^√x̅ +\n  根"
+msgstr ""
+"^y^√x̅ +\n"
+"  根"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:56
@@ -177,7 +190,9 @@ msgstr "^y^√x̅ +\n  根"
 msgid ""
 "`log` +\n"
 "  Logarithm"
-msgstr "`log` +\n  对数"
+msgstr ""
+"`log` +\n"
+"  对数"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:58
@@ -185,7 +200,9 @@ msgstr "`log` +\n  对数"
 msgid ""
 "*Unary* +\n"
 "  (accept exactly 1 input)"
-msgstr "*一元* +\n  （接受 1 个输入）"
+msgstr ""
+"*一元* +\n"
+"  （接受 1 个输入）"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:58
@@ -199,7 +216,9 @@ msgstr "\\"
 msgid ""
 "+\n"
 "  Absolute"
-msgstr "+\n  绝对值"
+msgstr ""
+"+\n"
+"  绝对值"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:62
@@ -207,7 +226,9 @@ msgstr "+\n  绝对值"
 msgid ""
 "⌈ ⌉ +\n"
 "  Celing"
-msgstr "⌈ ⌉ +\n  上取整"
+msgstr ""
+"⌈ ⌉ +\n"
+"  上取整"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:64
@@ -215,7 +236,9 @@ msgstr "⌈ ⌉ +\n  上取整"
 msgid ""
 "⌊ ⌋ +\n"
 "  Floor"
-msgstr "⌊ ⌋ +\n  下取整"
+msgstr ""
+"⌊ ⌋ +\n"
+"  下取整"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:66
@@ -223,7 +246,9 @@ msgstr "⌊ ⌋ +\n  下取整"
 msgid ""
 "`sgn` +\n"
 "  Sign"
-msgstr "`sgn` +\n  符号"
+msgstr ""
+"`sgn` +\n"
+"  符号"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:70
@@ -231,7 +256,9 @@ msgstr "`sgn` +\n  符号"
 msgid ""
 "`sin` +\n"
 "  Sine"
-msgstr "`sin` +\n  正弦"
+msgstr ""
+"`sin` +\n"
+"  正弦"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:72
@@ -239,7 +266,9 @@ msgstr "`sin` +\n  正弦"
 msgid ""
 "`cos` +\n"
 "  Cosine"
-msgstr "`cos` +\n  余弦"
+msgstr ""
+"`cos` +\n"
+"  余弦"
 
 #. type: Table
 #: ../src/arithmetic-tube.adoc:74
@@ -247,22 +276,18 @@ msgstr "`cos` +\n  余弦"
 msgid ""
 "`tan` +\n"
 "  Tangent"
-msgstr "`tan` +\n  正切"
+msgstr ""
+"`tan` +\n"
+"  正切"
 
 #. type: Plain text
 #: ../src/arithmetic-tube.adoc:78
-msgid ""
-"Each input corresponds to an incoming number connection, or a <<constant-"
-"input,constant>>. The result is propogated to the output after 1 tick."
+msgid "Each input corresponds to an incoming number connection, or a <<constant-input,constant>>. The result is propogated to the output after 1 tick."
 msgstr "每个输入对应一个传入的数字连接，或者一个<<constant-input,常量>>。结果在 1 游戏刻后输出。"
 
 #. type: Plain text
 #: ../src/arithmetic-tube.adoc:80
-msgid ""
-"Numbers are 64-bit floating point values. They can represent fractional "
-"values, but their precision is limited. Slight rounding may occur during "
-"calculation. Integers outside the range ±2^53^ may not be exact. Dividing a "
-"non-zero number by 0 results in ∞ or -∞."
+msgid "Numbers are 64-bit floating point values. They can represent fractional values, but their precision is limited. Slight rounding may occur during calculation. Integers outside the range ±2^53^ may not be exact. Dividing a non-zero number by 0 results in ∞ or -∞."
 msgstr "数字为 64 位浮点数。它们可以表示小数，但精度有限，计算过程中可能会出现轻微的舍入误差。超出 ±2^53^ 范围的整数可能不精确；非零数除以 0 的结果为 ∞ 或 -∞ 。"
 
 #. type: Title ==
@@ -279,9 +304,7 @@ msgstr "算术管设置"
 
 #. type: #figure-arithmetic-tube-settings
 #: ../src/arithmetic-tube.adoc:90
-msgid ""
-"❶ Operator selection menu:: Click to open a menu to select an arithmetic "
-"operator."
+msgid "❶ Operator selection menu:: Click to open a menu to select an arithmetic operator."
 msgstr "❶ 运算符选择菜单:: 点击以打开菜单，选择运算符。"
 
 #. type: #figure-arithmetic-tube-settings
@@ -291,9 +314,7 @@ msgstr "❷❸❹ 输入项:: 显示此算术管的每个输入。"
 
 #. type: #figure-arithmetic-tube-settings
 #: ../src/arithmetic-tube.adoc:96
-msgid ""
-"❷ Input source icon:: Shows the source of this input, such as the component "
-"at the other end of the number connection."
+msgid "❷ Input source icon:: Shows the source of this input, such as the component at the other end of the number connection."
 msgstr "❷ 输入源图标:: 显示此输入的来源，例如数字连接另一端的组件。"
 
 #. type: #figure-arithmetic-tube-settings
@@ -313,16 +334,12 @@ msgstr "❺ 结果:: 显示计算结果。"
 
 #. type: #figure-arithmetic-tube-settings
 #: ../src/arithmetic-tube.adoc:108
-msgid ""
-"❻ Relocate button:: Click to move the location of this tube on the virtual "
-"board."
+msgid "❻ Relocate button:: Click to move the location of this tube on the virtual board."
 msgstr "❻ 移动组件按钮:: 点击以在虚拟面板上移动该算术管。"
 
 #. type: #figure-arithmetic-tube-settings
 #: ../src/arithmetic-tube.adoc:111
-msgid ""
-"❼ Add connection button:: Click to connect another component as an input, or "
-"to a <<redstone,redstone signal>>."
+msgid "❼ Add connection button:: Click to connect another component as an input, or to a <<redstone,redstone signal>>."
 msgstr "❼ 添加连接按钮:: 点击以连接至其它组件做为输入，或连接至<<redstone,红石信号>>。"
 
 #. type: #figure-arithmetic-tube-settings
@@ -337,10 +354,7 @@ msgstr "❼ 确认按钮:: 点击以保存设置并关闭界面。"
 
 #. type: #figure-arithmetic-tube-settings
 #: ../src/arithmetic-tube.adoc:119
-msgid ""
-"For binary operators, the 2 inputs are distinguished as primary (blue) and "
-"secondary (red) input. Their roles in relation to the operator is typically "
-"displayed in ❶. They may be swapped by clicking ❿."
+msgid "For binary operators, the 2 inputs are distinguished as primary (blue) and secondary (red) input. Their roles in relation to the operator is typically displayed in ❶. They may be swapped by clicking ❿."
 msgstr "对于二元运算符，其两个输入被区分为主输入（蓝色）和副输入（红色），它们与运算符的关系通常会在 ❶ 中显示。点击 ❿ 可以交换它们。"
 
 #. type: Block title
@@ -351,10 +365,7 @@ msgstr "使用二元运算符的算术管的设置"
 
 #. type: #figure-arithmetic-tube-settings
 #: ../src/arithmetic-tube.adoc:124
-msgid ""
-"Switching between operators with different <<term-arity,arities>> is "
-"sometimes disallowed. In that case, remove inputs so that the number of "
-"inputs aligns with the new operator."
+msgid "Switching between operators with different <<term-arity,arities>> is sometimes disallowed. In that case, remove inputs so that the number of inputs aligns with the new operator."
 msgstr "不同<<term-arity,元数>>的运算符之间有时无法切换，此时请移除一些输入，使输入个数符合新的运算符。"
 
 #. type: Title ==
@@ -365,11 +376,7 @@ msgstr "常量"
 
 #. type: #constant-input
 #: ../src/arithmetic-tube.adoc:129
-msgid ""
-"Clicking <<figure-arithmetic-tube-settings>> ❽ creates an editable constant "
-"as an input. On a constant input, click ❸ and type to set the constant to "
-"arbitrary values. You may enter any number in decimal, or computerized "
-"scientific notation (e.g. 1e2 for 100)."
+msgid "Clicking <<figure-arithmetic-tube-settings>> ❽ creates an editable constant as an input. On a constant input, click ❸ and type to set the constant to arbitrary values. You may enter any number in decimal, or computerized scientific notation (e.g. 1e2 for 100)."
 msgstr "点击<<figure-arithmetic-tube-settings>> ❽ 会创建一个可编辑的常量作为输入。在常量输入中，点击 ❸ 后可键入任意值。你可以使用十进制数字，也可使用计算机化科学计数法（例如用 1e2 表示 100）。"
 
 #. type: Block title
@@ -386,17 +393,19 @@ msgstr "编辑常量"
 
 #. type: #constant-input
 #: ../src/arithmetic-tube.adoc:137
-msgid ""
-"Additionally, the special constants π, τ, e, ∞ and -∞ can be entered via the "
-"⏷ dropdown menu, or typed in their literal or English form."
+msgid "Additionally, the special constants π, τ, e, ∞ and -∞ can be entered via the ⏷ dropdown menu, or typed in their literal or English form."
 msgstr "此外，通过 ⏷ 下拉菜单可以输入特殊常数 π、τ、e、∞ 和 -∞ ，它们也可以作为字符或以英文形式键入。"
+
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:139 ../src/factory-controller.adoc:19
+#: ../src/factory-gauge.adoc:286
+#, no-wrap
+msgid "Redstone"
+msgstr "红石"
 
 #. type: #redstone
 #: ../src/arithmetic-tube.adoc:142
-msgid ""
-"An arithmetic tube can also be connected to other components via redstone "
-"connections, such as with xref:electron-tube.adoc[logical tubes] and "
-"xref:redstone-link.adoc[redstone links]."
+msgid "An arithmetic tube can also be connected to other components via redstone connections, such as with xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links]."
 msgstr "算术管也可以通过红石连接连接至其他组件，例如xref:electron-tube.adoc[逻辑管]和xref:redstone-link.adoc[无线红石信号终端]。"
 
 #. type: Title ===
@@ -407,9 +416,7 @@ msgstr "红石输入"
 
 #. type: #redstone-input
 #: ../src/arithmetic-tube.adoc:147
-msgid ""
-"When connected by redstone as a sink, the behaviour of the arithmetic tube "
-"when powered by redstone can be configured."
+msgid "When connected by redstone as a sink, the behaviour of the arithmetic tube when powered by redstone can be configured."
 msgstr "做为红石连接的目标时，此算术管被红石充能时的行为可以被修改。"
 
 #. type: Block title
@@ -431,8 +438,7 @@ msgstr "覆写"
 
 #. type: #redstone-input
 #: ../src/arithmetic-tube.adoc:155
-msgid ""
-"When powered by redstone, override the output to the number specified in ❷."
+msgid "When powered by redstone, override the output to the number specified in ❷."
 msgstr "当被红石输入充能时，覆写输出为 ❷ 中设定的值。"
 
 #. type: Labeled list
@@ -454,10 +460,7 @@ msgstr "红石输出"
 
 #. type: #redstone-output
 #: ../src/arithmetic-tube.adoc:163
-msgid ""
-"When connected by redstone as a source, the arithmetic tube can be "
-"configured to compare the numerical result with a constant, and output a "
-"redstone signal when the comparison is satisfied."
+msgid "When connected by redstone as a source, the arithmetic tube can be configured to compare the numerical result with a constant, and output a redstone signal when the comparison is satisfied."
 msgstr "做为红石连接的源头时，算术管可以被配置将算术结果与一个常数进行比较，并在比较条件满足时输出红石信号。"
 
 #. type: Block title
@@ -468,7 +471,5 @@ msgstr "具有红石输出连接的设置"
 
 #. type: #redstone-output
 #: ../src/arithmetic-tube.adoc:167
-msgid ""
-"Scroll on ❶ to select a comparator (>, <, =, ≥, ≤, ≠), click ❷ to enter the "
-"number to compare to."
+msgid "Scroll on ❶ to select a comparator (>, <, =, ≥, ≤, ≠), click ❷ to enter the number to compare to."
 msgstr "在 ❶ 上滚动以选择比较条件（>、<、=、≥、≤、≠），点击 ❷ 输入与结果比较的数字。"

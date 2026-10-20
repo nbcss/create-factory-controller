@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-10-17 23:56+1100\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
 "PO-Revision-Date: 2026-10-17 14:50+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/dashboard/zh_Hans/>\n"
@@ -26,7 +26,9 @@ msgstr "控制台界面"
 
 #. type: Plain text
 #: ../src/dashboard.adoc:4
-msgid "The dashboard UI appears when you interact with a factory controller block. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
+#, fuzzy
+#| msgid "The dashboard UI appears when you interact with a factory controller block. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] (and xref:components.adoc[other components])."
+msgid "The dashboard UI appears when you interact with a xref:factory-controller.adoc[factory controller block]. It displays a virtual 2D board on which you can place xref:factory-gauge.adoc[factory gauges] and xref:components.adoc[other components]."
 msgstr "与工厂控制台方块交互即可打开控制台界面。控制台界面可用于放置xref:factory-gauge.adoc[工厂仪表]（及xref:components.adoc[其他组件]）。"
 
 #. type: Block title

@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
-"POT-Creation-Date: 2026-10-18 00:07+1100\n"
+"POT-Creation-Date: 2026-10-19 22:14+1100\n"
 "PO-Revision-Date: 2026-10-17 14:50+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/factory-gauge/zh_Hans/>\n"
@@ -18,16 +18,15 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 2026.7.1\n"
 
-#. type: Table
-#: ../src/components.adoc:17 ../src/components.adoc:22
-#: ../src/components.adoc:27 ../src/factory-gauge.adoc:316
-#: ../src/factory-gauge.adoc:322
+#. type: Title ===
+#: ../src/arithmetic-tube.adoc:139 ../src/factory-controller.adoc:19
+#: ../src/factory-gauge.adoc:286
 #, no-wrap
-msgid "Yes"
-msgstr "是"
+msgid "Redstone"
+msgstr "红石"
 
 #. type: Table
-#: ../src/components.adoc:20 ../src/factory-gauge.adoc:320
+#: ../src/components.adoc:20 ../src/factory-gauge.adoc:314
 #, no-wrap
 msgid "Create: Repackaged"
 msgstr "Create: Repackaged"
@@ -680,12 +679,6 @@ msgstr ""
 msgid "Control Signals"
 msgstr "控制信号"
 
-#. type: Title ==
-#: ../src/factory-gauge.adoc:286 ../src/arithmetic-tube.adoc:139
-#, no-wrap
-msgid "Redstone"
-msgstr "红石"
-
 #. type: #redstone
 #: ../src/factory-gauge.adoc:289
 msgid "A factory gauge can be connected to some other components via redstone connections, such as with xref:electron-tube.adoc[logical tubes] and xref:redstone-link.adoc[redstone links]. When connected as the source, it outputs a redstone signal when the <<term-storage-amount,storage amount>> is equal to or greater than the target amount. When connected as the sink, the factory gauge is disabled when it is powered by redstone."
@@ -749,75 +742,115 @@ msgid "Compatibility"
 msgstr "兼容性"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:314
+#: ../src/factory-gauge.adoc:316
 #, no-wrap
-msgid "Create: FluidLogistic"
-msgstr "流体包裹（Create: FluidLogistic）"
+msgid "Yes, using fluid gauge"
+msgstr ""
 
 #. type: Table
 #: ../src/factory-gauge.adoc:317
+#, fuzzy, no-wrap
+#| msgid "Create: FluidLogistic"
+msgid "Create: FluidLogistics ≥ 1.2.8"
+msgstr "流体包裹（Create: FluidLogistic）"
+
+#. type: Table
+#: ../src/factory-gauge.adoc:319
+#, no-wrap
+msgid "Yes, using fluid factory gauge"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:320
+#, fuzzy, no-wrap
+#| msgid "Create: FluidLogistic"
+msgid "Create: FluidLogistics < 1.2.8"
+msgstr "流体包裹（Create: FluidLogistic）"
+
+#. type: Table
+#: ../src/factory-gauge.adoc:322
+#, no-wrap
+msgid "Yes, adds fluid capability to factory gauge"
+msgstr ""
+
+#. type: Table
+#: ../src/factory-gauge.adoc:323
 #, no-wrap
 msgid "Create: Fluid"
 msgstr "流体（Create: Fluid）"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:319
-#, no-wrap
-msgid "Yes, but may drop support in the future"
+#: ../src/factory-gauge.adoc:326
+#, fuzzy, no-wrap
+#| msgid "Yes, but may drop support in the future"
+msgid ""
+"Yes, adds fluid capability to factory gauge +\n"
+"  (May drop support in the future)"
 msgstr "是，但未来可能停止维护兼容性"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:323
+#: ../src/factory-gauge.adoc:327
 #, no-wrap
 msgid "Create Factory Logistics"
 msgstr "Create Factory Logistics"
 
 #. type: Table
-#: ../src/factory-gauge.adoc:324
+#: ../src/factory-gauge.adoc:328
 #, no-wrap
 msgid "No, will crash the game"
 msgstr "不，会导致游戏崩溃"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:327
-msgid "When using Create: Repackaged, place fluid gauges provided by this mod to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
-msgstr "使用 Create: Repackaged 时，需要放置该模组提供的流体仪表来监测和生产流体。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的桶并点击过滤槽，或直接从 JEI 拖入流体条目。"
-
-#. type: Plain text
-#: ../src/factory-gauge.adoc:329
-msgid "When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
+#: ../src/factory-gauge.adoc:331
+#, fuzzy
+#| msgid "When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
+msgid "When using mods that add fluid gauges or fluid factory gauges, place one such gauge to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
 msgstr "使用其他兼容模组时，普通工厂仪表会获得监测和生产流体的能力。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的容器（例如桶）并右键点击过滤槽，或从 JEI 拖入流体条目。"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:331
+#: ../src/factory-gauge.adoc:333
+#, fuzzy
+#| msgid "When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
+msgid "When using mods that add fluid capability to regular factory gauges, they can then monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
+msgstr "使用其他兼容模组时，普通工厂仪表会获得监测和生产流体的能力。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的容器（例如桶）并右键点击过滤槽，或从 JEI 拖入流体条目。"
+
+#. type: Plain text
+#: ../src/factory-gauge.adoc:335
 msgid "Fluids do not contain NBT data, therefore when monitoring a fluid, the option to ignore NBT data disappears."
 msgstr "流体不包含 NBT 数据，因此在监测流体时，“忽略 NBT”选项会消失。"
 
 #. type: Plain text
-#: ../src/factory-gauge.adoc:333
+#: ../src/factory-gauge.adoc:337
 msgid "When using a fluid as an ingredient or output, scrolling on the ingredient or output UI adjusts the amount by 1 B. Hold shift while scrolling to adjust by 10 mB, or hold ctrl while scrolling to adjust by 1 mB. The output is limited to 64 B per batch."
 msgstr "将流体作为原材料或产物时，在对应槽位上滚动默认以 1 B 为单位调整，按住 Shift 滚动以 10 mB 为单位调整，按住 Ctrl 滚动以 1 mB 为单位调整。每批产物流体最多为 64 B。"
 
 #. type: Title ==
-#: ../src/factory-gauge.adoc:335
+#: ../src/factory-gauge.adoc:339
 #, no-wrap
 msgid "Ignore Item NBT Data"
 msgstr "忽略物品 NBT 数据"
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:338
+#: ../src/factory-gauge.adoc:342
 msgid "A factory gauge may be configured in the <<figure-set-item,\"set item\" screen>> to ignore the NBT data of its <<term-monitored-item,monitored item>>. When it is ignored, all items of the same type as the monitored item are counted towards the <<term-storage-amount,storage amount>>, regardless of their NBT data."
 msgstr "在“设置物品”界面中可以配置工厂仪表，使其忽略<<term-monitored-item,被监测物品>>的 NBT 数据。忽略后，所有与被监测物品类型相同的物品都会计入<<term-storage-amount,库存>>，而不管它们的 NBT 数据如何。"
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:340
+#: ../src/factory-gauge.adoc:344
 msgid "Items with different NBT data do not stack. Therefore, when an <<term-ingredient-gauge,ingredient gauge>> ignores NBT data, the consumer gauge may receive the ingredient in more stacks than what appears in the <<term-recipe,recipe>>. If the total number of items in a <<term-request,request>> exceeds 9 stacks, the items are split into multiple packages."
 msgstr "带有不同 NBT 数据的物品无法互相堆叠。因此，当一个<<term-ingredient-gauge,材料仪表>>忽略 NBT 数据时，消费端仪表可能会收到比<<term-recipe,配方>>中显示的更多的物品组数。如果一个<<term-request,请求>>中的物品总数超过 9 组，这些物品侧会被被拆分到多个包裹中。"
 
 #. type: #ignore-data
-#: ../src/factory-gauge.adoc:341
+#: ../src/factory-gauge.adoc:345
 msgid "If either <<crafting,mechanical crafting>> or <<arrange-ingredient,custom arrangement>> is enabled, the behaviour is different. Each item stack defined in the recipe must consist of items with identical NBT data. For a unique set of NBT data possessed by N items in storage, items with this set of NBT data are only sent if N is sufficient to fill one ingredient stack."
 msgstr "如果启用了<<crafting,动力合成>>或<<arrange-ingredient,自定义布局>>，行为则会有所不同。配方中定义的每组物品都必须由具有相同 NBT 数据的物品组成。对于库存中的每种被 N 个物品所持有的 NBT 数据，只有当 N 足以填满配方中的一组材料时，这些物品才会被发送。"
+
+#, no-wrap
+#~ msgid "Yes"
+#~ msgstr "是"
+
+#~ msgid "When using Create: Repackaged, place fluid gauges provided by this mod to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
+#~ msgstr "使用 Create: Repackaged 时，需要放置该模组提供的流体仪表来监测和生产流体。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的桶并点击过滤槽，或直接从 JEI 拖入流体条目。"
 
 #~ msgid "In this mode, the target amount (❶) cannot be modified manually. It is automatically set according to downstream [#term-demand]_demand_, that is, the total quantity of the items produced by this gauge defined in the <<term-recipe,recipes>> of all currently <<term-active,active>> consumer gauges."
 #~ msgstr "在此模式下，目标数量（❶）不能手动修改，而是根据下游[#term-demand]__需求__自动计算。即此仪表所生产的物品作为材料在所有当前<<term-active,启动>>的消费端仪表的<<term-recipe,配方>>中所定义的数量总和。"
