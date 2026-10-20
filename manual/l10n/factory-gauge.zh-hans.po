@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-19 22:14+1100\n"
-"PO-Revision-Date: 2026-10-17 14:50+0000\n"
+"PO-Revision-Date: 2026-10-20 06:35+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/factory-gauge/zh_Hans/>\n"
 "Language: zh-hans\n"
@@ -745,33 +745,31 @@ msgstr "兼容性"
 #: ../src/factory-gauge.adoc:316
 #, no-wrap
 msgid "Yes, using fluid gauge"
-msgstr ""
+msgstr "是，使用流体仪表"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:317
-#, fuzzy, no-wrap
-#| msgid "Create: FluidLogistic"
+#, no-wrap
 msgid "Create: FluidLogistics ≥ 1.2.8"
-msgstr "流体包裹（Create: FluidLogistic）"
+msgstr "流体包裹（Create: FluidLogistics）≥ 1.2.8"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:319
 #, no-wrap
 msgid "Yes, using fluid factory gauge"
-msgstr ""
+msgstr "是，使用流体工厂仪表"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:320
-#, fuzzy, no-wrap
-#| msgid "Create: FluidLogistic"
+#, no-wrap
 msgid "Create: FluidLogistics < 1.2.8"
-msgstr "流体包裹（Create: FluidLogistic）"
+msgstr "流体包裹（Create: FluidLogistics）< 1.2.8"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:322
 #, no-wrap
 msgid "Yes, adds fluid capability to factory gauge"
-msgstr ""
+msgstr "是，为工厂仪表添加流体支持"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:323
@@ -781,12 +779,13 @@ msgstr "流体（Create: Fluid）"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:326
-#, fuzzy, no-wrap
-#| msgid "Yes, but may drop support in the future"
+#, no-wrap
 msgid ""
 "Yes, adds fluid capability to factory gauge +\n"
 "  (May drop support in the future)"
-msgstr "是，但未来可能停止维护兼容性"
+msgstr ""
+"是，为工厂仪表添加流体支持 +\n"
+"  （未来可能停止维护）"
 
 #. type: Table
 #: ../src/factory-gauge.adoc:327
@@ -802,17 +801,13 @@ msgstr "不，会导致游戏崩溃"
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:331
-#, fuzzy
-#| msgid "When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
 msgid "When using mods that add fluid gauges or fluid factory gauges, place one such gauge to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
-msgstr "使用其他兼容模组时，普通工厂仪表会获得监测和生产流体的能力。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的容器（例如桶）并右键点击过滤槽，或从 JEI 拖入流体条目。"
+msgstr "使用添加了流体仪表或流体工厂仪表的模组时，放置这些仪表以监测和生产流体。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的容器（例如桶）并点击过滤槽，或从 JEI 拖入流体条目。"
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:333
-#, fuzzy
-#| msgid "When using the other mods, regular factory gauges gain the ability to monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
 msgid "When using mods that add fluid capability to regular factory gauges, they can then monitor and produce fluids. Fluids may be set in the <<figure-set-item,\"set item\" screen>> by right-clicking the filter slot while holding a bucket of fluid or by dragging a fluid entry from JEI."
-msgstr "使用其他兼容模组时，普通工厂仪表会获得监测和生产流体的能力。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的容器（例如桶）并右键点击过滤槽，或从 JEI 拖入流体条目。"
+msgstr "使用为普通工厂仪表添加流体支持的模组时，它们将能够监测和生产流体。在<<figure-set-item,“设置物品”界面>>中，手持装有目标流体的容器（例如桶）并右键点击过滤槽，或从 JEI 拖入流体条目。"
 
 #. type: Plain text
 #: ../src/factory-gauge.adoc:335

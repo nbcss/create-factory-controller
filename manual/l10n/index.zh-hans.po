@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-19 22:14+1100\n"
-"PO-Revision-Date: 2026-10-17 14:49+0000\n"
+"PO-Revision-Date: 2026-10-20 06:35+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/home/zh_Hans/>\n"
 "Language: zh-hans\n"
@@ -71,10 +71,8 @@ msgstr "{toc-title}"
 
 #. type: #manual-toc
 #: ../src/index.adoc:16
-#, fuzzy
-#| msgid "xref:factory-gauge.adoc[Factory Gauge]"
 msgid "xref:factory-controller.adoc[Factory Controller]"
-msgstr "xref:factory-gauge.adoc[工厂仪表]"
+msgstr "xref:factory-controller.adoc[工厂控制台]"
 
 #. type: #manual-toc
 #: ../src/index.adoc:17
@@ -88,10 +86,8 @@ msgstr "xref:components.adoc[可放置组件]"
 
 #. type: #manual-toc
 #: ../src/index.adoc:23
-#, fuzzy
-#| msgid "xref:redstone-link.adoc[Redstone Link]"
 msgid "xref:remote-terminal.adoc[Remote Terminal]"
-msgstr "xref:redstone-link.adoc[无线红石信号终端]"
+msgstr "xref:remote-terminal.adoc[远程终端]"
 
 #. type: #manual-toc
 #: ../src/index.adoc:24

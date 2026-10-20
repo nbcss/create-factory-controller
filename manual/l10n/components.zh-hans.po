@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Create: Factory Controller Manual 1\n"
 "POT-Creation-Date: 2026-10-19 22:14+1100\n"
-"PO-Revision-Date: 2026-10-17 14:50+0000\n"
+"PO-Revision-Date: 2026-10-20 06:35+0000\n"
 "Last-Translator: FiveYellowMice <me@fiveyellowmice.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://weblate.fiveyellowmice.com/projects/create-factory-controller/doc-manual/components/zh_Hans/>\n"
 "Language: zh-hans\n"
@@ -99,16 +99,15 @@ msgstr "Create: Repackaged"
 
 #. type: Table
 #: ../src/components.adoc:24
-#, fuzzy, no-wrap
-#| msgid "xref:factory-gauge.adoc#fluid[Fluid Gauge]"
+#, no-wrap
 msgid "xref:factory-gauge.adoc#fluid[Fluid Factory Gauge]"
-msgstr "xref:factory-gauge.adoc#fluid[流体仪表]"
+msgstr "xref:factory-gauge.adoc#fluid[流体工厂仪表]"
 
 #. type: Table
 #: ../src/components.adoc:25
 #, no-wrap
 msgid "Create: FluidLogistics"
-msgstr ""
+msgstr "流体包裹（Create: FluidLogistics）"
 
 #. type: Table
 #: ../src/components.adoc:28
