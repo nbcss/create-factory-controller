@@ -32,7 +32,7 @@ jobs:
 
   javadoc:
     # Generate Javadoc and upload as an artifact to the container registry.
-    # Consumed by `github-pages.yml` to publish under `javadoc` or `javadoc-$branch`.
+    # Consumed by `github-pages.yml` to publish under `javadoc` or `javadoc:$branch`.
     needs: build
     if: >
       github.ref == 'refs/heads/main'

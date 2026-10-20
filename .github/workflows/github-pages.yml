@@ -32,7 +32,7 @@ jobs:
               podman artifact pull "ghcr.io/$GITHUB_REPOSITORY/$name:$tag"
               podman artifact extract --title build.tar.gz "ghcr.io/$GITHUB_REPOSITORY/$name:$tag" "artifacts/$name/$tag.tar.gz"
 
-              [[ "$tag" == main ]] && path="$name" || path="$name-$tag"
+              [[ "$tag" == main ]] && path="$name" || path="$name:$tag"
               mkdir -p "_site/$path"
               tar -C "_site/$path" -xzf "artifacts/$name/$tag.tar.gz"
             done
