@@ -1,5 +1,8 @@
 ## 1.2.4
 
+Compatibility:
+- Dropped Fluidlogistics (< 1.2.5) compatibility support
+
 Bugfixes:
 - Fixed import blueprint do not properly recognize Fluid Factory Gauge from Fluidlogistics
 
