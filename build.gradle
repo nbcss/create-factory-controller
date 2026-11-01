@@ -103,7 +103,6 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 // yet, so it's runtime-only (for exploration/testing).
 //   -PfluidRuntime=none      (default) → neither (the base runClient stays addon-free)
 //   -PfluidRuntime=cfl                 → CreateFluidLogistic current API jar
-//   -PfluidRuntime=cfl-legacy          → CreateFluidLogistic 1.2.0; tests the pre-1.2.5 reflection fallback
 //   -PfluidRuntime=createfluid         → CreateFluid
 //   -PfluidRuntime=repackaged          → Create: Repackaged (+ its required compat_manager from maven)
 // The IntelliJ ".run/" folder ships ready-made buttons for the CFL, CreateFluid and Repackaged variants.
@@ -304,8 +303,6 @@ dependencies {
     compileOnly "curse.maven:create-fluid-${create_fluid_curse_project}:${create_fluid_curse_file}"
     if (fluidRuntime == 'cfl') {
         localRuntime "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_curse_file}"
-    } else if (fluidRuntime == 'cfl-legacy') {
-        localRuntime "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_legacy_curse_file}"
     } else if (fluidRuntime == 'createfluid') {
         localRuntime "curse.maven:create-fluid-${create_fluid_curse_project}:${create_fluid_curse_file}"
     } else if (fluidRuntime == 'repackaged') {
@@ -314,34 +311,6 @@ dependencies {
         localRuntime("net.liukrast:compat_manager-1.21.1:${compat_manager_version}") { transitive = false }
     }
 }
-
-// `legacyCompat` source set: providers compiled against an OLDER version of an optional dependency than `main` uses,
-// for back-compat with mods that made breaking API changes. main.output supplies the base classes/interfaces they
-// extend; each provider's own old jar is added as a `legacyCompatCompileOnly` entry. Deps go through the source set's
-// OWN configurations (not an imperative `compileClasspath =`, which IntelliJ's Gradle model ignores → red errors) so
-// the IDE resolves them, and the corresponding *modern* jar is never on this classpath so no version-shadowing is
-// needed. Compiled classes are bundled into the mod jar + dev runtime; FluidCompat loads each by name only when the
-// old version is detected at runtime, so its removed-API references are never linked against a newer jar.
-//
-// Currently holds only CflLegacyFluidProvider (pre-1.2.5 CreateFluidLogistic, whose setFluidVirtual filter the 1.2.5
-// refactor removed). To add another legacy provider: drop it in src/legacyCompat/java and add its old jar as
-// `legacyCompatCompileOnly`.
-sourceSets {
-    legacyCompat {
-        java { srcDir 'src/legacyCompat/java' }
-    }
-}
-// Minecraft + NeoForge on the source set, via MDG's own API (keeps IntelliJ's classpath model correct).
-neoForge.addModdingDependenciesTo(sourceSets.legacyCompat)
-dependencies {
-    legacyCompatCompileOnly "com.simibubi.create:create-1.21.1:${create_version}"  // Create + Registrate (AllItems/ItemEntry)
-    legacyCompatCompileOnly sourceSets.main.output                                 // base providers/interfaces (e.g. CflFluidProvider)
-    legacyCompatCompileOnly "curse.maven:create-fluidlogistic-${fluid_logistics_curse_project}:${fluid_logistics_legacy_curse_file}"
-    // pre-1.2.5 CFL (setFluidVirtual); empty ⇒ harmless
-    // Legacy classes on the dev runtime (they sit unused unless the old version is detected).
-    localRuntime files(sourceSets.legacyCompat.output)
-}
-tasks.named('jar') { from sourceSets.legacyCompat.output }
 
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.

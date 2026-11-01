@@ -27,7 +27,6 @@ public final class FluidCompat {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final String CFL_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CflFluidProvider";
-    private static final String CFL_LEGACY_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CflLegacyFluidProvider";
     private static final String CREATEFLUID_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.CreateFluidProvider";
     private static final String REPACKAGED_PROVIDER = "io.github.nbcss.createfactorycontroller.content.compat.fluids.RepackagedFluidProvider";
 
@@ -67,20 +66,18 @@ public final class FluidCompat {
                     + "fluid filters are disabled. Update it to use fluid gauges.", addon.modid(), addon.filterItem());
                 continue;
             }
-            addProvider(PROVIDERS, providerClassFor(addon));
+            if (CFL_PROVIDER.equals(addon.providerClass()) && isUnsupportedCFL()) {
+                LOGGER.warn("{} is older than {}, which is no longer supported; fluid filters are disabled. "
+                    + "Update it to use fluid gauges.", addon.modid(), CFL_PACKAGE_RESOURCE_VERSION);
+                continue;
+            }
+            addProvider(PROVIDERS, addon.providerClass());
         }
         return PROVIDERS;
     }
 
-    private static String providerClassFor(Addon addon) {
-        if (CFL_PROVIDER.equals(addon.providerClass()) && isLegacyCFL()) {
-            return CFL_LEGACY_PROVIDER;
-        }
-        return addon.providerClass();
-    }
-
-    /** Whether the installed CFL predates the 1.2.5 "PackageResource" refactor (still has {@code setFluidVirtual}). */
-    private static boolean isLegacyCFL() {
+    /** Whether the installed CFL predates the 1.2.5 "PackageResource" refactor the provider is built against. */
+    private static boolean isUnsupportedCFL() {
         return ModList.get().getModContainerById("fluidlogistics")
             .map(c -> c.getModInfo().getVersion().compareTo(CFL_PACKAGE_RESOURCE_VERSION) < 0)
             .orElse(false); // unknown → assume current

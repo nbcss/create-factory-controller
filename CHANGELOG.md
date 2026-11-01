@@ -1,3 +1,8 @@
+## 1.2.4
+
+Bugfixes:
+- Fixed import blueprint do not properly recognize Fluid Factory Gauge from Fluidlogistics
+
 ## 1.2.3
 
 Bugfixes:

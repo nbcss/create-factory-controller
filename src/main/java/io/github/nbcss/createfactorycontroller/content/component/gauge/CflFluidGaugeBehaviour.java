@@ -24,9 +24,12 @@ public class CflFluidGaugeBehaviour extends VirtualGaugeBehaviour {
     /** CFL's dedicated fluid factory gauge item (1.2.7+). */
     public static final ResourceLocation ITEM_ID =
             ResourceLocation.fromNamespaceAndPath("fluidlogistics", "fluid_factory_gauge");
-    /** CFL's fluid-filter carrier item — a gauge filter carrying this item id is a CFL item-logistics fluid filter. */
+    /** CFL's fluid-filter carrier item */
     public static final ResourceLocation FILTER_ITEM_ID =
             ResourceLocation.fromNamespaceAndPath("fluidlogistics", "compressed_storage_tank");
+    /** CFL's gauge-type id for its fluid gauge */
+    public static final ResourceLocation GAUGE_TYPE_ID =
+            ResourceLocation.fromNamespaceAndPath("fluidlogistics", "fluid");
 
     private static final ResourceLocation FRONT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/fluid_gauge/front");

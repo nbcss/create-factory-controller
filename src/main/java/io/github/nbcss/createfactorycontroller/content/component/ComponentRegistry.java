@@ -108,7 +108,7 @@ public final class ComponentRegistry {
     @Nullable
     public static VirtualComponentBehaviour fromNBT(FactoryControllerBlockEntity controller,
                                                     CompoundTag tag, HolderLookup.Provider registries) {
-        tag = GaugeMigration.migrate(tag);   // conditional, idempotent (e.g. fluid gauge → fluid factory gauge)
+        tag = GaugeMigration.migrate(tag);
         String typeId = tag.getString("Type");
         VirtualComponentBehaviour.Type type = TYPE_REGISTRY.get(typeId);
         return type == null ? null : type.fromNBT(controller, tag, registries);

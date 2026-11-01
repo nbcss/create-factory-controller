@@ -20,6 +20,7 @@ import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
@@ -66,6 +67,8 @@ public final class SchematicImport {
     private static final int BOARD_SPAN = 2 * FactoryControllerBlockEntity.BOARD_LIMIT + 1;
     private static final long MAX_SCAN_VOLUME = 262_144;
     private static final String REPACKAGED_FLUID = "repackaged:fluid";
+    private static final String CFL_GAUGE_TYPE = "CFLGaugeType";
+    private static final String CFL_LEGACY_GAUGE_KIND = "CFLGaugeKind";
 
     /** A finished import: a {@link ComponentHolder} over the mapped components, ready for {@code BlueprintStorage}. */
     public static final class ImportedBoard implements ComponentHolder {
@@ -239,13 +242,19 @@ public final class SchematicImport {
     }
 
     private static void applyGauge(VirtualGaugeBehaviour gauge, FactoryPanelBehaviour panel) {
-        gauge.filter = panel.getFilter().copy();
-        gauge.unit = FluidCompat.isFluidFilter(gauge.filter)
-                ? (panel.upTo ? ThresholdUnit.FLUID_MB : ThresholdUnit.FLUID_BUCKET)
-                : panel.upTo ? ThresholdUnit.ITEMS : ThresholdUnit.STACKS;
-        gauge.count = importedCount(panel.count, gauge);
+        ItemStack filter = panel.getFilter();
+        if (FluidCompat.isFluidFilter(filter)) {
+            // CFL 1.3+ keys fluids by proxy item; store the mod's own filter form instead.
+            gauge.filter = FluidCompat.makeFluidFilter(FluidCompat.getFilterFluid(filter));
+            applyFluidTarget(gauge, panel.count, panel.upTo ? ThresholdUnit.FLUID_MB : ThresholdUnit.FLUID_BUCKET);
+            gauge.recipeOutput = Math.clamp(panel.recipeOutput, 1, VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB);
+        } else {
+            gauge.filter = filter.copy();
+            gauge.unit = panel.upTo ? ThresholdUnit.ITEMS : ThresholdUnit.STACKS;
+            gauge.count = Math.clamp(panel.count, 0, gauge.unit.getMaxRequestCount());
+            gauge.recipeOutput = Math.max(1, panel.recipeOutput);
+        }
         gauge.recipeAddress = panel.recipeAddress == null ? "" : panel.recipeAddress;
-        gauge.recipeOutput = Math.max(1, panel.recipeOutput);
         gauge.promiseClearingInterval = panel.promiseClearingInterval;
         List<ItemStack> arrangement = new ArrayList<>(panel.activeCraftingArrangement.size());
         for (ItemStack stack : panel.activeCraftingArrangement) arrangement.add(stack.copy());
@@ -253,10 +262,15 @@ public final class SchematicImport {
         gauge.mode = arrangement.isEmpty() ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
     }
 
-    private static int importedCount(int rawCount, VirtualGaugeBehaviour gauge) {
-        return FluidCompat.isFluidFilter(gauge.filter)
-                ? rawCount / gauge.unit.toCountMultiplier(gauge.filter)
-                : rawCount;
+    /** Sets a fluid target given in mB, keeping {@code preferred} unless it can't hold the amount exactly. */
+    private static void applyFluidTarget(VirtualGaugeBehaviour gauge, long targetMb, ThresholdUnit preferred) {
+        ThresholdUnit unit = preferred;
+        if (unit == ThresholdUnit.FLUID_BUCKET && targetMb % 1000 != 0 && targetMb <= ThresholdUnit.FLUID_MB.getMaxRequestCount())
+            unit = ThresholdUnit.FLUID_MB;
+        else if (unit == ThresholdUnit.FLUID_MB && targetMb > unit.getMaxRequestCount())
+            unit = ThresholdUnit.FLUID_BUCKET;
+        gauge.unit = unit;
+        gauge.count = Math.clamp(targetMb / unit.toCountMultiplier(gauge.filter), 0, unit.getMaxRequestCount());
     }
 
     @Nullable
@@ -271,6 +285,16 @@ public final class SchematicImport {
             return gauge;
         }
         if (!stockType.isEmpty()) return null;   // an unknown generic stock type
+        CompoundTag panelTag = beTag.getCompound(slotKey(panel));
+        String cflType = panelTag.getString(CFL_GAUGE_TYPE);
+        // check for CFL fluid gauge
+        if (!cflType.isEmpty() || CflFluidGaugeBehaviour.isAvailable()
+                && ("fluid".equals(panelTag.getString(CFL_LEGACY_GAUGE_KIND))
+                || CflFluidGaugeBehaviour.FILTER_ITEM_ID.equals(BuiltInRegistries.ITEM.getKey(panel.getFilter().getItem())))) {
+            if (!cflType.isEmpty() && !CflFluidGaugeBehaviour.GAUGE_TYPE_ID.toString().equals(cflType)) return null;
+            if (!ComponentRegistry.contains(CflFluidGaugeBehaviour.ITEM_ID)) return null;
+            blockItem = BuiltInRegistries.ITEM.get(CflFluidGaugeBehaviour.ITEM_ID);
+        }
         if (!(ComponentRegistry.createFromItem(null, cell, blockItem, panel.network)
                 instanceof VirtualGaugeBehaviour gauge)) return null;
         applyGauge(gauge, panel);
@@ -281,9 +305,8 @@ public final class SchematicImport {
     private static void applyFluidGauge(VirtualGaugeBehaviour gauge, FactoryPanelBehaviour panel, CompoundTag panelTag) {
         gauge.filter = FluidCompat.makeFluidGaugeFilter(readFluid(panelTag.getCompound("Stack")));
         int scale = panelTag.getInt("Scale");
-        gauge.unit = scale >= 1 ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.FLUID_MB;
-        long targetMb = (long) panel.count * pow1000(scale);
-        gauge.count = (int) Math.min(Integer.MAX_VALUE, targetMb / gauge.unit.toCountMultiplier(gauge.filter));
+        applyFluidTarget(gauge, (long) panel.count * pow1000(scale),
+                scale >= 1 ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.FLUID_MB);
         gauge.recipeAddress = panel.recipeAddress == null ? "" : panel.recipeAddress;
         long outputMb = (long) Math.max(1, panel.recipeOutput) * pow1000(scale);
         gauge.recipeOutput = (int) Math.min(VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB, outputMb);
