@@ -7,6 +7,8 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidG
 import io.github.nbcss.createfactorycontroller.content.component.gauge.FluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.ButtonBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.LeverBehaviour;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -43,6 +45,8 @@ public final class ComponentRegistry {
         registerType(VirtualRedstoneLinkBehaviour.TYPE);
         registerType(LogicalTubeBehaviour.TYPE);
         registerType(ArithmeticTubeBehaviour.TYPE);
+        registerType(LeverBehaviour.TYPE);
+        registerType(ButtonBehaviour.TYPE);
 
         // Create: Repackaged's Fluid Gauge is registered only when the addon is present (ModList check — timing-safe).
         if (RepackagedCompat.isLoaded())

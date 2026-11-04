@@ -1,5 +1,8 @@
 ## 1.2.4
 
+Features:
+- Lever and Stone Button can be placed in Factory Controller as manual redstone source.
+
 Compatibility:
 - Dropped Fluidlogistics (< 1.2.5) compatibility support
 

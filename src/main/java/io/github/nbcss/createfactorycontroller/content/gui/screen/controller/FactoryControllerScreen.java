@@ -45,6 +45,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.IndicatorColum
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualManualSourceWidget;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
@@ -59,6 +60,7 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import io.github.nbcss.createfactorycontroller.content.packet.AddConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.AttachComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.ComponentPressPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SelectTerminalControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.UnlinkTerminalControllerPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
@@ -212,6 +214,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private final ConnectionModeState connectionMode = new ConnectionModeState();
     @Nullable private VirtualComponentPosition pendingRelocateTarget = null;
     @Nullable private BlueprintPlacement pendingPlacement = null;
+    /** The component this client is holding down; released on mouse-up, screen close or retarget. */
+    @Nullable private VirtualComponentPosition heldPress = null;
     /** Long-lived mode prompt (connect / relocate / placement), one entry per line; empty = none. */
     private List<Component> persistentActionPrompt = List.of();
     /** Most recent transient result/chime. */
@@ -388,6 +392,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
      * to this open screen without reopening the menu, so the cursor keeps its place.
      */
     public void applyTerminalState(Runnable apply, boolean retarget) {
+        releaseHeldPress();
         if (retarget) VIEW_CACHE.put(viewKey(), new ViewCacheEntry(viewX, viewY, zoomLevel));
         apply.run();
 
@@ -491,11 +496,41 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     @Override
+    public void removed() {
+        releaseHeldPress();
+        super.removed();
+    }
+
+    @Override
     protected void containerTick() {
         super.containerTick();
         if (nameBox != null && !nameBox.isFocused())
             collapseNameSelection();
+        if (heldPress != null && GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(),
+                GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
+            releaseHeldPress();
         tickComponentWidgets();
+    }
+
+    // ── Held press (button components) ───────────────────────────────────────
+
+    @Nullable
+    public VirtualComponentPosition heldPress() {
+        return heldPress;
+    }
+
+    public void beginHeldPress(VirtualComponentPosition pos) {
+        releaseHeldPress();
+        heldPress = pos;
+    }
+
+    private void releaseHeldPress() {
+        if (heldPress == null) return;
+        VirtualComponentPosition pos = heldPress;
+        heldPress = null;
+        PacketDistributor.sendToServer(new ComponentPressPacket(menu.controllerPos, pos, false));
+        VirtualComponentWidget widget = componentWidgetAt(pos);
+        if (widget != null) widget.onReleased(this);
     }
 
     public void tickComponentWidgets() {
@@ -1636,6 +1671,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && heldPress != null) {
+            releaseHeldPress();
+            return true;
+        }
         if (CreateFactoryControllerClient.DRAG_SELECTION.matchesMouse(button) && dragSelection != null) {
             DragSelectionState completed = dragSelection;
             dragSelection = null;

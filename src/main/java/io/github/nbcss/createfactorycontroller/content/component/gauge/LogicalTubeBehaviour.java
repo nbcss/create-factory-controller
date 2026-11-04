@@ -22,15 +22,9 @@ import net.minecraft.world.item.Item;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * A Logic Tube placed on the controller board. A networkless, REDSTONE-only component that combines any number of
- * incoming redstone wires with a boolean {@link Mode} and drives its outgoing redstone wires with the result.
- *
- */
 public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
-    /** Boolean gate applied to the folded inputs. The fold starts at the identities ({@code all=true, any=false}), so
-     *  with no input wires AND and NOR are true, OR and NAND are false. */
+    /** Boolean gate applied to the folded inputs. */
     public enum Mode {
         OR, AND, NOR, NAND;
 
@@ -137,6 +131,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     }
 
     public Mode getMode() { return mode; }
+
     public boolean isPowered() { return value; }
 
     // ── Connections: REDSTONE only, BOTH role (accepts any redstone partner) ────
@@ -196,13 +191,11 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
         // No per-tick work: the logic runs in preTick (commit) + onInputChanged (compute).
     }
 
-    /** Cycle to the next mode (NONE→AND→OR→NOR→NAND→NONE); the output follows one tick later (via preTick). */
     @Override
     public void cycleOperationMode() {
         setMode(mode.next());
     }
 
-    /** Set the operation mode directly (settings GUI). The output follows one tick later (via preTick). */
     public void setMode(Mode mode) {
         if (this.mode == mode) return;
         this.mode = mode;

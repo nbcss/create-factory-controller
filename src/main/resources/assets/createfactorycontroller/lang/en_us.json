@@ -29,6 +29,8 @@
   "createfactorycontroller.display_source.factory_controller_pending_orders": "Pending Orders",
 
   "createfactorycontroller.component.logical_tube": "Logical Tube",
+  "createfactorycontroller.component.lever": "Lever",
+  "createfactorycontroller.component.button": "Button",
   "createfactorycontroller.component.logical_tube.mode.and": "AND",
   "createfactorycontroller.component.logical_tube.mode.and.desc": "Output on when ALL connected inputs are on.",
   "createfactorycontroller.component.logical_tube.mode.or": "OR",
@@ -133,6 +135,8 @@
   "createfactorycontroller.gui.redstone_link.freq_tip": "Click with item to set",
   "createfactorycontroller.gui.info.none": "—",
   "createfactorycontroller.gui.action_configure": "Click to configure",
+  "createfactorycontroller.gui.action_toggle": "Click to toggle",
+  "createfactorycontroller.gui.action_hold_press": "Hold to activate",
   "createfactorycontroller.gui.action_remove_component": "Shift-Click to remove",
   "createfactorycontroller.gui.action_disconnect": "Shift-Click to disconnect",
   "createfactorycontroller.gui.action_relocate": "Relocate component",

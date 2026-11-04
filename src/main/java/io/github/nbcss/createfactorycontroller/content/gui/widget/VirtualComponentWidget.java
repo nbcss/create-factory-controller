@@ -84,6 +84,12 @@ public interface VirtualComponentWidget {
      *  configure, set filter, open config, …). Returns true if consumed. */
     boolean onClick(FactoryControllerScreen screen, ItemStack carried, double mouseX, double mouseY, int button);
 
+    /** Client-side effects of a press */
+    default void onPressed(FactoryControllerScreen screen) {}
+
+    /** Client-side effects of a held press ending */
+    default void onReleased(FactoryControllerScreen screen) {}
+
     /** Shift-click: remove this component from the board. */
     void remove(FactoryControllerScreen screen);
 

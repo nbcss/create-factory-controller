@@ -5,6 +5,8 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTu
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.ButtonBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.LeverBehaviour;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +30,8 @@ public final class ComponentWidgetRegistry {
         register(VirtualRedstoneLinkBehaviour.class, VirtualRedstoneLinkWidget::new);
         register(LogicalTubeBehaviour.class, VirtualLogicalTubeWidget::new);
         register(ArithmeticTubeBehaviour.class, VirtualArithmeticTubeWidget::new);
+        register(LeverBehaviour.class, VirtualLeverWidget::new);
+        register(ButtonBehaviour.class, VirtualButtonWidget::new);
     }
 
     private ComponentWidgetRegistry() {}

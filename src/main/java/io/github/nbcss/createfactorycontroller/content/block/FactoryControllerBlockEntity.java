@@ -12,6 +12,7 @@ import io.github.nbcss.createfactorycontroller.content.component.arithmetic.Arit
 import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.ManualRedstoneSourceBehaviour;
 import io.github.nbcss.createfactorycontroller.registry.CFCBlockEntityTypes;
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
@@ -1015,6 +1016,13 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void configureLogicalTube(VirtualComponentPosition pos, String modeName) {
         if (components.get(pos) instanceof LogicalTubeBehaviour tube)
             tube.setMode(LogicalTubeBehaviour.Mode.fromName(modeName));
+    }
+
+    /** A player pressed or released a clickable component. */
+    public void pressComponent(VirtualComponentPosition pos, ServerPlayer player, boolean pressed) {
+        if (!(components.get(pos) instanceof ManualRedstoneSourceBehaviour source)) return;
+        if (pressed) source.onPress(player);
+        else source.onRelease(player);
     }
 
     /** Sets an Arithmetic Tube's operator (the operator picker). Ignored if the target operator can't hold the
