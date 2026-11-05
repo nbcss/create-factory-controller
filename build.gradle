@@ -351,12 +351,14 @@ publishing {
     }
 }
 
-jar {
-    metaInf.from 'LICENSE'
-}
+java.withSourcesJar()
 
 javadoc {
     include 'io/github/nbcss/createfactorycontroller/content/compat/computercraft/FactoryControllerPeripheral.java'
+}
+
+tasks.withType(Jar).named(['jar', 'sourcesJar']::contains).configureEach {
+    metaInf.from 'LICENSE'
 }
 
 tasks.withType(JavaCompile).configureEach {
