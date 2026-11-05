@@ -351,7 +351,11 @@ publishing {
     }
 }
 
-tasks.named('javadoc', Javadoc) {
+jar {
+    metaInf.from 'LICENSE'
+}
+
+javadoc {
     include 'io/github/nbcss/createfactorycontroller/content/compat/computercraft/FactoryControllerPeripheral.java'
 }
 
