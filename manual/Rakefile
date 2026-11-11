@@ -113,7 +113,7 @@ task :assets
 # Define assets to be copied to `build`
 {
   'build/images' => 'src/images',
-  'build/fonts/fa-solit-900.woff2' => "#{FontAwesome::Sass.fonts_path}/font-awesome/fa-solid-900.woff2",
+  'build/fonts/fa-solid-900.woff2' => "#{FontAwesome::Sass.fonts_path}/font-awesome/fa-solid-900.woff2",
 }
 .each do |dest, src|
   task :assets => dest
