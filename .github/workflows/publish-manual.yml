@@ -112,8 +112,8 @@ jobs:
           esac
           RAKE_ARGS="${RAKE_ARGS:-} display_branch[$DISPLAY_BRANCH] build"
 
-          echo "DISPLAY_BRANCH=$DISPLAY_BRANCH" | tee "$GITHUB_ENV"
-          echo "RAKE_ARGS=$RAKE_ARGS" | tee "$GITHUB_ENV"
+          echo "DISPLAY_BRANCH=$DISPLAY_BRANCH" | tee -a "$GITHUB_ENV"
+          echo "RAKE_ARGS=$RAKE_ARGS" | tee -a "$GITHUB_ENV"
 
       - name: Build manual
         run: |
