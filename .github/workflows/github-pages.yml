@@ -40,6 +40,45 @@ jobs:
 
           cp _site/manual/404.html _site/404.html || true
 
+      - name: Generate index
+        shell: ruby {0}
+        run: |
+          require 'cgi'
+          entries = Dir.entries('_site') - %w(. .. index.html 404.html)
+          categories = %w(manual javadoc)
+          $> = File.open '_site/index.html', 'w'
+          puts <<END
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <meta name="robots" content="noindex, nofollow">
+              <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+              <style>
+              :root { color: #1a1a1a; background: #ffffff; }
+              @media (prefers-color-scheme: dark) {
+                :root { color: #f0f0f0; background: #0c0c0c; }
+              }
+              </style>
+            </head>
+            <body>
+          END
+          categories.map do |category|
+            [category, entries.filter{|e| e.start_with? category }]
+          end.prepend(
+            [nil, entries.reject{|e| categories.any?{|c| e.start_with? c } }]
+          ).each do |(category, entries)|
+            puts "<h2 id=\"#{CGI.h category}\">#{CGI.h category}</h2>" if category
+            entries.each do |entry|
+              puts "<li><a href=\"./#{CGI.h entry}\">#{CGI.h entry}</a></li>"
+            end
+          end
+          puts <<END
+            </body>
+          </html>
+          END
+
       - name: Generate job summary
         run: |
           echo "Site root:" >> "$GITHUB_STEP_SUMMARY"

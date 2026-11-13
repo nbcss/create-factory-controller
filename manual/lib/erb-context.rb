@@ -9,8 +9,10 @@ class ERBContext
     document attributes
     authors translators
     language languages
+    mod_version
     manual_toc page_toc
     output_filename output_path
+    display_branch noindex
   )
 
   attr_writer :title, :content

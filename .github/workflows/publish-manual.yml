@@ -5,12 +5,14 @@ name: Build manual
 # 2. Then for any of the below branches, use the container to build the manual.
 # 3. Upload the manual as artifacts to the container registry,
 #    which are consumed by `github-pages.yml` to be published under `manual` and `manual:$branch`.
+#    (with the `manual/release/` prefix removed)
 
 on:
   push:
     branches:
       - main
       - l10n_weblate
+      - manual/release/*
     paths:
       - manual/**
       - .github/workflows/publish-manual.yml
@@ -94,8 +96,28 @@ jobs:
 
       - *podman_login_step
 
+      - name: Determine variables
+        run: |
+          case "$GITHUB_REF_NAME" in
+            main)
+              DISPLAY_BRANCH="$GITHUB_REF_NAME"
+              ;;
+            manual/release/*)
+              DISPLAY_BRANCH="${GITHUB_REF_NAME#manual/release/}"
+              ;;
+            *)
+              DISPLAY_BRANCH="$GITHUB_REF_NAME"
+              RAKE_ARGS="noindex"
+              ;;
+          esac
+          RAKE_ARGS="${RAKE_ARGS:-} display_branch[$DISPLAY_BRANCH] build"
+
+          echo "DISPLAY_BRANCH=$DISPLAY_BRANCH" | tee "$GITHUB_ENV"
+          echo "RAKE_ARGS=$RAKE_ARGS" | tee "$GITHUB_ENV"
+
       - name: Build manual
-        run: podman run --rm --volume "$GITHUB_WORKSPACE:/work" "ghcr.io/$GITHUB_REPOSITORY/manual-builder:latest" rake build
+        run: |
+          podman run --rm --volume "$GITHUB_WORKSPACE:/work" "ghcr.io/$GITHUB_REPOSITORY/manual-builder:latest" rake $RAKE_ARGS
 
       - name: Upload OCI artifact
         run: |
@@ -105,10 +127,10 @@ jobs:
             --annotation org.opencontainers.image.url="https://github.com/$GITHUB_REPOSITORY/blob/main/.github/workflows/publish-manual.yml" \
             --annotation org.opencontainers.image.revision="$GITHUB_SHA" \
             --annotation org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
-            --annotation org.opencontainers.image.version="$GITHUB_REF_NAME" \
-            "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME" \
+            --annotation org.opencontainers.image.version="$DISPLAY_BRANCH" \
+            "ghcr.io/$GITHUB_REPOSITORY/manual:$DISPLAY_BRANCH" \
             build.tar.gz
-          podman artifact push "ghcr.io/$GITHUB_REPOSITORY/manual:$GITHUB_REF_NAME"
+          podman artifact push "ghcr.io/$GITHUB_REPOSITORY/manual:$DISPLAY_BRANCH"
 
       - name: Dispatch GitHub Pages publish
         run: gh workflow run github-pages.yml --ref main

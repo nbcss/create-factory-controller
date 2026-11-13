@@ -3,9 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><%= h title %></title>
-    <% if not document %>
+    <title>
+      <%= h title %> | <%= h t 'site-name' %>
+      <% if display_branch and display_branch != 'main' %>
+      · <%= display_branch %>
+      <% end %>
+    </title>
+    <% if noindex or not document %>
     <meta name="robots" content="noindex, nofollow">
+    <% end %>
+    <% if not document %>
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <% end %>
     <link rel="stylesheet" href="<%= h attach_cache_id '../style.css' %>">
@@ -17,6 +24,17 @@
         <div class="site-name"><%= h t 'site-name' %></div>
         <nav>
           <ol>
+            <% if display_branch %>
+            <li class="nav-item nav-version">
+              <a title="<%= h t 'site-nav-change-version' %>" href="../../#manual">
+                <% if display_branch == 'main' or display_branch =~ /^\d/ %>
+                v<%= h mod_version %>
+                <% else %>
+                <%= display_branch %>
+                <% end %>
+              </a>
+            </li>
+            <% end %>
             <% if manual_toc %>
             <li class="nav-item nav-project-toc">
               <button><%= h t 'site-nav-manual' %></button>

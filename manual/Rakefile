@@ -20,6 +20,15 @@ LANGS.prepend :en
 def LANGS.default() first end
 def LANGS.default?(x) x == first end
 
+# Flag tasks
+noindex = false
+desc 'Disallow search engine index in HTML'
+task :noindex do noindex = true end
+
+display_branch = nil
+desc 'Set the displayed branch name'
+task :display_branch, [:value] do |_, args| display_branch = args.value end
+
 
 task default: :build
 desc "Build HTML for all languages"
@@ -43,11 +52,11 @@ task :build => [:assets, 'po4a:translate'] do
       attributes: {'imagesdir' => '../images'}.merge(attributes.map{|k, v| ["#{k}@", v]}.to_h),
     }
 
-    # Load index.adoc for the TOC
+    # Load index.adoc for the TOC and version
     index_doc = ["translated/#{lang}/index.adoc", 'src/index.adoc']
     .find(&File.method(:exist?))
     .then{|f| Asciidoctor.load_file f, adoc_options }
-
+    mod_version = index_doc.attributes['mod-version']
     manual_toc = Util.html_strip index_doc.find_by(id: 'manual-toc')[0].convert, layers: 2
 
     # Generate page for each source (or translated) document
@@ -77,9 +86,12 @@ task :build => [:assets, 'po4a:translate'] do
         attributes: attributes,
         language: lang,
         languages: LANGS,
+        mod_version: mod_version,
         manual_toc: manual_toc,
         page_toc: page_toc,
         output_path: output_path,
+        display_branch: display_branch,
+        noindex: noindex,
       )
 
       verbose(false) { mkdir_p File.dirname(output_path) }
@@ -93,8 +105,11 @@ task :build => [:assets, 'po4a:translate'] do
         attributes: attributes,
         language: lang,
         languages: LANGS,
+        mod_version: mod_version,
         manual_toc: manual_toc,
         output_path: output_path,
+        display_branch: display_branch,
+        noindex: noindex,
       )
       template = ERB.new File.read src_path
       context.content = template.result context.binding

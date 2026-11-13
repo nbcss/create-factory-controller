@@ -151,7 +151,8 @@ header nav {
 .nav-item {
   anchor-scope: --anchor-button;
 
-  > button {
+  > button, > a {
+    display: block;
     appearance: none;
     background: transparent;
     height: 100%;
@@ -169,6 +170,11 @@ header nav {
       content: "⏷";
       margin-left: 0.4rem;
     }
+
+    &:link, &:visited, &:hover {
+      color: inherit !important;
+      text-decoration: unset !important;
+    }
   }
 
   &:hover, &:focus-within {
@@ -176,6 +182,11 @@ header nav {
       display: flex;
     }
   }
+}
+
+.nav-version > a::after {
+  content: "\f141";
+  font-family: "Font Awesome 6 Solid";
 }
 
 .nav-menu-container {
