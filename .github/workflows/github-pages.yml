@@ -56,13 +56,31 @@ jobs:
               <meta name="robots" content="noindex, nofollow">
               <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
               <style>
-              :root { color: #1a1a1a; background: #ffffff; }
+              :root {
+                color: #1a1a1a;
+                background: #ffffff;
+                font-family: sans-serif;
+              }
+              a:link, a:visited {
+                color: #0066cc;
+                text-decoration: none;
+              }
+              a:hover {
+                text-decoration: underline;
+              }
               @media (prefers-color-scheme: dark) {
-                :root { color: #f0f0f0; background: #0c0c0c; }
+                :root {
+                  color: #f0f0f0;
+                  background: #0c0c0c;
+                }
+                a:link, a:visited {
+                  color: #5da7f2;
+                }
               }
               </style>
             </head>
             <body>
+              <h1>Create: Factory Controller</h1>
           END
           categories.map do |category|
             [category, entries.filter{|e| e.start_with? category }]
@@ -70,9 +88,11 @@ jobs:
             [nil, entries.reject{|e| categories.any?{|c| e.start_with? c } }]
           ).each do |(category, entries)|
             puts "<h2 id=\"#{CGI.h category}\">#{CGI.h category}</h2>" if category
+            puts "<ul>"
             entries.each do |entry|
               puts "<li><a href=\"./#{CGI.h entry}\">#{CGI.h entry}</a></li>"
             end
+            puts "</ul>"
           end
           puts <<END
             </body>
