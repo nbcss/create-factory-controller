@@ -12,7 +12,7 @@ on:
     branches:
       - main
       - l10n_weblate
-      - manual/release/*
+      - manual/release/**
     paths:
       - manual/**
       - .github/workflows/publish-manual.yml
