@@ -2,9 +2,9 @@ package io.github.nbcss.createfactorycontroller.content.blueprint;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
+import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
-import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import net.minecraft.Util;
@@ -33,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
 /** Client-local persistence for reusable Factory Controller component blueprints. */
@@ -140,8 +141,9 @@ public final class BlueprintStorage {
                                       Iterable<VirtualComponentPosition> positions) {
         Set<UUID> result = new LinkedHashSet<>();
         for (VirtualComponentPosition pos : positions) {
-            if (holder.componentAt(pos) instanceof VirtualGaugeBehaviour gauge)
-                result.add(gauge.networkId);
+            VirtualComponentBehaviour component = holder.componentAt(pos);
+            UUID network = component == null ? null : component.networkId();
+            if (network != null) result.add(network);
         }
         return new ArrayList<>(result);
     }
@@ -220,9 +222,7 @@ public final class BlueprintStorage {
         int maxY = positions.stream().mapToInt(VirtualComponentPosition::y).max().orElse(minY);
         Set<VirtualComponentPosition> selected = new LinkedHashSet<>(positions);
 
-        Set<UUID> usedNetworks = new LinkedHashSet<>();
-        for (VirtualComponentPosition pos : positions)
-            if (holder.componentAt(pos) instanceof VirtualGaugeBehaviour gauge) usedNetworks.add(gauge.networkId);
+        Set<UUID> usedNetworks = new LinkedHashSet<>(networks(holder, positions));
         Map<UUID, Integer> placeholders = new LinkedHashMap<>();
         for (UUID network : orderedNetworks)
             if (usedNetworks.contains(network) && !placeholders.containsKey(network))
@@ -237,18 +237,20 @@ public final class BlueprintStorage {
         root.putInt("Width", maxX - minX + 1);
         root.putInt("Height", maxY - minY + 1);
 
+        UnaryOperator<VirtualComponentPosition> toLocal = p -> selected.contains(p)
+                ? new VirtualComponentPosition(p.x() - minX, p.y() - minY) : null;
         ListTag components = new ListTag();
         for (VirtualComponentPosition pos : positions) {
             VirtualComponentBehaviour component = holder.componentAt(pos);
             if (component == null) continue;
-            CompoundTag tag = component.toNBT(registries, VirtualComponentBehaviour.NbtProfile.EXPORT);
+            CompoundTag tag = exportTag(component, toLocal, registries);
             offsetPosition(tag.getCompound("Pos"), minX, minY);
-            if (component instanceof VirtualGaugeBehaviour gauge) {
+            UUID network = component.networkId();
+            if (network != null) {
                 tag.remove("Network");
-                Integer placeholder = placeholders.get(gauge.networkId);
+                Integer placeholder = placeholders.get(network);
                 if (placeholder == null) throw new IllegalStateException("Missing network placeholder");
                 tag.putInt("Network", placeholder);
-                normalizeRecipeSources(tag, selected, minX, minY);
             }
             components.add(tag);
         }
@@ -273,17 +275,14 @@ public final class BlueprintStorage {
         return root;
     }
 
-    private static void normalizeRecipeSources(CompoundTag component, Set<VirtualComponentPosition> selected,
-                                               int minX, int minY) {
-        ListTag slots = component.getList("RecipeSlots", Tag.TAG_COMPOUND);
-        for (int i = 0; i < slots.size(); i++) {
-            CompoundTag slot = slots.getCompound(i);
-            if (!slot.contains("Source", Tag.TAG_COMPOUND)) continue;
-            CompoundTag source = slot.getCompound("Source");
-            VirtualComponentPosition sourcePos = VirtualComponentPosition.fromNBT(source);
-            if (selected.contains(sourcePos)) offsetPosition(source, minX, minY);
-            else slots.set(i, new CompoundTag());
-        }
+    private static CompoundTag exportTag(VirtualComponentBehaviour component,
+                                         UnaryOperator<VirtualComponentPosition> toLocal,
+                                         HolderLookup.Provider registries) {
+        CompoundTag tag = component.toNBT(registries, VirtualComponentBehaviour.NbtProfile.EXPORT);
+        VirtualComponentBehaviour copy = ComponentRegistry.fromNBT(null, tag.copy(), registries);
+        if (copy == null) return tag;
+        copy.onComponentsRelocated(toLocal);
+        return copy.toNBT(registries, VirtualComponentBehaviour.NbtProfile.EXPORT);
     }
 
     private static void offsetPosition(CompoundTag position, int minX, int minY) {

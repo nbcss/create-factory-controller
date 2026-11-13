@@ -440,6 +440,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         return true;
     }
 
+    @Override
+    public UUID networkId() {
+        return networkId;
+    }
+
     /** Re-keys CUSTOM recipe sources so their slot assignment survives relocation. */
     @Override
     public void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {
@@ -447,7 +452,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             RecipeSlot slot = recipeSlots.get(i);
             if (slot.isEmpty()) continue;
             VirtualComponentPosition moved = remap.apply(slot.source());
-            if (!moved.equals(slot.source())) recipeSlots.set(i, new RecipeSlot(moved, slot.count()));
+            if (moved == null) recipeSlots.set(i, RecipeSlot.EMPTY);
+            else if (!moved.equals(slot.source())) recipeSlots.set(i, new RecipeSlot(moved, slot.count()));
         }
     }
 

@@ -139,7 +139,14 @@ public interface VirtualComponentBehaviour {
     /** The controller block entity unloaded (chunk unload / block break). */
     default void onUnload() {}
 
-    /** Updates component-owned position references after one or more board components move. */
+    /** The logistics network this component is bound to, or {@code null} if it has none. */
+    @Nullable
+    default UUID networkId() {
+        return null;
+    }
+
+    /** Updates component-owned position references after one or more board components move. {@code remap} returns
+     *  {@code null} for a referenced component that is not carried along. */
     default void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {}
 
     // ── Connection graph (shared by all component kinds) ─────────────────────
