@@ -576,11 +576,16 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     /** Re-keys ordered wire inputs without changing their operand assignments. */
     @Override
     public void onComponentsRelocated(UnaryOperator<VirtualComponentPosition> remap) {
-        primaryInputs.replaceAll(r ->
-                r instanceof ConnectionInput(VirtualComponentPosition source) ? new ConnectionInput(remap.apply(source)) : r
-        );
-        if (secondaryInput instanceof ConnectionInput(VirtualComponentPosition source))
-            secondaryInput = new ConnectionInput(remap.apply(source));
+        primaryInputs.replaceAll(r -> relocate(r, remap));
+        primaryInputs.removeIf(r -> r == null);
+        secondaryInput = relocate(secondaryInput, remap);
+    }
+
+    @Nullable
+    private static NumberInput relocate(@Nullable NumberInput input, UnaryOperator<VirtualComponentPosition> remap) {
+        if (!(input instanceof ConnectionInput(VirtualComponentPosition source))) return input;
+        VirtualComponentPosition moved = remap.apply(source);
+        return moved == null ? null : new ConnectionInput(moved);
     }
 
     /** Whether {@code source} feeds the (single) secondary slot — used by the widget to colour the connected face

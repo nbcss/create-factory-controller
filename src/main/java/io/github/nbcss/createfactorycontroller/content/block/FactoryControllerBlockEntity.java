@@ -551,6 +551,10 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         networks.addAll(newNetworks);
 
+        for (VirtualComponentBehaviour c : placed)
+            for (Connection.Type type : Connection.Type.values())
+                c.onConnectionSetChanged(type);
+
         // Re-derive the imported signal state
         for (VirtualComponentBehaviour c : placed)
             for (Connection.Type type : Connection.Type.values())

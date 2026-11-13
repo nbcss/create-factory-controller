@@ -50,6 +50,7 @@
 - [DONE] Different controller component tooltip styles
 
 # 1.3.0
+- [TODO] More redstone units (timer etc.)
 - [TODO] Component Search
 - [TODO] Redstone Requester
 - [TODO] Selector Gauge
@@ -66,6 +67,8 @@
 - [TODO] Custom controller tab icon in terminal
 - [TODO] Sync request optimization
 - [TODO] Fast initial request
+- [TODO] >9 items production order entry
+- [TODO] Address Hint
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
@@ -75,7 +78,6 @@
 - [TBC] Fix gauge sound overload?
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
-- [TODO] More redstone units (timer etc.)
 - [TODO] Controller IO Link
 - [TODO] No-sending production order
 - [TODO] Delta production order
