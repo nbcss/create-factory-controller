@@ -8,72 +8,109 @@ require 'sass-embedded'
 require 'font-awesome-sass'
 require_relative 'lib/replacements'
 require_relative 'lib/util'
-require_relative 'lib/manual-builder'
+require_relative 'lib/erb-context'
 
 
 # Get languages from existing localisation file names
 LANGS = Dir.entries('l10n')
-.map{|x| x.split '.' }
-.filter{|x| x.length >= 3 && %w(yaml po).include?(x[-1]) }
-.map{|x| x[-2] }
-.uniq.sort.map(&:to_sym)
+.filter_map{|x| /\.(.+?)\.(?:yaml|po)$/.match x }
+.map{|x| x[1] }.uniq.sort.map(&:to_sym)
 
 LANGS.prepend :en
 def LANGS.default() first end
 def LANGS.default?(x) x == first end
 
 
-# Define tasks to build manual pages
 task default: :build
 desc "Build HTML for all languages"
-task :build => [:assets]
+task :build => [:assets, 'po4a:translate'] do
 
-manual_builder = ManualBuilder.new(
-  layout_path: 'src/template/_layout.erb',
-  source_path_tmpl: proc do |arg|
-    (LANGS.default?(arg[:lang]) ? 'src/%{name}.adoc' : 'translated/%{lang}/%{name}.adoc') % arg
-  end,
-  attributes_path_tmpl: proc do |arg|
-    (LANGS.default?(arg[:lang]) ? 'l10n/attributes.yaml' : 'l10n/attributes.%{lang}.yaml') % arg
-  end,
-  po_path_tmpl: proc {|arg| 'l10n/%{name}.%{lang}.po' % arg },
-  output_path_tmpl: proc {|arg| 'build/%{lang}/%{name}.html' % arg },
-  languages: LANGS
-)
+  layout = ERB.new File.read 'src/template/_layout.erb'
 
-doc_names = Dir.glob('[^_]*.adoc', base: 'src')
-.map{|f| File.basename f, '.adoc' }
+  LANGS.each do |lang|
 
-LANGS.each do |lang|
-  build_lang_task = :"build_#{lang.to_s.gsub '-', '_'}"
-  task :build => build_lang_task
+    # Load localized attributes with fallback
+    attributes = ["l10n/attributes.#{lang}.yaml", 'l10n/attributes.yaml']
+    .filter(&File.method(:exist?))
+    .map{|f| Util.flatten_hash YAML.load_file f }
+    .then{|hs| {}.merge! *hs.reverse }
 
-  desc "Build HTML of language #{lang}"
-  task build_lang_task
+    adoc_options = {
+      safe: :safe,
+      backend: 'html5s',
+      parse: true,
+      standalone: false,
+      attributes: {'imagesdir' => '../images'}.merge(attributes.map{|k, v| ["#{k}@", v]}.to_h),
+    }
 
-  doc_names.each do |name|
-    doc = manual_builder.document(name: name, lang: lang)
-    task build_lang_task => doc.output_path
+    # Load index.adoc for the TOC
+    index_doc = ["translated/#{lang}/index.adoc", 'src/index.adoc']
+    .find(&File.method(:exist?))
+    .then{|f| Asciidoctor.load_file f, adoc_options }
 
-    file doc.output_path =>
-    doc.dependency_files + [:assets] do
-      if File.exist? doc.source_path
-        puts "Generate page #{doc.output_path}" if verbose
-        doc.build
-      end
+    manual_toc = Util.html_strip index_doc.find_by(id: 'manual-toc')[0].convert, layers: 2
+
+    # Generate page for each source (or translated) document
+    src_dir = LANGS.default?(lang) ? 'src' : "translated/#{lang}"
+    Dir.glob('*.adoc', base: src_dir).each do |src_file|
+
+      name = File.basename src_file, '.adoc'
+      src_path = "#{src_dir}/#{src_file}"
+      output_path = "build/#{lang}/#{name}.html"
+      puts "Generate page #{output_path}" if verbose
+
+      document = Asciidoctor.load_file src_path, adoc_options
+      authors = Util.git_file_authors "src/#{src_file}"
+      translators = Util.git_file_authors("l10n/#{name}.#{lang}.po") - authors - %w(Weblate) unless LANGS.default?(lang)
+      page_toc = document
+        .then{|d| d.converter.convert d, 'outline', toclevels: 2 }
+        .then{|s| Util.html_strip s, strip_class: true }
+      content = document.convert
+        .then{|s| Util.cache_id_images s, output_path }
+
+      context = ERBContext.new(
+        title: document.title,
+        content: content,
+        document: document,
+        authors: authors,
+        translators: translators,
+        attributes: attributes,
+        language: lang,
+        languages: LANGS,
+        manual_toc: manual_toc,
+        page_toc: page_toc,
+        output_path: output_path,
+      )
+
+      verbose(false) { mkdir_p File.dirname(output_path) }
+      File.write output_path, layout.result(context.binding)
+    end
+
+    'src/template/translation-missing.erb'.then do |src_path|
+      output_path = "build/#{lang}/translation-missing.html"
+      puts "Generate page #{output_path}" if verbose
+      context = ERBContext.new(
+        attributes: attributes,
+        language: lang,
+        languages: LANGS,
+        manual_toc: manual_toc,
+        output_path: output_path,
+      )
+      template = ERB.new File.read src_path
+      context.content = template.result context.binding
+      File.write output_path, layout.result(context.binding)
     end
   end
 
-  tm_page = manual_builder.page(output_path: "build/#{lang}/translation-missing.html", source_path: "src/template/translation-missing.erb", lang: lang)
-  task build_lang_task => tm_page.output_path
-  file tm_page.output_path => tm_page.dependency_files do
-    puts "Generate page #{tm_page.output_path}" if verbose
-    tm_page.build
+  %w(index 404).each do |name|
+    output_path = "build/#{name}.html"
+    puts "Generate page #{output_path}" if verbose
+    context = ERBContext.new(output_path: output_path, languages: LANGS)
+    template = ERB.new File.read "src/template/#{name}.erb"
+    File.write output_path, template.result(context.binding)
   end
 end
 
-
-rule /^translated\/.*\.adoc$/ => 'po4a:translate'
 
 namespace 'po4a' do
 
@@ -82,7 +119,7 @@ namespace 'po4a' do
     template = ERB.new File.read 'l10n/po4a.cfg.erb'
     content = template.result_with_hash(
       languages: LANGS,
-      documents: doc_names,
+      documents: Dir.glob('*.adoc', base: 'src').map{|f| File.basename f, '.adoc' },
     )
     if content != (File.read('l10n/po4a.cfg') rescue nil)
       puts "Write po4a.cfg" if verbose
@@ -136,22 +173,6 @@ file 'build/style.css' => 'src/template/style.scss' do |task|
   result = Sass.compile(src, source_map: true, source_map_include_sources: true)
   File.write dest, result.css + "\n/*# sourceMappingURL=#{File.basename dest}.map */"
   File.write "#{dest}.map", result.source_map
-end
-
-
-# Misc HTML
-%w(index 404).each do |name|
-  task :build => "build/#{name}.html"
-  file "build/#{name}.html" => "src/template/#{name}.erb" do |task|
-    puts "Generate page #{task.name}" if verbose
-    template = ERB.new File.read task.prereqs[0]
-    html = template.result ERBContext.new(
-      output_path: task.name,
-      languages: LANGS,
-    ).binding
-    verbose(false) { mkdir_p File.dirname task.name }
-    File.write task.name, html
-  end
 end
 
 
