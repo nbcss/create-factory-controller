@@ -43,9 +43,13 @@ jobs:
       - name: Generate index
         shell: ruby {0}
         run: |
+          Gem.install 'natural_sort', '~> 1'
+          require 'natural_sort'
           require 'cgi'
+
           entries = Dir.entries('_site') - %w(. .. index.html 404.html)
           categories = %w(manual javadoc)
+
           $> = File.open '_site/index.html', 'w'
           puts <<END
           <!DOCTYPE html>
@@ -89,7 +93,7 @@ jobs:
           ).each do |(category, entries)|
             puts "<h2 id=\"#{CGI.h category}\">#{CGI.h category}</h2>" if category
             puts "<ul>"
-            entries.each do |entry|
+            entries.sort(&NaturalSort).each do |entry|
               puts "<li><a href=\"./#{CGI.h entry}\">#{CGI.h entry}</a></li>"
             end
             puts "</ul>"
