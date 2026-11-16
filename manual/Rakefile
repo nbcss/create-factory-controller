@@ -29,6 +29,10 @@ display_branch = nil
 desc 'Set the displayed branch name'
 task :display_branch, [:value] do |_, args| display_branch = args.value end
 
+canonical_url_base = nil
+desc 'Set the site canonical URL base'
+task :canonical_url_base, [:value] do |_, args| canonical_url_base = args.value end
+
 
 task default: :build
 desc "Build HTML for all languages"
@@ -65,7 +69,8 @@ task :build => [:assets, 'po4a:translate'] do
 
       name = File.basename src_file, '.adoc'
       src_path = "#{src_dir}/#{src_file}"
-      output_path = "build/#{lang}/#{name}.html"
+      url_path = "/#{lang}/#{name}.html"
+      output_path = File.join('build', url_path)
       puts "Generate page #{output_path}" if verbose
 
       document = Asciidoctor.load_file src_path, adoc_options
@@ -89,9 +94,11 @@ task :build => [:assets, 'po4a:translate'] do
         mod_version: mod_version,
         manual_toc: manual_toc,
         page_toc: page_toc,
+        url_path: url_path,
         output_path: output_path,
         display_branch: display_branch,
         noindex: noindex,
+        canonical_url_base: canonical_url_base,
       )
 
       verbose(false) { mkdir_p File.dirname(output_path) }
@@ -99,7 +106,8 @@ task :build => [:assets, 'po4a:translate'] do
     end
 
     'src/template/translation-missing.erb'.then do |src_path|
-      output_path = "build/#{lang}/translation-missing.html"
+      url_path = "/#{lang}/translation-missing.html"
+      output_path = File.join('build', url_path)
       puts "Generate page #{output_path}" if verbose
       context = ERBContext.new(
         attributes: attributes,
@@ -107,9 +115,11 @@ task :build => [:assets, 'po4a:translate'] do
         languages: LANGS,
         mod_version: mod_version,
         manual_toc: manual_toc,
+        url_path: url_path,
         output_path: output_path,
         display_branch: display_branch,
         noindex: noindex,
+        canonical_url_base: canonical_url_base,
       )
       template = ERB.new File.read src_path
       context.content = template.result context.binding
@@ -120,7 +130,7 @@ task :build => [:assets, 'po4a:translate'] do
   %w(index 404).each do |name|
     output_path = "build/#{name}.html"
     puts "Generate page #{output_path}" if verbose
-    context = ERBContext.new(output_path: output_path, languages: LANGS)
+    context = ERBContext.new(languages: LANGS, output_path: output_path)
     template = ERB.new File.read "src/template/#{name}.erb"
     File.write output_path, template.result(context.binding)
   end

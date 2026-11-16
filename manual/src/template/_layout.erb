@@ -15,6 +15,9 @@
     <% if not document %>
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <% end %>
+    <% if canonical_url_base %>
+    <link rel="canonical" href="<%= h File.join(canonical_url_base, url_path) %>">
+    <% end %>
     <link rel="stylesheet" href="<%= h attach_cache_id '../style.css' %>">
   </head>
 

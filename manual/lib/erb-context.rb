@@ -11,8 +11,8 @@ class ERBContext
     language languages
     mod_version
     manual_toc page_toc
-    output_filename output_path
-    display_branch noindex
+    url_path output_path
+    display_branch noindex canonical_url_base
   )
 
   attr_writer :title, :content
