@@ -70,7 +70,7 @@
               <div class="nav-menu-container">
                 <ol class="nav-menu">
                   <% languages.each do |lang| %>
-                  <li><a rel="alternate" hreflang="<%= lang %>" href="../<%= lang %>/<%= flat_url_for output_path %>" lang="<%= lang %>">
+                  <li><a rel="alternate" hreflang="<%= lang %>" href="../<%= lang %>/<%= h url_path.split('/', -1).last %>" lang="<%= lang %>">
                     <%= lang_name lang %>
                   </a></li>
                   <% end %>
