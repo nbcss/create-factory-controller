@@ -13,7 +13,6 @@ Directory structure:
 *** `_layout.erb`: HTML template for all documents.
 *** `index.erb`: Placeholder index page built to `build/index.html`.
 *** `translation-missing.erb`: Built for each untranslated document as `build/$lang/*.translation-missing.html`, redirected to by 404 page.
-*** `404.erb`
 *** `style.scss`: Stylesheet source, compiled to `build/style.css`.
 ** `images/`: Static assets, copied to `build/`.
 

@@ -38,20 +38,15 @@ jobs:
             done
           done
 
-          cp _site/manual/404.html _site/404.html || true
-
-      - name: Generate index
+      - name: Generate index and 404 page
         shell: ruby {0}
         run: |
           Gem.install 'natural_sort', '~> 1'
           require 'natural_sort'
           require 'cgi'
 
-          entries = Dir.entries('_site') - %w(. .. index.html 404.html)
-          categories = %w(manual javadoc)
-
-          $> = File.open '_site/index.html', 'w'
-          puts <<END
+          template = []
+          template[0] = <<END
           <!DOCTYPE html>
           <html>
             <head>
@@ -84,24 +79,53 @@ jobs:
               </style>
             </head>
             <body>
-              <h1>Create: Factory Controller</h1>
           END
-          categories.map do |category|
-            [category, entries.filter{|e| e.start_with? category }]
-          end.prepend(
-            [nil, entries.reject{|e| categories.any?{|c| e.start_with? c } }]
-          ).each do |(category, entries)|
-            puts "<h2 id=\"#{CGI.h category}\">#{CGI.h category}</h2>" if category
-            puts "<ul>"
-            entries.sort(&NaturalSort).each do |entry|
-              puts "<li><a href=\"./#{CGI.h entry}\">#{CGI.h entry}</a></li>"
-            end
-            puts "</ul>"
-          end
-          puts <<END
+          template[1] = <<END
             </body>
           </html>
           END
+
+          entries = Dir.entries('_site') - %w(. .. index.html 404.html)
+          categories = %w(manual javadoc)
+
+          File.open '_site/index.html', 'w' do |file|
+            file.puts template[0]
+            file.puts '<h1>Create: Factory Controller</h1>'
+            categories.map do |category|
+              [category, entries.filter{|e| e.start_with? category }]
+            end.prepend(
+              [nil, entries.reject{|e| categories.any?{|c| e.start_with? c } }]
+            ).each do |(category, entries)|
+              file.puts "<h2 id=\"#{CGI.h category}\">#{CGI.h category}</h2>" if category
+              file.puts "<ul>"
+              entries.sort(&NaturalSort).each do |entry|
+                file.puts "<li><a href=\"./#{CGI.h entry}\">#{CGI.h entry}</a></li>"
+              end
+              file.puts "</ul>"
+            end
+            file.puts template[1]
+          end
+
+          File.open '_site/404.html', 'w' do |file|
+            file.puts template[0]
+            file.puts '<h1>Page not found</h1>'
+            file.puts "<nav><a href=\"/#{CGI.h ENV['GITHUB_REPOSITORY'].split('/', 2).last}\">Return to Home</a></nav>"
+            file.puts <<~END
+            <script>
+            (function() {
+              let path = location.pathname;
+              if (path.endsWith('/')) path += 'index.html';
+              if (/\.html$/.test(path)) {
+                const redirectUrl = path.replace(/\.html$/, '.translation-missing.html');
+                fetch(redirectUrl, { method: 'HEAD' }).then((response) => {
+                  if (response.ok) location.replace(redirectUrl + location.hash);
+                });
+              }
+            })();
+            </script>
+            END
+            file.puts template[1]
+          end
 
       - name: Generate job summary
         run: |
