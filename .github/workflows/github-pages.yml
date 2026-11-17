@@ -96,12 +96,14 @@ jobs:
             end.prepend(
               [nil, entries.reject{|e| categories.any?{|c| e.start_with? c } }]
             ).each do |(category, entries)|
+              file.puts '<section>'
               file.puts "<h2 id=\"#{CGI.h category}\">#{CGI.h category}</h2>" if category
-              file.puts "<ul>"
+              file.puts '<ul>'
               entries.sort(&NaturalSort).each do |entry|
                 file.puts "<li><a href=\"./#{CGI.h entry}\">#{CGI.h entry}</a></li>"
               end
-              file.puts "</ul>"
+              file.puts '</ul>'
+              file.puts '</section>'
             end
             file.puts template[1]
           end
@@ -109,7 +111,7 @@ jobs:
           File.open '_site/404.html', 'w' do |file|
             file.puts template[0]
             file.puts '<h1>Page not found</h1>'
-            file.puts "<nav><a href=\"/#{CGI.h ENV['GITHUB_REPOSITORY'].split('/', 2).last}\">Return to Home</a></nav>"
+            file.puts "<nav><a href=\"/#{CGI.h ENV['GITHUB_REPOSITORY'].split('/', 2).last}/\">Return to Home</a></nav>"
             file.puts <<~END
             <script>
             (function() {
