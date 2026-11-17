@@ -10,9 +10,10 @@ Compatibility:
 - Dropped Fluidlogistics (< 1.2.5) compatibility support
 
 Bugfixes:
-- Fixed import blueprint do not properly recognize Fluid Factory Gauge from Fluidlogistics
+- Fixed import blueprint do not correctly recognize Fluid Factory Gauge from Fluidlogistics
 - Fixed Create Stock Bridge does not properly package items from AE2 storage
-- Fixed arithmetic tube does not properly handle loop connection when placed from blueprint
+- Fixed arithmetic tube does not correctly handle loop connection when placed from blueprint
+- Fixed compact font number is not correctly align to slot
 
 ## 1.2.3
 

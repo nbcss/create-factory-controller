@@ -355,13 +355,13 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
             graphics.fill(RenderType.guiOverlay(), x, y, x + 16, y + 16, SLOT_HOVER);
     }
 
-    /** Compact-font count at the bottom-right of a 16×16 item at (x, y); always drawn, zero included. */
+    /** Compact-font count over a 16×16 item at (x, y), placed like the Stock Keeper's; always drawn, zero included. */
     public static void renderStockCount(GuiGraphics graphics, int x, int y, int count) {
         renderStockCount(graphics, x, y, count, 0xFFFFFFFF);
     }
 
     public static void renderStockCount(GuiGraphics graphics, int x, int y, int count, int argb) {
-        renderCornerText(graphics, x, y, SpriteNumbersRender.abbreviate(count).trim(), argb);
+        renderCornerText(graphics, x, y, SpriteNumbersRender.abbreviate(count), argb);
     }
 
     private static void renderCornerText(GuiGraphics graphics, int x, int y, String text) {
@@ -371,7 +371,7 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
     private static void renderCornerText(GuiGraphics graphics, int x, int y, String text, int argb) {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 200);
-        SpriteNumbersRender.drawCountRightAligned(graphics, text, x + 17, y + 10, argb);
+        SpriteNumbersRender.drawCount(graphics, text, x, y, argb);
         graphics.pose().popPose();
     }
 
