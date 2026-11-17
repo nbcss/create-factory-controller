@@ -12,9 +12,6 @@
     <% if noindex or not document %>
     <meta name="robots" content="noindex, nofollow">
     <% end %>
-    <% if not document %>
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-    <% end %>
     <% if canonical_url_base %>
     <link rel="canonical" href="<%= h File.join(canonical_url_base, url_path) %>">
     <% end %>
