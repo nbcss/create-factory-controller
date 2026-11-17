@@ -14,6 +14,7 @@ public final class SpriteNumbersRender {
     private static final ResourceLocation NUMBERS_TEX =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/compact_font.png");
     private static final int TEX = 64, GLYPH_H = 7;
+    /** Create's NUMBERS sprites carry a blank top row that this sheet lacks; blits shift down by it to match. */
     private static final int Y_NUDGE = 1;
 
     public static final String INFINITE = "∞";   // ∞
@@ -53,13 +54,20 @@ public final class SpriteNumbersRender {
     }
 
     /**
-     * Blits {@code text} over the slot whose item is drawn at {@code (itemX, itemY)}, matching the Stock
-     * Keeper's bottom-right, horizontally-centred count placement.
+     * Blits {@code text} over the item drawn at {@code (itemX, itemY)} exactly like the Stock Keeper's
+     * {@code drawItemCount} (item at slot +1, glyphs from slot +14 / +10, centred by {@code -length*2.5}).
+     * Pass {@link #abbreviate} output untrimmed: its leading space for counts below 100 is part of the layout.
      */
     public static void drawCount(GuiGraphics gfx, String text, int itemX, int itemY) {
         if (text.isBlank()) return;
-        // Centred around itemX+13 via the -length*2.5 offset (the Stock Keeper convention).
-        blitGlyphs(gfx, text, itemX + 13 + (int) Math.floor(-text.length() * 2.5), itemY + 10);
+        blitGlyphs(gfx, text, itemX + 13 + (int) Math.floor(-text.length() * 2.5), itemY + 9);
+    }
+
+    /** {@link #drawCount} tinted with {@code argb} (the white glyph sprites are multiplied by it). */
+    public static void drawCount(GuiGraphics gfx, String text, int itemX, int itemY, int argb) {
+        setColor(gfx, argb);
+        drawCount(gfx, text, itemX, itemY);
+        gfx.setColor(1f, 1f, 1f, 1f);
     }
 
     /** Same glyphs as {@link #drawCount}, but right-aligned so the string's right edge lands at {@code rightX}
@@ -72,10 +80,14 @@ public final class SpriteNumbersRender {
     /** {@link #drawCountRightAligned} tinted with {@code argb} (the white glyph sprites are multiplied by it). */
     public static void drawCountRightAligned(GuiGraphics gfx, String text, int rightX, int y, int argb) {
         if (text.isBlank()) return;
-        gfx.setColor(((argb >> 16) & 0xFF) / 255f, ((argb >> 8) & 0xFF) / 255f, (argb & 0xFF) / 255f,
-                ((argb >>> 24) & 0xFF) / 255f);
+        setColor(gfx, argb);
         blitGlyphs(gfx, text, rightX - width(text), y);
         gfx.setColor(1f, 1f, 1f, 1f);
+    }
+
+    private static void setColor(GuiGraphics gfx, int argb) {
+        gfx.setColor(((argb >> 16) & 0xFF) / 255f, ((argb >> 8) & 0xFF) / 255f, (argb & 0xFF) / 255f,
+                ((argb >>> 24) & 0xFF) / 255f);
     }
 
     /** Pixel width of {@code text} as rendered (glyphs overlap 1px; a space is 4px; unmapped chars are skipped). */

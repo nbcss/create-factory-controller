@@ -172,7 +172,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (stack.isEmpty()) return;
         ResourceIconRenderer.render(gfx, stack, ix, iy);
         int shown = slot.count() * (s.multiplierExcluded(slot.source()) ? 1 : scale);
-        s.drawItemCount(gfx, stack, ix, iy, countLabel(stack, shown));
+        s.drawItemCount(gfx, stack, ix, iy, shown, FluidCompat.isFluidFilter(stack));
     }
 
     @Override
@@ -201,13 +201,9 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             gfx.pose().translate(0, 0, 250);
             int dx = mouseX - 8, dy = mouseY - 8;
             gfx.renderItem(stack, dx, dy);
-            s.drawItemCount(gfx, stack, dx, dy, countLabel(stack, src.count()));
+            s.drawItemCount(gfx, stack, dx, dy, src.count(), FluidCompat.isFluidFilter(stack));
             gfx.pose().popPose();
         }
-    }
-
-    private static String countLabel(ItemStack stack, int count) {
-        return FluidCompat.isFluidFilter(stack) ? ConfigureRecipeScreen.formatFluidShort(count) : String.valueOf(count);
     }
 
     // ── Input ─────────────────────────────────────────────────────────────────

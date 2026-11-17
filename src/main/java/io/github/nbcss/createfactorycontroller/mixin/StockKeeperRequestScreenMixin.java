@@ -70,7 +70,7 @@ public abstract class StockKeeperRequestScreenMixin {
         if (ProductionPatternItem.isPattern(entry.stack)) {
             if (!isRenderingOrders) return;   // stock-list blueprint: infinite supply, no count
             if (FluidCompat.isFluidFilter(ProductionPatternItem.displayOf(entry.stack))) {
-                SpriteNumbersRender.drawCount(graphics, SpriteNumbersRender.abbreviate(customCount) + "b", 0, 0);
+                SpriteNumbersRender.drawCount(graphics, SpriteNumbersRender.abbreviate(customCount) + "b", 1, 1);
                 return;
             }
         }

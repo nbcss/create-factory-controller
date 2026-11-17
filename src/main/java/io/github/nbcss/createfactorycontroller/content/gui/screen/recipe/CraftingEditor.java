@@ -44,7 +44,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 if (i < slots.size()) {
                     ConfigureRecipeScreen.CraftSlot slot = slots.get(i);
                     gfx.renderItem(slot.stack(), ix, iy);
-                    s.drawItemCount(gfx, slot.stack(), ix, iy, String.valueOf(slot.amount() * scale));
+                    s.drawItemCount(gfx, slot.stack(), ix, iy, slot.amount() * scale, false);
                 }
             }
         } else {
@@ -59,7 +59,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 gfx.renderItem(stack, ix, iy);
                 int dispBatch = s.effectiveBatch() * scale;
                 if (!stack.isEmpty() && dispBatch > 1)
-                    s.drawItemCount(gfx, stack, ix, iy, String.valueOf(Math.max(1, stack.getCount()) * dispBatch));
+                    s.drawItemCount(gfx, stack, ix, iy, Math.max(1, stack.getCount()) * dispBatch, false);
             }
         }
     }

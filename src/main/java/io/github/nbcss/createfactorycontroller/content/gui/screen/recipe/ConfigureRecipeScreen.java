@@ -1305,7 +1305,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int producedCount = editor().producedCount();
             int shownOutput = producedCount * previewScale(mouseX, mouseY);
             ResourceIconRenderer.render(gfx, g.filter, ox, oy);
-            drawItemCount(gfx, g.filter, ox, oy, fluidMode ? formatFluidShort(shownOutput) : String.valueOf(shownOutput));
+            drawItemCount(gfx, g.filter, ox, oy, shownOutput, fluidMode);
             if (overMultiplier) {
                 gfx.fill(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y,
                         panelX + MULTIPLIER_X + MULTIPLIER_W, panelY + MULTIPLIER_Y + MULTIPLIER_H,
@@ -1343,12 +1343,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Open-promise package box
         int pbx = panelX + PROMISE_CLEAR_X, pby = panelY + PANEL_H - 24;
         int promised = g == null ? 0 : g.promisedCount;
-        String promisedLabel = g != null && FluidCompat.isFluidFilter(g.filter)
-            ? formatFluidShort(promised) : String.valueOf(promised);
         ItemStack box = PackageStyles.getDefaultBox();
         gfx.renderItem(box, pbx, pby);
-        drawItemCount(gfx, box, pbx, pby, (ClientConfig.compactRecipeCountFont() && promised > 0 ? "+": "")
-                + promisedLabel);
+        drawItemCount(gfx, box, pbx, pby, promised, g != null && FluidCompat.isFluidFilter(g.filter),
+                promised > 0 ? SpriteNumbersRender.PLUS : "");
 
         // 3D gauge preview
         GuiGameElement.of(g == null ? AllBlocks.FACTORY_GAUGE : g.getItem())
@@ -1484,16 +1482,24 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     }
 
-    void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, String text) {
-        if (ClientConfig.compactRecipeCountFont()) {
-            gfx.pose().pushPose();
-            gfx.pose().translate(0, 0, 200);
-            // Right-align to the slot's right edge, matching the vanilla item-count placement it replaces.
-            SpriteNumbersRender.drawCountRightAligned(gfx, text, itemX + 17, itemY + 10);
-            gfx.pose().popPose();
-        } else {
-            gfx.renderItemDecorations(font, stack, itemX, itemY, text);
+    void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, int amount, boolean fluid) {
+        drawItemCount(gfx, stack, itemX, itemY, amount, fluid, "");
+    }
+
+    /** {@code compactPrefix} (compact font only) takes the place of the count's leading pad space. */
+    private void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, int amount, boolean fluid,
+                               String compactPrefix) {
+        if (!ClientConfig.compactRecipeCountFont()) {
+            gfx.renderItemDecorations(font, stack, itemX, itemY,
+                    fluid ? formatFluidShort(amount) : String.valueOf(amount));
+            return;
         }
+        String text = fluid ? formatFluidShort(amount) : SpriteNumbersRender.abbreviate(amount);
+        if (!compactPrefix.isEmpty()) text = compactPrefix + text.trim();
+        gfx.pose().pushPose();
+        gfx.pose().translate(0, 0, 200);
+        SpriteNumbersRender.drawCount(gfx, text, itemX, itemY);
+        gfx.pose().popPose();
     }
 
     @Override

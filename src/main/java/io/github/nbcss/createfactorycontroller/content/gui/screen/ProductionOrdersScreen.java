@@ -295,7 +295,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             gfx.pose().translate(0, 0, 200);   // count sprite + state symbol above the item model
             String amount = fluid ? SpriteNumbersRender.abbreviate(r.amount() / 1000) + "b"
                                   : SpriteNumbersRender.abbreviate(r.amount());
-            SpriteNumbersRender.drawCount(gfx, amount, sx + 2, sy);
+            SpriteNumbersRender.drawCount(gfx, amount, sx + 1, sy + 1);
             drawStateSymbol(gfx, r.stateEnum(), sx, sy);
             gfx.pose().popPose();
         }

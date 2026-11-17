@@ -43,8 +43,7 @@ class RegularEditor extends GaugeWorkModeEditor {
             ItemStack stack = s.ingredientOf(s.inputConnections.get(slot.connectionIndex()));
             ResourceIconRenderer.render(gfx, stack, ix, iy);
             if (!stack.isEmpty()) {
-                s.drawItemCount(gfx, stack, ix, iy, fluidIng
-                        ? ConfigureRecipeScreen.formatFluidShort(slot.amount()) : String.valueOf(slot.amount()));
+                s.drawItemCount(gfx, stack, ix, iy, slot.amount(), fluidIng);
             }
         }
     }
