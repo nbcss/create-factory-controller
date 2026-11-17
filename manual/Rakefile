@@ -128,7 +128,7 @@ task :build => [:assets, 'po4a:translate'] do
     end
   end
 
-  %w(index 404).each do |name|
+  %w(index).each do |name|
     output_path = "build/#{name}.html"
     puts "Generate page #{output_path}" if verbose
     context = ERBContext.new(languages: LANGS, output_path: output_path)
