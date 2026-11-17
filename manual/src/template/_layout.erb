@@ -28,7 +28,7 @@
         <nav>
           <ol>
             <% if display_branch %>
-            <li class="nav-item nav-version">
+            <li class="nav-item nav-version nav-version-fallback">
               <a title="<%= h t 'site-nav-change-version' %>" href="../../#manual">
                 <% if display_branch == 'main' or display_branch =~ /^\d/ %>
                 v<%= h mod_version %>
@@ -36,6 +36,51 @@
                 <%= display_branch %>
                 <% end %>
               </a>
+              <div class="nav-menu-container">
+                <ul class="nav-menu"></ul>
+              </div>
+              <script>
+              document.addEventListener('DOMContentLoaded', () => {
+                fetch('../../', { mode: 'same-origin', headers: { "Cache-Control": "max-age=300" } })
+                .then((res) => res.ok ? res.text() : Promise.reject())
+                .then((resText) => {
+                  // Parse site index for other manual versions
+                  let resDoc = new DOMParser().parseFromString(resText, 'text/html');
+                  let base = resDoc.createElement('base');
+                  base.href = '../../';
+                  resDoc.head.appendChild(base);
+                  let versUrls = Array.from(resDoc.querySelectorAll('#manual ~ ul:first-of-type > li > a, #manual ~ ol:first-of-type > li > a'))
+                  .map(a => a.href.replace(/\/$/, ''));
+                  if (versUrls.length == 0) return;
+
+                  // Add links to other versions of this page to a nav menu
+                  const nv = document.querySelector('.nav-version');
+                  nv.classList.remove('nav-version-fallback');
+                  const navBtn = document.querySelector('.nav-version > a');
+                  navBtn.href = "";
+                  navBtn.addEventListener('click', (e) => e.preventDefault());
+                  const navMenu = document.querySelector('.nav-version .nav-menu');
+                  let links = versUrls.map((url) => {
+                    let branch = url.match(/[^\/]*$/)[0].match(/(?:\:.+)?$/)[0].substr(1);
+                    let li = document.createElement('li');
+                    let a = document.createElement('a');
+                    li.appendChild(a);
+                    a.innerText = branch !== "" ? branch : <%= JSON.dump t 'site-nav-version-latest' %>;
+                    a.href = url + '/';
+                    navMenu.appendChild(li);
+                    return [a, url + <%= JSON.dump url_path %>];
+                  });
+                  function checkLinks() {
+                    ['focusin', 'mouseenter'].forEach(e => nv.removeEventListener(e, checkLinks));
+                    links.forEach(([a, pageUrlInVer]) => {
+                      fetch(pageUrlInVer, { method: 'HEAD' })
+                      .then((res) => { if (res.ok) a.href = pageUrlInVer; });
+                    });
+                  }
+                  ['focusin', 'mouseenter'].forEach(e => nv.addEventListener(e, checkLinks));
+                })
+              });
+              </script>
             </li>
             <% end %>
             <% if manual_toc %>
@@ -68,13 +113,13 @@
             <li class="nav-item nav-lang-select">
               <button title="<%= h t 'site-nav-langs' %>"><i class="fa-solid">&#xf1ab;</i>&ensp;<%= lang_name language %></button>
               <div class="nav-menu-container">
-                <ol class="nav-menu">
+                <ul class="nav-menu">
                   <% languages.each do |lang| %>
                   <li><a rel="alternate" hreflang="<%= lang %>" href="../<%= lang %>/<%= h url_path.split('/', -1).last %>" lang="<%= lang %>">
                     <%= lang_name lang %>
                   </a></li>
                   <% end %>
-                </ol>
+                </ul>
               </div>
             </li>
           </ol>

@@ -1,4 +1,5 @@
 require 'erb'
+require 'json'
 require_relative 'util'
 
 # Context object to provide variables and methods to the ERB templates
