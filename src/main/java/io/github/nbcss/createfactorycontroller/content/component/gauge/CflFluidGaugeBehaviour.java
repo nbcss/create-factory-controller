@@ -67,6 +67,11 @@ public class CflFluidGaugeBehaviour extends VirtualGaugeBehaviour {
         }
 
         @Override
+        public String order() {
+            return "fb";
+        }
+
+        @Override
         public List<ResourceLocation> items() {
             return List.of(ITEM_ID);
         }

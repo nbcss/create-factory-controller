@@ -9,6 +9,7 @@ public final class NetworkHandler {
 
     public static void register(PayloadRegistrar registrar) {
         registrar.playToServer(AttachComponentPacket.TYPE, AttachComponentPacket.STREAM_CODEC, AttachComponentPacket::handle);
+        registrar.playToServer(ComponentSupplyAttachPacket.TYPE, ComponentSupplyAttachPacket.STREAM_CODEC, ComponentSupplyAttachPacket::handle);
         registrar.playToServer(RemoveComponentPacket.TYPE, RemoveComponentPacket.STREAM_CODEC, RemoveComponentPacket::handle);
         registrar.playToServer(MoveComponentPacket.TYPE, MoveComponentPacket.STREAM_CODEC, MoveComponentPacket::handle);
         registrar.playToServer(BatchMoveComponentPacket.TYPE, BatchMoveComponentPacket.STREAM_CODEC, BatchMoveComponentPacket::handle);
@@ -30,6 +31,7 @@ public final class NetworkHandler {
         registrar.playToServer(ConfigureRedstoneLinkPacket.TYPE, ConfigureRedstoneLinkPacket.STREAM_CODEC, ConfigureRedstoneLinkPacket::handle);
         registrar.playToServer(RetuneCarriedPacket.TYPE, RetuneCarriedPacket.STREAM_CODEC, RetuneCarriedPacket::handle);
         registrar.playToServer(RenameControllerPacket.TYPE, RenameControllerPacket.STREAM_CODEC, RenameControllerPacket::handle);
+        registrar.playToServer(SetAdjacentContainersPacket.TYPE, SetAdjacentContainersPacket.STREAM_CODEC, SetAdjacentContainersPacket::handle);
         registrar.playToServer(SetNetworkSettingsPacket.TYPE, SetNetworkSettingsPacket.STREAM_CODEC, SetNetworkSettingsPacket::handle);
         registrar.playToServer(RequestProductionOrdersPacket.TYPE, RequestProductionOrdersPacket.STREAM_CODEC, RequestProductionOrdersPacket::handle);
         registrar.playToServer(RemoveProductionOrderPacket.TYPE, RemoveProductionOrderPacket.STREAM_CODEC, RemoveProductionOrderPacket::handle);
@@ -38,6 +40,7 @@ public final class NetworkHandler {
         registrar.playToServer(RegisterOrderNotificationPacket.TYPE, RegisterOrderNotificationPacket.STREAM_CODEC, RegisterOrderNotificationPacket::handle);
         registrar.playToServer(RequestPanelResyncPacket.TYPE, RequestPanelResyncPacket.STREAM_CODEC, RequestPanelResyncPacket::handle);
         registrar.playToServer(ReturnCarriedPacket.TYPE, ReturnCarriedPacket.STREAM_CODEC, ReturnCarriedPacket::handle);
+        registrar.playToServer(PickComponentPacket.TYPE, PickComponentPacket.STREAM_CODEC, PickComponentPacket::handle);
         registrar.playToServer(BlueprintPlacePacket.TYPE, BlueprintPlacePacket.STREAM_CODEC, BlueprintPlacePacket::handle);
         registrar.playToServer(SelectTerminalControllerPacket.TYPE, SelectTerminalControllerPacket.STREAM_CODEC, SelectTerminalControllerPacket::handle);
         registrar.playToServer(UnlinkTerminalControllerPacket.TYPE, UnlinkTerminalControllerPacket.STREAM_CODEC, UnlinkTerminalControllerPacket::handle);
@@ -48,5 +51,6 @@ public final class NetworkHandler {
         registrar.playToClient(GaugeInfoPacket.TYPE, GaugeInfoPacket.STREAM_CODEC, GaugeInfoPacket::handle);
         registrar.playToClient(OrderNotificationPacket.TYPE, OrderNotificationPacket.STREAM_CODEC, OrderNotificationPacket::handle);
         registrar.playToClient(TerminalStatePacket.TYPE, TerminalStatePacket.STREAM_CODEC, TerminalStatePacket::handle);
+        registrar.playToClient(ComponentSupplyStockPacket.TYPE, ComponentSupplyStockPacket.STREAM_CODEC, ComponentSupplyStockPacket::handle);
     }
 }

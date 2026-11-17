@@ -59,6 +59,11 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
         }
 
         @Override
+        public String order() {
+            return "fb";
+        }
+
+        @Override
         public List<ResourceLocation> items() {
             return List.of(RepackagedCompat.FLUID_GAUGE);
         }

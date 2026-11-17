@@ -9,10 +9,13 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGa
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.network.MissingLinkStatus;
+import io.github.nbcss.createfactorycontroller.content.packet.ComponentSupplyStockPacket;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentSupplyStock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -21,6 +24,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.item.ItemStack;
 
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +43,8 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     /** Controller's custom display name (synced); blank means the default translated block name. */
     public String controllerName = "";
     public boolean controllerPowered = false;
+    /** Synced per-controller setting: Component Supply uses adjacent containers. */
+    public boolean useAdjacentContainers = false;
     /** Position of the controller this menu currently drives. Mutable so a terminal can retarget it. */
     public BlockPos controllerPos;
 
@@ -53,6 +59,26 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
 
     // Server-side: reference to the actual BE (null for a terminal with no live controller)
     @Nullable protected FactoryControllerBlockEntity blockEntity;
+
+    /** Client: the adjacent-container stock the server last pushed. Server: the stock last sent to this player. */
+    public ComponentSupplyStock componentSupplyStock = ComponentSupplyStock.EMPTY;
+
+    /** Pushes the controller's adjacent-container stock to this player whenever the snapshot changes. */
+    @Override
+    public void broadcastChanges() {
+        super.broadcastChanges();
+        if (!(cachedPlayerInventory.player instanceof ServerPlayer player)) return;
+        ComponentSupplyStock stock = blockEntity == null ? ComponentSupplyStock.EMPTY : blockEntity.componentSupplyStock();
+        if (stock.equals(componentSupplyStock)) return;
+        componentSupplyStock = stock;
+        PacketDistributor.sendToPlayer(player, new ComponentSupplyStockPacket(containerId, stock));
+    }
+
+    /** The live controller on the server; always {@code null} on the client. */
+    @Nullable
+    public FactoryControllerBlockEntity blockEntity() {
+        return blockEntity;
+    }
 
     // Inventory state used for slot rebuilding.
     // Slots are re-created on each repositionSlots() call because Slot.x/y are final.
@@ -80,6 +106,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
             this.missingLinkStatuses = be.missingLinkStatuses();
             this.controllerName = be.customName;
             this.controllerPowered = be.isRedstonePowered();
+            this.useAdjacentContainers = be.useAdjacentContainers();
         }
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
@@ -123,6 +150,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
 
         this.controllerName = buf.readUtf();
         this.controllerPowered = buf.readBoolean();
+        this.useAdjacentContainers = buf.readBoolean();
 
         addExtraSlots(OFF_SCREEN, OFF_SCREEN, false);
     }
@@ -252,13 +280,14 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
                               List<Connection> connections,
                               List<NetworkSettings> networks,
                               List<MissingLinkStatus> missingLinks,
-                              String name, boolean powered) {
+                              String name, boolean powered, boolean useAdjacentContainers) {
         setComponents(newComponents);
         loadConnections(connections);
         applyNetworkSettings(networks);
         applyMissingLinkStatuses(missingLinks);
         controllerName = name;
         controllerPowered = powered;
+        this.useAdjacentContainers = useAdjacentContainers;
         syncEpoch = epoch;
         syncRevision = revision;
         resyncPending = false;
@@ -338,13 +367,13 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
     /** Called by NeoForge when the server opens this menu for a player. */
     public static void writeExtraData(FactoryControllerBlockEntity be, RegistryFriendlyByteBuf buf) {
         writeEmptyBoardLayout(buf, be.getBlockPos(), be.syncEpoch(), be.syncRevision(),
-            be.customName, be.isRedstonePowered());
+            be.customName, be.isRedstonePowered(), be.useAdjacentContainers());
     }
 
     /** Writes the common menu-open header with an empty board (the real board follows via {@code syncEverything}).
      *  Shared with the terminal menu, which appends its own fields after this. */
     protected static void writeEmptyBoardLayout(RegistryFriendlyByteBuf buf, BlockPos pos, int epoch, int revision,
-                                                String name, boolean powered) {
+                                                String name, boolean powered, boolean useAdjacentContainers) {
         buf.writeBlockPos(pos);
         buf.writeVarInt(epoch);
         buf.writeVarInt(revision);
@@ -356,6 +385,7 @@ public class FactoryControllerMenu extends AbstractContainerMenu implements Comp
 
         buf.writeUtf(name);
         buf.writeBoolean(powered);
+        buf.writeBoolean(useAdjacentContainers);
     }
 
     public boolean isRedstonePowered() {

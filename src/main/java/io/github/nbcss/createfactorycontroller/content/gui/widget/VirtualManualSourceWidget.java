@@ -6,7 +6,6 @@ import io.github.nbcss.createfactorycontroller.content.component.redstone.Manual
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ComponentPressPacket;
-import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -85,7 +84,6 @@ public abstract class VirtualManualSourceWidget<T extends ManualRedstoneSourceBe
 
     @Override
     public void remove(FactoryControllerScreen screen) {
-        if (screen.isItemTransferDenied()) return;
-        PacketDistributor.sendToServer(new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
+        screen.sendRemoveComponent(behaviour.position());
     }
 }

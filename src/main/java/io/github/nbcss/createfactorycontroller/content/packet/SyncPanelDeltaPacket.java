@@ -30,23 +30,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Server → client: one tick's worth of board changes for an open controller menu — the routine replacement
- * for re-sending the whole board ({@link SyncPanelStatePacket}, now reserved for escalations/resyncs).
- *
- * <p><b>Versioning.</b> Stamped with the BE's {@code (epoch, baseRevision → newRevision)}. The client
- * applies a delta only when the epoch matches and {@code baseRevision} equals its current revision;
- * anything else (BE reloaded, gap, unparseable entry) triggers ONE {@link RequestPanelResyncPacket} and the
- * server answers with the authoritative full snapshot — every protocol fault self-heals.</p>
- *
- * <p><b>Bodies are captured bytes.</b> Component/connection payloads are opaque {@code byte[]}s produced by
- * {@link SyncCodecs#capture} on the server thread at flush time: network-thread encoding never touches live
- * mutable state, and each body's length frames it so the client can skip one bad entry instead of
- * desyncing the buffer. A FULL body is {@code ComponentRegistry.writeComponent} (type id + everything); a
- * STATE body is {@code pos + writeClientState} and mutates the client's existing instance in place.</p>
- *
- * <p><b>Apply order</b> (fixed, makes remove+re-add and remove-with-wires atomic within one packet):
- * connection removals → component removals → component upserts → connection upserts → header/networks/diagnostics →
- * re-fold sinks whose incoming wires changed → {@link PanelSyncListener#onPanelSync()}.</p>
+ * Server → client: one tick's worth of board changes for an open controller menu.
  */
 public record SyncPanelDeltaPacket(BlockPos pos,
                                    int epoch,
@@ -64,8 +48,8 @@ public record SyncPanelDeltaPacket(BlockPos pos,
     /** One component change: the FULL body ({@code writeComponent}) or the STATE tail ({@code pos + writeClientState}). */
     public record ComponentUpsert(boolean full, byte[] body) {}
 
-    /** Controller name + redstone power, sent together whenever either changed (both are tiny). */
-    public record HeaderState(String name, boolean powered) {}
+    /** Controller name, redstone power and settings, sent together whenever any changed (all tiny). */
+    public record HeaderState(String name, boolean powered, boolean useAdjacentContainers) {}
 
     public static final Type<SyncPanelDeltaPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "sync_panel_delta"));
@@ -95,7 +79,7 @@ public record SyncPanelDeltaPacket(BlockPos pos,
                 for (int i = 0; i < n; i++) connectionUpserts.add(buf.readByteArray());
                 List<NetworkSettings> networks = buf.readBoolean() ? NETWORK_LIST_CODEC.decode(buf) : null;
                 List<MissingLinkStatus> missingLinks = buf.readBoolean() ? MissingLinkStatus.readList(buf) : null;
-                HeaderState header = buf.readBoolean() ? new HeaderState(buf.readUtf(), buf.readBoolean()) : null;
+                HeaderState header = buf.readBoolean() ? new HeaderState(buf.readUtf(), buf.readBoolean(), buf.readBoolean()) : null;
                 return new SyncPanelDeltaPacket(pos, epoch, baseRevision, newRevision, removedComponents,
                         removedConnections, componentUpserts, connectionUpserts, networks, missingLinks, header);
             }
@@ -125,6 +109,7 @@ public record SyncPanelDeltaPacket(BlockPos pos,
                 if (packet.header() != null) {
                     buf.writeUtf(packet.header().name());
                     buf.writeBoolean(packet.header().powered());
+                    buf.writeBoolean(packet.header().useAdjacentContainers());
                 }
             }
         };
@@ -201,6 +186,7 @@ public record SyncPanelDeltaPacket(BlockPos pos,
             if (packet.header() != null) {
                 menu.controllerName = packet.header().name();
                 menu.controllerPowered = packet.header().powered();
+                menu.useAdjacentContainers = packet.header().useAdjacentContainers();
             }
 
             for (Refold refold : refolds)

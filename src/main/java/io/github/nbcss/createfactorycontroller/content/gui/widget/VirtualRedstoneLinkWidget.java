@@ -11,7 +11,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ConfigureRedst
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
-import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -150,8 +149,6 @@ public record VirtualRedstoneLinkWidget(VirtualRedstoneLinkBehaviour behaviour) 
 
     @Override
     public void remove(FactoryControllerScreen screen) {
-        if (screen.isItemTransferDenied()) return;
-        PacketDistributor.sendToServer(
-            new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
+        screen.sendRemoveComponent(behaviour.position());
     }
 }

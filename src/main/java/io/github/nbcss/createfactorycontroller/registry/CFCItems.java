@@ -1,13 +1,18 @@
 package io.github.nbcss.createfactorycontroller.registry;
 
+import com.simibubi.create.foundation.item.ItemDescription;
+import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerBlockItem;
 import io.github.nbcss.createfactorycontroller.content.item.FactoryControllerTerminalItem;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
+import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+
+import java.util.List;
 
 public final class CFCItems {
     public static final DeferredRegister.Items ITEMS =
@@ -37,5 +42,13 @@ public final class CFCItems {
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
+    }
+
+    public static void onClientSetup() {
+        for (Item item : List.of(
+                CFCItems.FACTORY_CONTROLLER.get(),
+                CFCItems.FACTORY_CONTROLLER_TERMINAL.get()))
+            TooltipModifier.REGISTRY.register(item,
+                    new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE));
     }
 }

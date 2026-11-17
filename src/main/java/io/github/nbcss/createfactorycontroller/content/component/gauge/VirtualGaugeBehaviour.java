@@ -75,6 +75,11 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         }
 
         @Override
+        public String order() {
+            return "fa";
+        }
+
+        @Override
         public List<ResourceLocation> items() {
             return List.of(AllBlocks.FACTORY_GAUGE.getId());
         }

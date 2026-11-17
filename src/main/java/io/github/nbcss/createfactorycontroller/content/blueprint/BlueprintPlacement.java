@@ -1,21 +1,20 @@
 package io.github.nbcss.createfactorycontroller.content.blueprint;
 
-import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import net.minecraft.core.BlockPos;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
-import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.gui.GhostPreview;
+import io.github.nbcss.createfactorycontroller.content.supply.PlayerInventorySource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,7 +33,6 @@ public class BlueprintPlacement {
     private final List<UUID> presetNetworks;
     @Nullable private final BlockPos boxMin;
     @Nullable private final BlockPos boxMax;
-    /** Lazily-built translucent placement preview (reconstructed components + the blueprint's internal wires). */
     @Nullable private GhostPreview ghostPreview;
 
     public BlueprintPlacement(String name, BlueprintStorage.Info info, byte[] payload) {
@@ -119,10 +117,10 @@ public class BlueprintPlacement {
         return !info.hasUnknownItems();
     }
 
-    public boolean hasMaterials(Player player) {
+    /** {@code held}: the counts the placement may spend */
+    public boolean hasMaterials(Player player, Map<Item, Integer> held) {
         if (!hasKnownItems()) return false;
         if (player.isCreative()) return true;
-        Map<Item, Integer> held = inventoryCounts(player);
         for (BlueprintStorage.Material material : info.materials())
             if (!isMaterialSufficient(player, held, material)) return false;
         return true;
@@ -165,34 +163,12 @@ public class BlueprintPlacement {
                 cursor.y() - (info.height() - 1) / 2);
     }
 
-    public static Map<Item, Integer> inventoryCounts(Player player) {
-        Map<Item, Integer> counts = new HashMap<>();
-        Inventory inventory = player.getInventory();
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-            ItemStack stack = inventory.getItem(slot);
-            if (!stack.isEmpty()) counts.merge(stack.getItem(), stack.getCount(), Integer::sum);
-        }
-        return counts;
-    }
-
-    public List<UUID> networkOptions(FactoryControllerMenu menu, Player player) {
+    /** {@code adjacent}: networks of tuned items in the adjacent containers when they supply this placement. */
+    public List<UUID> networkOptions(FactoryControllerMenu menu, Player player, Collection<UUID> adjacent) {
         Set<UUID> options = new LinkedHashSet<>(menu.knownNetworks);
-        options.addAll(inventoryNetworks(player));
+        options.addAll(PlayerInventorySource.networks(player.getInventory()));
+        options.addAll(adjacent);
         options.addAll(presetNetworks);
         return List.copyOf(options);
-    }
-
-    /** Networks carried on tuned component items in the player's inventory. */
-    public static Set<UUID> inventoryNetworks(Player player) {
-        Set<UUID> networks = new LinkedHashSet<>();
-        Inventory inventory = player.getInventory();
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-            ItemStack stack = inventory.getItem(slot);
-            if (!ComponentRegistry.containsNetworkItem(stack)) continue;
-            if (!LogisticallyLinkedBlockItem.isTuned(stack)) continue;
-            UUID network = LogisticallyLinkedBlockItem.networkFromStack(stack);
-            if (network != null) networks.add(network);
-        }
-        return networks;
     }
 }

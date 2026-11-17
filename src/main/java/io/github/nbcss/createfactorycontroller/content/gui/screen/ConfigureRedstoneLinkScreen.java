@@ -17,6 +17,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAre
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.ConfigureRedstoneLinkPacket;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.PlayerInventoryWidget;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.gui.element.ScreenElement;
 import net.minecraft.ChatFormatting;
@@ -47,10 +48,6 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/redstone_link.png");
     private static final int PANEL_W = 200, PANEL_H = 103;
 
-    private static final ResourceLocation PLAYER_INVENTORY_TEX =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/player_inventory.png");
-    private static final int INV_TEX_W = 176, INV_TEX_H = 108, INV_TEX_HOTBAR_Y = 76;
-
     // Mode-button sprites.
     private static final ResourceLocation WIRELESS_TRANSMIT =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/wireless_transmit");
@@ -69,7 +66,8 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     private boolean receive = false;
     private boolean committed = false;
 
-    private int panelX, panelY, invBgX, invBgY;
+    private int panelX, panelY;
+    private PlayerInventoryWidget inventoryPanel;
     private TooltipIconButton relocateButton, addConnectionButton, modeButton, confirmButton;
     private HelpButton helpButton;
     private InteractiveAreaWidget redArea, blueArea;
@@ -94,15 +92,16 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         setWindowOffset(0, 0);
         super.init();
 
-        int blockH = PANEL_H + 6 + INV_TEX_H;
+        int blockH = PANEL_H + 6 + PlayerInventoryWidget.HEIGHT;
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - blockH) / 2;
 
-        // Player inventory below the panel; slot grid derived from the texture (hotbar at INV_TEX_HOTBAR_Y).
-        invBgX = panelX + (PANEL_W - INV_TEX_W) / 2;
-        invBgY = panelY + PANEL_H + 6;
-        int originX = invBgX + 8 - leftPos;
-        int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;
+        // Player inventory below the panel; the slot grid follows its background.
+        int invBgX = panelX + (PANEL_W - PlayerInventoryWidget.WIDTH) / 2;
+        int invBgY = panelY + PANEL_H + 6;
+        int originX = invBgX + PlayerInventoryWidget.SLOT_LEFT - leftPos;
+        int hotbarY = (invBgY + PlayerInventoryWidget.HOTBAR_Y) - topPos;
+        inventoryPanel = new PlayerInventoryWidget(invBgX, invBgY, font, playerInventoryTitle);
         menu.repositionSlots(originX, hotbarY, true);   // full inventory, ghost slot off-screen (we use fake slots)
 
         relocateButton = new TooltipIconButton(panelX + 8, panelY + 79, AllIcons.I_MOVE_GAUGE);
@@ -212,7 +211,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
 
         RenderSystem.enableBlend();
         gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
-        gfx.blit(PLAYER_INVENTORY_TEX, invBgX, invBgY, 0, 0, INV_TEX_W, INV_TEX_H);
+        inventoryPanel.render(gfx, mouseX, mouseY, partialTick);
 
         // Redstone Link Model
         GuiGameElement.of(AllBlocks.REDSTONE_LINK.asStack()).scale(3.0).at(0, 0, 100)
@@ -242,7 +241,6 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         Component title = getTitle();
         gfx.drawString(font, title, panelX + PANEL_W / 2 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
-        gfx.drawString(font, playerInventoryTitle, invBgX + 8, invBgY + 6, 0x404040, false);
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 

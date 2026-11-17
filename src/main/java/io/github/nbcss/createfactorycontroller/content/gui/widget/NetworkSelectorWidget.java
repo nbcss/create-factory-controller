@@ -27,9 +27,14 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Single-slot network picker shown in the controller canvas, drawn with the {@code selection_frame}
@@ -81,17 +86,23 @@ public class NetworkSelectorWidget extends AbstractWidget {
 
     private final FactoryControllerMenu menu;
     private final RetuneHandler retune;
-    private final java.util.function.Consumer<UUID> onSelect;   // notified (network or null) when the selection changes
+    private final Supplier<ItemStack> held;
+    /** Networks outside the controller the held component may also be tuned to (in order). */
+    private final Supplier<Collection<UUID>> extraNetworks;
+    private final Consumer<UUID> onSelect;   // notified (network or null) when the selection changes
 
     // Persistent selection (used when not holding a component; mirrored from the held item otherwise).
     private Type selectType = Type.NO_NETWORK;
     @Nullable private UUID selectNetwork = null;
     private boolean wasHolding = false;
 
-    public NetworkSelectorWidget(int x, int y, FactoryControllerMenu menu, RetuneHandler retune,
-                                 java.util.function.Consumer<UUID> onSelect) {
+    public NetworkSelectorWidget(int x, int y, FactoryControllerMenu menu, Supplier<ItemStack> held,
+                                 Supplier<Collection<UUID>> extraNetworks,
+                                 RetuneHandler retune, Consumer<UUID> onSelect) {
         super(x, y, 0, 0, Component.empty());   // width/height are set from the frame sprite each render
         this.menu = menu;
+        this.held = held;
+        this.extraNetworks = extraNetworks;
         this.retune = retune;
         this.onSelect = onSelect;
     }
@@ -110,7 +121,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
     private ItemStack heldComponent() {
         // Only network-bound components (gauges) drive the selector; a held redstone link is networkless,
         // so it must NOT be re-tuned by scroll or trigger a "network selected" prompt when picked up.
-        ItemStack carried = menu.getCarried();
+        ItemStack carried = held.get();
         return ComponentRegistry.containsNetworkItem(carried) ? carried : ItemStack.EMPTY;
     }
 
@@ -156,9 +167,14 @@ public class NetworkSelectorWidget extends AbstractWidget {
         known.sort(Comparator.comparingInt(menu::componentCountIn).reversed());
         for (UUID u : known) list.add(new Entry(Type.KNOWN, u));
 
-        UUID heldFreq = freqOf(heldComponent());
-        if (heldFreq != null && !menu.knownNetworks.contains(heldFreq))
-            list.add(new Entry(Type.NEW_NETWORK, heldFreq));        // last, only while holding such an item
+        ItemStack heldComponent = heldComponent();
+        if (heldComponent.isEmpty()) return list;
+
+        Set<UUID> fresh = new LinkedHashSet<>(extraNetworks.get());
+        UUID heldFreq = freqOf(heldComponent);
+        if (heldFreq != null) fresh.add(heldFreq);
+        for (UUID u : fresh)
+            if (!menu.knownNetworks.contains(u)) list.add(new Entry(Type.NEW_NETWORK, u));
         return list;
     }
 

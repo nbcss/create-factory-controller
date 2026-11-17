@@ -2,7 +2,11 @@ package io.github.nbcss.createfactorycontroller.content.packet;
 
 import com.simibubi.create.foundation.block.IBE;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
+import io.github.nbcss.createfactorycontroller.content.supply.PlayerInventorySource;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -48,10 +52,26 @@ public record RetuneCarriedPacket(boolean clear, @Nullable UUID network) impleme
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             ItemStack carried = player.containerMenu.getCarried();
             if (!ComponentRegistry.containsNetworkItem(carried)) return;   // never retune a networkless item (link)
-            apply(carried, packet.clear ? null : packet.network);
+            UUID network = packet.clear ? null : packet.network;
+            if (network != null && !mayTuneTo(player, carried, network)) {
+                player.containerMenu.sendAllDataToRemote();   // undo the client's predicted retune
+                return;
+            }
+            apply(carried, network);
             player.containerMenu.setCarried(carried);
             player.containerMenu.broadcastChanges();   // sync the modified cursor item back
         });
+    }
+
+    /** The carried item's own network, the open controller's networks, or one a tuned inventory item carries. */
+    private static boolean mayTuneTo(ServerPlayer player, ItemStack carried, UUID network) {
+        if (LogisticallyLinkedBlockItem.isTuned(carried)
+                && network.equals(LogisticallyLinkedBlockItem.networkFromStack(carried))) return true;
+        if (player.containerMenu instanceof FactoryControllerMenu menu) {
+            FactoryControllerBlockEntity controller = menu.blockEntity();
+            if (controller != null && controller.networks.contains(network)) return true;
+        }
+        return PlayerInventorySource.networks(player.getInventory()).contains(network);
     }
 
     /** Sets ({@code network != null}) or clears the component item's tuned frequency in place. */

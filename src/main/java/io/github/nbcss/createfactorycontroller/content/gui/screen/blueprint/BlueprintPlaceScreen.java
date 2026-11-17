@@ -50,14 +50,14 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
 
     @Override
     protected void init() {
-        inventoryCounts = BlueprintPlacement.inventoryCounts(Minecraft.getInstance().player);
+        inventoryCounts = controller.blueprintMaterialCounts();
         super.init();
     }
 
     @Override
     protected void containerTick() {
         super.containerTick();
-        inventoryCounts = BlueprintPlacement.inventoryCounts(Minecraft.getInstance().player);
+        inventoryCounts = controller.blueprintMaterialCounts();
     }
 
     @Override
@@ -112,7 +112,7 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
     }
 
     private List<UUID> options() {
-        return placement.networkOptions(menu, Minecraft.getInstance().player);
+        return placement.networkOptions(menu, Minecraft.getInstance().player, controller.blueprintAdjacentNetworks());
     }
 
     private boolean isNewNetwork(UUID network) {
@@ -206,7 +206,7 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
         return placement.hasKnownItems()
                 && placement.allNetworksAssigned()
                 && placement.hasCapacity(menu)
-                && placement.hasMaterials(Minecraft.getInstance().player);
+                && placement.hasMaterials(Minecraft.getInstance().player, inventoryCounts);
     }
 
     @Nullable
@@ -216,7 +216,7 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
             return Component.translatable("createfactorycontroller.gui.blueprint.unknown_items");
         if (!placement.hasCapacity(menu))
             return Component.translatable("createfactorycontroller.gui.blueprint.capacity_reached");
-        if (!placement.hasMaterials(Minecraft.getInstance().player))
+        if (!placement.hasMaterials(Minecraft.getInstance().player, inventoryCounts))
             return Component.translatable("createfactorycontroller.gui.blueprint.missing_materials");
         if (!placement.allNetworksAssigned())
             return Component.translatable("createfactorycontroller.gui.blueprint.assign_networks");
@@ -227,7 +227,8 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
     protected void confirm() {
         PacketDistributor.sendToServer(new BlueprintPlacePacket(menu.controllerPos, anchor,
                 placement.payload(), placement.assignments(),
-                Optional.ofNullable(placement.boxMin()), Optional.ofNullable(placement.boxMax())));
+                Optional.ofNullable(placement.boxMin()), Optional.ofNullable(placement.boxMax()),
+                controller.usesAdjacentStock()));
         controller.abortBlueprintPlacement();
         Minecraft.getInstance().setScreen(controller);
     }

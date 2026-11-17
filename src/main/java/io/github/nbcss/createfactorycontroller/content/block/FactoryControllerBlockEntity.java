@@ -31,12 +31,23 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPath
 import io.github.nbcss.createfactorycontroller.content.helper.ControllerAccessor;
 import io.github.nbcss.createfactorycontroller.content.helper.ControllerDataFixer;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
+import io.github.nbcss.createfactorycontroller.content.supply.AdjacentContainerSource;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentItemTier;
+import io.github.nbcss.createfactorycontroller.content.supply.PlayerInventorySource;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentSupplyCatalog;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentSupplyEntry;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentSupplyStock;
+import io.github.nbcss.createfactorycontroller.content.supply.SpendableSlot;
+import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 import io.github.nbcss.createfactorycontroller.content.production.OrderableGaugeRegistry;
 import io.github.nbcss.createfactorycontroller.content.production.PassiveDemandSolver;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderManager;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelDeltaPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.SyncPanelStatePacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.sounds.SoundEvent;
@@ -75,6 +86,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 public class FactoryControllerBlockEntity extends SmartBlockEntity implements MenuProvider, ComponentHolder {
@@ -135,6 +147,13 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     }
     public final Set<UUID> networks = new LinkedHashSet<>();
 
+    private static final int COMPONENT_SUPPLY_STOCK_INTERVAL = 20;
+    /** Server only: item handlers on the four horizontal sides, created lazily. */
+    @Nullable private List<BlockCapabilityCache<IItemHandler, @Nullable Direction>> containerCaches;
+    private ComponentSupplyStock componentSupplyStock = ComponentSupplyStock.EMPTY;
+    private long componentSupplyStockTime;
+    private boolean componentSupplyStockDirty = true;
+
     /** Controller-wide 20-tick snapshot of unloaded links, ordered like {@link #networks}. Runtime-only. */
     private List<MissingLinkStatus> missingLinkStatuses = List.of();
 
@@ -144,6 +163,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** Player-assigned display name; blank means use the default translated block name. */
     public String customName = "";
+    /** Whether Component Supply may draw on and refund to adjacent containers; off by default. */
+    private boolean useAdjacentContainers;
 
     // ── Menu sync bookkeeping ──────────────────────────────────────────────
     // Mutation paths mark what changed
@@ -395,12 +416,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         if (!ComponentRegistry.contains(itemId)) return;
 
-        if (components.containsKey(pos)) return;
-
-        if (isOutBoard(pos)) return;   // outside the finite board
-
-        // board full — bounds NBT/packet size
-        if (components.size() >= maxComponents()) return;
+        if (!canAttachAt(pos)) return;
 
         UUID networkId = null;
         if (ComponentRegistry.needsNetwork(itemId)) {
@@ -416,15 +432,55 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
             }
         }
 
-        VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, carried.getItem(), networkId);
+        Item item = carried.getItem();
+        VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, item, networkId);
         if (behaviour == null) return;
-        components.put(pos, behaviour);
-        behaviour.onAdded();
-
         if (!player.isCreative())
             carried.shrink(1);
+        commitAttach(pos, behaviour, item);
+    }
 
-        playBlockSound(carried.getItem(), true);
+    /** Places a Component Supply item */
+    public void attachFromComponentSupply(VirtualComponentPosition pos, ServerPlayer player,
+                                      ResourceLocation itemId, @Nullable UUID network) {
+        ComponentSupplyEntry entry = ComponentSupplyCatalog.byId(itemId);
+        if (entry == null || !canAttachAt(pos)) return;
+        UUID networkId = null;
+        if (entry.networked()) {
+            if (network == null || !networks.contains(network)
+                    && !PlayerInventorySource.networks(player.getInventory()).contains(network)
+                    && !componentSupplyStock().networks().contains(network)) return;
+            networkId = network;
+        }
+
+        VirtualComponentBehaviour behaviour = ComponentRegistry.createFromItem(this, pos, entry.item(), networkId);
+        if (behaviour == null) return;
+        if (!player.isCreative()) {
+            ComponentItemTier tier = new ComponentItemTier(networkId, networks);
+            ItemStack taken = adjacentContainers().extractOne(entry.item(), tier);
+            if (!taken.isEmpty()) {
+                adjustComponentSupplyStock(Map.of(entry.item(), -taken.getCount()));
+            } else if (ControllerAccessor.canTransferItems(player)) {
+                int slot = PlayerInventorySource.bestSlot(player.getInventory(), entry.item(), tier);
+                if (slot >= 0) taken = player.getInventory().removeItem(slot, 1);
+            }
+            if (taken.isEmpty()) {
+                playDenySound();
+                return;
+            }
+        }
+        if (networkId != null && networks.add(networkId)) syncNetworks();
+        commitAttach(pos, behaviour, entry.item());
+    }
+
+    private boolean canAttachAt(VirtualComponentPosition pos) {
+        return !components.containsKey(pos) && !isOutBoard(pos) && components.size() < maxComponents();
+    }
+
+    private void commitAttach(VirtualComponentPosition pos, VirtualComponentBehaviour behaviour, Item item) {
+        components.put(pos, behaviour);
+        behaviour.onAdded();
+        playBlockSound(item, true);
         markOrderableDirty();
         setChanged();
         syncComponentFull(pos);
@@ -445,13 +501,17 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /**
      * Materialises a client-held blueprint at {@code anchor}. {@code assignments} binds each network
-     * placeholder (1-based in the file, 0-based here) to a real network.
+     * placeholder (1-based in the file, 0-based here) to a real network. With {@code componentSupply} the adjacent
+     * containers supply materials (and bindable networks) before the inventory, which a terminal that may not move
+     * items leaves out.
      */
     public void placeBlueprint(byte[] payload, VirtualComponentPosition anchor,
                                List<UUID> assignments, @Nullable BlockPos boxMin, @Nullable BlockPos boxMax,
-                               ServerPlayer player) {
+                               boolean componentSupply, ServerPlayer player) {
         if (level == null || level.isClientSide()) return;
-        if (!ControllerAccessor.canTransferItems(player)) { playDenySound(); return; }
+        boolean inventoryUsable = ControllerAccessor.canTransferItems(player);
+        AdjacentContainerSource containers = componentSupply ? adjacentContainers() : AdjacentContainerSource.NONE;
+        if (!inventoryUsable && containers.isEmpty()) { playDenySound(); return; }
 
         CompoundTag root;
         try {
@@ -475,14 +535,19 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         for (int i = 0; i < componentList.size(); i++)
             GaugeMigration.migrate(componentList.getCompound(i));
 
-        // network
+        // One pass per source: these slots supply both the bindable networks and the materials.
+        List<SpendableSlot> inventorySlots = inventorySlots(player);
+        List<SpendableSlot> containerSlots = containers.isEmpty() ? List.of() : containers.spendableSlots();
         Set<UUID> bindable = new LinkedHashSet<>(networks);
-        bindable.addAll(inventoryNetworks(player));
+        bindable.addAll(networksOf(inventorySlots));
+        bindable.addAll(networksOf(containerSlots));
         if (boxMin != null && boxMax != null)
             bindable.addAll(SchematicImport.selectionNetworks(level, boxMin, boxMax));
 
         Set<VirtualComponentPosition> targets = new LinkedHashSet<>();
-        Map<ResourceLocation, Integer> needed = new LinkedHashMap<>();
+        Map<Material, Integer> needed = new LinkedHashMap<>();
+        // Networks this placement binds join the controller, so items tuned to them rank as KNOWN.
+        Set<UUID> known = new HashSet<>(networks);
         for (int i = 0; i < componentList.size(); i++) {
             CompoundTag component = componentList.getCompound(i);
             ResourceLocation itemId = ResourceLocation.tryParse(component.getString("Item"));
@@ -496,20 +561,41 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
                 playDenySound();
                 return;
             }
-            if (ComponentRegistry.needsNetwork(itemId) && resolveNetwork(component, assignments, bindable) == null) {
+            UUID network = null;
+            if (ComponentRegistry.needsNetwork(itemId)) {
+                network = resolveNetwork(component, assignments, bindable);
+                if (network == null) {
+                    playDenySound();
+                    return;
+                }
+                known.add(network);
+            }
+            needed.merge(new Material(BuiltInRegistries.ITEM.get(itemId), network), 1, Integer::sum);
+        }
+
+        if (!player.isCreative()) {
+            List<MaterialPool> pools = new ArrayList<>(2);
+            if (!containers.isEmpty()) pools.add(new MaterialPool(containerSlots, stack -> {
+                ItemStack left = containers.insert(stack, false);
+                if (!left.isEmpty()) Block.popResource(level, worldPosition, left);
+            }));
+            if (inventoryUsable) pools.add(new MaterialPool(inventorySlots,
+                    stack -> player.getInventory().placeItemBackInInventory(stack)));
+            int[][] allocation = allocateMaterials(pools, needed, known);
+            boolean spent = allocation != null && spendMaterials(pools, allocation);
+            if (inventoryUsable) player.getInventory().setChanged();
+            if (!containers.isEmpty()) {
+                // The containers pool is always first. A rollback may land items in other slots, so rescan then.
+                if (spent) adjustComponentSupplyStock(spentItems(containerSlots, allocation[0]));
+                else invalidateComponentSupplyStock();
+            }
+            if (!spent) {
                 playDenySound();
                 return;
             }
-            needed.merge(itemId, 1, Integer::sum);
-        }
-
-        if (!player.isCreative() && !takeMaterials(player, needed, false)) {
-            playDenySound();
-            return;
         }
 
         // ── Commit ──
-        if (!player.isCreative()) takeMaterials(player, needed, true);
 
         Set<UUID> newNetworks = new LinkedHashSet<>();
         List<VirtualComponentBehaviour> placed = new ArrayList<>();
@@ -589,63 +675,199 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         return network != null && bindable.contains(network) ? network : null;
     }
 
-    /** Networks carried on tuned component items in the player's inventory. */
-    private static Set<UUID> inventoryNetworks(Player player) {
-        Set<UUID> result = new LinkedHashSet<>();
-        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            ItemStack stack = player.getInventory().getItem(slot);
-            if (!ComponentRegistry.containsNetworkItem(stack)) continue;
-            if (!LogisticallyLinkedBlockItem.isTuned(stack)) continue;
-            UUID network = LogisticallyLinkedBlockItem.networkFromStack(stack);
-            if (network != null) result.add(network);
+    /** A blueprint component's cost: the item spent and the network it binds ({@code null} when networkless). */
+    private record Material(Item item, @Nullable UUID network) {}
+
+    /** Where blueprint materials come from, and how a rolled-back placement gives taken items back. */
+    private record MaterialPool(List<SpendableSlot> slots, Consumer<ItemStack> giveBack) {}
+
+    /** The main inventory's component items as spendable slots, in vanilla order. */
+    private static List<SpendableSlot> inventorySlots(Player player) {
+        List<SpendableSlot> slots = new ArrayList<>();
+        for (ItemStack stack : player.getInventory().items)
+            if (!stack.isEmpty() && ComponentSupplyCatalog.contains(stack.getItem()))
+                slots.add(new SpendableSlot(stack.copy(), stack.getCount(), stack::split));
+        return slots;
+    }
+
+    /** Networks carried on tuned component items among {@code slots}. */
+    private static Set<UUID> networksOf(List<SpendableSlot> slots) {
+        Set<UUID> networks = new LinkedHashSet<>();
+        for (SpendableSlot slot : slots) {
+            UUID network = ComponentItemTier.tunedNetwork(slot.view());
+            if (network != null) networks.add(network);
         }
-        return result;
+        return networks;
+    }
+
+    /** Per item, minus what {@code taken} spent from {@code slots}. */
+    private static Map<Item, Integer> spentItems(List<SpendableSlot> slots, int[] taken) {
+        Map<Item, Integer> spent = new HashMap<>();
+        for (int i = 0; i < taken.length; i++)
+            if (taken[i] > 0) spent.merge(slots.get(i).view().getItem(), -taken[i], Integer::sum);
+        return spent;
     }
 
     /**
-     * Checks (and optionally consumes) the blueprint's materials
+     * Plans how many items each slot gives, or {@code null} when the pools fall short. Pools are drained in order
+     * (adjacent containers before the inventory); within a pool allocation runs tier by tier across every material,
+     * so one component never spends an item that is another's exact match.
      */
-    private static boolean takeMaterials(Player player, Map<ResourceLocation, Integer> needed, boolean commit) {
-        Inventory inventory = player.getInventory();
-        for (Map.Entry<ResourceLocation, Integer> entry : needed.entrySet()) {
-            Item item = BuiltInRegistries.ITEM.get(entry.getKey());
-            int remaining = entry.getValue();
-            for (int slot = 0; slot < inventory.getContainerSize() && remaining > 0; slot++) {
-                ItemStack stack = inventory.getItem(slot);
-                if (stack.isEmpty() || stack.getItem() != item) continue;
-                int taken = Math.min(remaining, stack.getCount());
-                remaining -= taken;
-                if (commit) stack.shrink(taken);
+    @Nullable
+    private static int[][] allocateMaterials(List<MaterialPool> pools, Map<Material, Integer> needed, Set<UUID> known) {
+        Map<Material, Integer> remaining = new LinkedHashMap<>(needed);
+        int[][] allocation = new int[pools.size()][];
+        for (int p = 0; p < pools.size(); p++) {
+            List<SpendableSlot> pool = pools.get(p).slots();
+            int[] taken = new int[pool.size()];
+            allocation[p] = taken;
+            for (int rank = ComponentItemTier.EXACT; rank <= ComponentItemTier.FOREIGN; rank++) {
+                for (Map.Entry<Material, Integer> entry : remaining.entrySet()) {
+                    Material material = entry.getKey();
+                    ComponentItemTier tier = new ComponentItemTier(material.network(), known);
+                    int want = entry.getValue();
+                    for (int i = 0; i < taken.length && want > 0; i++) {
+                        SpendableSlot slot = pool.get(i);
+                        int left = slot.available() - taken[i];
+                        if (left <= 0 || tier.rank(slot.view(), material.item()) != rank) continue;
+                        int take = Math.min(want, left);
+                        taken[i] += take;
+                        want -= take;
+                    }
+                    entry.setValue(want);
+                }
             }
-            if (remaining > 0) return false;
         }
-        if (commit) inventory.setChanged();
+        for (int want : remaining.values())
+            if (want > 0) return null;
+        return allocation;
+    }
+
+    /**
+     * Takes the planned items. A handler may hand over less (or something else) than it simulated, so every take is
+     * checked; on any mismatch everything already taken goes back and the placement is refused.
+     */
+    private static boolean spendMaterials(List<MaterialPool> pools, int[][] allocation) {
+        List<Map.Entry<MaterialPool, ItemStack>> takenSoFar = new ArrayList<>();
+        for (int p = 0; p < pools.size(); p++) {
+            MaterialPool pool = pools.get(p);
+            for (int i = 0; i < allocation[p].length; i++) {
+                int want = allocation[p][i];
+                if (want <= 0) continue;
+                SpendableSlot slot = pool.slots().get(i);
+                ItemStack got = slot.take().apply(want);
+                if (!got.isEmpty()) takenSoFar.add(Map.entry(pool, got));
+                if (got.getCount() != want || !ItemStack.isSameItemSameComponents(got, slot.view())) {
+                    for (Map.Entry<MaterialPool, ItemStack> taken : takenSoFar)
+                        taken.getKey().giveBack().accept(taken.getValue());
+                    return false;
+                }
+            }
+        }
         return true;
     }
 
     // ── Component remove ───────────────────────────────────────────────────────
 
-    public void removeComponent(VirtualComponentPosition pos, Player player) {
-        if (!ControllerAccessor.canTransferItems(player)) { playDenySound(); return; }
+    /**
+     * Removes a component and refunds its item (none in creative). In Component Supply mode the refund goes to the
+     * adjacent containers first; a terminal that may not move items allows the removal only when they take it all.
+     */
+    public void removeComponent(VirtualComponentPosition pos, Player player, boolean componentSupply) {
+        VirtualComponentBehaviour existing = components.get(pos);
+        if (existing == null) return;
+        AdjacentContainerSource containers = componentSupply && !player.isCreative()
+                ? adjacentContainers() : AdjacentContainerSource.NONE;
+        if (!ControllerAccessor.canTransferItems(player)
+                && (containers.isEmpty() || !containers.insert(new ItemStack(existing.getItem()), true).isEmpty())) {
+            playDenySound();
+            return;
+        }
         VirtualComponentBehaviour behaviour = components.remove(pos);
-        if (behaviour == null) return;
 
         behaviour.onRemoved();
 
         behaviour.disconnectAll();
 
         // Return a component item
-        ItemStack refund = new ItemStack(behaviour.getItem());
-        if (!player.isCreative() && !player.getInventory().add(refund))
-            player.drop(refund, false);
+        if (!player.isCreative()) {
+            ItemStack refund = containers.insert(new ItemStack(behaviour.getItem()), false);
+            if (!containers.isEmpty() && refund.isEmpty())
+                adjustComponentSupplyStock(Map.of(behaviour.getItem(), 1));
+            if (!refund.isEmpty() && !player.getInventory().add(refund))
+                player.drop(refund, false);
+        }
 
         if (pruneEmptyNetworks())   // removing the last gauge on a network auto-forgets that network
             syncNetworks();
 
-        playBlockSound(refund.getItem(), false);
+        playBlockSound(behaviour.getItem(), false);
         markOrderableDirty();
         setChanged();
         syncComponentRemoved(pos);
+    }
+
+    // ── Component Supply adjacent containers ───────────────────────────────────────
+
+    public AdjacentContainerSource adjacentContainers() {
+        if (!useAdjacentContainers || !(level instanceof ServerLevel server)) return AdjacentContainerSource.NONE;
+        if (containerCaches == null) {
+            containerCaches = new ArrayList<>(4);
+            for (Direction dir : Direction.Plane.HORIZONTAL)
+                containerCaches.add(BlockCapabilityCache.create(Capabilities.ItemHandler.BLOCK, server,
+                        worldPosition.relative(dir), dir.getOpposite()));
+        }
+        Set<IItemHandler> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        List<IItemHandler> handlers = new ArrayList<>(4);
+        for (BlockCapabilityCache<IItemHandler, @Nullable Direction> cache : containerCaches) {
+            if (!server.isLoaded(cache.pos())) continue;   // never load a neighbouring chunk for a count
+            IItemHandler handler = cache.getCapability();
+            if (handler != null && seen.add(handler)) handlers.add(handler);
+        }
+        return handlers.isEmpty() ? AdjacentContainerSource.NONE : new AdjacentContainerSource(handlers);
+    }
+
+    /** The adjacent-container stock, rescanned at most every {@value #COMPONENT_SUPPLY_STOCK_INTERVAL} ticks. */
+    public ComponentSupplyStock componentSupplyStock() {
+        if (level == null || level.isClientSide()) return ComponentSupplyStock.EMPTY;
+        long now = level.getGameTime();
+        if (componentSupplyStockDirty || now - componentSupplyStockTime >= COMPONENT_SUPPLY_STOCK_INTERVAL) {
+            componentSupplyStock = adjacentContainers().snapshot();
+            componentSupplyStockTime = now;
+            componentSupplyStockDirty = false;
+        }
+        return componentSupplyStock;
+    }
+
+    /** Forces the next {@link #componentSupplyStock()} to rescan. */
+    public void invalidateComponentSupplyStock() {
+        componentSupplyStockDirty = true;
+    }
+
+    /**
+     * Applies a known take (negative) or refund (positive) to the cached stock so viewers see it on the next tick
+     * without a rescan; the regular rescan corrects any drift, such as a network whose last tuned item was taken.
+     */
+    private void adjustComponentSupplyStock(Map<Item, Integer> deltas) {
+        if (deltas.isEmpty() || componentSupplyStockDirty || !componentSupplyStock.present()) return;
+        // A fresh map: the menu detects changes by comparing against the stock it last sent.
+        Map<Item, Integer> counts = new HashMap<>(componentSupplyStock.counts());
+        deltas.forEach((item, delta) -> {
+            if (counts.merge(item, delta, Integer::sum) <= 0) counts.remove(item);
+        });
+        componentSupplyStock = new ComponentSupplyStock(counts, componentSupplyStock.networks(), true);
+    }
+
+    public boolean useAdjacentContainers() {
+        return useAdjacentContainers;
+    }
+
+    public void setUseAdjacentContainers(boolean enabled) {
+        if (enabled == useAdjacentContainers) return;
+        useAdjacentContainers = enabled;
+        invalidateComponentSupplyStock();
+        setChanged();
+        syncHeader();
     }
 
     /** Forgets networks this controller no longer uses; true when any was dropped. */
@@ -1145,7 +1367,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<VirtualComponentBehaviour> comps = new ArrayList<>(components.values());
         List<Connection> conns = connectionGraph.connections();
         return new SyncPanelStatePacket(getBlockPos(), syncEpoch, syncRevision,
-                comps, conns, currentNetworkSettings(), missingLinkStatuses, customName, redstonePowered);
+                comps, conns, currentNetworkSettings(), missingLinkStatuses, customName, redstonePowered,
+                useAdjacentContainers);
     }
 
     /** Builds this flush's delta from the tracker marks. Bodies are captured to bytes here, on the server
@@ -1185,7 +1408,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         List<NetworkSettings> netList = deltaTracker.isNetworksDirty() ? currentNetworkSettings() : null;
         List<MissingLinkStatus> missingLinks = deltaTracker.isMissingLinksDirty() ? missingLinkStatuses : null;
         SyncPanelDeltaPacket.HeaderState header = deltaTracker.isHeaderDirty()
-                ? new SyncPanelDeltaPacket.HeaderState(customName, redstonePowered) : null;
+                ? new SyncPanelDeltaPacket.HeaderState(customName, redstonePowered, useAdjacentContainers) : null;
 
         return new SyncPanelDeltaPacket(getBlockPos(), syncEpoch, syncRevision - 1, syncRevision,
                 removals, connRemovals, upserts, connUpserts, netList, missingLinks, header);
@@ -1241,6 +1464,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
         tag.putInt("Ver", DATA_VERSION);
         if (!customName.isBlank()) tag.putString("CustomName", customName);
+        if (useAdjacentContainers) tag.putBoolean("UseAdjacentContainers", true);
 
         ListTag gaugeList = new ListTag();
         for (VirtualComponentBehaviour b : components.values())
@@ -1264,6 +1488,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         tag = ControllerDataFixer.fixControllerBE(tag);
 
         customName = tag.getString("CustomName");   // "" when absent
+        useAdjacentContainers = tag.getBoolean("UseAdjacentContainers");
 
         components.clear();
         ListTag componentList = tag.getList("Components", Tag.TAG_COMPOUND);
@@ -1318,7 +1543,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
 
     /** True when there is any configured board state worth carrying on the dropped item. */
     public boolean hasSetup() {
-        return !components.isEmpty() || !networks.isEmpty() || !customName.isBlank();
+        return !components.isEmpty() || !networks.isEmpty() || !customName.isBlank() || useAdjacentContainers;
     }
 
     /**
@@ -1329,6 +1554,7 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         CompoundTag tag = new CompoundTag();
         tag.putInt("Ver", DATA_VERSION);
         if (!customName.isBlank()) tag.putString("CustomName", customName);
+        if (useAdjacentContainers) tag.putBoolean("UseAdjacentContainers", true);
 
         ListTag components = new ListTag();
         for (VirtualComponentBehaviour b : this.components.values()) {
@@ -1354,6 +1580,8 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
         tag = ControllerDataFixer.fixControllerBE(tag);
 
         customName = tag.getString("CustomName");
+        useAdjacentContainers = tag.getBoolean("UseAdjacentContainers");
+        invalidateComponentSupplyStock();
 
         components.clear();
         ListTag componentList = tag.getList("Components", Tag.TAG_COMPOUND);

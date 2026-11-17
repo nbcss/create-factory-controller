@@ -20,16 +20,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Places a stored blueprint on a controller board. Blueprints live in the client's game directory, so the
- * gzipped file travels with the request; {@code networks} binds each network placeholder (in order) to a
- * real network. {@code boxMin}/{@code boxMax} are present only for a Schematic paste — the source selection
- * box, which the server re-scans to authorize the pasted gauges' networks. Everything here is untrusted —
- * {@link FactoryControllerBlockEntity#placeBlueprint} validates the payload, the destination cells, the
- * materials and the network bindings before it commits.
+ * Places a stored blueprint on a controller board.
  */
 public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor, byte[] blueprint,
                                    List<UUID> networks, Optional<BlockPos> boxMin,
-                                   Optional<BlockPos> boxMax) implements CustomPacketPayload {
+                                   Optional<BlockPos> boxMax, boolean fromSupply) implements CustomPacketPayload {
 
     public static final int MAX_PAYLOAD_BYTES = 1024 * 1024;
     /** One binding per network placeholder — at most one per component, so the board cap bounds it. */
@@ -45,16 +40,28 @@ public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor
             VirtualComponentPosition::new
         );
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, BlueprintPlacePacket> STREAM_CODEC =
-        StreamCodec.composite(
-            BlockPos.STREAM_CODEC, BlueprintPlacePacket::pos,
-            POS_CODEC, BlueprintPlacePacket::anchor,
-            ByteBufCodecs.byteArray(MAX_PAYLOAD_BYTES), BlueprintPlacePacket::blueprint,
-            UUIDUtil.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_NETWORK_SLOTS)), BlueprintPlacePacket::networks,
-            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), BlueprintPlacePacket::boxMin,
-            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), BlueprintPlacePacket::boxMax,
-            BlueprintPlacePacket::new
-        );
+    private static final StreamCodec<RegistryFriendlyByteBuf, byte[]> PAYLOAD_CODEC =
+        ByteBufCodecs.byteArray(MAX_PAYLOAD_BYTES).cast();
+    private static final StreamCodec<RegistryFriendlyByteBuf, List<UUID>> NETWORKS_CODEC =
+        UUIDUtil.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_NETWORK_SLOTS)).cast();
+    private static final StreamCodec<RegistryFriendlyByteBuf, Optional<BlockPos>> BOX_CODEC =
+        ByteBufCodecs.optional(BlockPos.STREAM_CODEC).cast();
+
+    // Seven fields: past StreamCodec.composite's arity, so written by hand.
+    public static final StreamCodec<RegistryFriendlyByteBuf, BlueprintPlacePacket> STREAM_CODEC = StreamCodec.of(
+        (buf, p) -> {
+            BlockPos.STREAM_CODEC.encode(buf, p.pos);
+            POS_CODEC.encode(buf, p.anchor);
+            PAYLOAD_CODEC.encode(buf, p.blueprint);
+            NETWORKS_CODEC.encode(buf, p.networks);
+            BOX_CODEC.encode(buf, p.boxMin);
+            BOX_CODEC.encode(buf, p.boxMax);
+            buf.writeBoolean(p.fromSupply);
+        },
+        buf -> new BlueprintPlacePacket(BlockPos.STREAM_CODEC.decode(buf), POS_CODEC.decode(buf),
+            PAYLOAD_CODEC.decode(buf), NETWORKS_CODEC.decode(buf), BOX_CODEC.decode(buf), BOX_CODEC.decode(buf),
+            buf.readBoolean())
+    );
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
@@ -67,7 +74,7 @@ public record BlueprintPlacePacket(BlockPos pos, VirtualComponentPosition anchor
                     || !menu.controllerPos.equals(packet.pos())) return;
             if (!(ControllerAccessor.getBlockEntity(player, packet.pos()) instanceof FactoryControllerBlockEntity be)) return;
             be.placeBlueprint(packet.blueprint(), packet.anchor(), packet.networks(),
-                    packet.boxMin().orElse(null), packet.boxMax().orElse(null), player);
+                    packet.boxMin().orElse(null), packet.boxMax().orElse(null), packet.fromSupply(), player);
         });
     }
 }

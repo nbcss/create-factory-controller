@@ -35,7 +35,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -284,11 +283,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
     private void refreshInventoryCounts() {
         inventoryCounts.clear();
         assert Minecraft.getInstance().player != null;
-        Inventory inventory = Minecraft.getInstance().player.getInventory();
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-            ItemStack stack = inventory.getItem(slot);
-            if (!stack.isEmpty()) inventoryCounts.merge(stack.getItem(), stack.getCount(), Integer::sum);
-        }
+        inventoryCounts.putAll(controller.blueprintMaterialCounts());
     }
 
     private boolean isMaterialSufficient(BlueprintStorage.Material material) {
@@ -544,7 +539,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
 
         @Nullable
         private Component placeBlockedReason() {
-            Component transferDenied = controller.itemTransferDeniedReason();
+            Component transferDenied = controller.stockAwareDeniedReason();
             if (transferDenied != null) return transferDenied;
             if (info.hasUnknownItems())
                 return Component.translatable("createfactorycontroller.gui.blueprint.unknown_items");

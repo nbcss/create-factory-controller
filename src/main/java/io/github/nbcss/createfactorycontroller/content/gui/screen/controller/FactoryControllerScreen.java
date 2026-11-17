@@ -15,6 +15,7 @@ import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import io.github.nbcss.createfactorycontroller.content.render.ComponentRenderingHelper;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
+import io.github.nbcss.createfactorycontroller.ClientSettings;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -45,7 +46,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.IndicatorColum
 import io.github.nbcss.createfactorycontroller.content.gui.widget.NetworkSelectorWidget;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.GraphicButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualComponentWidget;
-import io.github.nbcss.createfactorycontroller.content.gui.widget.VirtualManualSourceWidget;
 import io.github.nbcss.createfactorycontroller.content.helper.Rect2i;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.CycleArrowModePacket;
@@ -68,8 +68,15 @@ import io.github.nbcss.createfactorycontroller.content.packet.BatchMoveComponent
 import io.github.nbcss.createfactorycontroller.content.packet.MoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RemoveConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RenameControllerPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.SetAdjacentContainersPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.RetuneCarriedPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.packet.ReturnCarriedPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.PickComponentPacket;
+import io.github.nbcss.createfactorycontroller.content.packet.ComponentSupplyAttachPacket;
+import io.github.nbcss.createfactorycontroller.content.supply.PlayerInventorySource;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentSupplyCatalog;
+import io.github.nbcss.createfactorycontroller.content.supply.ComponentSupplyEntry;
 import io.github.nbcss.createfactorycontroller.content.packet.ReverseConnectionPacket;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintPlacement;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
@@ -85,12 +92,11 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -103,7 +109,8 @@ import org.lwjgl.glfw.GLFW;
 import java.util.*;
 
 @IPNIgnore
-public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
+public class FactoryControllerScreen extends AbstractSimiContainerScreen<FactoryControllerMenu>
+        implements PanelSyncListener {
     // Responsive sizing — all in GUI-scaled pixels.
     private static final int VERTICAL_MARGIN = 10;
     private static final int MIN_IMAGE_W = 215;
@@ -153,6 +160,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     @Nullable private CollapsiblePlayerInventory playerInventory = null;
+    private final ComponentSupplyCursor componentSupplyCursor = new ComponentSupplyCursor();
+    /** Count tint for a held phantom with no stock to place (ChatFormatting.RED). */
+    private static final int UNAVAILABLE_COUNT_COLOR = 0xFFFF5555;
 
     // Settings button (top-right of the board); opens the client-side background-picker overlay.
     private static final int SETTINGS_BTN_W = 23;
@@ -282,8 +292,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         rebuildGaugeWidgets();
 
         if (playerInventory == null)
-            playerInventory = new CollapsiblePlayerInventory(menu, font, playerInventoryTitle);
+            playerInventory = new CollapsiblePlayerInventory(menu, font, playerInventoryTitle, this,
+                    ClientSettings.componentSupplyMode());
         playerInventory.layout(leftPos, topPos, imageWidth, scaledH);
+        returnRealCarriedInComponentSupply();   // e.g. a stack picked up in a sub-screen that shows the real inventory
         addWidget(playerInventory);
 
         if (settingsButton != null) removeWidget(settingsButton);
@@ -336,23 +348,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (helpButton != null) removeWidget(helpButton);
         helpButton = new HelpButton(leftPos + imageWidth - HelpButton.WIDTH - 5, topPos + 3,
                 HelpButton.ColorPalette.BRASS, "dashboard.html");
-        helpButton.addTooltip(Component.empty());
-        helpButton.addTooltip(Component.translatable("createfactorycontroller.gui.help.allowed_components")
-                .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x528FDE))));
-        for (VirtualComponentBehaviour.Type type : ComponentRegistry.types()) {
-            if (type.items().isEmpty()) continue;
-            for (ResourceLocation itemLocation : type.items()) {
-                ItemStack item = new ItemStack(BuiltInRegistries.ITEM.get(itemLocation));
-                helpButton.addTooltip(Component.literal("- ").withStyle(ChatFormatting.GRAY)
-                        .append(item.getHoverName().copy().withColor(type.color())));
-            }
-        }
         addWidget(helpButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;
         int selectorY = topPos + CANVAS_TOP_PADDING + 6;
         if (networkSelector == null)
-            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::retuneCarried, this::onNetworkSelected);
+            networkSelector = new NetworkSelectorWidget(selectorX, selectorY, menu, this::heldStack,
+                    this::componentSupplyTuneOptions, this::retuneCarried, this::onNetworkSelected);
         else
             networkSelector.setPosition(selectorX, selectorY);
         if (indicatorColumn == null)
@@ -434,7 +436,8 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (!signal) {
             heldPanKeys.clear();
             isDragging = false;
-            if (!menu.getCarried().isEmpty()) PacketDistributor.sendToServer(new ReturnCarriedPacket());
+            componentSupplyCursor.release();
+            if (!menu.getCarried().isEmpty()) PacketDistributor.sendToServer(ReturnCarriedPacket.DROP_OVERFLOW);
         }
     }
 
@@ -463,6 +466,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     private void retuneCarried(boolean clear, @Nullable UUID network) {
+        if (componentSupplyCursor.isHolding()) {
+            componentSupplyCursor.retune(clear ? null : network);
+            return;
+        }
         ItemStack carried = menu.getCarried();
         if (!ComponentRegistry.containsNetworkItem(carried)) return;
         RetuneCarriedPacket.apply(carried, clear ? null : network);
@@ -498,6 +505,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void removed() {
         releaseHeldPress();
+        componentSupplyCursor.release();   // fires on every screen swap, so sub-screens never see a phantom
         super.removed();
     }
 
@@ -510,6 +518,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS)
             releaseHeldPress();
         tickComponentWidgets();
+        returnRealCarriedInComponentSupply();
     }
 
     // ── Held press (button components) ───────────────────────────────────────
@@ -553,13 +562,19 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         updateBlueprintButtonVisibility();
 
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (playerInventory != null) playerInventory.renderComponentSupplyItems(graphics, mouseX, mouseY);
+        renderComponentSupplyPhantom(graphics, mouseX, mouseY);
 
+        List<FormattedCharSequence> panelTooltip = playerInventory != null && heldStack().isEmpty()
+                ? playerInventory.tooltipAt(mouseX, mouseY) : null;
         VirtualComponentWidget hovered = hoveredConn == null ? componentWidgetAt(hoveredPosition) : null;
         // No hover tooltips while a drag selection or batch relocate is in progress.
         boolean selectionDragging = dragSelection != null || batchMove.isActive();
         if (!connectionMode.isActive() && pendingRelocateTarget == null && pendingPlacement == null
                 && !selectionDragging) {
-            if (hoveredConn != null) {
+            if (panelTooltip != null)
+                graphics.renderTooltip(font, panelTooltip, mouseX, mouseY);
+            else if (hoveredConn != null) {
                 // Connection hover suppresses component hover; show its tooltip once the hover passes the delay.
                 if (Util.getMillis() >= connTooltipShowAtMs)
                     CustomComponentTooltip.render(graphics, font, connectionTooltipLines(), hoveredConn.connection.type.color(),
@@ -656,8 +671,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /**
-     * Renders the board itself — tiled background, gauges, connection arrows, frame and the network
-     * selector — but <b>not</b> the player inventory. Needs to be called by overlay to display controller background.
+     * Renders the board: tiled background, gauges, connection arrows, frame and the network selector.
      */
     public void renderBoard(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick, boolean inOverlay) {
         var profiler = Minecraft.getInstance().getProfiler();
@@ -720,7 +734,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         profiler.popPush("connection");
         hoverHits.clear();
-        boolean carrying = !menu.getCarried().isEmpty();   // holding an item skips connection hover entirely
+        boolean carrying = !heldStack().isEmpty();   // holding an item skips connection hover entirely
         boolean overComponent = componentWidgetAt(hoveredPosition) != null;
 
         boolean connectionHoverAllowed = !carrying && dragSelection == null && !batchMove.isActive()
@@ -778,7 +792,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             shouldShowLabel = new HashSet<>();
             shouldShowLabel.add(hoveredPosition);
             if (!alwaysShowLabel && hoveredConn == null && pendingPlacement == null
-                    && !connectionMode.isActive() && pendingRelocateTarget == null && menu.getCarried().isEmpty()
+                    && !connectionMode.isActive() && pendingRelocateTarget == null && heldStack().isEmpty()
                     && dragSelection == null && !batchMove.isActive()) {
                 VirtualComponentBehaviour hovered = componentAt(hoveredPosition);
                 if (hovered != null) {
@@ -1008,7 +1022,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (hoveredPosition == null || hoveredPosition.equals(source)) return;
         final VirtualComponentWidget hoveredWidget = componentWidgetAt(hoveredPosition);
         final VirtualComponentBehaviour hovered = hoveredWidget == null ? null : hoveredWidget.behaviour();
-        ItemStack carried = menu.getCarried();
+        ItemStack carried = heldStack();
 
         if (connectionMode.isActive()) {
             // Connect mode: hovering another component shows white if it can be wired
@@ -1037,10 +1051,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Holding a component
             boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
             boolean noNetwork = needsNet && networkForAttaching(carried) == null;
-            // A terminal that can't transfer items can't place it either: no ghost, red reticle.
             boolean valid = hovered == null && !noNetwork && !FactoryControllerBlockEntity.isOutBoard(hoveredPosition)
-                    && canTransferItems();
-            if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());   // ghost under the target reticle
+                    && (componentSupplyCursor.isHolding() ? componentSupplyHoldUsable() : canTransferItems());
+            if (valid) renderGhostAt(graphics, hoveredPosition, carried.getItem());
             renderTransientTargetAboveGhost(graphics, hoveredPosition, valid ? TARGET_WHITE : TARGET_RED);
         } else if (!carried.isEmpty()) {
             // Holding a non-component item
@@ -1352,8 +1365,60 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         return itemTransferDeniedReason() == null;
     }
 
-    public boolean isItemTransferDenied() {
+    /**
+     * Asks the server to remove the component at {@code pos}.
+     */
+    public void sendRemoveComponent(VirtualComponentPosition pos) {
+        if (isRemovalDenied()) return;
+        PacketDistributor.sendToServer(new RemoveComponentPacket(menu.controllerPos, pos, isComponentSupplyMode()));
+    }
+
+    private boolean isComponentSupplyMode() {
+        return playerInventory != null && playerInventory.isComponentSupply();
+    }
+
+    /** Whether Component Supply mode has adjacent containers to draw on and refund into, past a terminal's gate. */
+    public boolean usesAdjacentStock() {
+        return isComponentSupplyMode() && menu.componentSupplyStock.present();
+    }
+
+    /** Like {@link #isItemTransferDenied()}, but Component Supply refunds into adjacent containers pass a terminal. */
+    private boolean isRemovalDenied() {
+        return denyFor(stockAwareDeniedReason());
+    }
+
+    /** {@link #itemTransferDeniedReason()}, except a live terminal may still use adjacent containers (Component Supply). */
+    @Nullable
+    public Component stockAwareDeniedReason() {
         Component reason = itemTransferDeniedReason();
+        if (reason == null || !menu.hasSignal()) return reason;
+        return usesAdjacentStock() ? null : reason;
+    }
+
+    /** Material counts a blueprint placement may spend. */
+    public Map<Item, Integer> blueprintMaterialCounts() {
+        Map<Item, Integer> counts = new HashMap<>();
+        if (usesAdjacentStock()) counts.putAll(menu.componentSupplyStock.counts());
+        var player = Minecraft.getInstance().player;
+        if (player != null && canTransferItems()) {
+            Map<Item, Integer> invCounts = new HashMap<>();
+            for (ItemStack stack : player.getInventory().items)
+                if (!stack.isEmpty()) invCounts.merge(stack.getItem(), stack.getCount(), Integer::sum);
+            invCounts.forEach((item, count) -> counts.merge(item, count, Integer::sum));
+        }
+        return counts;
+    }
+
+    /** Networks of tuned items in the adjacent containers when they supply blueprint placement. */
+    public Collection<UUID> blueprintAdjacentNetworks() {
+        return usesAdjacentStock() ? menu.componentSupplyStock.networks() : List.of();
+    }
+
+    public boolean isItemTransferDenied() {
+        return denyFor(itemTransferDeniedReason());
+    }
+
+    private boolean denyFor(@Nullable Component reason) {
         if (reason == null) return false;
         setTimedPrompt(reason.copy().withStyle(ChatFormatting.RED), 3000);
         playDenySound();
@@ -1361,17 +1426,28 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     public void beginBlueprintPlacement(BlueprintPlacement placement) {
-        if (isItemTransferDenied()) return;
+        if (denyFor(stockAwareDeniedReason())) return;
         clearSelection();
         connectionMode.clear();
         pendingRelocateTarget = null;
         pendingPlacement = placement;
-        PacketDistributor.sendToServer(new ReturnCarriedPacket());
+        componentSupplyCursor.release();
+        PacketDistributor.sendToServer(ReturnCarriedPacket.DROP_OVERFLOW);
         setPersistentPrompt(
-                Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt.place")
+                Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt.place_key",
+                        CreateFactoryControllerClient.PLACE_COMPONENT.getTranslatedKeyMessage())
                         .withStyle(ChatFormatting.WHITE),
-                Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt.abort")
+                Component.translatable("createfactorycontroller.gui.blueprint.placement_prompt.abort_key",
+                        CreateFactoryControllerClient.RETURN_COMPONENT.getTranslatedKeyMessage())
                         .withStyle(ChatFormatting.WHITE));
+    }
+
+    /** Opens the placement confirmation when the blueprint fits at {@code cell}. */
+    private boolean tryConfirmBlueprintPlacement(VirtualComponentPosition cell) {
+        VirtualComponentPosition anchor = pendingPlacement.anchorFor(cell);
+        if (!pendingPlacement.fits(anchor, menu)) return false;
+        Minecraft.getInstance().setScreen(new BlueprintPlaceScreen(this, pendingPlacement, anchor));
+        return true;
     }
 
     public void abortBlueprintPlacement() {
@@ -1444,6 +1520,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     /** Attaches a carried component at the empty {@code cell} (board-full / network checks, then the packet). No-op
      *  when not carrying a component. Reached from the drag-selection release path (every empty-cell press starts one). */
     private void attachCarriedAt(VirtualComponentPosition cell, ItemStack carried) {
+        if (componentSupplyCursor.isHolding()) {
+            attachComponentSupplyAt(cell);
+            return;
+        }
         if (!ComponentRegistry.containsItem(carried) || componentWidgetAt(cell) != null) return;
         if (isItemTransferDenied()) return;
         if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
@@ -1462,6 +1542,182 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return;
         }
         PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, cell, network));
+    }
+
+    // ── Component Supply ───────────────────────────────────────────────────────
+
+    /** What the cursor shows: the Component Supply phantom if one is held, else the real carried stack. */
+    public ItemStack heldStack() {
+        return componentSupplyCursor.isHolding() ? componentSupplyCursor.displayStack() : menu.getCarried();
+    }
+
+    private boolean componentSupplyHoldUsable() {
+        ComponentSupplyEntry held = componentSupplyCursor.entry();
+        return held == null || unlimited() || available(held) > 0;
+    }
+
+    /** Component Supply mode never holds a real item: return it to the inventory (overflow drops at the player). */
+    private void returnRealCarriedInComponentSupply() {
+        if (playerInventory == null || !playerInventory.isComponentSupply() || menu.getCarried().isEmpty()) return;
+        menu.setCarried(ItemStack.EMPTY);   // client prediction; the server re-syncs the cursor
+        PacketDistributor.sendToServer(ReturnCarriedPacket.DROP_OVERFLOW);
+    }
+
+    private void attachComponentSupplyAt(VirtualComponentPosition cell) {
+        ComponentSupplyEntry entry = componentSupplyCursor.entry();
+        if (entry == null || componentWidgetAt(cell) != null) return;
+        // No transfer check: a terminal's gate only zeroes the inventory share of available().
+        if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
+            setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
+                    FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
+            playDenySound();
+            return;
+        }
+        UUID network = componentSupplyCursor.network();
+        if (entry.networked() && network == null) {
+            setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() && componentSupplyTuneOptions().isEmpty() ?
+                    "createfactorycontroller.gui.prompt.no_first_network" :
+                    "createfactorycontroller.gui.prompt.no_network_tuned").withStyle(ChatFormatting.RED), 3000);
+            playDenySound();
+            return;
+        }
+        if (!componentSupplyHoldUsable()) {
+            denyComponentSupplyNone(entry);
+            return;
+        }
+        PacketDistributor.sendToServer(new ComponentSupplyAttachPacket(menu.controllerPos, cell, entry.id(), network));
+    }
+
+    /** Puts {@code target}'s item on the cursor (a phantom in Component Supply mode), tuned to its network. */
+    private void pickComponent(VirtualComponentBehaviour target) {
+        ComponentSupplyEntry entry = ComponentSupplyCatalog.byId(BuiltInRegistries.ITEM.getKey(target.getItem()));
+        if (entry == null) return;
+        UUID network = entry.networked() ? target.networkId() : null;
+        if (entry.networked() && network == null) return;
+        if (playerInventory != null && playerInventory.isComponentSupply()) {
+            componentSupplyCursor.take(entry);
+            componentSupplyCursor.retune(network);
+            return;
+        }
+        ItemStack carried = menu.getCarried();
+        if (PickComponentPacket.isPicked(carried, entry, network)) return;
+        // Inventory-mode Pick only moves the player's own items, so a terminal's transfer gate does not apply.
+        if (!unlimited() && inventoryCount(entry) == 0 && !carried.is(entry.item())) {
+            denyComponentSupplyNone(entry);
+            return;
+        }
+        PacketDistributor.sendToServer(new PickComponentPacket(entry.id(), network));
+    }
+
+    /** Empties the cursor into the inventory; outside creative it must fit entirely. */
+    private void returnHeld() {
+        if (componentSupplyCursor.isHolding()) {
+            componentSupplyCursor.release();
+            return;
+        }
+        ItemStack carried = menu.getCarried();
+        var player = Minecraft.getInstance().player;
+        if (carried.isEmpty() || player == null) return;
+        if (!unlimited() && !ReturnCarriedPacket.canFullyInsert(player.getInventory(), carried)) {
+            setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.inventory_full")
+                    .withStyle(ChatFormatting.RED), 3000);
+            playDenySound();
+            return;
+        }
+        PacketDistributor.sendToServer(ReturnCarriedPacket.KEEP_IF_FULL);
+    }
+
+    private void denyComponentSupplyNone(ComponentSupplyEntry entry) {
+        setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_supply_none",
+                new ItemStack(entry.item()).getHoverName()).withStyle(ChatFormatting.RED), 3000);
+        playDenySound();
+    }
+
+    private void renderComponentSupplyPhantom(GuiGraphics graphics, int mouseX, int mouseY) {
+        ComponentSupplyEntry held = componentSupplyCursor.entry();
+        if (held == null) return;
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 232);   // vanilla carried-item depth
+        int x = mouseX - 8;
+        int y = mouseY - 8;
+        graphics.renderItem(componentSupplyCursor.displayStack(), x, y);
+        CollapsiblePlayerInventory.renderStockCount(graphics, x, y, available(held),
+                componentSupplyHoldUsable() ? 0xFFFFFFFF : UNAVAILABLE_COUNT_COLOR);
+        graphics.pose().popPose();
+    }
+
+    /** Adjacent stock plus the inventory, which a terminal that may not move items leaves out. */
+    public int available(ComponentSupplyEntry entry) {
+        return adjacentStock(entry) + (inventoryUsable() ? inventoryCount(entry) : 0);
+    }
+
+    public int adjacentStock(ComponentSupplyEntry entry) {
+        return menu.componentSupplyStock.count(entry.item());
+    }
+
+    /** False in a terminal that may not move items to and from the player. */
+    public boolean inventoryUsable() {
+        return canTransferItems();
+    }
+
+    public int inventoryCount(ComponentSupplyEntry entry) {
+        var player = Minecraft.getInstance().player;
+        return player == null ? 0 : PlayerInventorySource.count(player.getInventory(), entry.item());
+    }
+
+    /** While holding a networked Component Supply item, the adjacent stock's and inventory's networks it may be tuned to. */
+    private Collection<UUID> componentSupplyTuneOptions() {
+        ComponentSupplyEntry held = componentSupplyCursor.entry();
+        var player = Minecraft.getInstance().player;
+        if (held == null || !held.networked() || player == null) return List.of();
+        Set<UUID> options = new LinkedHashSet<>(menu.componentSupplyStock.networks());
+        options.addAll(PlayerInventorySource.networks(player.getInventory()));
+        return options;
+    }
+
+    /** Creative: placing never consumes, so a zero count does not block. */
+    private boolean unlimited() {
+        var player = Minecraft.getInstance().player;
+        return player != null && player.isCreative();
+    }
+
+    @Nullable
+    public ComponentSupplyEntry heldEntry() {
+        return componentSupplyCursor.entry();
+    }
+
+    /** Takes {@code entry}, or puts it back when it is already held. */
+    public void onComponentSupplySlotClicked(ComponentSupplyEntry entry) {
+        if (entry.equals(componentSupplyCursor.entry())) {
+            releaseComponentSupply();
+            return;
+        }
+        takeComponentSupply(entry);
+    }
+
+    /** Takes {@code entry}; already holding it keeps the current tuning. */
+    public void takeComponentSupply(ComponentSupplyEntry entry) {
+        if (entry.equals(componentSupplyCursor.entry())) return;
+        componentSupplyCursor.take(entry);
+    }
+
+    public void releaseComponentSupply() {
+        componentSupplyCursor.release();
+    }
+
+    public boolean useAdjacentContainers() {
+        return menu.useAdjacentContainers;
+    }
+
+    public void setUseAdjacentContainers(boolean enabled) {
+        menu.useAdjacentContainers = enabled;   // prediction; the header sync confirms it
+        PacketDistributor.sendToServer(new SetAdjacentContainersPacket(menu.controllerPos, enabled));
+    }
+
+    public void onComponentSupplyToggled(boolean componentSupply) {
+        ClientSettings.setComponentSupplyMode(componentSupply);
+        if (componentSupply) returnRealCarriedInComponentSupply();
+        else componentSupplyCursor.release();
     }
 
     private void completeConnection(VirtualComponentPosition clickedPos,
@@ -1517,13 +1773,9 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (pendingPlacement != null) {
-            if (button == 0 && isInCanvasArea(mouseX, mouseY)) {
-                VirtualComponentPosition anchor = pendingPlacement.anchorFor(cellAt(mouseX, mouseY));
-                if (pendingPlacement.fits(anchor, menu)) {
-                    Minecraft.getInstance().setScreen(new BlueprintPlaceScreen(this, pendingPlacement, anchor));
-                    return true;
-                }
-            }
+            if (mouseMatches(CreateFactoryControllerClient.PLACE_COMPONENT, button) && isInCanvasArea(mouseX, mouseY)
+                    && tryConfirmBlueprintPlacement(cellAt(mouseX, mouseY)))
+                return true;
             cancelBlueprintPlacement();
             return true;
         }
@@ -1542,7 +1794,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 commitName();
         }
 
-        if (menu.hasSignal() && menu.getCarried().isEmpty() && networkSelector.isMouseOver(mouseX, mouseY)) {
+        if (menu.hasSignal() && heldStack().isEmpty() && networkSelector.isMouseOver(mouseX, mouseY)) {
             UUID net = networkSelector.getSelectedNetwork();
             if (net != null && menu.knownNetworks.contains(net)) {
                 clearSelection();
@@ -1558,7 +1810,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             int centerX = canvas.minX() + canvas.w() / 2;
             int centerY = canvas.minY() + canvas.h() / 2;
             VirtualComponentPosition clicked = at(mouseX, mouseY, centerX, centerY);
-            ItemStack carried = menu.getCarried();
+            ItemStack carried = heldStack();
             VirtualComponentWidget widget = componentWidgetAt(clicked);
             boolean leftOrRight = button == 0 || button == 1;
 
@@ -1568,6 +1820,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                         hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name()));
                 selectedConnection = null;   // it's gone; let the hover re-resolve next frame
                 playWrenchSound();
+                return true;
+            }
+
+            if (mouseMatches(CreateFactoryControllerClient.PICK_COMPONENT, button) && widget != null && isBoardIdle()) {
+                pickComponent(widget.behaviour());
                 return true;
             }
 
@@ -1594,10 +1851,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 return true;
             }
 
-            if (button == 0 && !carried.isEmpty() && widget == null
-                    && !connectionMode.isActive() && pendingRelocateTarget == null) {
+            if (mouseMatches(CreateFactoryControllerClient.PLACE_COMPONENT, button) && !carried.isEmpty()
+                    && widget == null && !connectionMode.isActive() && pendingRelocateTarget == null) {
                 clearSelection();
                 attachCarriedAt(clicked, carried);
+                return true;
+            }
+            if (mouseMatches(CreateFactoryControllerClient.RETURN_COMPONENT, button) && !carried.isEmpty()
+                    && widget == null && !connectionMode.isActive() && pendingRelocateTarget == null) {
+                returnHeld();
                 return true;
             }
 
@@ -1615,12 +1877,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
             // Selection handling — suppressed when hovering a connection (connection takes priority).
             if (leftOrRight && widget != null && hoveredConn == null) {
+                if (componentSupplyCursor.isHolding()) return true;   // a phantom never acts on an existing component
 
                 double worldX = viewX + (mouseX - centerX) / getZoomFactor();
                 double worldY = viewY + (mouseY - centerY) / getZoomFactor();
                 if (hasShiftDown()) {
                     // Check once so a blocked terminal gives one prompt and keeps the selection.
-                    if (isItemTransferDenied()) return true;
+                    if (isRemovalDenied()) return true;
                     if (selected.contains(clicked)){
                         for (VirtualComponentPosition p : new ArrayList<>(selected)) {
                             VirtualComponentWidget w = componentWidgetAt(p);
@@ -1687,7 +1950,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             } else {
                 // a normal-mode click on empty space → drop the selection, then place a carried component if any
                 clearSelection();
-                attachCarriedAt(cellAt(mouseX, mouseY), menu.getCarried());
+                attachCarriedAt(cellAt(mouseX, mouseY), heldStack());
             }
             return true;
         }
@@ -1794,6 +2057,55 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     }
 
     /** Whether {@code mapping}'s bound keyboard key is physically held */
+    /** Matches the binding's key and modifier; extra held modifiers are ignored when it has none (Shift-Place). */
+    private static boolean keyMatches(KeyMapping mapping, InputConstants.Key key) {
+        return mapping.getKey().equals(key) && mapping.getKeyModifier().isActive(null);
+    }
+
+    private static boolean mouseMatches(KeyMapping mapping, int button) {
+        return keyMatches(mapping, InputConstants.Type.MOUSE.getOrCreate(button));
+    }
+
+    /** No connection, relocate, batch-move or drag-selection gesture is in progress. */
+    private boolean isBoardIdle() {
+        return !connectionMode.isActive() && pendingRelocateTarget == null && !batchMove.isActive()
+                && dragSelection == null;
+    }
+
+    /** Pick / Place / Return bound to a keyboard key: act on the hovered cell. */
+    private boolean handleComponentKey(InputConstants.Key key) {
+        if (pendingPlacement != null) {
+            if (keyMatches(CreateFactoryControllerClient.PLACE_COMPONENT, key)) {
+                if (hoveredPosition == null || !tryConfirmBlueprintPlacement(hoveredPosition))
+                    cancelBlueprintPlacement();
+                return true;
+            }
+            if (keyMatches(CreateFactoryControllerClient.RETURN_COMPONENT, key)) {
+                cancelBlueprintPlacement();
+                return true;
+            }
+            return false;
+        }
+        if (hoveredPosition == null || !isBoardIdle()) return false;
+        VirtualComponentWidget widget = componentWidgetAt(hoveredPosition);
+        if (keyMatches(CreateFactoryControllerClient.PICK_COMPONENT, key) && widget != null) {
+            pickComponent(widget.behaviour());
+            return true;
+        }
+        ItemStack carried = heldStack();
+        if (widget != null || carried.isEmpty()) return false;
+        if (keyMatches(CreateFactoryControllerClient.PLACE_COMPONENT, key)) {
+            clearSelection();
+            attachCarriedAt(hoveredPosition, carried);
+            return true;
+        }
+        if (keyMatches(CreateFactoryControllerClient.RETURN_COMPONENT, key)) {
+            returnHeld();
+            return true;
+        }
+        return false;
+    }
+
     private static boolean isKeyHeld(KeyMapping mapping) {
         InputConstants.Key key = mapping.getKey();
         if (key.getType() != InputConstants.Type.KEYSYM || key.getValue() == InputConstants.UNKNOWN.getValue())
@@ -2014,6 +2326,11 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (!menu.hasSignal()) return super.keyPressed(keyCode, scanCode, modifiers);
 
+        if (componentSupplyCursor.isHolding() && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            componentSupplyCursor.release();
+            return true;
+        }
+
         if (pendingPlacement != null && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             cancelBlueprintPlacement();
             return true;
@@ -2042,7 +2359,13 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return true;
         }
 
+        if (pendingPlacement == null && playerInventory != null) {
+            if (playerInventory.componentSupplyKeyPressed(keyCode, scanCode)) return true;
+        }
+
         if (isPanKey(keyCode)) heldPanKeys.add(keyCode);
+
+        if (handleComponentKey(InputConstants.getKey(keyCode, scanCode))) return true;
 
         VirtualComponentBehaviour hover = componentAt(hoveredPosition);
 
@@ -2060,13 +2383,10 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (CreateFactoryControllerClient.TOGGLE_ALWAYS_SHOW_LABEL.matches(keyCode, scanCode)) {
             ClientConfig.toggleAlwaysShowLabel();
-            // todo update some indicator button
             return true;
         }
 
         if (CreateFactoryControllerClient.CYCLE_ARROW_MODE.matches(keyCode, scanCode)) {
-            // A selected wire takes priority: cycle just that wire through all 5 bend modes (auto included), and lock it
-            // so a reshaped path that moves off the cursor stays selected until the cursor moves.
             if (hoveredConn != null) {
                 revealConnectionTooltip();
                 connArrowLocked = true;

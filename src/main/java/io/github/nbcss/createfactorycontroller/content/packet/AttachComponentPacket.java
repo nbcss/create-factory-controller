@@ -21,7 +21,7 @@ public record AttachComponentPacket(BlockPos pos, VirtualComponentPosition panel
     public static final Type<AttachComponentPacket> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "attach_component"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, VirtualComponentPosition> POS_CODEC =
         StreamCodec.composite(
             ByteBufCodecs.INT, VirtualComponentPosition::x,
             ByteBufCodecs.INT, VirtualComponentPosition::y,
@@ -29,7 +29,7 @@ public record AttachComponentPacket(BlockPos pos, VirtualComponentPosition panel
         );
 
     /** Nullable UUID: a leading boolean flags presence. */
-    private static final StreamCodec<RegistryFriendlyByteBuf, UUID> NULLABLE_UUID =
+    public static final StreamCodec<RegistryFriendlyByteBuf, UUID> NULLABLE_UUID =
         new StreamCodec<>() {
             @Override
             public UUID decode(RegistryFriendlyByteBuf buf) {

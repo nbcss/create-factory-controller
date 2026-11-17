@@ -22,12 +22,12 @@ import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.PlayerInventoryWidget;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
@@ -47,11 +47,6 @@ import java.util.List;
 @IPNIgnore
 public class SetItemScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
 
-    private static final ResourceLocation PLAYER_INVENTORY_TEX =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "textures/gui/player_inventory.png");
-    private static final int INV_TEX_W = 176, INV_TEX_H = 108;
-    /** Y of the hotbar slot row within player_inventory.png (matches the controller's constant). */
-    private static final int INV_TEX_HOTBAR_Y = 76;
     private static final int FILTER_SLOT_SIZE = 16;
 
     private final FactoryControllerScreen controller;
@@ -78,7 +73,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private List<Rect2i> extraAreas = Collections.emptyList();
 
     private int panelX, panelY;
-    private int invBgX, invBgY;
+    private PlayerInventoryWidget inventoryPanel;
 
 
     public SetItemScreen(FactoryControllerScreen controller, VirtualGaugeBehaviour behaviour) {
@@ -101,14 +96,15 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
         AllGuiTextures bg = AllGuiTextures.FACTORY_GAUGE_SET_ITEM;
         int blockW = bg.getWidth();
-        int blockH = bg.getHeight() + INV_TEX_H;
+        int blockH = bg.getHeight() + PlayerInventoryWidget.HEIGHT;
         panelX = leftPos + (imageWidth - blockW) / 2;
         panelY = topPos + (imageHeight - blockH) / 2;
 
-        invBgX = panelX + (blockW - INV_TEX_W) / 2;
-        invBgY = panelY + bg.getHeight() + 6;
-        int originX = invBgX + 8 - leftPos;                                   // slot grid origin
-        int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;                   // hotbar row
+        int invBgX = panelX + (blockW - PlayerInventoryWidget.WIDTH) / 2;
+        int invBgY = panelY + bg.getHeight() + 6;
+        int originX = invBgX + PlayerInventoryWidget.SLOT_LEFT - leftPos;  // slot grid origin
+        int hotbarY = (invBgY + PlayerInventoryWidget.HOTBAR_Y) - topPos;  // hotbar row
+        inventoryPanel = new PlayerInventoryWidget(invBgX, invBgY, font, playerInventoryTitle);
 
         menu.repositionSlots(originX, hotbarY, true);
 
@@ -227,7 +223,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         AllGuiTextures bg = AllGuiTextures.FACTORY_GAUGE_SET_ITEM;
         RenderSystem.enableBlend();
         bg.render(gfx, panelX - 5, panelY);
-        gfx.blit(PLAYER_INVENTORY_TEX, invBgX, invBgY, 0, 0, INV_TEX_W, INV_TEX_H);
+        inventoryPanel.render(gfx, mouseX, mouseY, partialTick);
 
         confirm.render(gfx, mouseX, mouseY, partialTick);
         relocateButton.render(gfx, mouseX, mouseY, partialTick);
@@ -253,7 +249,6 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         gfx.drawString(font, title,
                 panelX + AllGuiTextures.FACTORY_GAUGE_SET_ITEM.getWidth() / 2 - font.width(title) / 2 - 5,
                 panelY + 4, 0x3D3C48, false);
-        gfx.drawString(font, playerInventoryTitle, invBgX + 8, invBgY + 6, 0x404040, false);
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 

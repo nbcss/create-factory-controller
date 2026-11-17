@@ -12,7 +12,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.Fac
 import io.github.nbcss.createfactorycontroller.content.gui.screen.SetItemScreen;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
-import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.animation.LerpedFloat;
@@ -265,9 +264,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
      * Shift-click: remove this gauge from the board (server refunds the item in survival).
      */
     public void remove(FactoryControllerScreen screen) {
-        if (screen.isItemTransferDenied()) return;
-        PacketDistributor.sendToServer(
-                new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
+        screen.sendRemoveComponent(behaviour.position());
     }
 
     /**

@@ -50,25 +50,25 @@
 - [DONE] Different controller component tooltip styles
 
 # 1.3.0
+- [DONE] Quick Access
+- [DONE] Controller can transfer component item from/to nearby container blocks
 - [TODO] More redstone units (timer etc.)
 - [TODO] Component Search
 - [TODO] Redstone Requester
 - [TODO] Selector Gauge
-- [TODO] Quick Access
-- [TODO] Controller can transfer component item from/to nearby container blocks
 - [TODO] Add tracker UI to show managed address, gauges, promises
 - [TODO] Expand controller settings screen
 - [TODO] Save gauge settings without close
-- [TODO] Improve the wording of production order
+- [TODO] Rework production order system to Production Requester
 - [TODO] Repackager Split/Merge mode of request multiplier
 - [TODO] Blueprint file in folder
-- [TODO] Pattern item could take stock keeper category filter
 - [TODO] Rework blueprint import system
 - [TODO] Custom controller tab icon in terminal
 - [TODO] Sync request optimization
 - [TODO] Fast initial request
 - [TODO] >9 items production order entry
 - [TODO] Address Hint
+- [TODO] L-Tab toggle inventory/supply panel on/off
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190

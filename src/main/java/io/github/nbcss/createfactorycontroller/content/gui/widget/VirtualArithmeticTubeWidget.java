@@ -14,7 +14,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ConnectionPath
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.helper.NumberFormatter;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
-import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -28,7 +27,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 
@@ -213,7 +211,6 @@ public record VirtualArithmeticTubeWidget(ArithmeticTubeBehaviour behaviour) imp
 
     @Override
     public void remove(FactoryControllerScreen screen) {
-        if (screen.isItemTransferDenied()) return;
-        PacketDistributor.sendToServer(new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
+        screen.sendRemoveComponent(behaviour.position());
     }
 }

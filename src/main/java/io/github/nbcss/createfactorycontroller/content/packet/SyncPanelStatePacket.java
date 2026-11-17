@@ -22,10 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Server → client: the authoritative full board snapshot (components + wires + networks + header), stamped
- * with the controller's sync tokens. Sent by the menu-sync flush when a mutation escalated to
- * {@code syncEverything()} (including the {@link RequestPanelResyncPacket} self-heal path); routine changes
- * ride the much smaller {@link SyncPanelDeltaPacket} instead.
+ * Server → client: the authoritative full board snapshot.
  */
 public record SyncPanelStatePacket(BlockPos pos,
                                    int epoch,
@@ -35,7 +32,8 @@ public record SyncPanelStatePacket(BlockPos pos,
                                    List<NetworkSettings> networks,
                                    List<MissingLinkStatus> missingLinks,
                                    String controllerName,
-                                   boolean controllerPowered)
+                                   boolean controllerPowered,
+                                   boolean useAdjacentContainers)
         implements CustomPacketPayload {
 
     public static final Type<SyncPanelStatePacket> TYPE =
@@ -95,8 +93,9 @@ public record SyncPanelStatePacket(BlockPos pos,
                 List<MissingLinkStatus> missingLinks = MissingLinkStatus.readList(buf);
                 String controllerName = buf.readUtf();
                 boolean controllerPowered = buf.readBoolean();
+                boolean useAdjacentContainers = buf.readBoolean();
                 return new SyncPanelStatePacket(pos, epoch, revision, components, connections, networks, missingLinks,
-                        controllerName, controllerPowered);
+                        controllerName, controllerPowered, useAdjacentContainers);
             }
             @Override
             public void encode(RegistryFriendlyByteBuf buf, SyncPanelStatePacket packet) {
@@ -109,6 +108,7 @@ public record SyncPanelStatePacket(BlockPos pos,
                 MissingLinkStatus.writeList(buf, packet.missingLinks());
                 buf.writeUtf(packet.controllerName());
                 buf.writeBoolean(packet.controllerPowered());
+                buf.writeBoolean(packet.useAdjacentContainers());
             }
         };
 
@@ -120,18 +120,14 @@ public record SyncPanelStatePacket(BlockPos pos,
         ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level == null || mc.player == null) return;
-            // Update the shared menu no matter which screen of this controller is open (controller,
-            // set-item, or configure-recipe) so live state — promise/stock counts etc. — stays current.
+            // Update the shared menu no matter which screen of this controller is open
             if (!(mc.player.containerMenu instanceof FactoryControllerMenu menu)) return;
             if (!menu.controllerPos.equals(packet.pos())) return;
 
             menu.applyFullSync(packet.epoch(), packet.revision(), packet.components(), packet.connections(),
-                    packet.networks(), packet.missingLinks(), packet.controllerName(), packet.controllerPowered());
+                    packet.networks(), packet.missingLinks(), packet.controllerName(), packet.controllerPowered(),
+                    packet.useAdjacentContainers());
 
-            // Refresh whichever of this controller's screens is active — the controller canvas itself
-            // or a sub-screen (set-item / configure-recipe) that renders the canvas as its background.
-            // The sub-screens delegate to the parent so its cached gauge widgets are re-indexed too,
-            // otherwise the background count overlay freezes while a sub-screen is open.
             if (mc.screen instanceof PanelSyncListener listener)
                 listener.onPanelSync();
         });

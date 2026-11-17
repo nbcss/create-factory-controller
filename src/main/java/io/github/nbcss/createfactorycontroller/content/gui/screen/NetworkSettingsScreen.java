@@ -15,6 +15,7 @@ import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.network.NetworkSettings;
 import io.github.nbcss.createfactorycontroller.content.packet.SetNetworkSettingsPacket;
 import io.github.nbcss.createfactorycontroller.content.render.TiledSpriteRenderer;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.PlayerInventoryWidget;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -60,13 +61,8 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final ResourceLocation INPUT_FIELD_SPRITE =
             ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "common/input_field");
 
-    private static final ResourceLocation PLAYER_INVENTORY_TEX =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/player_inventory.png");
     private static final ResourceLocation NETWORK = ResourceLocation.fromNamespaceAndPath(
             "createfactorycontroller", "common/network");
-    private static final int INV_TEX_W = 176, INV_TEX_H = 108;
-    /** Y of the hotbar slot row within player_inventory.png (matches SetItemScreen). */
-    private static final int INV_TEX_HOTBAR_Y = 76;
 
     private static final int ICON_X = 22, ICON_Y = 28, ICON_SIZE = 16;
     private static final int NAME_X = 46, NAME_Y = 28, NAME_W = 138, NAME_H = 16;
@@ -82,7 +78,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     private InteractiveAreaWidget iconArea;
 
     private int panelX, panelY;
-    private int invBgX, invBgY;
+    private PlayerInventoryWidget inventoryPanel;
 
     public NetworkSettingsScreen(FactoryControllerScreen controller, UUID network) {
         super(controller.getMenu(), Minecraft.getInstance().player.getInventory(),
@@ -104,14 +100,15 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         setWindowOffset(0, 0);
         super.init();
 
-        int blockH = PANEL_H + INV_TEX_H;
+        int blockH = PANEL_H + PlayerInventoryWidget.HEIGHT;
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - blockH) / 2;
 
-        invBgX = panelX + (PANEL_W - INV_TEX_W) / 2;
-        invBgY = panelY + PANEL_H + 6;
-        int originX = invBgX + 8 - leftPos;                    // slot grid origin
-        int hotbarY = (invBgY + INV_TEX_HOTBAR_Y) - topPos;    // hotbar row
+        int invBgX = panelX + (PANEL_W - PlayerInventoryWidget.WIDTH) / 2;
+        int invBgY = panelY + PANEL_H + 6;
+        int originX = invBgX + PlayerInventoryWidget.SLOT_LEFT - leftPos;                    // slot grid origin
+        int hotbarY = (invBgY + PlayerInventoryWidget.HOTBAR_Y) - topPos;    // hotbar row
+        inventoryPanel = new PlayerInventoryWidget(invBgX, invBgY, font, playerInventoryTitle);
         menu.repositionSlots(originX, hotbarY, true);
 
         clearButton = new TooltipIconButton(panelX + PANEL_W - 47, panelY + PANEL_H - 24, AllIcons.I_TRASH);
@@ -252,7 +249,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         TiledSpriteRenderer.create(PANEL_SPRITE).render(gfx, panelX, panelY, PANEL_W, PANEL_H - PANEL_BOTTOM_H + 1);
         TiledSpriteRenderer.create(PANEL_BOTTOM_SPRITE).render(gfx, panelX, panelY + PANEL_H - PANEL_BOTTOM_H, PANEL_W, PANEL_BOTTOM_H);
         TiledSpriteRenderer.create(PANEL_BOTTOM_VDIV).render(gfx, panelX + PANEL_W - 53, panelY + PANEL_H - PANEL_BOTTOM_H, 2, PANEL_BOTTOM_H);
-        gfx.blit(PLAYER_INVENTORY_TEX, invBgX, invBgY, 0, 0, INV_TEX_W, INV_TEX_H);
+        inventoryPanel.render(gfx, mouseX, mouseY, partialTick);
 
         // Icon slot
         renderNetworkIcon(gfx, new NetworkSettings(network, "", icon), panelX + ICON_X, panelY + ICON_Y);
@@ -289,7 +286,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         Component title = getTitle();
         gfx.drawString(font, title, panelX + PANEL_W / 2 - font.width(title) / 2, panelY + 4, 0x3D3C48, false);
-        gfx.drawString(font, playerInventoryTitle, invBgX + 8, invBgY + 6, 0x404040, false);
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);
     }
 

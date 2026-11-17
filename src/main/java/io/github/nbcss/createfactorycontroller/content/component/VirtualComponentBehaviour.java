@@ -43,6 +43,10 @@ public interface VirtualComponentBehaviour {
         List<ResourceLocation> items();
         int color();
         boolean isRequireNetwork();
+        /** Arrangement key (e.g. the Component Supply catalog), by plain string comparison; ties fall back to {@link #id()}. */
+        default String order() {
+            return "zzz_" + id();
+        }
         VirtualComponentBehaviour create(FactoryControllerBlockEntity controller,
                                           VirtualComponentPosition pos,
                                           Item item,

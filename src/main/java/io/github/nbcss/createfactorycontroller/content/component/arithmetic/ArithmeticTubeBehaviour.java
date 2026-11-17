@@ -120,6 +120,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
 
     public static final Type TYPE = new Type() {
         @Override public String id() { return "ARITHMETIC_TUBE"; }
+        @Override public String order() { return "lc"; }
         @Override public List<ResourceLocation> items() { return List.of(CFCItems.ARITHMETIC_TUBE.getId()); }
         @Override public int color() { return NumberConnection.COLOR; }   // purple, matching its wire
         @Override public boolean isRequireNetwork() { return false; }

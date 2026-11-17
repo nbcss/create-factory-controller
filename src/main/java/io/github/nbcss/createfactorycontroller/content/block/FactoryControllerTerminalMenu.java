@@ -96,7 +96,8 @@ public class FactoryControllerTerminalMenu extends FactoryControllerMenu {
     public static void writeExtraData(TerminalMenuProvider p, RegistryFriendlyByteBuf buf) {
         FactoryControllerBlockEntity be = p.target().be();
         writeEmptyBoardLayout(buf, p.target().pos(), be != null ? be.syncEpoch() : 0, be != null ? be.syncRevision() : 0,
-            displayName(be, p.target().link()), be != null && be.isRedstonePowered());
+            displayName(be, p.target().link()), be != null && be.isRedstonePowered(),
+            be != null && be.useAdjacentContainers());
         buf.writeVarInt(p.state().links().size());
         for (RemoteControllerLink link : p.state().links()) RemoteControllerLink.STREAM_CODEC.encode(buf, link);
         buf.writeVarInt(p.state().activeIndex());
@@ -180,6 +181,7 @@ public class FactoryControllerTerminalMenu extends FactoryControllerMenu {
         signalPresent = state.signal();
         controllerName = state.name();
         controllerPowered = false;
+        useAdjacentContainers = false;
         clearComponents();
         applyNetworkSettings(List.of());
         applyMissingLinkStatuses(List.of());

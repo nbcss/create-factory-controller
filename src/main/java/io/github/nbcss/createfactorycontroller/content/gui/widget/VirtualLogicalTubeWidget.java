@@ -6,7 +6,6 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.LogicalTubeSettingsScreen;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
-import io.github.nbcss.createfactorycontroller.content.packet.RemoveComponentPacket;
 import io.github.nbcss.createfactorycontroller.content.render.BatchedBlitter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -17,7 +16,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
 
@@ -90,7 +88,6 @@ public record VirtualLogicalTubeWidget(LogicalTubeBehaviour behaviour) implement
 
     @Override
     public void remove(FactoryControllerScreen screen) {
-        if (screen.isItemTransferDenied()) return;
-        PacketDistributor.sendToServer(new RemoveComponentPacket(screen.getMenu().controllerPos, behaviour.position()));
+        screen.sendRemoveComponent(behaviour.position());
     }
 }

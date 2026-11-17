@@ -2,6 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.helper;
 
 import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
+import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerTerminalMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -14,10 +15,10 @@ public final class ControllerAccessor {
 
     @Nullable
     public static FactoryControllerBlockEntity getBlockEntity(Player player, BlockPos pos) {
-        if (player.containerMenu instanceof FactoryControllerTerminalMenu terminal) {
-            if (!pos.equals(terminal.activeControllerPos())) return null;
+        if (!(player.containerMenu instanceof FactoryControllerMenu menu) || !pos.equals(menu.activeControllerPos()))
+            return null;
+        if (menu instanceof FactoryControllerTerminalMenu terminal)
             return getLiveBlockEntity(terminal.activeControllerLevel(), pos);
-        }
         return player.level().getBlockEntity(pos) instanceof FactoryControllerBlockEntity be ? be : null;
     }
 

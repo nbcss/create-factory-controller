@@ -55,6 +55,11 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
         }
 
         @Override
+        public String order() {
+            return "la";
+        }
+
+        @Override
         public List<ResourceLocation> items() {
             return List.of(AllBlocks.REDSTONE_LINK.getId());
         }

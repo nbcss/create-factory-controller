@@ -1,18 +1,14 @@
 package io.github.nbcss.createfactorycontroller;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.simibubi.create.foundation.item.ItemDescription;
-import com.simibubi.create.foundation.item.TooltipModifier;
 import io.github.nbcss.createfactorycontroller.content.render.ProductionPatternRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.TerminalHoverTip;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersTab;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
-import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -29,12 +25,11 @@ import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
 import net.liukrast.deployer.lib.helper.ClientRegisterHelpers;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
-
-import java.util.List;
 
 
 @Mod(value = CreateFactoryController.MODID, dist = Dist.CLIENT)
@@ -85,6 +80,21 @@ public class CreateFactoryControllerClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL,
             "key.categories.createfactorycontroller");
 
+    public static final KeyMapping PICK_COMPONENT = new KeyMapping(
+            "key.createfactorycontroller.pick_component", KeyConflictContext.GUI,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
+            "key.categories.createfactorycontroller");
+
+    public static final KeyMapping RETURN_COMPONENT = new KeyMapping(
+            "key.createfactorycontroller.return_component", KeyConflictContext.GUI,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_RIGHT,
+            "key.categories.createfactorycontroller");
+
+    public static final KeyMapping PLACE_COMPONENT = new KeyMapping(
+            "key.createfactorycontroller.place_component", KeyConflictContext.GUI,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT,
+            "key.categories.createfactorycontroller");
+
     public CreateFactoryControllerClient(ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
@@ -93,14 +103,12 @@ public class CreateFactoryControllerClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
+        ClientSettings.load();
         event.enqueueWork(() -> {
             // Deployer is optional: only register the keeper TAB when it's present
             if (DeployerCompat.isLoaded())
                 ClientRegisterHelpers.registerStockKeeperTab(ProductionOrdersTab::new);
-            // Create's shift-to-expand description (from the item's .tooltip.summary/conditionN/behaviourN keys).
-            for (Item item : List.of(CFCItems.FACTORY_CONTROLLER.get(), CFCItems.FACTORY_CONTROLLER_TERMINAL.get()))
-                TooltipModifier.REGISTRY.register(item,
-                    new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE));
+            CFCItems.onClientSetup();
         });
     }
 
@@ -120,6 +128,9 @@ public class CreateFactoryControllerClient {
         event.register(DRAG_SELECTION);
         event.register(TOGGLE_ALWAYS_SHOW_LABEL);
         event.register(SELECTION_MODE);
+        event.register(PICK_COMPONENT);
+        event.register(RETURN_COMPONENT);
+        event.register(PLACE_COMPONENT);
     }
 
     @SubscribeEvent

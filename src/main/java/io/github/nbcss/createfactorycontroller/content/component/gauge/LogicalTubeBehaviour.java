@@ -52,6 +52,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
 
     public static final Type TYPE = new Type() {
         @Override public String id() { return "LOGICAL_TUBE"; }
+        @Override public String order() { return "lb"; }
         @Override public List<ResourceLocation> items() { return List.of(AllItems.ELECTRON_TUBE.getId()); }
         @Override public int color() { return 0xFC688D; }
         @Override public boolean isRequireNetwork() { return false; }

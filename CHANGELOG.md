@@ -2,6 +2,9 @@
 
 Features:
 - Lever and Stone Button can be placed in Factory Controller as manual redstone source.
+- Added "Component Supply" panel, which can quickly place component from player's inventory or adjacent container.
+- Added keybinding "Pick Component" (default middle-click) to pick clicked target component item from inventory to cursor.
+- Added keybinding "Return Component" (default right-click) to return current cursor item back to inventory.
 
 Compatibility:
 - Dropped Fluidlogistics (< 1.2.5) compatibility support
