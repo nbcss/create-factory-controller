@@ -63,67 +63,68 @@ task :build => [:assets, 'po4a:translate'] do
     mod_version = index_doc.attributes['mod-version']
     manual_toc = Util.html_strip index_doc.find_by(id: 'manual-toc')[0].convert, layers: 2
 
-    # Generate page for each source (or translated) document
-    src_dir = LANGS.default?(lang) ? 'src' : "translated/#{lang}"
-    Dir.glob('*.adoc', base: src_dir).each do |src_file|
+    # Generate page for each source document, or its translation missing page
+    Dir.glob('*.adoc', base: 'src').each do |src_file|
 
       name = File.basename src_file, '.adoc'
-      src_path = "#{src_dir}/#{src_file}"
-      url_path = "/#{lang}/#{name}.html"
-      output_path = File.join('build', url_path)
-      puts "Generate page #{output_path}" if verbose
+      src_path = LANGS.default?(lang) ? "src/#{src_file}" : "translated/#{lang}/#{src_file}"
+      url_path = "/#{lang}/#{name}.html".sub(/(?<=\/)index.html$/, '')
 
-      document = Asciidoctor.load_file src_path, adoc_options
-      authors = Util.git_file_authors "src/#{src_file}"
-      translators = Util.git_file_authors("l10n/#{name}.#{lang}.po") - authors - %w(Weblate) unless LANGS.default?(lang)
-      page_toc = document
-        .then{|d| d.converter.convert d, 'outline', toclevels: 2 }
-        .then{|s| Util.html_strip s, strip_class: true }
-      content = document.convert
-        .then{|s| Util.cache_id_images s, output_path }
+      if File.exist? src_path
+        output_path = "build/#{lang}/#{name}.html"
+        puts "Generate page #{output_path}" if verbose
 
-      context = ERBContext.new(
-        title: document.title,
-        content: content,
-        document: document,
-        authors: authors,
-        translators: translators,
-        attributes: attributes,
-        language: lang,
-        languages: LANGS,
-        mod_version: mod_version,
-        manual_toc: manual_toc,
-        page_toc: page_toc,
-        url_path: url_path,
-        output_path: output_path,
-        display_branch: display_branch,
-        noindex: noindex,
-        canonical_url_base: canonical_url_base,
-      )
+        document = Asciidoctor.load_file src_path, adoc_options
+        authors = Util.git_file_authors "src/#{src_file}"
+        translators = Util.git_file_authors("l10n/#{name}.#{lang}.po") - authors - %w(Weblate) unless LANGS.default?(lang)
+        page_toc = document
+          .then{|d| d.converter.convert d, 'outline', toclevels: 2 }
+          .then{|s| Util.html_strip s, strip_class: true }
+        content = document.convert
+          .then{|s| Util.cache_id_images s, output_path }
 
-      verbose(false) { mkdir_p File.dirname(output_path) }
-      File.write output_path, layout.result(context.binding)
-    end
+        context = ERBContext.new(
+          title: document.title,
+          content: content,
+          document: document,
+          authors: authors,
+          translators: translators,
+          attributes: attributes,
+          language: lang,
+          languages: LANGS,
+          mod_version: mod_version,
+          manual_toc: manual_toc,
+          page_toc: page_toc,
+          url_path: url_path,
+          output_path: output_path,
+          display_branch: display_branch,
+          noindex: noindex,
+          canonical_url_base: canonical_url_base,
+        )
+        verbose(false) { mkdir_p File.dirname(output_path) }
+        File.write output_path, layout.result(context.binding)
 
-    'src/template/translation-missing.erb'.then do |src_path|
-      url_path = "/#{lang}/translation-missing.html"
-      output_path = File.join('build', url_path)
-      puts "Generate page #{output_path}" if verbose
-      context = ERBContext.new(
-        attributes: attributes,
-        language: lang,
-        languages: LANGS,
-        mod_version: mod_version,
-        manual_toc: manual_toc,
-        url_path: url_path,
-        output_path: output_path,
-        display_branch: display_branch,
-        noindex: noindex,
-        canonical_url_base: canonical_url_base,
-      )
-      template = ERB.new File.read src_path
-      context.content = template.result context.binding
-      File.write output_path, layout.result(context.binding)
+      else
+        output_path = "build/#{lang}/#{name}.translation-missing.html"
+        puts "Generate page #{output_path}" if verbose
+
+        context = ERBContext.new(
+          attributes: attributes,
+          language: lang,
+          languages: LANGS,
+          mod_version: mod_version,
+          manual_toc: manual_toc,
+          url_path: url_path,
+          output_path: output_path,
+          display_branch: display_branch,
+          noindex: noindex,
+          canonical_url_base: canonical_url_base,
+        )
+        template = ERB.new File.read 'src/template/translation-missing.erb'
+        context.content = template.result context.binding
+        verbose(false) { mkdir_p File.dirname(output_path) }
+        File.write output_path, layout.result(context.binding)
+      end
     end
   end
 

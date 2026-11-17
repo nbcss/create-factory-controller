@@ -43,8 +43,4 @@ class ERBContext
     Util.add_cache_id(path, output_path)
   end
 
-  def flat_url_for(path)
-    File.basename(path).sub(/index\.html$/, '')
-  end
-
 end

@@ -4,17 +4,11 @@
   <h1><%= h t 'no-translation.title' %></h1>
   <p><%= h t 'no-translation.content' %></p>
   <ul class="action-list">
-    <li><a id="read-source-lang" href="../<%= languages.default %>/"><%= h t 'no-translation.read-source-lang' %></a></li>
+    <li><a id="read-source-lang" href="../<%= languages.default %>/<%= h url_path.split('/', -1).last %>"><%= h t 'no-translation.read-source-lang' %></a></li>
     <li><a href="https://weblate.fiveyellowmice.com/engage/create-factory-controller/"><%= h t 'no-translation.help-translate' %></a></li>
   </ul>
 </div>
 
 <script>
-const pageUrl = new URLSearchParams(document.location.search).get('page');
-if (pageUrl) {
-  document.getElementById('read-source-lang').href = "../<%= languages.default %>/"+pageUrl;
-  document.querySelectorAll('.nav-lang-select li > a[hreflang]').forEach((link) => {
-    link.href = `../${link.hreflang}/${pageUrl}`;
-  });
-}
+  document.getElementById('read-source-lang').hash = location.hash;
 </script>
