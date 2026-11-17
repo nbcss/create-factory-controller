@@ -15,7 +15,7 @@ Additionally, using a factory controller allows you to:
 - See the item count labels of all gauges at once.
 - Disable all factory gauges in the controller with redstone. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-gauge.html#redstone)
 - Change individual connection's arrow bending path. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/dashboard.html#connections)
-- Display information with a display link. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/display-link.html)
+- Display information with a display link. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/factory-controller.html#display-link)
 - Import existing gauge walls into a factory controller. [🕮](https://nbcss.github.io/create-factory-controller/manual/en/blueprint.html#import-world)
 
 Factory gauges placed in factory controllers also receive a number of functional enhancements:
