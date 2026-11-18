@@ -5,7 +5,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAre
 import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconButton;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 
-import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
@@ -19,7 +18,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -164,8 +162,7 @@ public class ControllerSettingScreen extends AbstractSimiContainerScreen<Factory
         if (next == selected) return;
         selected = next;
         applySelection();
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
+        ScreenSounds.scroll();
     }
 
     private void resetToDefault() {

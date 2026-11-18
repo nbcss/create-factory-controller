@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
@@ -118,7 +119,7 @@ class RegularEditor extends GaugeWorkModeEditor {
         int slot = slotAt(mouseX, mouseY);
         if (slot < 0 || slot >= slots.size()) return false;
         s.adjustInputTotal(slots.get(slot).connectionIndex(), dir, Screen.hasShiftDown(), Screen.hasControlDown());
-        ConfigureRecipeScreen.playScrollSound();
+        ScreenSounds.scroll();
         return true;
     }
 

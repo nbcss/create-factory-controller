@@ -84,8 +84,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
               Component.translatable("createfactorycontroller.gui.logical_tube_settings"));
         this.controller = controller;
         this.tubePos = tubePos;
-        Minecraft.getInstance().getSoundManager().play(
-            net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+        ScreenSounds.panelOpen();
     }
 
     @Override
@@ -117,7 +116,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
             TooltipIconButton button = new TooltipIconButton(groupX + i * 18, panelY + 79, element);
             button.withCallback(() -> {
                 PacketDistributor.sendToServer(new ConfigureLogicalTubePacket(menu.controllerPos, tubePos, m.name()));
-                playClickSound();
+                ScreenSounds.click();
             });
             button.withTooltip(() -> modeButtonTooltip(m));
             modeButtons.put(m, button);
@@ -179,7 +178,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
                     else
                         PacketDistributor.sendToServer(new ReverseConnectionPacket(
                                 menu.controllerPos, connection.from, connection.to, connection.type.name()));
-                    playClickSound();
+                    ScreenSounds.click();
                     return true;
                 }));
     }
@@ -415,11 +414,6 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         return x >= 0 && x < CELL && y >= 0 && y < CELL;
     }
 
-    /** Create's soft GUI button blip for slot clicks. */
-    private static void playClickSound() {
-        Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance
-                .forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
-    }
 
     // ── Overlay plumbing ─────────────────────
 
@@ -445,8 +439,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
 
     @Override
     public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-            net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        ScreenSounds.panelClose();
         super.removed();
     }
 }

@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
@@ -74,7 +75,7 @@ abstract class GaugeWorkModeEditor {
                             if (!s.multiplierExcludedInputs.add(source)) s.multiplierExcludedInputs.remove(source);
                             s.maxRequestMultiplier = Mth.clamp(
                                     s.maxRequestMultiplier, 1, s.structuralMultiplierCap());
-                            ConfigureRecipeScreen.playClickSound();
+                            ScreenSounds.click();
                             return true;
                         }
                     }
@@ -132,7 +133,7 @@ abstract class GaugeWorkModeEditor {
                     ? ConfigureRecipeScreen.shiftStep(s.outputCount, dir, s.outputStackSize()) : s.outputCount + dir;
             s.outputCount = Mth.clamp(next, 1, s.maxItemOutput());
         }
-        ConfigureRecipeScreen.playScrollSound();
+        ScreenSounds.scroll();
         return true;
     }
 

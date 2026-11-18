@@ -38,10 +38,8 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -228,7 +226,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             if (constantEditor.active()) constantEditor.commit();
             RedstoneMode next = tube.getRedstoneMode() == RedstoneMode.OVERRIDE ? RedstoneMode.HOLD : RedstoneMode.OVERRIDE;
             sendInput(ConfigureArithmeticInputPacket.SET_REDSTONE_MODE, false, -1, next.ordinal());
-            playClickSound();
+            ScreenSounds.click();
             return true;
         }
 
@@ -248,7 +246,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 if (constantEditor.active()) constantEditor.commit();
                 RedstoneMode next = tube.getRedstoneMode() == RedstoneMode.OVERRIDE ? RedstoneMode.HOLD : RedstoneMode.OVERRIDE;
                 sendInput(ConfigureArithmeticInputPacket.SET_REDSTONE_MODE, false, -1, next.ordinal());
-                playClickSound();
+                ScreenSounds.click();
                 return true;
             }
             if (bounds.icon().contains(mx, my, HALF_OPEN)) {
@@ -347,7 +345,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         public boolean clicked(ArithmeticTubeBehaviour tube, int y, double mx, double my, int button) {
             if (deleteBounds(y).contains(mx, my, HALF_OPEN)) {
                 sendInput(ConfigureArithmeticInputPacket.REMOVE, primary, index, 0);
-                playClickSound();
+                ScreenSounds.click();
                 return true;
             }
             Rect2i box = boxBounds(y);
@@ -501,7 +499,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
             int step = scrollY > 0 ? -1 : 1;
             Comparison next = all[Math.floorMod(tube.getOutputComparison().ordinal() + step, all.length)];
             sendInput(ConfigureArithmeticInputPacket.SET_OUTPUT_COMPARISON, false, -1, next.ordinal());
-            playClickSound();
+            ScreenSounds.click();
             return true;
         }
 
@@ -519,7 +517,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 int step = button == 1 ? -1 : 1;
                 Comparison next = all[Math.floorMod(tube.getOutputComparison().ordinal() + step, all.length)];
                 sendInput(ConfigureArithmeticInputPacket.SET_OUTPUT_COMPARISON, false, -1, next.ordinal());
-                playClickSound();
+                ScreenSounds.click();
                 return true;
             }
             if (bounds.icon().contains(mx, my, HALF_OPEN)) {
@@ -558,8 +556,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 Component.translatable("createfactorycontroller.gui.arithmetic_tube_settings"));
         this.controller = controller;
         this.tubePos = tubePos;
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+        ScreenSounds.panelOpen();
     }
 
     @Override
@@ -578,7 +575,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         relocateButton.setToolTip(Component.translatable("createfactorycontroller.gui.action_relocate"));
 
         swapButton = new TooltipIconButton(0, 0, AllIcons.I_FLIP);
-        swapButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.SWAP, true, -1, 0); playClickSound(); });
+        swapButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.SWAP, true, -1, 0); ScreenSounds.click(); });
         swapButton.setToolTip(Component.translatable("createfactorycontroller.gui.arithmetic_tube.swap_inputs"));
 
         addConnectionButton = new TooltipIconButton(0, 0, AllIcons.I_ADD);
@@ -587,7 +584,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
         ScreenElement addConstantIcon = (g, ix, iy) -> g.blitSprite(SpriteLocations.ADD_CONSTANT_ICON, ix, iy, ICON16, ICON16);
         addConstantButton = new TooltipIconButton(0, 0, addConstantIcon);
-        addConstantButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, true, -1, 0); playClickSound(); });
+        addConstantButton.withCallback(() -> { sendInput(ConfigureArithmeticInputPacket.ADD_CONSTANT, true, -1, 0); ScreenSounds.click(); });
         addConstantButton.withTooltip(() -> {
             ArithmeticTubeBehaviour t = tube();
             boolean canAdd = t != null && t.canAddConstant();
@@ -1069,7 +1066,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
                 if (tube != null && tube.canSwitchTo(operator)) {
                     PacketDistributor.sendToServer(new ConfigureArithmeticTubePacket(
                             menu.controllerPos, tubePos, operator.name()));
-                    playClickSound();
+                    ScreenSounds.click();
                     close();
                 }
                 return true;
@@ -1207,10 +1204,6 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    private static void playClickSound() {
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
-    }
 
     // ── Overlay plumbing ─────────────────────
 
@@ -1238,8 +1231,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
 
     @Override
     public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        ScreenSounds.panelClose();
         super.removed();
     }
 

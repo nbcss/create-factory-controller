@@ -1,9 +1,8 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import io.github.nbcss.createfactorycontroller.content.component.redstone.LeverBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.neoforged.api.distmarker.Dist;
@@ -24,7 +23,6 @@ public class VirtualLeverWidget extends VirtualManualSourceWidget<LeverBehaviour
 
     @Override
     public void onPressed(FactoryControllerScreen screen) {
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(SoundEvents.LEVER_CLICK, behaviour.isPowered() ? 0.5f : 0.6f));
+        ScreenSounds.play(SoundEvents.LEVER_CLICK, behaviour.isPowered() ? 0.5f : 0.6f);
     }
 }

@@ -82,8 +82,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
             blue = link.blueFreq.copy();
             receive = link.receive;
         }
-        Minecraft.getInstance().getSoundManager().play(
-            net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+        ScreenSounds.panelOpen();
     }
 
     @Override
@@ -288,8 +287,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
     @Override
     public void removed() {
         commit();
-        Minecraft.getInstance().getSoundManager().play(
-            net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        ScreenSounds.panelClose();
         super.removed();
     }
 

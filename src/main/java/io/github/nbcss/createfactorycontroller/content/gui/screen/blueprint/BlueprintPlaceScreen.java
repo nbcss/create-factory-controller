@@ -1,6 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.blueprint;
 
-import com.simibubi.create.AllSoundEvents;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
@@ -15,7 +15,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
@@ -131,8 +130,7 @@ public class BlueprintPlaceScreen extends BlueprintFormScreen {
         int next = Mth.clamp(index - (int) Math.signum(direction), 0, options.size());
         if (next == index) return true;   // at a clamp boundary — still handled
         placement.assign(slot, next == 0 ? null : options.get(next - 1));
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
+        ScreenSounds.scroll();
         return true;
     }
 

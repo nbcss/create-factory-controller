@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
@@ -15,7 +15,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -281,8 +280,7 @@ public class NetworkSelectorWidget extends AbstractWidget {
         // While holding a component the scroll re-tunes it; otherwise it just moves the selection.
         if (!heldComponent().isEmpty())
             retune.retune(e.type == Type.NO_NETWORK, e.network);
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
+        ScreenSounds.scroll();
         return true;
     }
 

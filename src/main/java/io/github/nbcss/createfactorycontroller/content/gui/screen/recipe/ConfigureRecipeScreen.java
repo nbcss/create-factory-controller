@@ -1,9 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllRecipeTypes;
-import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.kinetics.crafter.MechanicalCraftingRecipe;
 import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.BigItemStack;
@@ -51,8 +51,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -199,8 +197,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         this.controller = controller;
         this.gaugePos = gaugePos;
         updateConfigs();   // snapshot once (not per init, so edits/crafting toggle survive resize)
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+        ScreenSounds.panelOpen();
     }
 
     @Override
@@ -393,7 +390,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 }).onClick(button -> {
             if (button != 0 && button != 1) return false;
             maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
-            playClickSound();
+            ScreenSounds.click();
             return true;
         }).onScroll((scrollX, scrollY) -> {
             int dir = (int) Math.signum(scrollY);
@@ -401,7 +398,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 int step = hasShiftDown() ? 10 : 1;
                 maxRequestMultiplier = Mth.clamp(
                         maxRequestMultiplier + dir * step, 1, structuralMultiplierCap());
-                playScrollSound();
+                ScreenSounds.scroll();
             }
             return true;
         }));
@@ -427,14 +424,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 }).onClick(button -> {
             if (customRequestTimer > 0) {
                 setRequestInterval(0);
-                playClickSound();
+                ScreenSounds.click();
             }
             return true;
         }).onScroll((scrollX, scrollY) -> {
             int dir = (int) Math.signum(scrollY);
             if (dir != 0) {
                 setRequestInterval(Mth.clamp(shownIntervalSeconds() + dir, 1, 60) * TICKS_PER_SEC);
-                playScrollSound();
+                ScreenSounds.scroll();
             }
             return true;
         }));
@@ -466,7 +463,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                             .build();
                 }).onClick(button -> {
             sendConfig(true, false);
-            playClickSound();
+            ScreenSounds.click();
             return true;
         }));
         addRenderableWidget(new InteractiveAreaWidget(
@@ -489,14 +486,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         .build()).onClick(button -> {
             promiseLimitByAddress = !promiseLimitByAddress;
-            playClickSound();
+            ScreenSounds.click();
             return true;
         }).onScroll((scrollX, scrollY) -> {
             int dir = (int) Math.signum(scrollY);
             if (dir != 0) {
                 int step = hasShiftDown() ? 10 : 1;
                 promiseLimitState = Mth.clamp(promiseLimitState + dir * step, 0, 99);
-                playScrollSound();
+                ScreenSounds.scroll();
             }
             return true;
         }));
@@ -532,7 +529,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             countEditing = true;
             countEdit = thresholdCount == 0 || button == 1 ? "" : String.valueOf(thresholdCount);
             setFocused(null);
-            playClickSound();
+            ScreenSounds.click();
             return true;
         }).onScroll((scrollX, scrollY) -> {
             if (numberManaged()) return true;
@@ -540,7 +537,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int dir = (int) Math.signum(scrollY);
             int step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
             thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
-            playScrollSound();
+            ScreenSounds.scroll();
             return true;
         }));
         addRenderableWidget(new InteractiveAreaWidget(
@@ -705,7 +702,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         multiplierExcludedInputs.remove(from);
         PacketDistributor.sendToServer(new DisconnectIngredientPacket(menu.controllerPos, from, gaugePos));
         onConnectionsChanged();
-        playClickSound();
+        ScreenSounds.click();
     }
 
     /**
@@ -838,7 +835,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int next = Mth.clamp(craftBatch + delta, 1, maxCraftBatch());
         if (next != craftBatch) {
             craftBatch = next;
-            playScrollSound();
+            ScreenSounds.scroll();
         }
     }
 
@@ -851,7 +848,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (next != craftDimension) {
             craftDimension = next;
             craftingIngredients = buildSquareArrangement(craftDimension);
-            playScrollSound();
+            ScreenSounds.scroll();
         }
     }
 
@@ -1515,17 +1512,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     // ── Input ────────────────────────────────────────────────────────────────
 
-    /** Create's GUI button blip (UI_BUTTON_CLICK, soft) — for value-box / slot clicks. */
-    static void playClickSound() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.25f));
-    }
 
-    /** Create's value-scroll blip (SCROLL_VALUE, pitch 1.5) — matches its ScrollInput widget. */
-    static void playScrollSound() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(AllSoundEvents.SCROLL_VALUE.getMainEvent(), 1.5f));
-    }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -1609,8 +1596,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        ScreenSounds.panelClose();
         super.removed();
     }
 
@@ -1651,13 +1637,13 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (fluidMode) {
             outputCount = Mth.clamp(outputCount, 1, VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB);
         }
-        playScrollSound();
+        ScreenSounds.scroll();
     }
 
     private void cycleRequestMode() {
         requestMode = RequestMode.byOrdinal(requestMode.ordinal() + 1);
         if (requestModeButton != null) requestModeButton.setIcon(iconFor(requestMode));
-        playClickSound();
+        ScreenSounds.click();
     }
 
     private void confirmAndReturn() {

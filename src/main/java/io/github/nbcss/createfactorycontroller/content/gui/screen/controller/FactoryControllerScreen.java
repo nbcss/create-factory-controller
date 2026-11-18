@@ -1,11 +1,11 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.controller;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBlockItem;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
@@ -16,7 +16,6 @@ import io.github.nbcss.createfactorycontroller.content.render.ComponentRendering
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.ClientSettings;
-import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.CreateFactoryControllerClient;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
@@ -88,7 +87,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -269,8 +267,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         ViewCacheEntry saved = VIEW_CACHE.getIfPresent(viewKey());
         if (saved != null) { viewX = saved.x(); viewY = saved.y(); zoomLevel = saved.zoom(); }
         // Play controller UI open SFX when the screen is constructed.
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_OPEN.get(), 1f));
+        ScreenSounds.controllerOpen();
     }
 
     @Override
@@ -480,8 +477,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     @Override
     public void onClose() {
         commitName();   // persist any pending rename before the screen goes away
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.CONTROLLER_UI_CLOSE.get(), 1f));
+        ScreenSounds.controllerClose();
         super.onClose();
     }
 
@@ -1322,7 +1318,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void commitBatchRelocate() {
         BatchMoveState.FinishResult result = batchMove.finish(selected, componentWidgets.keySet());
         if (result.status() == BatchMoveState.FinishStatus.INVALID) {
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         BatchMoveState.MoveRequest request = result.request();
@@ -1421,7 +1417,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private boolean denyFor(@Nullable Component reason) {
         if (reason == null) return false;
         setTimedPrompt(reason.copy().withStyle(ChatFormatting.RED), 3000);
-        playDenySound();
+        ScreenSounds.deny();
         return true;
     }
 
@@ -1460,7 +1456,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         abortBlueprintPlacement();
         setTimedPrompt(Component.translatable("createfactorycontroller.gui.blueprint.placement_aborted")
                 .withStyle(ChatFormatting.RED), 3000);
-        playDenySound();
+        ScreenSounds.deny();
     }
 
     private void renderPlacementGhost(GuiGraphics graphics) {
@@ -1497,16 +1493,6 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 .withStyle(ChatFormatting.GREEN), 4000);
     }
 
-    /** Create's rejection blip, played client-side for board actions the client rejects before sending. */
-    private void playDenySound() {
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(AllSoundEvents.DENY.getMainEvent(), 1.0f));
-    }
-
-    private void playWrenchSound() {
-        Minecraft.getInstance().getSoundManager().play(
-                SimpleSoundInstance.forUI(AllSoundEvents.WRENCH_ROTATE.getMainEvent(), 1.0f));
-    }
 
     /**
      * The network a stack gauge would attach to, or {@code null} if placement isn't possible: a
@@ -1529,7 +1515,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
             setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
                     FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         boolean needsNet = ComponentRegistry.needsNetwork(BuiltInRegistries.ITEM.getKey(carried.getItem()));
@@ -1538,7 +1524,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() ?
                     "createfactorycontroller.gui.prompt.no_first_network" :
                     "createfactorycontroller.gui.prompt.no_network_tuned").withStyle(ChatFormatting.RED), 3000);
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         PacketDistributor.sendToServer(new AttachComponentPacket(menu.controllerPos, cell, network));
@@ -1570,7 +1556,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (menu.components.size() >= FactoryControllerBlockEntity.maxComponents()) {
             setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_limit",
                     FactoryControllerBlockEntity.maxComponents()).withStyle(ChatFormatting.RED), 3000);
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         UUID network = componentSupplyCursor.network();
@@ -1578,7 +1564,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             setTimedPrompt(Component.translatable(menu.knownNetworks.isEmpty() && componentSupplyTuneOptions().isEmpty() ?
                     "createfactorycontroller.gui.prompt.no_first_network" :
                     "createfactorycontroller.gui.prompt.no_network_tuned").withStyle(ChatFormatting.RED), 3000);
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         if (!componentSupplyHoldUsable()) {
@@ -1621,7 +1607,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         if (!unlimited() && !ReturnCarriedPacket.canFullyInsert(player.getInventory(), carried)) {
             setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.inventory_full")
                     .withStyle(ChatFormatting.RED), 3000);
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         PacketDistributor.sendToServer(ReturnCarriedPacket.KEEP_IF_FULL);
@@ -1630,7 +1616,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
     private void denyComponentSupplyNone(ComponentSupplyEntry entry) {
         setTimedPrompt(Component.translatable("createfactorycontroller.gui.prompt.component_supply_none",
                 new ItemStack(entry.item()).getHoverName()).withStyle(ChatFormatting.RED), 3000);
-        playDenySound();
+        ScreenSounds.deny();
     }
 
     private void renderComponentSupplyPhantom(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -1731,7 +1717,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             return;
         }
         if (completion.status() == ConnectionModeState.CompletionStatus.INVALID) {
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
 
@@ -1739,7 +1725,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
         assert result != null;
         if (!result.ok()) {
             showConnectionMessage(result);
-            playDenySound();
+            ScreenSounds.deny();
             return;
         }
         // A loop with no chosen orientation stays auto (-1): the renderer re-picks a clear orientation each frame,
@@ -1819,7 +1805,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 PacketDistributor.sendToServer(new RemoveConnectionPacket(menu.controllerPos,
                         hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name()));
                 selectedConnection = null;   // it's gone; let the hover re-resolve next frame
-                playWrenchSound();
+                ScreenSounds.wrench();
                 return true;
             }
 
@@ -2390,7 +2376,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (hoveredConn != null) {
                 revealConnectionTooltip();
                 connArrowLocked = true;
-                playWrenchSound();
+                ScreenSounds.wrench();
                 PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
                         hoveredConn.connection.from, hoveredConn.connection.to, hoveredConn.connection.type.name(),
                         CycleConnectionArrowModePacket.PATH));
@@ -2400,7 +2386,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             if (connectionMode.isActive()) {
                 if (connectionMode.cyclePath(menu, hoveredPosition, () ->
                         ConnectionPathResolver.autoLoopOrientation(connectionMode.initiator(), occupiedCells()))) {
-                    playWrenchSound();
+                    ScreenSounds.wrench();
                 }
                 return true;
             }
@@ -2412,7 +2398,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                     dots[(mode + 1) % 4] = '■';                         // ■ marks the active mode (auto -1 → 0)
                     setTimedPrompt(CreateLang.translate("factory_panel.cycled_arrow_path", new String(dots))
                             .style(ChatFormatting.WHITE).component(), 3000);
-                    playWrenchSound();
+                    ScreenSounds.wrench();
                     PacketDistributor.sendToServer(new CycleArrowModePacket(menu.controllerPos, hoveredPosition));
                 }
                 return true;
@@ -2423,7 +2409,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
             // Loop preview: switch-mode flips the arrow direction instead of cycling the initiator's op mode.
             if (connectionMode.flipLoopDirection(menu, hoveredPosition, () ->
                     ConnectionPathResolver.autoLoopOrientation(connectionMode.initiator(), occupiedCells()))) {
-                playWrenchSound();
+                ScreenSounds.wrench();
                 return true;
             }
             // A committed loop wire: switch-mode flips its arrow direction (reverse is a no-op for a self-edge).
@@ -2431,7 +2417,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 revealConnectionTooltip();
                 connArrowLocked = true;
                 Connection conn = hoveredConn.connection;
-                playWrenchSound();
+                ScreenSounds.wrench();
                 PacketDistributor.sendToServer(new CycleConnectionArrowModePacket(menu.controllerPos,
                         conn.from, conn.to, conn.type.name(), CycleConnectionArrowModePacket.DIRECTION));
                 return true;
@@ -2440,15 +2426,15 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
                 revealConnectionTooltip();
                 Connection conn = hoveredConn.connection;
                 if (conn.canReverse(this::componentAt)) {
-                    playWrenchSound();
+                    ScreenSounds.wrench();
                     PacketDistributor.sendToServer(new ReverseConnectionPacket(menu.controllerPos, conn.from, conn.to, conn.type.name()));
                 } else {
-                    playDenySound();
+                    ScreenSounds.deny();
                 }
                 return true;
             }
             if (hover == null) return super.keyPressed(keyCode, scanCode, modifiers);
-            playWrenchSound();
+            ScreenSounds.wrench();
             PacketDistributor.sendToServer(new CycleOperationModePacket(menu.controllerPos, hoveredPosition));
             return true;
         }

@@ -9,6 +9,9 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTu
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.redstone.ButtonBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.redstone.LeverBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.PulseExtenderBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.PulseRepeaterBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.PulseTimerBehaviour;
 import io.github.nbcss.createfactorycontroller.content.helper.GaugeMigration;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -47,6 +50,9 @@ public final class ComponentRegistry {
         registerType(ArithmeticTubeBehaviour.TYPE);
         registerType(LeverBehaviour.TYPE);
         registerType(ButtonBehaviour.TYPE);
+        registerType(PulseRepeaterBehaviour.TYPE);
+        registerType(PulseExtenderBehaviour.TYPE);
+        registerType(PulseTimerBehaviour.TYPE);
 
         // Create: Repackaged's Fluid Gauge is registered only when the addon is present (ModList check — timing-safe).
         if (RepackagedCompat.isLoaded())

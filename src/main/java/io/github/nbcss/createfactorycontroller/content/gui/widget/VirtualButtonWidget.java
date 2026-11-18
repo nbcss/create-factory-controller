@@ -1,9 +1,9 @@
 package io.github.nbcss.createfactorycontroller.content.gui.widget;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import io.github.nbcss.createfactorycontroller.content.component.redstone.ButtonBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -43,6 +43,6 @@ public class VirtualButtonWidget extends VirtualManualSourceWidget<ButtonBehavio
 
     /** Full forUI volume: sounds.json already scales the button clicks to 0.3; the 0.25 default would mute them. */
     private static void playClick(SoundEvent sound) {
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound, 1f, 1f));
+        ScreenSounds.play(sound, 1f, 1f);
     }
 }

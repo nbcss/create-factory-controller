@@ -7,6 +7,9 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGa
 import io.github.nbcss.createfactorycontroller.content.component.VirtualRedstoneLinkBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.redstone.ButtonBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.redstone.LeverBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.PulseExtenderBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.PulseRepeaterBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.redstone.PulseTimerBehaviour;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +35,9 @@ public final class ComponentWidgetRegistry {
         register(ArithmeticTubeBehaviour.class, VirtualArithmeticTubeWidget::new);
         register(LeverBehaviour.class, VirtualLeverWidget::new);
         register(ButtonBehaviour.class, VirtualButtonWidget::new);
+        register(PulseRepeaterBehaviour.class, b -> new VirtualBrassDiodeWidget(b, "output_power"));
+        register(PulseExtenderBehaviour.class, b -> new VirtualBrassDiodeWidget(b, "output_2_power"));
+        register(PulseTimerBehaviour.class, b -> new VirtualBrassDiodeWidget(b, "output_power"));
     }
 
     private ComponentWidgetRegistry() {}

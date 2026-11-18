@@ -21,11 +21,9 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGa
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.createmod.catnip.gui.element.GuiGameElement;
-import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.PlayerInventoryWidget;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -84,8 +82,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         this.gaugePos = behaviour.position();
         this.ignoreData = false;
         /** Chime when the overlay opens — played client-side for this player only. */
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+        ScreenSounds.panelOpen();
     }
 
     @Override
@@ -271,8 +268,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     @Override
     public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        ScreenSounds.panelClose();
         super.removed();
     }
 

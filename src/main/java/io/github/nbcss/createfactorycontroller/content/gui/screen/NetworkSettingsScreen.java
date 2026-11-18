@@ -22,7 +22,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -86,8 +85,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         this.controller = controller;
         this.network = network;
         this.icon = controller.getMenu().networkIcon(network).copy();
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_OPEN.get(), 1f));
+        ScreenSounds.panelOpen();
     }
 
     private Component defaultName() {
@@ -140,7 +138,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
                         .build())
                 .onClick(button -> {
                     setIconFromCarried(menu.getCarried(), true);
-                    playClickSound();
+                    ScreenSounds.click();
                     return true;
                 }));
         addRenderableWidget(new InteractiveAreaWidget(
@@ -154,7 +152,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
                         nameBox.setValue("");
                         nameBox.setFocused(true);
                         setFocused(nameBox);
-                        playClickSound();
+                        ScreenSounds.click();
                         return true;
                     }
                     return !nameBox.isMouseOver(mouseX, mouseY);
@@ -201,7 +199,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         nameBox.setValue("");
         nameBox.setFocused(false);
         icon = ItemStack.EMPTY;
-        playClickSound();
+        ScreenSounds.click();
     }
 
     private void returnToController() {
@@ -229,10 +227,6 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
         return new ItemStack(source.getItem());
     }
 
-    private void playClickSound() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 1f));
-    }
 
     // ── Render ────────────────────────────────────────────────────────────────
 
@@ -304,7 +298,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
     protected void slotClicked(@NotNull Slot slot, int slotId, int mouseButton, @NotNull ClickType type) {
         if (type == ClickType.QUICK_MOVE && slot.hasItem()) {
             icon = plainIcon(slot.getItem());
-            playClickSound();
+            ScreenSounds.click();
             return;
         }
         super.slotClicked(slot, slotId, mouseButton, type);
@@ -317,8 +311,7 @@ public class NetworkSettingsScreen extends AbstractSimiContainerScreen<FactoryCo
 
     @Override
     public void removed() {
-        Minecraft.getInstance().getSoundManager().play(
-            SimpleSoundInstance.forUI(CreateFactoryController.GAUGE_UI_CLOSE.get(), 1f));
+        ScreenSounds.panelClose();
         super.removed();
     }
 

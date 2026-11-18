@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 
+import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
@@ -246,12 +247,12 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             RecipeSlot a = s.customSlots.get(from);
             s.customSlots.set(from, s.customSlots.get(to));
             s.customSlots.set(to, a);
-            ConfigureRecipeScreen.playClickSound();
+            ScreenSounds.click();
         } else if (button == 1) {   // copy into an empty slot (replicate the ingredient)
             RecipeSlot src = s.customSlots.get(from);
             if (!src.isEmpty() && s.customSlots.get(to).isEmpty()) {
                 s.customSlots.set(to, new RecipeSlot(src.source(), src.count()));
-                ConfigureRecipeScreen.playClickSound();
+                ScreenSounds.click();
             }
         }
         return true;
@@ -278,7 +279,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         }
         if (next != rs.count()) {
             s.customSlots.set(slot, new RecipeSlot(rs.source(), next));
-            ConfigureRecipeScreen.playScrollSound();
+            ScreenSounds.scroll();
             if (ctrl && !fluid) {
                 for (int i = 0; i < s.customSlots.size(); i++) {
                     if (i == slot) continue;
@@ -326,6 +327,6 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             int c = s.inputConnections.indexOf(source);
             if (c >= 0) { s.disconnectInput(c); return; }   // disconnectInput plays the click sound
         }
-        ConfigureRecipeScreen.playClickSound();
+        ScreenSounds.click();
     }
 }

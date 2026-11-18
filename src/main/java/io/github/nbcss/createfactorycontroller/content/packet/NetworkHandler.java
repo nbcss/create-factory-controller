@@ -29,6 +29,7 @@ public final class NetworkHandler {
         registrar.playToServer(ConfigureArithmeticInputPacket.TYPE, ConfigureArithmeticInputPacket.STREAM_CODEC, ConfigureArithmeticInputPacket::handle);
         registrar.playToServer(ComponentPressPacket.TYPE, ComponentPressPacket.STREAM_CODEC, ComponentPressPacket::handle);
         registrar.playToServer(ConfigureRedstoneLinkPacket.TYPE, ConfigureRedstoneLinkPacket.STREAM_CODEC, ConfigureRedstoneLinkPacket::handle);
+        registrar.playToServer(ConfigureBrassDiodePacket.TYPE, ConfigureBrassDiodePacket.STREAM_CODEC, ConfigureBrassDiodePacket::handle);
         registrar.playToServer(RetuneCarriedPacket.TYPE, RetuneCarriedPacket.STREAM_CODEC, RetuneCarriedPacket::handle);
         registrar.playToServer(RenameControllerPacket.TYPE, RenameControllerPacket.STREAM_CODEC, RenameControllerPacket::handle);
         registrar.playToServer(SetAdjacentContainersPacket.TYPE, SetAdjacentContainersPacket.STREAM_CODEC, SetAdjacentContainersPacket::handle);
