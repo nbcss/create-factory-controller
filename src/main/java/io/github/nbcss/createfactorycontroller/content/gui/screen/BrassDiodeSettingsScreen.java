@@ -275,7 +275,7 @@ public class BrassDiodeSettingsScreen extends AbstractSimiContainerScreen<Factor
     protected void renderForeground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         BrassDiodeBehaviour diode = diode();
         if (diode != null) {
-            Component title = diode.getName();
+            Component title = Component.translatable("createfactorycontroller.gui.component_settings", diode.getName());
             gfx.drawString(font, title, panelX + PANEL_W / 2 - font.width(title) / 2, panelY + 4, TITLE_COLOR, false);
         }
         super.renderForeground(gfx, mouseX, mouseY, partialTicks);

@@ -52,12 +52,14 @@
 # 1.3.0
 - [DONE] Quick Access
 - [DONE] Controller can transfer component item from/to nearby container blocks
-- [TODO] More redstone units (timer etc.)
+- [DONE] More redstone units (timer etc.)
+- [TODO] Expand controller settings screen
+- [TODO] Controller IO Link
+- [TODO] Paper as component
 - [TODO] Component Search
 - [TODO] Redstone Requester
 - [TODO] Selector Gauge
 - [TODO] Add tracker UI to show managed address, gauges, promises
-- [TODO] Expand controller settings screen
 - [TODO] Save gauge settings without close
 - [TODO] Rework production order system to Production Requester
 - [TODO] Repackager Split/Merge mode of request multiplier
@@ -69,6 +71,7 @@
 - [TODO] >9 items production order entry
 - [TODO] Address Hint
 - [TODO] L-Tab toggle inventory/supply panel on/off
+- [TODO] Visual variant (rotate) of components
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190
@@ -78,7 +81,6 @@
 - [TBC] Fix gauge sound overload?
 - [TODO] Color wire/bulb by limit blocked state
 - [TODO] Crafting pattern overload
-- [TODO] Controller IO Link
 - [TODO] No-sending production order
 - [TODO] Delta production order
 - [TODO] Multi-package request
@@ -91,7 +93,6 @@
 - [TODO] Allow production order as ingredient for JEI crafting
 - [TODO] Custom arrow bend mode
 - [TODO] Custom Keybinding Preset
-- [TODO] Paper as component
 - [TODO] Production Order Error Notification
 - [TODO] Projection Mode
 - [TODO] Controller disabled (redstone powered) indicator
