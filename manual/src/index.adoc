@@ -1,5 +1,5 @@
 = Create: Factory Controller Manual
-:mod-version: 1.2.3
+:mod-version: 1.2.4
 
 Create: Factory Controller provides a block called the "`factory controller`", which allows you to place factory gauges and other components on a virtual board stored inside the block. Factory gauges placed in factory controllers also receive many functional enhancements.
 
