@@ -1,7 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id "pl.allegro.tech.build.axion-release" version "1.21.3"
+    id 'net.researchgate.release' version '3.2.0'
     id 'net.neoforged.moddev' version '2.0.141'
     id 'idea'
 }
@@ -15,14 +15,20 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-scmVersion {
-    def suffix = "neoforge-${minecraft_version}";
-    versionCreator { version, position -> "${version}-${suffix}".toString() }
-    tag.serializer { config, version -> "v${version}-${suffix}".toString() }
-    tag.deserializer { config, position, tagName -> tagName.find(/[\d.]+/) }
+release {
+    versionPatterns = [
+        /(\d+\.\d+\.)(\d+)/: { java.util.regex.Matcher m, p -> m.replaceFirst("${m.group(1)}${m.group(2) as int + 1}") }
+    ]
+    tagTemplate = 'v$version'
+    failOnCommitNeeded = false
+    failOnPublishNeeded = false
+    failOnUpdateNeeded = false
+    git {
+        requireBranch.set ""
+        pushToRemote.set false
+    }
 }
 
-version = scmVersion.version
 group = mod_group_id
 
 sourceSets.main.resources {
