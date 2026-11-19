@@ -1,13 +1,17 @@
-## 1.2.4
+## 1.3.0
 
 Features:
 - Lever and Stone Button can be placed in Factory Controller as manual redstone source.
+- Pulse Repeater, Pulse Extender and Pulse Timer from Create can be placed in Factory Controller.
 - Added "Component Supply" panel, which can quickly place component from player's inventory or adjacent container.
 - Added keybinding "Pick Component" (default middle-click) to pick clicked target component item from inventory to cursor.
 - Added keybinding "Return Component" (default right-click) to return current cursor item back to inventory.
 
+## 1.2.4
+
 Compatibility:
 - Dropped Fluidlogistics (< 1.2.5) compatibility support
+- Fixed re-packaging issue with latest version of FluidLogistics
 
 Bugfixes:
 - Fixed import blueprint do not correctly recognize Fluid Factory Gauge from Fluidlogistics
