@@ -286,7 +286,7 @@ public class BrassDiodeSettingsScreen extends AbstractSimiContainerScreen<Factor
 
     @Override
     public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(panelX + 200, panelY + 22, 54, 54));   // the decorative diode model
+        return List.of(new Rect2i(panelX + 200, panelY + 34, 47, 40));
     }
 
     // ── Overlay plumbing ─────────────────────────────────────────────────────
