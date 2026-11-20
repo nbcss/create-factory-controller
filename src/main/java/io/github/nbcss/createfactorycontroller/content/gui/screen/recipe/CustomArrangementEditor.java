@@ -4,7 +4,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
-import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
@@ -85,12 +85,13 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
     }
 
     /** Places one crafting cell into custom slot {@code cell}: resolves the item to its source wire and clamps the
-     *  amount to the cell's capacity (one stack, or the fluid mB cap). */
+     *  amount to the cell's capacity (one stack, or the fluid/gas cap). */
     private void placeCraftingCell(int cell, ItemStack item, int amount) {
         VirtualComponentPosition src = sourceForItem(item);
         if (src == null) return;
-        int cap = FluidCompat.isFluidFilter(s.ingredientOf(src)) ? ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB
-                : ConfigureRecipeScreen.stackSizeOf(s.ingredientOf(src));
+        ItemStack ingredient = s.ingredientOf(src);
+        int cap = ResourceType.isBulk(ingredient) ? ResourceType.of(ingredient).bulkIngredientCap
+                : ConfigureRecipeScreen.stackSizeOf(ingredient);
         s.customSlots.set(cell, new RecipeSlot(src, Math.clamp(amount, 1, cap)));
     }
 
@@ -121,8 +122,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             RecipeSlot recipeSlot = s.customSlots.get(slot);
             if (!recipeSlot.isEmpty()) {
                 ItemStack stack = s.ingredientOf(recipeSlot.source());
-                String amount = FluidCompat.isFluidFilter(stack)
-                        ? ThresholdUnit.formatFluidAmount(recipeSlot.count()) : String.valueOf(recipeSlot.count());
+                String amount = ResourceType.of(stack).format(recipeSlot.count());
                 boolean srcIgnore = s.getMenu().componentAt(recipeSlot.source())
                         instanceof VirtualGaugeBehaviour src && src.ignoreData;
                 TooltipBuilder lines = TooltipBuilder.of(Minecraft.getInstance().font)
@@ -173,7 +173,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (stack.isEmpty()) return;
         ResourceIconRenderer.render(gfx, stack, ix, iy);
         int shown = slot.count() * (s.multiplierExcluded(slot.source()) ? 1 : scale);
-        s.drawItemCount(gfx, stack, ix, iy, shown, FluidCompat.isFluidFilter(stack));
+        s.drawItemCount(gfx, stack, ix, iy, shown, ResourceType.of(stack));
     }
 
     @Override
@@ -202,7 +202,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             gfx.pose().translate(0, 0, 250);
             int dx = mouseX - 8, dy = mouseY - 8;
             gfx.renderItem(stack, dx, dy);
-            s.drawItemCount(gfx, stack, dx, dy, src.count(), FluidCompat.isFluidFilter(stack));
+            s.drawItemCount(gfx, stack, dx, dy, src.count(), ResourceType.of(stack));
             gfx.pose().popPose();
         }
     }
@@ -266,12 +266,13 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (rs.isEmpty()) return true;
         ItemStack ingredient = s.ingredientOf(rs.source());
         boolean ctrl = Screen.hasControlDown();
-        boolean fluid = FluidCompat.isFluidFilter(ingredient);
+        ResourceType type = ResourceType.of(ingredient);
+        boolean bulk = type.isBulk();
         // Floored at 1 in both branches — clearing is shift-click only.
         int next;
-        if (fluid) {   // fluid cell: millibuckets with fluid steps + cap
+        if (bulk) {   // fluid/gas cell: mB/GU with bulk steps + cap
             next = ConfigureRecipeScreen.adjustFluidAmount(rs.count(), dir,
-                Screen.hasShiftDown(), ctrl, 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB);
+                Screen.hasShiftDown(), ctrl, 1, type.bulkIngredientCap);
         } else if (ctrl) {   // ctrl-scroll a solid slot: fine ±1 step, levels every other solid slot to match
             next = Mth.clamp(rs.count() + dir, 1, Math.max(1, ConfigureRecipeScreen.stackSizeOf(ingredient)));
         } else {
@@ -280,13 +281,13 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (next != rs.count()) {
             s.customSlots.set(slot, new RecipeSlot(rs.source(), next));
             ScreenSounds.scroll();
-            if (ctrl && !fluid) {
+            if (ctrl && !bulk) {
                 for (int i = 0; i < s.customSlots.size(); i++) {
                     if (i == slot) continue;
                     RecipeSlot other = s.customSlots.get(i);
                     if (other.isEmpty()) continue;
                     ItemStack otherItem = s.ingredientOf(other.source());
-                    if (FluidCompat.isFluidFilter(otherItem)) continue;
+                    if (ResourceType.isBulk(otherItem)) continue;
                     int capped = Mth.clamp(next, 1, Math.max(1, ConfigureRecipeScreen.stackSizeOf(otherItem)));
                     if (capped != other.count())
                         s.customSlots.set(i, new RecipeSlot(other.source(), capped));

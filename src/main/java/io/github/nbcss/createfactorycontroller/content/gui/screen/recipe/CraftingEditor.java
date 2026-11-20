@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.gui.screen.recipe;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -44,7 +45,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 if (i < slots.size()) {
                     ConfigureRecipeScreen.CraftSlot slot = slots.get(i);
                     gfx.renderItem(slot.stack(), ix, iy);
-                    s.drawItemCount(gfx, slot.stack(), ix, iy, slot.amount() * scale, false);
+                    s.drawItemCount(gfx, slot.stack(), ix, iy, slot.amount() * scale, ResourceType.ITEM);
                 }
             }
         } else {
@@ -59,7 +60,7 @@ class CraftingEditor extends GaugeWorkModeEditor {
                 gfx.renderItem(stack, ix, iy);
                 int dispBatch = s.effectiveBatch() * scale;
                 if (!stack.isEmpty() && dispBatch > 1)
-                    s.drawItemCount(gfx, stack, ix, iy, Math.max(1, stack.getCount()) * dispBatch, false);
+                    s.drawItemCount(gfx, stack, ix, iy, Math.max(1, stack.getCount()) * dispBatch, ResourceType.ITEM);
             }
         }
     }

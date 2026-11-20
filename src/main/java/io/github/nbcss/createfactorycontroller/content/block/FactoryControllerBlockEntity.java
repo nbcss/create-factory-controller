@@ -18,7 +18,6 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.*;
 import io.github.nbcss.createfactorycontroller.content.blueprint.BlueprintStorage;
 import io.github.nbcss.createfactorycontroller.content.blueprint.SchematicImport;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.*;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticOperator;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.BuiltinOperator;
@@ -959,18 +958,16 @@ public class FactoryControllerBlockEntity extends SmartBlockEntity implements Me
     public void setComponentItem(VirtualComponentPosition pos, ItemStack filter, boolean ignoreData) {
         if (!(components.get(pos) instanceof VirtualGaugeBehaviour gauge)) return;
         if (!gauge.filterResolver().acceptsFilter(filter)) return;
-        boolean fluid = FluidCompat.isFluidFilter(filter);
+        ResourceType type = ResourceType.of(filter);
         ItemStack oldFilter = gauge.filter.copy();
-        // Ignore-data never applies to a fluid filter (the set-item screen hides the toggle there).
-        gauge.ignoreData = ignoreData && !fluid;
+        // Ignore-data never applies to a fluid/gas filter (the set-item screen hides the toggle there).
+        gauge.ignoreData = ignoreData && !type.isBulk();
         // With ignore-data on, store the filter as a "pure" item (a fresh stack with no NBT/components) so
         // its identity is the item type alone — matching the type-only stock/promise/ingredient matching.
         gauge.filter = gauge.ignoreData ? new ItemStack(filter.getItem()) : filter.copy();
         refreshGaugeIdentity(gauge, !ItemStack.isSameItemSameComponents(oldFilter, gauge.filter));
-        if (fluid && !gauge.unit.isFluid())
-            gauge.unit = ThresholdUnit.FLUID_BUCKET;
-        else if (!fluid && gauge.unit.isFluid())
-            gauge.unit = ThresholdUnit.ITEMS;
+        if (gauge.unit.type != type)
+            gauge.unit = type.defaultUnit();
         if (gauge.requestMode.isPassive())
             gauge.resetPassiveDemand();   // filter/unit changes invalidate the derived target's unit and identity
         updateGaugeOrderable(gauge);   // filter change can make it (in)eligible

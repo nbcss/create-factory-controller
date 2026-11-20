@@ -9,6 +9,7 @@ import com.simibubi.create.content.logistics.stockTicker.PackageOrder;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.simibubi.create.content.logistics.packager.PackagingRequest;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
 import io.github.nbcss.createfactorycontroller.content.packet.OrderNotificationPacket;
@@ -222,8 +223,8 @@ public class ProductionOrderManager extends SavedData {
         int linkIndex = inStock.isEmpty() ? 0 : 1;
         for (BigItemStack b : patterns) {
             ProductionTarget t = ProductionPatternItem.getTarget(b.stack);
-            // A fluid pattern is ordered in buckets (B), which is 1000mb
-            int amount = FluidCompat.isFluidFilter(t.display()) ? b.count * 1000 : b.count;
+            // A fluid/gas pattern is ordered in buckets (B) / kGU, i.e. 1000 base units
+            int amount = b.count * ResourceType.of(t.display()).baseAmount;
             produced.add(new Task(t.network(), t.patternId(),
                 t.display().copy(), amount, address, orderId, linkIndex++, false));
         }

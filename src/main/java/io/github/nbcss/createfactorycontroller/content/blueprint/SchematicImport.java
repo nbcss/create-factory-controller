@@ -13,6 +13,7 @@ import com.simibubi.create.content.redstone.link.RedstoneLinkNetworkHandler.Freq
 import com.simibubi.create.content.schematics.client.SchematicAndQuillHandler;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
@@ -243,11 +244,14 @@ public final class SchematicImport {
 
     private static void applyGauge(VirtualGaugeBehaviour gauge, FactoryPanelBehaviour panel) {
         ItemStack filter = panel.getFilter();
-        if (FluidCompat.isFluidFilter(filter)) {
-            // CFL 1.3+ keys fluids by proxy item; store the mod's own filter form instead.
-            gauge.filter = FluidCompat.makeFluidFilter(FluidCompat.getFilterFluid(filter));
-            applyFluidTarget(gauge, panel.count, panel.upTo ? ThresholdUnit.FLUID_MB : ThresholdUnit.FLUID_BUCKET);
-            gauge.recipeOutput = Math.clamp(panel.recipeOutput, 1, VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB);
+        ResourceType type = ResourceType.of(filter);
+        if (type.isBulk()) {
+            // Target and output are in base units (mB / GU). CFL 1.3+ keys fluids by proxy item, so a fluid is
+            // re-wrapped into the mod's own filter form; its up-to flag picks mB over B (gas panels always set it).
+            boolean fluid = type == ResourceType.FLUID;
+            gauge.filter = fluid ? FluidCompat.makeFluidFilter(FluidCompat.getFilterFluid(filter)) : filter.copyWithCount(1);
+            applyBulkTarget(gauge, panel.count, fluid && panel.upTo ? type.fineUnit() : type.defaultUnit());
+            gauge.recipeOutput = Math.clamp(panel.recipeOutput, 1, type.bulkOutputCap);
         } else {
             gauge.filter = filter.copy();
             gauge.unit = panel.upTo ? ThresholdUnit.ITEMS : ThresholdUnit.STACKS;
@@ -262,15 +266,17 @@ public final class SchematicImport {
         gauge.mode = arrangement.isEmpty() ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
     }
 
-    /** Sets a fluid target given in mB, keeping {@code preferred} unless it can't hold the amount exactly. */
-    private static void applyFluidTarget(VirtualGaugeBehaviour gauge, long targetMb, ThresholdUnit preferred) {
+    /** Sets a fluid/gas target given in base units (mB / GU), keeping {@code preferred} unless it can't hold the
+     *  amount exactly. */
+    private static void applyBulkTarget(VirtualGaugeBehaviour gauge, long target, ThresholdUnit preferred) {
+        ThresholdUnit fine = preferred.type.fineUnit(), coarse = preferred.type.coarseUnit();
         ThresholdUnit unit = preferred;
-        if (unit == ThresholdUnit.FLUID_BUCKET && targetMb % 1000 != 0 && targetMb <= ThresholdUnit.FLUID_MB.getMaxRequestCount())
-            unit = ThresholdUnit.FLUID_MB;
-        else if (unit == ThresholdUnit.FLUID_MB && targetMb > unit.getMaxRequestCount())
-            unit = ThresholdUnit.FLUID_BUCKET;
+        if (unit == coarse && target % coarse.toCountMultiplier(gauge.filter) != 0 && target <= fine.getMaxRequestCount())
+            unit = fine;
+        else if (unit == fine && target > unit.getMaxRequestCount())
+            unit = coarse;
         gauge.unit = unit;
-        gauge.count = Math.clamp(targetMb / unit.toCountMultiplier(gauge.filter), 0, unit.getMaxRequestCount());
+        gauge.count = Math.clamp(target / unit.toCountMultiplier(gauge.filter), 0, unit.getMaxRequestCount());
     }
 
     @Nullable
@@ -305,11 +311,11 @@ public final class SchematicImport {
     private static void applyFluidGauge(VirtualGaugeBehaviour gauge, FactoryPanelBehaviour panel, CompoundTag panelTag) {
         gauge.filter = FluidCompat.makeFluidGaugeFilter(readFluid(panelTag.getCompound("Stack")));
         int scale = panelTag.getInt("Scale");
-        applyFluidTarget(gauge, (long) panel.count * pow1000(scale),
+        applyBulkTarget(gauge, (long) panel.count * pow1000(scale),
                 scale >= 1 ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.FLUID_MB);
         gauge.recipeAddress = panel.recipeAddress == null ? "" : panel.recipeAddress;
         long outputMb = (long) Math.max(1, panel.recipeOutput) * pow1000(scale);
-        gauge.recipeOutput = (int) Math.min(VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB, outputMb);
+        gauge.recipeOutput = (int) Math.min(ResourceType.FLUID.bulkOutputCap, outputMb);
         gauge.promiseClearingInterval = panel.promiseClearingInterval;
         gauge.mode = GaugeWorkMode.REGULAR;
     }

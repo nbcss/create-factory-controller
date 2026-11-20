@@ -72,6 +72,7 @@
 - [TODO] Address Hint
 - [TODO] L-Tab toggle inventory/supply panel on/off
 - [TODO] Visual variant (rotate) of components
+- [TODO] Middle-Click to type amount
 
 # Roadmap
 - [Patch] Chunk load over request https://github.com/Creators-of-Create/Create/issues/8190

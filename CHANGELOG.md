@@ -7,6 +7,9 @@ Features:
 - Added keybinding "Pick Component" (default middle-click) to pick clicked target component item from inventory to cursor.
 - Added keybinding "Return Component" (default right-click) to return current cursor item back to inventory.
 
+Compatibility:
+- Gas Factory Gauge from Create: Crafted Beginning can now placed in factory controller.
+
 ## 1.2.4
 
 Compatibility:

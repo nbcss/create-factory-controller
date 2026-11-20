@@ -13,7 +13,7 @@ import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.compat.DeployerCompat;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.IngredientCheckClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.ProductionOrdersScreen;
 import io.github.nbcss.createfactorycontroller.content.item.ProductionPatternItem;
@@ -69,8 +69,10 @@ public abstract class StockKeeperRequestScreenMixin {
                                     @Local(argsOnly = true, ordinal = 1) boolean isRenderingOrders) {
         if (ProductionPatternItem.isPattern(entry.stack)) {
             if (!isRenderingOrders) return;   // stock-list blueprint: infinite supply, no count
-            if (FluidCompat.isFluidFilter(ProductionPatternItem.displayOf(entry.stack))) {
-                SpriteNumbersRender.drawCount(graphics, SpriteNumbersRender.abbreviate(customCount) + "b", 1, 1);
+            ResourceType type = ResourceType.of(ProductionPatternItem.displayOf(entry.stack));
+            if (type.isBulk()) {
+                SpriteNumbersRender.drawCount(graphics,
+                        SpriteNumbersRender.abbreviate(customCount) + type.patternGlyph, 1, 1);
                 return;
             }
         }

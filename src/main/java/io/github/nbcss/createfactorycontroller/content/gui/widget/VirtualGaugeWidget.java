@@ -5,6 +5,7 @@ import io.github.nbcss.createfactorycontroller.ClientConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.recipe.ConfigureRecipeScreen;
@@ -200,7 +201,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
     }
 
     private String formatAmount(int value) {
-        return FluidCompat.isFluidFilter(behaviour.filter)
+        return ResourceType.isBulk(behaviour.filter)
                 ? behaviour.unit.formatInUnit(value)
                 : formatCount(value);
     }
@@ -229,9 +230,9 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
                             Component.literal(behaviour.isInfiniteStock() ? "∞" : formatAmount(behaviour.stockLevel))
                                     .withStyle(ChatFormatting.WHITE))
                     .withStyle(ChatFormatting.GRAY);
-            // Item filters get the recipe-screen stack breakdown, always shown (even below one stack); fluids are
-            // already in their own unit and ∞ has no stack meaning.
-            if (!FluidCompat.isFluidFilter(behaviour.filter) && !behaviour.isInfiniteStock())
+            // Item filters get the recipe-screen stack breakdown, always shown (even below one stack); fluid/gas
+            // are already in their own unit and ∞ has no stack meaning.
+            if (!ResourceType.isBulk(behaviour.filter) && !behaviour.isInfiniteStock())
                 stockLine.append(stackBreakdown(behaviour.stockLevel, Math.max(1, behaviour.filter.getMaxStackSize())));
             tooltip.line(stockLine);
             tooltip.line(Component.translatable("createfactorycontroller.gui.promised",

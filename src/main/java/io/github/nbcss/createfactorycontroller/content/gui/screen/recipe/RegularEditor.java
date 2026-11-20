@@ -4,7 +4,7 @@ import io.github.nbcss.createfactorycontroller.content.gui.screen.ScreenSounds;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
-import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
@@ -40,11 +40,10 @@ class RegularEditor extends GaugeWorkModeEditor {
         for (int i = 0; i < slots.size(); i++) {
             ConfigureRecipeScreen.InputSlot slot = slots.get(i);
             int ix = cellX(i), iy = cellY(i);
-            boolean fluidIng = s.isFluidConn(slot.connectionIndex());
             ItemStack stack = s.ingredientOf(s.inputConnections.get(slot.connectionIndex()));
             ResourceIconRenderer.render(gfx, stack, ix, iy);
             if (!stack.isEmpty()) {
-                s.drawItemCount(gfx, stack, ix, iy, slot.amount(), fluidIng);
+                s.drawItemCount(gfx, stack, ix, iy, slot.amount(), ResourceType.of(stack));
             }
         }
     }
@@ -55,17 +54,16 @@ class RegularEditor extends GaugeWorkModeEditor {
         List<ConfigureRecipeScreen.InputSlot> slots = s.layoutInputSlots(s.previewScale(mouseX, mouseY));
         if (hovered >= 0 && hovered < slots.size()) {
             ConfigureRecipeScreen.InputSlot slot = slots.get(hovered);
-            boolean fluidIng = s.isFluidConn(slot.connectionIndex());
             ItemStack stack = s.ingredientOf(s.inputConnections.get(slot.connectionIndex()));
             VirtualComponentPosition source = s.inputConnections.get(slot.connectionIndex());
             int total = Math.max(1, s.inputTotals.get(slot.connectionIndex()));
-            String totalLabel = fluidIng ? ThresholdUnit.formatFluidAmount(total) : String.valueOf(total);
+            String totalLabel = ResourceType.of(stack).format(total);
             boolean srcIgnore = s.getMenu().componentAt(source)
                     instanceof VirtualGaugeBehaviour src && src.ignoreData;
             MutableComponent inHeader = CreateLang.translate("gui.factory_panel.sending_item",
                             FluidCompat.filterName(stack).getString() + " x" + totalLabel)
                     .color(ScrollInput.HEADER_RGB).component();
-            if (!fluidIng && total > ConfigureRecipeScreen.stackSizeOf(stack))
+            if (!ResourceType.isBulk(stack) && total > ConfigureRecipeScreen.stackSizeOf(stack))
                 inHeader.append(ConfigureRecipeScreen.stackBreakdown(
                         total, ConfigureRecipeScreen.stackSizeOf(stack)));
             if (stack.isEmpty())
@@ -166,8 +164,8 @@ class RegularEditor extends GaugeWorkModeEditor {
     /** Reduces each connection total to what still fits the 9-slot grid (best-effort, order-dependent). */
     private void clampTotalsToGrid() {
         for (int c = 0; c < s.inputConnections.size(); c++) {
-            if (s.isFluidConn(c)) {
-                s.inputTotals.set(c, Mth.clamp(s.inputTotals.get(c), 1, ConfigureRecipeScreen.FLUID_INGREDIENT_CAP_MB));
+            if (s.isBulkConn(c)) {
+                s.inputTotals.set(c, Mth.clamp(s.inputTotals.get(c), 1, s.connType(c).bulkIngredientCap));
             } else {
                 int ss = ConfigureRecipeScreen.stackSizeOf(s.ingredientOf(s.inputConnections.get(c)));
                 int maxTotal = Math.max(1, ConfigureRecipeScreen.MAX_INPUT_SLOTS - s.slotsUsedExcept(c)) * ss;

@@ -3,6 +3,7 @@ package io.github.nbcss.createfactorycontroller.content.component;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.RepackagedCompat;
 import io.github.nbcss.createfactorycontroller.content.component.arithmetic.ArithmeticTubeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.CcbGasGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.FluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.LogicalTubeBehaviour;
@@ -63,6 +64,9 @@ public final class ComponentRegistry {
         // Create: Fluid Logistics' dedicated Fluid Factory Gauge (1.2.7+).
         if (CflFluidGaugeBehaviour.isAvailable() && !TYPE_REGISTRY.containsKey(CflFluidGaugeBehaviour.TYPE.id()))
             registerType(CflFluidGaugeBehaviour.TYPE);
+        // Create: Crafted Beginning's Gas Factory Gauge.
+        if (CcbGasGaugeBehaviour.isAvailable() && !TYPE_REGISTRY.containsKey(CcbGasGaugeBehaviour.TYPE.id()))
+            registerType(CcbGasGaugeBehaviour.TYPE);
     }
 
     /** Whether attaching {@code itemId} needs a controller logistics network */

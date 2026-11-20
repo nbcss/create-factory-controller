@@ -11,6 +11,7 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.lang.FontHelper;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
@@ -19,7 +20,6 @@ import io.github.nbcss.createfactorycontroller.content.gui.widget.TooltipIconBut
 import io.github.nbcss.createfactorycontroller.content.helper.TooltipBuilder;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.packet.GaugeSetItemPacket;
-import net.neoforged.neoforge.fluids.FluidStack;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.PlayerInventoryWidget;
 import net.minecraft.client.Minecraft;
@@ -50,6 +50,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     private final FactoryControllerScreen controller;
     private final VirtualComponentPosition gaugePos;
     private final VirtualGaugeBehaviour behaviour;
+    private GaugeScreenStyle style = GaugeScreenStyle.DEFAULT;
     /** Staged filter copied into the gauge when the screen closes. */
     private ItemStack filter = ItemStack.EMPTY;
 
@@ -90,6 +91,8 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         setWindowSize(controller.guiWidth(), controller.guiHeight());
         setWindowOffset(0, 0);
         super.init();
+
+        style = GaugeScreenStyle.of(behaviour);
 
         AllGuiTextures bg = AllGuiTextures.FACTORY_GAUGE_SET_ITEM;
         int blockW = bg.getWidth();
@@ -136,7 +139,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
         addWidget(ignoreDataButton);
 
         helpButton = new HelpButton(panelX + blockW - HelpButton.WIDTH - 20, panelY + 3,
-                HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html");
+                style.helpPalette(), "factory-gauge.html");
         addWidget(helpButton);
         filterArea = addRenderableWidget(new InteractiveAreaWidget(
                 filterX(), filterY(), FILTER_SLOT_SIZE, FILTER_SLOT_SIZE,
@@ -160,7 +163,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
     }
 
     private void updateIgnoreDataButtons() {
-        boolean noIgnoreData = !behaviour.filterResolver().supportsIgnoreData() || FluidCompat.isFluidFilter(filter);
+        boolean noIgnoreData = !behaviour.filterResolver().supportsIgnoreData() || ResourceType.isBulk(filter);
         if (noIgnoreData) ignoreData = false;   // can't ignore data; the server clamps this too
         respectDataButton.visible = !noIgnoreData;
         ignoreDataButton.visible = !noIgnoreData;
@@ -219,7 +222,7 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
         AllGuiTextures bg = AllGuiTextures.FACTORY_GAUGE_SET_ITEM;
         RenderSystem.enableBlend();
-        bg.render(gfx, panelX - 5, panelY);
+        style.setFilterBg().blit(gfx, panelX - 5, panelY, bg.getWidth(), bg.getHeight());
         inventoryPanel.render(gfx, mouseX, mouseY, partialTick);
 
         confirm.render(gfx, mouseX, mouseY, partialTick);
@@ -293,18 +296,11 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
 
     // ── JEI hooks (used by the handlers registered on this screen) ──
     public Rect2i ghostSlotArea() { return new Rect2i(filterX(), filterY(), 16, 16); }
-    public boolean acceptsJeiItems() { return behaviour.filterResolver().acceptsItemDrop(); }
-    public boolean acceptsJeiFluids() { return behaviour.filterResolver().acceptsFluidDrop(); }
-    /** JEI drop. For a fluid gauge the handler passes an already-built fluid-filter token (from a dragged fluid); set
-     *  it only if it's a valid fluid filter (a stray item drop is refused). An item gauge takes the stack directly. */
+    public ItemStack filterFromIngredient(Object ingredient) { return behaviour.filterResolver().fromIngredient(ingredient); }
+    /** JEI drop of a filter built by {@link #filterFromIngredient}; re-checked in case the gauge changed meanwhile. */
     public void setGhostFromJei(ItemStack stack) {
         if (behaviour.filterResolver().acceptsFilter(stack)) setFilter(stack);
         updateIgnoreDataButtons();
-    }
-
-    public void setFluidFromJei(FluidStack fluid) {
-        ItemStack stack = behaviour.filterResolver().fromFluid(fluid);
-        if (!stack.isEmpty()) setGhostFromJei(stack);
     }
 
     /** Empty-filter-slot hint */
@@ -320,6 +316,10 @@ public class SetItemScreen extends AbstractSimiContainerScreen<FactoryController
                             .withStyle(net.minecraft.ChatFormatting.GRAY))
                     .build();
         }
+        // A gas-only gauge takes a gas container (balloon / canister), never an item.
+        if (behaviour.filterResolver().acceptsGas() && !behaviour.filterResolver().acceptsItemDrop())
+            return tooltip.line(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_gas_only")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY)).build();
         // A fluid-only gauge (dedicated fluid factory gauge) takes a fluid, never an item.
         if (behaviour.filterResolver().acceptsFluidDrop() && !behaviour.filterResolver().acceptsItemDrop())
             return tooltip.line(Component.translatable("createfactorycontroller.gui.set_item.filter_tip_fluid_only")

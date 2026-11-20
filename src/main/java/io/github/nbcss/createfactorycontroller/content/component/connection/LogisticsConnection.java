@@ -2,7 +2,7 @@ package io.github.nbcss.createfactorycontroller.content.component.connection;
 
 import com.simibubi.create.foundation.utility.CreateLang;
 import io.github.nbcss.createfactorycontroller.content.block.ComponentHolder;
-import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
@@ -21,7 +21,7 @@ public class LogisticsConnection extends Connection {
     public static final Type TYPE = new Connection.Type("LOGISTICS", 0x409DF7) {
         @Override
         public Connection create(VirtualComponentBehaviour source, VirtualComponentBehaviour sink) {
-            int amount = source instanceof VirtualGaugeBehaviour g && FluidCompat.isFluidFilter(g.filter) ? 1000 : 1;
+            int amount = source instanceof VirtualGaugeBehaviour g ? ResourceType.of(g.filter).baseAmount : 1;
             return new LogisticsConnection(source.position(), sink.position(), amount);
         }
 

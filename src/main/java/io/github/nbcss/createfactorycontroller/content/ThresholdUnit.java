@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
  * box can cycle between states.
  */
 public enum ThresholdUnit {
-    ITEMS("", Type.ITEM, 9_999) {
+    ITEMS("", ResourceType.ITEM, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -20,7 +20,7 @@ public enum ThresholdUnit {
             return CreateLang.translate("schedule.condition.threshold.items").component();
         }
     },
-    STACKS("▤", Type.ITEM, 9_999) {
+    STACKS("▤", ResourceType.ITEM, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return Math.max(1, stack.getMaxStackSize());
@@ -31,7 +31,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in millibuckets (1 mB = the unit value). Only valid for a fluid filter. */
-    FLUID_MB("mB", Type.FLUID, 9_999) {
+    FLUID_MB("mB", ResourceType.FLUID, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1;
@@ -42,7 +42,7 @@ public enum ThresholdUnit {
         }
     },
     /** Fluid amount in buckets (1 B = 1000 mB). Only valid for a fluid filter. */
-    FLUID_BUCKET("B", Type.FLUID, 9_999) {
+    FLUID_BUCKET("B", ResourceType.FLUID, 9_999) {
         @Override
         public int toCountMultiplier(ItemStack stack) {
             return 1000;
@@ -51,16 +51,37 @@ public enum ThresholdUnit {
         public Component label() {
             return Component.translatable("createfactorycontroller.gui.unit_fluid_bucket");
         }
+    },
+    /** Gas amount in gas units (Create: Crafted Beginning). Only valid for a gas filter. */
+    GAS_GU("GU", ResourceType.GAS, 9_999) {
+        @Override
+        public int toCountMultiplier(ItemStack stack) {
+            return 1;
+        }
+        @Override
+        public Component label() {
+            return Component.translatable("createfactorycontroller.gui.unit_gas_gu");
+        }
+    },
+    /** Gas amount in kilo gas units (1 kGU = 1000 GU). Only valid for a gas filter. */
+    GAS_KGU("kGU", ResourceType.GAS, 9_999) {
+        @Override
+        public int toCountMultiplier(ItemStack stack) {
+            return 1000;
+        }
+        @Override
+        public Component label() {
+            return Component.translatable("createfactorycontroller.gui.unit_gas_kgu");
+        }
     };
-    public enum Type { ITEM, FLUID }
 
     public final String suffix;
-    /** Whether this unit measures a fluid (mB/B) rather than items; fluid and item units never mix. */
-    public final Type type;
+    /** What this unit measures; units of different kinds never mix. */
+    public final ResourceType type;
     /** Maximum value in gauge's target storage amount */
     public final int maxRequestCount;
 
-    ThresholdUnit(String suffix, Type type, int maxRequestCount) {
+    ThresholdUnit(String suffix, ResourceType type, int maxRequestCount) {
         this.suffix = suffix;
         this.type = type;
         this.maxRequestCount = maxRequestCount;
@@ -70,11 +91,7 @@ public enum ThresholdUnit {
         return maxRequestCount;
     }
 
-    public boolean isFluid() {
-        return type == Type.FLUID;
-    }
-
-    /** Next mode in the cycle, advancing by {@code dir} (±1) but staying within the same item/fluid group. */
+    /** Next mode in the cycle, advancing by {@code dir} (±1) but staying within the same kind. */
     public ThresholdUnit cycle(int dir) {
         int step = Integer.signum(dir == 0 ? 1 : dir);
         ThresholdUnit[] vals = values();
@@ -86,27 +103,18 @@ public enum ThresholdUnit {
     }
 
     /**
-     * Formats a fluid amount (millibuckets) for display
+     * Formats a bulk base-unit amount (mB / GU) in THIS unit: the coarse unit (B / kGU) rounds to one decimal, the
+     * fine unit is exact.
      */
-    public static String formatFluidAmount(int millibuckets) {
-        if (millibuckets < 1000) return millibuckets + "mB";
-        return new java.math.BigDecimal(millibuckets).movePointLeft(3).stripTrailingZeros().toPlainString() + "B";
+    public String formatInUnit(int amount) {
+        int multiplier = toCountMultiplier(ItemStack.EMPTY);
+        if (multiplier == 1) return amount + suffix;
+        return new java.math.BigDecimal(amount).divide(java.math.BigDecimal.valueOf(multiplier))
+            .setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + suffix;
     }
 
     /**
-     * Formats a millibucket amount in THIS fluid unit
-     */
-    public String formatInUnit(int millibuckets) {
-        if (this == FLUID_BUCKET)
-            return new java.math.BigDecimal(millibuckets).movePointLeft(3)
-                .setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "B";
-        if (this == FLUID_MB)
-            return millibuckets + "mB";
-        return formatFluidAmount(millibuckets);
-    }
-
-    /**
-     * Renders a threshold {@code value} expressed in THIS unit for display: a fluid amount uses this unit's mB/B
+     * Renders a threshold {@code value} expressed in THIS unit for display: a bulk amount uses this unit's own
      * notation, an item/stack amount is the plain count followed by the unit marker. Any class holding a count in
      * this unit (target, demand, minimum, …) can route it through here for one consistent look.
      */
@@ -116,10 +124,10 @@ public enum ThresholdUnit {
 
     /**
      * {@link #format(int)} with {@code thousandsSeparator} toggling the {@code 1,234} grouping of item/stack counts
-     * (fluids ignore it — they carry their own mB/B notation).
+     * (bulk units ignore it — they carry their own notation).
      */
     public String format(int value, boolean thousandsSeparator) {
-        if (isFluid())
+        if (type.isBulk())
             return formatInUnit(value * toCountMultiplier(ItemStack.EMPTY));
         String number = thousandsSeparator ? String.format(java.util.Locale.US, "%,d", value) : Integer.toString(value);
         return number + suffix;

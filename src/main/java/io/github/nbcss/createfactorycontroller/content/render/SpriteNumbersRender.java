@@ -1,5 +1,6 @@
 package io.github.nbcss.createfactorycontroller.content.render;
 
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.simibubi.create.content.logistics.BigItemStack;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
@@ -39,12 +40,32 @@ public final class SpriteNumbersRender {
 
     public static String abbreviateFluid(int mb) {
         if (mb >= BigItemStack.INF) return SpriteNumbersRender.INFINITE;
-        if (mb >= 1_000_000) return compactFluid(mb, 1_000_000, "kB");
-        if (mb >= 100) return compactFluid(mb, 1000, "B");
+        if (mb >= 1_000_000) return compactUnit(mb, 1_000_000, "kB");
+        if (mb >= 100) return compactUnit(mb, 1000, "B");
         return mb + "mB";
     }
 
-    private static String compactFluid(int amount, int divisor, String suffix) {
+    /**
+     * Gas units (GU). The sheet has no G/U glyphs, so gas shows a bare count with a k/m suffix; below 1k it uses the
+     * item format (space-padded under 100) so {@link #drawCount} keeps it on the item grid.
+     */
+    public static String abbreviateGas(int gu) {
+        if (gu >= BigItemStack.INF) return SpriteNumbersRender.INFINITE;
+        if (gu >= 1_000_000) return compactUnit(gu, 1_000_000, "m");
+        if (gu >= 1000) return compactUnit(gu, 1000, "k");
+        return abbreviate(gu);
+    }
+
+    /** Compact amount for a filter of {@code kind}, in its base unit (items / mB / GU). */
+    public static String abbreviate(ResourceType kind, int amount) {
+        return switch (kind) {
+            case ITEM -> abbreviate(amount);
+            case FLUID -> abbreviateFluid(amount);
+            case GAS -> abbreviateGas(amount);
+        };
+    }
+
+    private static String compactUnit(int amount, int divisor, String suffix) {
         if (amount % divisor == 0) return (amount / divisor) + suffix;
         if (amount / divisor <= 10)
             return String.format(java.util.Locale.ROOT, "%.1f%s",
@@ -57,10 +78,12 @@ public final class SpriteNumbersRender {
      * Blits {@code text} over the item drawn at {@code (itemX, itemY)} exactly like the Stock Keeper's
      * {@code drawItemCount} (item at slot +1, glyphs from slot +14 / +10, centred by {@code -length*2.5}).
      * Pass {@link #abbreviate} output untrimmed: its leading space for counts below 100 is part of the layout.
+     * Characters the sheet lacks are skipped and don't count toward the centring.
      */
     public static void drawCount(GuiGraphics gfx, String text, int itemX, int itemY) {
         if (text.isBlank()) return;
-        blitGlyphs(gfx, text, itemX + 13 + (int) Math.floor(-text.length() * 2.5), itemY + 9);
+        long drawn = text.chars().filter(c -> c == ' ' || glyph((char) c) != null).count();
+        blitGlyphs(gfx, text, itemX + 13 + (int) Math.floor(-drawn * 2.5), itemY + 9);
     }
 
     /** {@link #drawCount} tinted with {@code argb} (the white glyph sprites are multiplied by it). */

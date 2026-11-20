@@ -26,9 +26,11 @@ import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpacki
 import io.github.nbcss.createfactorycontroller.content.compat.logisticscontrol.LogisticsControlCompat;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerBlockEntity;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.compat.gas.GasCompat;
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionCapability;
 import io.github.nbcss.createfactorycontroller.content.component.connection.ConnectionKey;
@@ -121,7 +123,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public static final ResourceLocation FRONT_TEXTURE = TEXTURE.withSuffix("/front");
 
     private static final GaugeFilterResolver ITEM_FILTER_RESOLVER = new GaugeFilterResolver() {
-        @Override public boolean acceptsFilter(ItemStack filter) { return true; }
+        // A gas key belongs on the dedicated gas gauge (GU units, no ignore-data).
+        @Override public boolean acceptsFilter(ItemStack filter) { return !GasCompat.isGasFilter(filter); }
         @Override public boolean supportsIgnoreData() { return true; }
         @Override public boolean acceptsItemDrop() { return true; }
         // for CFL compat
@@ -133,7 +136,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 FluidStack fluid = FluidCompat.fluidInContainer(carried);
                 if (!fluid.isEmpty()) return FluidCompat.makeFluidFilter(fluid);
             }
-            return carried;
+            return GasCompat.isGasFilter(carried) ? ItemStack.EMPTY : carried;
         }
 
         @Override
@@ -203,10 +206,6 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      *  on the link and don't count toward this. */
     public static final int MAX_INGREDIENTS = 9;
 
-    /** Per-ingredient millibucket cap (90 B) — one grid cell of a fluid ingredient. */
-    public static final int FLUID_INGREDIENT_CAP_MB = 90_000;
-    /** Produced-output millibucket cap (64 B) for a fluid gauge. */
-    public static final int FLUID_OUTPUT_CAP_MB = 64_000;
     /** Crafting mode: max crafts one request may carry (batch × multiplier ≤ this). */
     public static final int MAX_CRAFT_OUTPUT = 64;
 
@@ -384,7 +383,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (Connection c : connections) {
             if (!(c instanceof LogisticsConnection lc)) continue;
             ItemStack src = filterResolver.apply(c.from);
-            if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
+            if (ResourceType.isBulk(src)) { used += 1; continue; }   // a fluid/gas ingredient is one slot
             int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
             used += (lc.amount() + ss - 1) / ss;   // ceil
         }
@@ -402,7 +401,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         for (Connection c : incomingConnections()) {
             if (!(c instanceof LogisticsConnection lc)) continue;
             ItemStack src = filterAt(c.from);
-            if (FluidCompat.isFluidFilter(src)) { used += 1; continue; }   // a fluid ingredient is one slot
+            if (ResourceType.isBulk(src)) { used += 1; continue; }   // a fluid/gas ingredient is one slot
             int amount = Math.max(1, proposedAmounts.getOrDefault(c.from, lc.amount()));
             int ss = src.isEmpty() ? 1 : Math.max(1, src.getMaxStackSize());
             used += (amount + ss - 1) / ss;   // ceil
@@ -432,8 +431,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             for (int i = 0; i < recipeSlots.size(); i++) if (recipeSlots.get(i).isEmpty()) { empty = i; break; }
             if (empty < 0) break;   // grid full — validateAsSink prevents this for new wires
             ItemStack ingredient = filterAt(src);
-            int cap = FluidCompat.isFluidFilter(ingredient) ? FLUID_INGREDIENT_CAP_MB
-                : ingredient.isEmpty() ? 64 : Math.max(1, ingredient.getMaxStackSize());
+            int cap = ingredient.isEmpty() ? 64 : ResourceType.of(ingredient).ingredientCap(ingredient);
             recipeSlots.set(empty, new RecipeSlot(src, Math.clamp(lc.amount(), 1, cap)));
         }
     }
@@ -615,7 +613,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
      */
     public String stockText() {
         return isInfiniteStock() ? "∞"
-            : FluidCompat.isFluidFilter(filter) ? unit.formatInUnit(stockLevel)
+            : ResourceType.isBulk(filter) ? unit.formatInUnit(stockLevel)
             : stockLevel / unit.toCountMultiplier(filter) + unit.suffix;
     }
 
@@ -1120,9 +1118,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
 
     // ── Request multiplier ────────────────────────────────────────────────────
 
-    /** One scaled request slot: {@code amount} at 1×, its {@code capacity} (item stack size or fluid mB cap), and
-     *  whether it's a fluid (one package slot regardless of amount, but bounded by its mB cap). */
-    public record ScaleSlot(int amount, int capacity, boolean fluid, boolean excluded) {}
+    /** One scaled request slot: {@code amount} at 1×, its {@code capacity} (item stack size or bulk cap), and
+     *  whether it's bulk — fluid/gas (one package slot regardless of amount, but bounded by its cap). */
+    public record ScaleSlot(int amount, int capacity, boolean bulk, boolean excluded) {}
 
     /** Output-bound scaler: largest M with {@code recipeOutput · M ≤ outputCap}. */
     private static int outputMultiplierCap(int recipeOutput, int outputCap) {
@@ -1137,7 +1135,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
         int used = 0;
         for (ScaleSlot s : slots) {
             long required = s.excluded() ? s.amount() : (long) s.amount() * m;
-            if (s.fluid()) {
+            if (s.bulk()) {
                 if (required > s.capacity()) return false;
                 used += 1;
             } else {
@@ -1182,8 +1180,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     public int structuralMultiplierCap() {
         if (mode == GaugeWorkMode.CRAFTING) return craftingMultiplierCap(effectiveBatch(), 64);
 
-        boolean fluidOut = FluidCompat.isFluidFilter(filter);
-        int outputCap = fluidOut ? FLUID_OUTPUT_CAP_MB
+        ResourceType filterResourceType = ResourceType.of(filter);
+        int outputCap = filterResourceType.isBulk() ? filterResourceType.bulkOutputCap
             : itemOutputCap(filter.isEmpty() ? 64 : filter.getMaxStackSize());
         int output = Math.max(1, recipeOutput);
 
@@ -1193,10 +1191,10 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 if (rs.isEmpty()) continue;
                 VirtualGaugeBehaviour src = sourceGauge(rs);
                 if (src == null || src.filter.isEmpty()) continue;
-                boolean fluid = FluidCompat.isFluidFilter(src.filter);
-                int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
+                ResourceType type = ResourceType.of(src.filter);
                 LogisticsConnection connection = (LogisticsConnection) incomingConnection(rs.source(), LogisticsConnection.TYPE);
-                slots.add(new ScaleSlot(Math.max(1, rs.count()), capacity, fluid,
+                assert connection != null;
+                slots.add(new ScaleSlot(Math.max(1, rs.count()), type.ingredientCap(src.filter), type.isBulk(),
                     connection.excludeFromRequestMultiplier));
             }
             return customMultiplierCap(slots, output, outputCap, 64);
@@ -1208,9 +1206,8 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
                 if (!(c instanceof LogisticsConnection lc)) continue;
                 if (!(controller.components.get(c.from) instanceof VirtualGaugeBehaviour src) || src.filter.isEmpty())
                     continue;
-                boolean fluid = FluidCompat.isFluidFilter(src.filter);
-                int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : Math.max(1, src.filter.getMaxStackSize());
-                slots.add(new ScaleSlot(Math.max(1, lc.amount()), capacity, fluid,
+                ResourceType kind = ResourceType.of(src.filter);
+                slots.add(new ScaleSlot(Math.max(1, lc.amount()), kind.ingredientCap(src.filter), kind.isBulk(),
                     lc.excludeFromRequestMultiplier));
             }
         return regularMultiplierCap(slots, output, outputCap, 64);
@@ -1300,9 +1297,9 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
             for (RecipeSlot slot : recipeSlots) {
                 VirtualGaugeBehaviour src = sourceGauge(slot);
                 if (src != null && net.equals(src.networkId) && !src.filter.isEmpty()) {
-                    // 1 grid cell ↔ 1 package slot: item counts stay within one stack (fluids carry mB freely).
-                    boolean fluid = FluidCompat.isFluidFilter(src.filter);
-                    int cnt = Math.clamp(slot.count(), 1, fluid ? Integer.MAX_VALUE : Math.max(1, src.filter.getMaxStackSize()));
+                    // 1 grid cell ↔ 1 package slot: item counts stay within one stack (fluid/gas amounts are free).
+                    boolean bulk = ResourceType.isBulk(src.filter);
+                    int cnt = Math.clamp(slot.count(), 1, bulk ? Integer.MAX_VALUE : Math.max(1, src.filter.getMaxStackSize()));
                     ItemStack shipped = src.filter;
                     if (src.ignoreData) {
                         shipped = takeVariant(variantPools.computeIfAbsent(src, this::variantPool), cnt);

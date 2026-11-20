@@ -7,7 +7,6 @@ import com.simibubi.create.AllRecipeTypes;
 import com.simibubi.create.content.kinetics.crafter.MechanicalCraftingRecipe;
 import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.BigItemStack;
-import com.simibubi.create.content.logistics.box.PackageStyles;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
@@ -25,6 +24,7 @@ import io.github.nbcss.createfactorycontroller.ServerConfig;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
 import io.github.nbcss.createfactorycontroller.content.GaugeWorkMode;
 import io.github.nbcss.createfactorycontroller.content.RequestMode;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.RecipeSlot;
 import io.github.nbcss.createfactorycontroller.content.component.connection.LogisticsConnection;
@@ -35,6 +35,7 @@ import io.github.nbcss.createfactorycontroller.content.component.VirtualComponen
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClient;
+import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeScreenStyle;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.PanelSyncListener;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.InteractiveAreaWidget;
@@ -49,6 +50,7 @@ import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
@@ -81,8 +83,6 @@ import java.util.stream.Collectors;
 @OnlyIn(Dist.CLIENT)
 @IPNIgnore
 public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryControllerMenu> implements PanelSyncListener {
-    private static final ResourceLocation PANEL_TEX =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/configure_recipe.png");
     private static final int PANEL_W = 200, PANEL_H = 184;
     static final int MAX_INPUT_SLOTS = VirtualGaugeBehaviour.MAX_INGREDIENTS;
     private static final int MAX_CRAFT_OUTPUT = 64;
@@ -99,13 +99,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private static final int OUTPUT_X = 160, OUTPUT_Y = 48;
     private static final int MULTIPLIER_X = 64, MULTIPLIER_Y = 87, MULTIPLIER_W = 64, MULTIPLIER_H = 8;
     private static final int REQUEST_MULTIPLIER_COLOR = 0x43FFDD70;
-    // Request-timer charge-up animation
-    private static final ResourceLocation ARROW_ANIM_TEX =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "textures/gui/gauge_arrow_animation.png");
-    private static final int ARROW_ANIM_FRAMES = 15, ARROW_ANIM_W = 15, ARROW_ANIM_H = 17;
-    private static final int ARROW_ANIM_X = 140, ARROW_ANIM_Y = 47;
-    // Request-interval custom value on the arrow
-    private static final int INTERVAL_RIGHT_X = 154, INTERVAL_Y = 58;
     private static final int INTERVAL_CUSTOM_COLOR = 0xFF9ECFFC;
     private static final int INTERVAL_DISABLE_COLOR = 0xFF999999;
     private static final int MULTIPLIER_COLOR = 0xFFFFDD70;
@@ -116,6 +109,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private final VirtualComponentPosition gaugePos;
 
     int panelX, panelY;
+    private GaugeScreenStyle.Recipe style = GaugeScreenStyle.DEFAULT.recipe();
+    private ItemStack promiseBox = ItemStack.EMPTY;
 
     /** Whether {@code (mx, my)} lies within this screen's panel — used by {@link CustomArrangementEditor} to
      *  treat a drag released past the panel's edge as "drop the item" (same as shift-click removal). */
@@ -139,8 +134,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private String countEdit = "";
     private ThresholdUnit mode = ThresholdUnit.ITEMS;
     private RequestMode requestMode = RequestMode.NORMAL;
-    /** True when the gauge's filter is a fluid filter */
-    boolean fluidMode = false;
+    /** What the gauge's own filter measures (item / fluid / gas) */
+    ResourceType resourceType = ResourceType.ITEM;
     // One entry per input CONNECTION (not per grid slot): the source gauge and its TOTAL item count.
     final List<VirtualComponentPosition> inputConnections = new ArrayList<>();
     final List<Integer> inputTotals = new ArrayList<>();
@@ -211,6 +206,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         panelX = leftPos + (imageWidth - PANEL_W) / 2;
         panelY = topPos + (imageHeight - PANEL_H) / 2;
+        GaugeScreenStyle gaugeStyle = GaugeScreenStyle.of(getBehaviour());
+        style = gaugeStyle.recipe();
+        promiseBox = style.promiseBoxStack();
 
         VirtualGaugeBehaviour g = getBehaviour();
 
@@ -339,7 +337,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         }
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
-                HelpButton.ColorPalette.LOGISTICS, "factory-gauge.html");
+                gaugeStyle.helpPalette(), "factory-gauge.html");
         addWidget(helpButton);
 
         addRenderableWidget(new InteractiveAreaWidget(panelX + OUTPUT_X, panelY + OUTPUT_Y, 16, 16,
@@ -347,12 +345,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     VirtualGaugeBehaviour behaviour = getBehaviour();
                     if (behaviour == null || behaviour.filter.isEmpty()) return List.of();
                     int producedCount = editor().producedCount();
-                    String produced = fluidMode
-                            ? ThresholdUnit.formatFluidAmount(producedCount) : String.valueOf(producedCount);
+                    String produced = resourceType.format(producedCount);
                     MutableComponent header = CreateLang.translate("gui.factory_panel.expected_output",
                                     FluidCompat.filterName(behaviour.filter).getString() + " x" + produced)
                             .color(ScrollInput.HEADER_RGB).component();
-                    if (!fluidMode && producedCount > outputStackSize())
+                    if (!resourceType.isBulk() && producedCount > outputStackSize())
                         header.append(stackBreakdown(producedCount, outputStackSize()));
                     TooltipBuilder tooltip = TooltipBuilder.of(font).line(header);
                     if (behaviour.ignoreData)
@@ -402,8 +399,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             }
             return true;
         }));
-        addRenderableWidget(new InteractiveAreaWidget(
-                panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, ARROW_ANIM_W, ARROW_ANIM_H,
+        Rect2i intervalArea = style.intervalArea();
+        addRenderableWidget(new InteractiveAreaWidget(panelX + intervalArea.getX(), panelY + intervalArea.getY(),
+                intervalArea.getWidth(), intervalArea.getHeight(),
                 () -> {
                     int ticks = customRequestTimer > 0
                             ? customRequestTimer : AllConfigs.server().logistics.factoryGaugeTimer.get();
@@ -451,8 +449,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                 .line(CreateLang.translate("gui.factory_panel.promise_prevents_oversending")
                                         .style(ChatFormatting.GRAY).component())
                                 .build();
-                    String promisedLabel = FluidCompat.isFluidFilter(behaviour.filter)
-                            ? formatFluidShort(promised) : String.valueOf(promised);
+                    String promisedLabel = ResourceType.of(behaviour.filter).formatShort(promised);
                     return TooltipBuilder.of(font)
                             .line(CreateLang.translate("gui.factory_panel.promised_items")
                                     .color(ScrollInput.HEADER_RGB).component())
@@ -543,11 +540,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         addRenderableWidget(new InteractiveAreaWidget(
                 panelX + UNIT_X, panelY + THRESH_TOP - 1, UNIT_W, THRESH_H,
                 () -> {
-                    ThresholdUnit a = fluidMode ? ThresholdUnit.FLUID_MB : ThresholdUnit.ITEMS;
-                    ThresholdUnit b = fluidMode ? ThresholdUnit.FLUID_BUCKET : ThresholdUnit.STACKS;
+                    ThresholdUnit a = resourceType.fineUnit();
+                    ThresholdUnit b = resourceType.coarseUnit();
                     return TooltipBuilder.of(font)
-                            .line(CreateLang.translate("schedule.condition.threshold.item_measure")
-                                    .color(ScrollInput.HEADER_RGB).component())
+                            .line(Component.translatable("createfactorycontroller.gui.measure_unit")
+                                    .withColor(ScrollInput.HEADER_RGB.getRGB()))
                             .line(a.tooltipLine(mode == a))
                             .line(b.tooltipLine(mode == b))
                             .line(CreateLang.translate("gui.scrollInput.scrollToSelect")
@@ -629,17 +626,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         return menu.componentAt(pos) instanceof VirtualGaugeBehaviour g ? g.filter : ItemStack.EMPTY;
     }
 
-    /** Whether input connection {@code c}'s ingredient is a fluid */
-    boolean isFluidConn(int c) {
-        return FluidCompat.isFluidFilter(ingredientOf(inputConnections.get(c)));
+    /** What input connection {@code c}'s ingredient measures */
+    ResourceType connType(int c) {
+        return ResourceType.of(ingredientOf(inputConnections.get(c)));
+    }
+
+    /** Whether input connection {@code c}'s ingredient is bulk (fluid/gas: one slot, amount-based) */
+    boolean isBulkConn(int c) {
+        return connType(c).isBulk();
     }
 
     boolean multiplierExcluded(VirtualComponentPosition source) {
         return workMode != GaugeWorkMode.CRAFTING && multiplierExcludedInputs.contains(source);
     }
-
-    /** Per-ingredient millibucket cap — one grid cell of a fluid ingredient. */
-    static final int FLUID_INGREDIENT_CAP_MB = VirtualGaugeBehaviour.FLUID_INGREDIENT_CAP_MB;
 
     /** A grid slot's source: which input connection it belongs to, and how many items sit in it. */
     record InputSlot(int connectionIndex, int amount) {}
@@ -664,7 +663,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         for (int c = 0; c < inputConnections.size() && slots.size() < MAX_INPUT_SLOTS; c++) {
             int factor = multiplierExcluded(inputConnections.get(c)) ? 1 : s;
             int total = Math.max(1, inputTotals.get(c)) * factor;
-            if (isFluidConn(c)) {
+            if (isBulkConn(c)) {
                 slots.add(new InputSlot(c, total));
                 continue;
             }
@@ -685,7 +684,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int used = 0;
         for (int c = 0; c < inputConnections.size(); c++) {
             if (c == exceptIndex) continue;
-            if (isFluidConn(c)) { used += 1; continue; }     // fluid ingredient = one slot
+            if (isBulkConn(c)) { used += 1; continue; }     // fluid/gas ingredient = one slot
             int ss = stackSizeOf(ingredientOf(inputConnections.get(c)));
             int total = Math.max(1, inputTotals.get(c));
             used += (total + ss - 1) / ss;   // ceil
@@ -711,9 +710,10 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * stack. Clamped to ≥1 and to the item count that still fits the free grid slots.
      */
     void adjustInputTotal(int connectionIndex, int dir, boolean shift, boolean ctrl) {
-        if (isFluidConn(connectionIndex)) {              // fluid ingredient: millibuckets, fluid steps, one slot
-            int curMb = Math.max(1, inputTotals.get(connectionIndex));
-            inputTotals.set(connectionIndex, adjustFluidAmount(curMb, dir, shift, ctrl, 1, FLUID_INGREDIENT_CAP_MB));
+        ResourceType type = connType(connectionIndex);
+        if (type.isBulk()) {              // fluid/gas ingredient: base units (mB/GU), bulk steps, one slot
+            int cur = Math.max(1, inputTotals.get(connectionIndex));
+            inputTotals.set(connectionIndex, adjustFluidAmount(cur, dir, shift, ctrl, 1, type.bulkIngredientCap));
             return;
         }
         int ss = stackSizeOf(ingredientOf(inputConnections.get(connectionIndex)));
@@ -754,7 +754,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (workMode == GaugeWorkMode.CRAFTING)
             return VirtualGaugeBehaviour.craftingMultiplierCap(effectiveBatch(), 64);
 
-        int outputCap = fluidMode ? VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB : maxItemOutput();
+        int outputCap = resourceType.isBulk() ? resourceType.bulkOutputCap : maxItemOutput();
         int output = Math.max(1, outputCount);
         List<VirtualGaugeBehaviour.ScaleSlot> slots = new ArrayList<>();
         if (workMode == GaugeWorkMode.CUSTOM) {
@@ -762,18 +762,17 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 if (rs.isEmpty()) continue;
                 ItemStack ing = ingredientOf(rs.source());
                 if (ing.isEmpty()) continue;
-                boolean fluid = FluidCompat.isFluidFilter(ing);
-                int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : stackSizeOf(ing);
-                slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, rs.count()), capacity, fluid,
+                ResourceType type = ResourceType.of(ing);
+                slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, rs.count()), type.ingredientCap(ing), type.isBulk(),
                     multiplierExcluded(rs.source())));
             }
             return VirtualGaugeBehaviour.customMultiplierCap(slots, output, outputCap, 64);
         }
         // REGULAR: one entry per ingredient connection (its whole total).
         for (int c = 0; c < inputConnections.size(); c++) {
-            boolean fluid = isFluidConn(c);
-            int capacity = fluid ? FLUID_INGREDIENT_CAP_MB : stackSizeOf(ingredientOf(inputConnections.get(c)));
-            slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, inputTotals.get(c)), capacity, fluid,
+            ItemStack ing = ingredientOf(inputConnections.get(c));
+            ResourceType type = ResourceType.of(ing);
+            slots.add(new VirtualGaugeBehaviour.ScaleSlot(Math.max(1, inputTotals.get(c)), type.ingredientCap(ing), type.isBulk(),
                 multiplierExcluded(inputConnections.get(c))));
         }
         return VirtualGaugeBehaviour.regularMultiplierCap(slots, output, outputCap, 64);
@@ -991,10 +990,9 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         requestMode = g.requestMode;
         promiseLimitState = g.promiseLimit;
         promiseLimitByAddress = g.promiseLimitByAddress;
-        fluidMode = FluidCompat.isFluidFilter(g.filter);
-        if (fluidMode && !mode.isFluid()) mode = ThresholdUnit.FLUID_BUCKET;
-        if (!fluidMode && mode.isFluid()) mode = ThresholdUnit.ITEMS;
-        if (fluidMode && outputCount <= 1) outputCount = 1000;
+        resourceType = ResourceType.of(g.filter);
+        if (mode.type != resourceType) mode = resourceType.defaultUnit();
+        if (resourceType.isBulk() && outputCount <= 1) outputCount = resourceType.baseAmount;
         for (Connection conn : g.incomingConnections()) {
             if (!(conn instanceof LogisticsConnection lc)) continue;
             int total = lc.amount();
@@ -1032,8 +1030,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int empty = -1;
             for (int i = 0; i < customSlots.size(); i++) if (customSlots.get(i).isEmpty()) { empty = i; break; }
             if (empty < 0) break;   // grid full — the extra wire stays unplaced
-            // One cell holds at most a stack of the item; a fluid ingredient's cell carries mB up to the cap.
-            int cap = isFluidConn(c) ? FLUID_INGREDIENT_CAP_MB : Math.max(1, stackSizeOf(ingredientOf(src)));
+            // One cell holds at most a stack of the item; a fluid/gas ingredient's cell carries mB/GU up to the cap.
+            int cap = isBulkConn(c) ? connType(c).bulkIngredientCap : Math.max(1, stackSizeOf(ingredientOf(src)));
             customSlots.set(empty, new RecipeSlot(src, Math.clamp(inputTotals.get(c), 1, cap)));
         }
     }
@@ -1287,7 +1285,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         controller.renderBoard(gfx, -1, -1, partialTick, true);
 
         RenderSystem.enableBlend();
-        gfx.blit(PANEL_TEX, panelX, panelY, 0, 0, PANEL_W, PANEL_H, PANEL_W, PANEL_H);
+        style.bg().blit(gfx, panelX, panelY, PANEL_W, PANEL_H);
 
         VirtualGaugeBehaviour g = getBehaviour();
 
@@ -1302,7 +1300,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int producedCount = editor().producedCount();
             int shownOutput = producedCount * previewScale(mouseX, mouseY);
             ResourceIconRenderer.render(gfx, g.filter, ox, oy);
-            drawItemCount(gfx, g.filter, ox, oy, shownOutput, fluidMode);
+            drawItemCount(gfx, g.filter, ox, oy, shownOutput, resourceType);
             if (overMultiplier) {
                 gfx.fill(panelX + MULTIPLIER_X, panelY + MULTIPLIER_Y,
                         panelX + MULTIPLIER_X + MULTIPLIER_W, panelY + MULTIPLIER_Y + MULTIPLIER_H,
@@ -1325,14 +1323,15 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         if (g != null && GaugeInfoClient.timerTicking(gaugePos)) {
             float progress = GaugeInfoClient.timerProgress(gaugePos, g.lastRequestTick);
             // floor(progress·FRAMES) so every frame — including frame 0 — gets an equal window
-            int frame = Mth.clamp((int) (progress * ARROW_ANIM_FRAMES), 0, ARROW_ANIM_FRAMES - 1);
+            GaugeScreenStyle.ArrowAnimation arrow = style.arrow();
+            int frame = Mth.clamp((int) (progress * arrow.frames()), 0, arrow.frames() - 1);
             RenderSystem.enableBlend();
-            gfx.blit(ARROW_ANIM_TEX, panelX + ARROW_ANIM_X, panelY + ARROW_ANIM_Y, 0, frame * ARROW_ANIM_H,
-                    ARROW_ANIM_W, ARROW_ANIM_H, ARROW_ANIM_W, ARROW_ANIM_FRAMES * ARROW_ANIM_H);
+            gfx.blit(arrow.texture(), panelX + arrow.x(), panelY + arrow.y(), 0, frame * arrow.height(),
+                    arrow.width(), arrow.height(), arrow.width(), arrow.frames() * arrow.height());
         }
 
         SpriteNumbersRender.drawCountRightAligned(gfx, SpriteNumbersRender.CLOCK + "·" + shownIntervalSeconds(),
-                panelX + INTERVAL_RIGHT_X, panelY + INTERVAL_Y,
+                panelX + style.intervalRightX(), panelY + style.intervalY(),
                 customRequestTimer > 0 ? INTERVAL_CUSTOM_COLOR : INTERVAL_DISABLE_COLOR);
 
         renderThreshold(gfx, g);
@@ -1340,9 +1339,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         // Open-promise package box
         int pbx = panelX + PROMISE_CLEAR_X, pby = panelY + PANEL_H - 24;
         int promised = g == null ? 0 : g.promisedCount;
-        ItemStack box = PackageStyles.getDefaultBox();
-        gfx.renderItem(box, pbx, pby);
-        drawItemCount(gfx, box, pbx, pby, promised, g != null && FluidCompat.isFluidFilter(g.filter),
+        gfx.renderItem(promiseBox, pbx, pby);
+        drawItemCount(gfx, promiseBox, pbx, pby, promised, g == null ? ResourceType.ITEM : ResourceType.of(g.filter),
                 promised > 0 ? SpriteNumbersRender.PLUS : "");
 
         // 3D gauge preview
@@ -1395,12 +1393,6 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             if (dir > 0 ? next > boundary : next < boundary) next = boundary;
         }
         return Mth.clamp(next, min, max);
-    }
-
-    static String formatFluidShort(int millibuckets) {
-        if (millibuckets < 1000) return millibuckets + "mB";
-        return new java.math.BigDecimal(millibuckets).movePointLeft(3)
-            .setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "B";
     }
 
     private void drawCenteredBoxLabel(GuiGraphics gfx, int x, int y, int width, String label) {
@@ -1456,9 +1448,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             ResourceIconRenderer.render(gfx, behaviour.filter, fx, fy);
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);
-            SpriteNumbersRender.drawCount(gfx, FluidCompat.isFluidFilter(behaviour.filter)
-                ? SpriteNumbersRender.abbreviateFluid(behaviour.stockLevel) :
-                  SpriteNumbersRender.abbreviate(behaviour.stockLevel), fx, fy);
+            SpriteNumbersRender.drawCount(gfx,
+                SpriteNumbersRender.abbreviate(ResourceType.of(behaviour.filter), behaviour.stockLevel), fx, fy);
             gfx.pose().popPose();
         }
         // demand
@@ -1479,19 +1470,19 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     }
 
-    void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, int amount, boolean fluid) {
-        drawItemCount(gfx, stack, itemX, itemY, amount, fluid, "");
+    void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, int amount, ResourceType type) {
+        drawItemCount(gfx, stack, itemX, itemY, amount, type, "");
     }
 
     /** {@code compactPrefix} (compact font only) takes the place of the count's leading pad space. */
-    private void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, int amount, boolean fluid,
+    private void drawItemCount(GuiGraphics gfx, ItemStack stack, int itemX, int itemY, int amount, ResourceType type,
                                String compactPrefix) {
         if (!ClientConfig.compactRecipeCountFont()) {
-            gfx.renderItemDecorations(font, stack, itemX, itemY,
-                    fluid ? formatFluidShort(amount) : String.valueOf(amount));
+            gfx.renderItemDecorations(font, stack, itemX, itemY, type.formatShort(amount));
             return;
         }
-        String text = fluid ? formatFluidShort(amount) : SpriteNumbersRender.abbreviate(amount);
+        // Bulk keeps formatShort's precision (250mB, not 0.2B); glyphs the sheet lacks (G/U) are skipped.
+        String text = type.isBulk() ? type.formatShort(amount) : SpriteNumbersRender.abbreviate(amount);
         if (!compactPrefix.isEmpty()) text = compactPrefix + text.trim();
         gfx.pose().pushPose();
         gfx.pose().translate(0, 0, 200);
@@ -1634,8 +1625,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private void setMode(ThresholdUnit newMode) {
         mode = newMode;
         thresholdCount = Mth.clamp(thresholdCount, 0, mode.getMaxRequestCount());
-        if (fluidMode) {
-            outputCount = Mth.clamp(outputCount, 1, VirtualGaugeBehaviour.FLUID_OUTPUT_CAP_MB);
+        if (resourceType.isBulk()) {
+            outputCount = Mth.clamp(outputCount, 1, resourceType.bulkOutputCap);
         }
         ScreenSounds.scroll();
     }

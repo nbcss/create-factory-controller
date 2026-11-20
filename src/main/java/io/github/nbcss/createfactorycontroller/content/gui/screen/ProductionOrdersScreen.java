@@ -24,6 +24,7 @@ import io.github.nbcss.createfactorycontroller.content.packet.RequestProductionO
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrderView;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrdersClient;
 import io.github.nbcss.createfactorycontroller.content.production.ProductionOrder.Task;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.content.render.ResourceIconRenderer;
 import io.github.nbcss.createfactorycontroller.content.render.SpriteNumbersRender;
@@ -286,16 +287,13 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             gfx.blit(TEX, sx, sy, 0, 39f, 165f, 18, 18, 256, 256);
             ProductionOrderView.RequestView r = reqs.get(i);
             ItemStack stack = r.display();
-            boolean fluid = FluidCompat.isFluidFilter(stack);
-            if (fluid) ResourceIconRenderer.render(gfx, stack, sx + 1, sy + 1);
-            else gfx.renderItem(stack, sx + 1, sy + 1);
+            ResourceIconRenderer.render(gfx, stack, sx + 1, sy + 1);
             if (sy + 1 >= viewTop() && sy + 1 < viewBottom())
                 slotTips.add(new SlotTip(sx + 1, sy + 1, sx + 17, sy + 17, r));
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 200);   // count sprite + state symbol above the item model
-            String amount = fluid ? SpriteNumbersRender.abbreviate(r.amount() / 1000) + "b"
-                                  : SpriteNumbersRender.abbreviate(r.amount());
-            SpriteNumbersRender.drawCount(gfx, amount, sx + 1, sy + 1);
+            SpriteNumbersRender.drawCount(gfx,
+                    SpriteNumbersRender.abbreviate(ResourceType.of(stack), r.amount()), sx + 1, sy + 1);
             drawStateSymbol(gfx, r.stateEnum(), sx, sy);
             gfx.pose().popPose();
         }
@@ -421,17 +419,15 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
     /** Per-task tooltip */
     private List<FormattedCharSequence> slotTooltip(ProductionOrderView.RequestView r) {
         TooltipBuilder tooltip = TooltipBuilder.of(font);
-        // A fluid task: name from the fluid (not its filter-wrapper) and amounts in buckets (B) with a "B" suffix.
-        boolean fluid = FluidCompat.isFluidFilter(r.display());
-        tooltip.line((fluid ? FluidCompat.filterName(r.display()) : r.display().getHoverName())
-                .copy().withColor(0xFBDC7D));
+        // Name from the fluid for a fluid task (not its filter wrapper); amounts in the task's own units.
+        ResourceType type = ResourceType.of(r.display());
+        tooltip.line(FluidCompat.filterName(r.display()).copy().withColor(0xFBDC7D));
 
         Task.State state = r.stateEnum();
         boolean active = state.isActive();
-        String unit = fluid ? " B" : "";
-        String amount = (fluid ? r.amount() / 1000 : r.amount()) + unit;
+        String amount = type.format(r.amount());
         String value = active
-            ? (fluid ? r.inStock() / 1000 : r.inStock()) + "/" + amount   // progress: current network stock → request
+            ? type.format(r.inStock()) + "/" + amount   // progress: current network stock → request
             : amount;
         tooltip.line(Component.translatable("createfactorycontroller.gui.production_tooltip_request")
             .withStyle(ChatFormatting.GRAY)

@@ -37,6 +37,8 @@ public class HelpButton extends GraphicButton {
         ROSE(0x741A41, 0xF6D4C2, "factory_controller/tiny_button/base_rose"),
         ARITHMETIC(0x743691, 0xF6C7F3, "factory_controller/tiny_button/base_arithmetic"),
         STOCK_KEEPER(0xB59370, 0xF8F8EC, "factory_controller/tiny_button/base_stock_keeper"),
+        FLUID(0x904931, 0xE3826C, "factory_controller/tiny_button/base_fluid"),
+        GAS(0x3B404F, 0x9EA3B2, "factory_controller/tiny_button/base_gas"),
         ;
 
         private final int darkColor, lightColor;

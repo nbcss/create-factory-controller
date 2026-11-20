@@ -1,7 +1,7 @@
 package io.github.nbcss.createfactorycontroller.content.item;
 
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
-import io.github.nbcss.createfactorycontroller.content.ThresholdUnit;
+import io.github.nbcss.createfactorycontroller.content.ResourceType;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
 import io.github.nbcss.createfactorycontroller.registry.CFCItems;
 import net.minecraft.ChatFormatting;
@@ -88,18 +88,14 @@ public class ProductionPatternItem extends Item {
             {
                 ItemStack output = target.display();
                 String name = FluidCompat.filterName(output).getString();
-                String amount = FluidCompat.isFluidFilter(output)
-                        ? ThresholdUnit.formatFluidAmount(output.getCount())
-                        : String.valueOf(output.getCount());
+                String amount = ResourceType.of(output).format(output.getCount());
                 tooltip.add(Component.literal("- " + name + " x" + amount).withStyle(ChatFormatting.GRAY));
             }
             tooltip.add(Component.translatable("createfactorycontroller.gui.production_ingredients_header")
                     .withColor(0x528FDE));
             for (ItemStack ingredient : ingredients) {
                 String name = FluidCompat.filterName(ingredient).getString();
-                String amount = FluidCompat.isFluidFilter(ingredient)
-                    ? ThresholdUnit.formatFluidAmount(ingredient.getCount())
-                    : String.valueOf(ingredient.getCount());
+                String amount = ResourceType.of(ingredient).format(ingredient.getCount());
                 tooltip.add(Component.literal("- " + name + " x" + amount).withStyle(ChatFormatting.GRAY));
             }
         }
