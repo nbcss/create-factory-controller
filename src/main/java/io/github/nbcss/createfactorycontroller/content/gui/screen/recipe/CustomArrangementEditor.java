@@ -247,11 +247,13 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
             RecipeSlot a = s.customSlots.get(from);
             s.customSlots.set(from, s.customSlots.get(to));
             s.customSlots.set(to, a);
+            s.dirty = true;
             ScreenSounds.click();
         } else if (button == 1) {   // copy into an empty slot (replicate the ingredient)
             RecipeSlot src = s.customSlots.get(from);
             if (!src.isEmpty() && s.customSlots.get(to).isEmpty()) {
                 s.customSlots.set(to, new RecipeSlot(src.source(), src.count()));
+                s.dirty = true;
                 ScreenSounds.click();
             }
         }
@@ -280,6 +282,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         }
         if (next != rs.count()) {
             s.customSlots.set(slot, new RecipeSlot(rs.source(), next));
+            s.dirty = true;
             ScreenSounds.scroll();
             if (ctrl && !bulk) {
                 for (int i = 0; i < s.customSlots.size(); i++) {
@@ -323,6 +326,7 @@ class CustomArrangementEditor extends GaugeWorkModeEditor {
         if (slot.isEmpty()) return;
         VirtualComponentPosition source = slot.source();
         s.customSlots.set(i, RecipeSlot.EMPTY);
+        s.dirty = true;
         boolean stillUsed = s.customSlots.stream().anyMatch(sl -> !sl.isEmpty() && source.equals(sl.source()));
         if (!stillUsed) {
             int c = s.inputConnections.indexOf(source);

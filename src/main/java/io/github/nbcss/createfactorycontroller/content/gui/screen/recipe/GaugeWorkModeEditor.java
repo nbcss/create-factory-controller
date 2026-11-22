@@ -72,6 +72,7 @@ abstract class GaugeWorkModeEditor {
                         VirtualComponentPosition source = ingredientSourceAt(mouseX, mouseY);
                         if (source != null) {
                             if (!s.multiplierExcludedInputs.add(source)) s.multiplierExcludedInputs.remove(source);
+                            s.dirty = true;
                             s.maxRequestMultiplier = Mth.clamp(
                                     s.maxRequestMultiplier, 1, s.structuralMultiplierCap());
                             ScreenSounds.click();
@@ -121,6 +122,7 @@ abstract class GaugeWorkModeEditor {
     /** Handles a scroll on the output slot; {@code true} if consumed. Default: freely tune the produced
      *  count (item stack/snap steps, or fluid steps for a fluid output); crafting locks this to the recipe. */
     boolean outputScrolled(int dir, int step) {
+        s.dirty = true;
         if (s.resourceType.isBulk()) {
             s.outputCount = ConfigureRecipeScreen.adjustFluidAmount(s.outputCount, dir,
                     Screen.hasShiftDown(), Screen.hasControlDown(), 1, s.resourceType.bulkOutputCap);

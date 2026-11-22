@@ -173,6 +173,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     /** Ticks until the next on-demand poll of the gauge's live promise counts (server round-trip). */
     private int promiseInfoPollCooldown = 0;
     private TooltipIconButton confirmButton;
+    boolean dirty;
     private TooltipIconButton deleteButton;
     private TooltipIconButton newInputButton;
     private TooltipIconButton relocateButton;
@@ -225,6 +226,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         addressBox.setBordered(false);
         addressBox.setTextColor(0x555555);
         addressBox.setValue(address);
+        addressBox.setResponder(value -> dirty = true);
         addWidget(addressBox);
         addRenderableOnly(new InteractiveAreaWidget(
                 addressBox.getX(), addressBox.getY(), addressBox.getWidth(), addressBox.getHeight(),
@@ -248,7 +250,8 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         promiseExpiration = new ScrollInput(panelX + PROMISE_TIMEOUT_X, panelY + PANEL_H - 24, PROMISE_TIMEOUT_W, 16)
             .withRange(-1, 31)
-            .titled(CreateLang.translate("gui.factory_panel.promises_expire_title").component());
+            .titled(CreateLang.translate("gui.factory_panel.promises_expire_title").component())
+            .calling(state -> dirty = true);
         promiseExpiration.setState(promiseState);
         addWidget(promiseExpiration);
 
@@ -256,7 +259,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
         confirmButton = new TooltipIconButton(panelX + PANEL_W - 33, panelY + PANEL_H - 25, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::confirmAndReturn);
-        confirmButton.setToolTip(CreateLang.translate("gui.factory_panel.save_and_close").component());
+        confirmButton.withTooltip(() -> {
+            TooltipBuilder tooltip = TooltipBuilder.of(font)
+                    .line(CreateLang.translate("gui.factory_panel.save_and_close").component());
+            if (dirty)
+                tooltip.line(Component.translatable("createfactorycontroller.gui.save_without_close")
+                        .withStyle(ChatFormatting.GRAY));
+            return tooltip.build();
+        });
         addWidget(confirmButton);
 
         deleteButton = new TooltipIconButton(panelX + PANEL_W - 55, panelY + PANEL_H - 25, AllIcons.I_TRASH);
@@ -293,6 +303,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 workMode = prev == GaugeWorkMode.CRAFTING ? GaugeWorkMode.REGULAR : GaugeWorkMode.CRAFTING;
                 if (workMode == GaugeWorkMode.CRAFTING) multiplierExcludedInputs.clear();
                 editor().onChange(prev);
+                dirty = true;
                 rebuildWidgets();
             });
             craftingButton.withTooltip(this::craftingButtonTooltip);
@@ -308,6 +319,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             GaugeWorkMode prev = workMode;
             workMode = prev == GaugeWorkMode.CUSTOM ? GaugeWorkMode.REGULAR : GaugeWorkMode.CUSTOM;
             editor().onChange(prev);   // CUSTOM seeds its 9-slot layout from the outgoing mode
+            dirty = true;
             rebuildWidgets();
         });
         customButton.withTooltip(this::customButtonTooltip);
@@ -387,12 +399,14 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                 }).onClick(button -> {
             if (button != 0 && button != 1) return false;
             maxRequestMultiplier = button == 1 ? 1 : structuralMultiplierCap();
+            dirty = true;
             ScreenSounds.click();
             return true;
         }).onScroll((scrollX, scrollY) -> {
             int dir = (int) Math.signum(scrollY);
             if (dir != 0) {
                 int step = hasShiftDown() ? 10 : 1;
+                dirty = true;
                 maxRequestMultiplier = Mth.clamp(
                         maxRequestMultiplier + dir * step, 1, structuralMultiplierCap());
                 ScreenSounds.scroll();
@@ -483,6 +497,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
                         .build()).onClick(button -> {
             promiseLimitByAddress = !promiseLimitByAddress;
+            dirty = true;
             ScreenSounds.click();
             return true;
         }).onScroll((scrollX, scrollY) -> {
@@ -490,6 +505,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             if (dir != 0) {
                 int step = hasShiftDown() ? 10 : 1;
                 promiseLimitState = Mth.clamp(promiseLimitState + dir * step, 0, 99);
+                dirty = true;
                 ScreenSounds.scroll();
             }
             return true;
@@ -534,6 +550,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             int dir = (int) Math.signum(scrollY);
             int step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
             thresholdCount = Mth.clamp(thresholdCount + dir * step, 0, mode.getMaxRequestCount());
+            dirty = true;
             ScreenSounds.scroll();
             return true;
         }));
@@ -710,6 +727,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
      * stack. Clamped to ≥1 and to the item count that still fits the free grid slots.
      */
     void adjustInputTotal(int connectionIndex, int dir, boolean shift, boolean ctrl) {
+        dirty = true;
         ResourceType type = connType(connectionIndex);
         if (type.isBulk()) {              // fluid/gas ingredient: base units (mB/GU), bulk steps, one slot
             int cur = Math.max(1, inputTotals.get(connectionIndex));
@@ -834,6 +852,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int next = Mth.clamp(craftBatch + delta, 1, maxCraftBatch());
         if (next != craftBatch) {
             craftBatch = next;
+            dirty = true;
             ScreenSounds.scroll();
         }
     }
@@ -846,6 +865,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         int next = Mth.clamp(effectiveCraftDimension() + dir, minCraftDim(), maxCraftDim(defaultCraftDim()));
         if (next != craftDimension) {
             craftDimension = next;
+            dirty = true;
             craftingIngredients = buildSquareArrangement(craftDimension);
             ScreenSounds.scroll();
         }
@@ -1514,6 +1534,12 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         boolean onCountBox = countArea != null && countArea.isMouseOver(mouseX, mouseY);
         if (countEditing && !onCountBox) commitCountEdit();
 
+        if (button == 1 && confirmButton.isMouseOver(mouseX, mouseY) && dirty) {
+            sendConfig(false, false);
+            ScreenSounds.click();
+            return true;
+        }
+
         if (button == 1 && addressBox.isMouseOver(mouseX, mouseY)) {
             addressBox.setValue("");
             return true;
@@ -1539,6 +1565,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
     private void commitCountEdit() {
         if (!countEditing) return;
         thresholdCount = getEditCountValue(countEdit);
+        dirty = true;
         countEditing = false;
         countEdit = "";
     }
@@ -1609,6 +1636,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
             promiseExpiration.getState(), promiseLimitState, promiseLimitByAddress, thresholdCount, mode, requestMode,
             workMode, config.inputPositions(), config.inputAmounts(), exclusions, config.craftingArrangement(),
             config.recipeSlots(), clearPromises, reset));
+        dirty = false;
     }
 
     /** True if this gauge has any non-logistics connections */
@@ -1624,6 +1652,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private void setMode(ThresholdUnit newMode) {
         mode = newMode;
+        dirty = true;
         thresholdCount = Mth.clamp(thresholdCount, 0, mode.getMaxRequestCount());
         if (resourceType.isBulk()) {
             outputCount = Mth.clamp(outputCount, 1, resourceType.bulkOutputCap);
@@ -1633,6 +1662,7 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
 
     private void cycleRequestMode() {
         requestMode = RequestMode.byOrdinal(requestMode.ordinal() + 1);
+        dirty = true;
         if (requestModeButton != null) requestModeButton.setIcon(iconFor(requestMode));
         ScreenSounds.click();
     }

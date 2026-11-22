@@ -54,11 +54,12 @@
 - [DONE] Controller can transfer component item from/to nearby container blocks
 - [DONE] More redstone units (timer etc.)
 - [TODO] Expand controller settings screen
-- [TODO] Controller IO Link
-- [TODO] Paper as component
+- [TODO] New Components
+- Controller IO Link
+- Paper
+- Redstone Requester
+- Selector Gauge
 - [TODO] Component Search
-- [TODO] Redstone Requester
-- [TODO] Selector Gauge
 - [TODO] Add tracker UI to show managed address, gauges, promises
 - [TODO] Save gauge settings without close
 - [TODO] Rework production order system to Production Requester
