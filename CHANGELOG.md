@@ -7,6 +7,7 @@ Features:
 - Added keybinding "Pick Component" (default middle-click) to pick clicked target component item from inventory to cursor.
 - Added keybinding "Return Component" (default right-click) to return current cursor item back to inventory.
 - Recipe Settings Screen can now right-click save button to save without close.
+- Gauge Recipe Screen can now click output slot to open recipe page when JEI is installed.
 
 Compatibility:
 - Gas Factory Gauge from Create: Crafted Beginning can now be placed in factory controller.

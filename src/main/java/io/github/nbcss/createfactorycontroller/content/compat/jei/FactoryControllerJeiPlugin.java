@@ -11,11 +11,15 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
+import mezz.jei.api.recipe.IFocus;
+import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
+import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -29,6 +33,8 @@ import java.util.Optional;
  *
  * <p>Registers a ghost-ingredient handler on {@link SetItemScreen} so the player can drag an item
  * from JEI's list straight onto the gauge's ghost filter slot — no real item required.</p>
+ *
+ * <p>Also backs {@link JeiRecipes} with the runtime, so screens can open recipe pages.</p>
  */
 @JeiPlugin
 public class FactoryControllerJeiPlugin implements IModPlugin {
@@ -47,7 +53,7 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
         // Keep the item list clear of the decorative gauge that protrudes from the panel.
         registration.addGuiContainerHandler(SetItemScreen.class, new IGuiContainerHandler<>() {
             @Override
-            public List<Rect2i> getGuiExtraAreas(SetItemScreen screen) {
+            public @NonNull List<Rect2i> getGuiExtraAreas(@NonNull SetItemScreen screen) {
                 return screen.extraGuiAreas();
             }
         });
@@ -57,10 +63,36 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(NetworkSettingsScreen.class, new NetworkSettingsGhostHandler());
     }
 
+    @Override
+    public void onRuntimeAvailable(IJeiRuntime runtime) {
+        JeiRecipes.setHandler(new JeiRecipes.Handler() {
+            @Override
+            public boolean hasRecipes(Object ingredient) {
+                return outputFocus(ingredient).map(focus -> runtime.getRecipeManager().createRecipeCategoryLookup()
+                        .limitFocus(List.of(focus)).get().findAny().isPresent()).orElse(false);
+            }
+
+            @Override
+            public void showRecipes(Object ingredient) {
+                outputFocus(ingredient).ifPresent(focus -> runtime.getRecipesGui().show(focus));
+            }
+
+            private Optional<IFocus<?>> outputFocus(Object ingredient) {
+                return runtime.getIngredientManager().createTypedIngredient(ingredient, true).<IFocus<?>>map(typed ->
+                        runtime.getJeiHelpers().getFocusFactory().createFocus(RecipeIngredientRole.OUTPUT, typed));
+            }
+        });
+    }
+
+    @Override
+    public void onRuntimeUnavailable() {
+        JeiRecipes.setHandler(null);
+    }
+
     /** Offers the network-settings icon slot as a JEI drop target (items only — the icon is a plain item). */
     private static class NetworkSettingsGhostHandler implements IGhostIngredientHandler<NetworkSettingsScreen> {
         @Override
-        public <I> @NotNull List<Target<I>> getTargetsTyped(NetworkSettingsScreen screen,
+        public <I> @NotNull List<Target<I>> getTargetsTyped(@NonNull NetworkSettingsScreen screen,
                                                             @NotNull ITypedIngredient<I> ingredient, boolean doStart) {
             List<Target<I>> targets = new ArrayList<>();
             Optional<ItemStack> stack = ingredient.getItemStack();
@@ -138,12 +170,12 @@ public class FactoryControllerJeiPlugin implements IModPlugin {
     private static <I> IGhostIngredientHandler.Target<I> dropTarget(Rect2i area, Runnable action) {
         return new IGhostIngredientHandler.Target<>() {
             @Override
-            public Rect2i getArea() {
+            public @NonNull Rect2i getArea() {
                 return area;
             }
 
             @Override
-            public void accept(I dropped) {
+            public void accept(@NonNull I dropped) {
                 action.run();
             }
         };

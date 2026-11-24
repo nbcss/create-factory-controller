@@ -151,6 +151,7 @@
   "createfactorycontroller.gui.action_disconnect": "Shift-Click to disconnect",
   "createfactorycontroller.gui.action_relocate": "Relocate component",
   "createfactorycontroller.gui.save_without_close": "Right-Click to save without close",
+  "createfactorycontroller.gui.open_recipe_page": "Click to view recipes",
   "createfactorycontroller.gui.relocate_mode_prompt": "Click a spot to relocate this %1$s to...",
   "createfactorycontroller.gui.relocated": "%1$s moved to new position",
   "createfactorycontroller.gui.relocation_aborted": "%1$s relocation aborted",

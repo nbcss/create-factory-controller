@@ -33,6 +33,7 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGa
 import io.github.nbcss.createfactorycontroller.content.component.connection.Connection;
 import io.github.nbcss.createfactorycontroller.content.component.VirtualComponentPosition;
 import io.github.nbcss.createfactorycontroller.content.compat.fluids.FluidCompat;
+import io.github.nbcss.createfactorycontroller.content.compat.jei.JeiRecipes;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.controller.FactoryControllerScreen;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeInfoClient;
 import io.github.nbcss.createfactorycontroller.content.gui.screen.GaugeScreenStyle;
@@ -212,10 +213,11 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
         promiseBox = style.promiseBoxStack();
 
         VirtualGaugeBehaviour g = getBehaviour();
+        boolean firstInit = promiseExpiration == null;
+        if (!firstInit) controller.onPanelSync();
 
         // Preserve any unsaved edits across re-init (the crafting toggle re-runs init()).
         String address = addressBox != null ? addressBox.getValue() : (g == null ? "" : g.recipeAddress);
-        boolean firstInit = promiseExpiration == null;
         int promiseState = !firstInit ? promiseExpiration.getState() : (g == null ? -1 : g.promiseClearingInterval);
         int limitState = promiseLimitState >= 0 ? promiseLimitState : (g == null ? 0 : g.promiseLimit);
         promiseLimitByAddress = !firstInit ? promiseLimitByAddress : (g != null && g.promiseLimitByAddress);
@@ -367,14 +369,20 @@ public class ConfigureRecipeScreen extends AbstractSimiContainerScreen<FactoryCo
                     if (behaviour.ignoreData)
                         tooltip.line(CreateLang.translate("gui.filter.ignore_data")
                                 .style(ChatFormatting.GOLD).component());
-                    return tooltip.line(CreateLang.translate("gui.factory_panel.expected_output_tip")
+                    tooltip.line(CreateLang.translate("gui.factory_panel.expected_output_tip")
                                     .style(ChatFormatting.GRAY).component())
                             .line(CreateLang.translate("gui.factory_panel.expected_output_tip_1")
                                     .style(ChatFormatting.GRAY).component())
                             .line(CreateLang.translate("gui.factory_panel.expected_output_tip_2")
-                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component())
-                            .build();
-                }).onScroll((scrollX, scrollY) -> {
+                                    .style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component());
+                    if (JeiRecipes.hasRecipes(behaviour.filter))
+                        tooltip.line(Component.translatable("createfactorycontroller.gui.open_recipe_page")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    return tooltip.build();
+                }).onClick(button -> {
+            VirtualGaugeBehaviour behaviour = getBehaviour();
+            return button == 0 && behaviour != null && JeiRecipes.showRecipes(behaviour.filter);
+        }).onScroll((scrollX, scrollY) -> {
             int dir = (int) Math.signum(scrollY);
             int step = hasControlDown() ? 100 : hasShiftDown() ? 10 : 1;
             return editor().outputScrolled(dir, step);

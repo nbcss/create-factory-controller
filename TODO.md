@@ -53,6 +53,7 @@
 - [DONE] Quick Access
 - [DONE] Controller can transfer component item from/to nearby container blocks
 - [DONE] More redstone units (timer etc.)
+- [DONE] Save gauge settings without close
 - [TODO] Expand controller settings screen
 - [TODO] New Components
 - Controller IO Link
@@ -61,7 +62,6 @@
 - Selector Gauge
 - [TODO] Component Search
 - [TODO] Add tracker UI to show managed address, gauges, promises
-- [TODO] Save gauge settings without close
 - [TODO] Rework production order system to Production Requester
 - [TODO] Repackager Split/Merge mode of request multiplier
 - [TODO] Blueprint file in folder
