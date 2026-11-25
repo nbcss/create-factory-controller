@@ -26,7 +26,7 @@ public class CcbGasGaugeBehaviour extends VirtualGaugeBehaviour {
             ResourceLocation.fromNamespaceAndPath(GasCompat.MODID, "gas_factory_gauge");
 
     private static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/gas_gauge");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "components/gas_gauge");
     private static final ResourceLocation FRONT_TEXTURE = TEXTURE.withSuffix("/front");
 
     /** Whether CCB's gas factory gauge item is present. */

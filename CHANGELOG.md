@@ -13,6 +13,9 @@ Compatibility:
 - Gas Factory Gauge from Create: Crafted Beginning can now be placed in factory controller.
 - External gauge is now using their UI texture & package model.
 
+Internal:
+- Sprite directories `factory_controller/{arithmetic_tube,logical_tube,diodes,factory_gauge,fluid_gauge,redstone_link}` have been moved to `components/`.
+
 ## 1.2.4
 
 Compatibility:

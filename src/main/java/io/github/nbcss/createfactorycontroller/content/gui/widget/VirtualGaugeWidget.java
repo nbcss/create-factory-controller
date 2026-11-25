@@ -49,7 +49,7 @@ public final class VirtualGaugeWidget implements VirtualComponentWidget {
      * Status indicator light, drawn top-right within the cell and tinted by gauge state.
      */
     private static final ResourceLocation INDICATOR =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/factory_gauge/indicator");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "components/factory_gauge/indicator");
 
     private static final int BULB_GREEN = 0x9EFF7F;
     private static final int BULB_RED = 0xFF5555;

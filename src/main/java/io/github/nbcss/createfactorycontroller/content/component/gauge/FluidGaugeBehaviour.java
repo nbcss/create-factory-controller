@@ -19,7 +19,7 @@ import java.util.UUID;
 public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
 
     private static final ResourceLocation FRONT_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/fluid_gauge/front");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "components/fluid_gauge/front");
     private static final GaugeFilterResolver FILTER_RESOLVER = new GaugeFilterResolver() {
         @Override public boolean acceptsFilter(ItemStack filter) { return filter.isEmpty() || FluidCompat.isFluidFilter(filter); }
         @Override public boolean supportsIgnoreData() { return false; }

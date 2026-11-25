@@ -119,7 +119,7 @@ public class VirtualGaugeBehaviour extends AbstractVirtualComponent implements D
     };
 
     public static final ResourceLocation TEXTURE =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/factory_gauge");
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/factory_gauge");
     public static final ResourceLocation FRONT_TEXTURE = TEXTURE.withSuffix("/front");
 
     private static final GaugeFilterResolver ITEM_FILTER_RESOLVER = new GaugeFilterResolver() {

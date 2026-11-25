@@ -36,7 +36,7 @@ public abstract class BrassDiodeBehaviour extends AbstractVirtualComponent {
     private static final int INPUT_DELAY = 2;
 
     public static final ResourceLocation SPRITE_ROOT =
-            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/diodes");
+            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/diodes");
 
     protected int redstoneInterval = defaultInterval();
     protected boolean inverted;

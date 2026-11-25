@@ -32,7 +32,7 @@ public class CflFluidGaugeBehaviour extends VirtualGaugeBehaviour {
             ResourceLocation.fromNamespaceAndPath("fluidlogistics", "fluid");
 
     private static final ResourceLocation FRONT_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "factory_controller/fluid_gauge/front");
+            ResourceLocation.fromNamespaceAndPath("createfactorycontroller", "components/fluid_gauge/front");
 
     /**
      * Whether CFL's dedicated fluid factory gauge item is present (⇒ CFL 1.2.7+).

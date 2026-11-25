@@ -50,7 +50,7 @@ public class LeverBehaviour extends ManualRedstoneSourceBehaviour {
     };
 
     public static final ResourceLocation TEXTURE =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/lever");
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/lever");
 
     public LeverBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position, Item item) {
         super(controller, position, item);

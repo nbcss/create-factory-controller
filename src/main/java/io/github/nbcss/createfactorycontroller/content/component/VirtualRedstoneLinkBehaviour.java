@@ -122,7 +122,7 @@ public class VirtualRedstoneLinkBehaviour extends AbstractVirtualComponent imple
     }
 
     public static final ResourceLocation TEXTURE =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/redstone_link");
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/redstone_link");
     /** Power level broadcast by a powered SEND link. */
     private static final int TRANSMIT_STRENGTH = 15;
 

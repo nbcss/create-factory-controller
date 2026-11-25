@@ -58,7 +58,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
     private static final ResourceLocation MODE_BUTTON_ICON_PREFIX =
         ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "icons/logic_gates/");
     private static final ResourceLocation LOGIC_GATE_ICON_PREFIX =
-            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/logical_tube/");
+            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/logical_tube/");
     private static final int PANEL_W = 200, PANEL_H = 103;
 
     private static final int CELL = 16;

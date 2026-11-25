@@ -101,7 +101,7 @@ public class LogicalTubeBehaviour extends AbstractVirtualComponent {
     }
 
     public static final ResourceLocation TEXTURE =
-        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/logical_tube");
+        ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/logical_tube");
 
     public Mode mode = Mode.OR;
     /** Emitted output — drives outgoing redstone edges, rendered, synced. Only ever changed in {@link #preTick}. */

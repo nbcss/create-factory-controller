@@ -221,7 +221,7 @@ public class ArithmeticTubeBehaviour extends AbstractVirtualComponent {
     // ── Identity / render data ──────────────────────────────────────────────────
 
     public static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "factory_controller/arithmetic_tube");
+            ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID, "components/arithmetic_tube");
 
     @Override public ResourceLocation getTexture() { return TEXTURE; }
 
