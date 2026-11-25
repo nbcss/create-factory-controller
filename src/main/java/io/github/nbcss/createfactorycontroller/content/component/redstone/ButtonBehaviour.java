@@ -30,7 +30,7 @@ public class ButtonBehaviour extends ManualRedstoneSourceBehaviour {
 
     public static final Type TYPE = new Type() {
         @Override public String id() { return "BUTTON"; }
-        @Override public String order() { return "le"; }
+        @Override public String order() { return "oa0"; }
         @Override public List<ResourceLocation> items() {
             return List.of(BuiltInRegistries.ITEM.getKey(Items.STONE_BUTTON));
         }

@@ -11,6 +11,7 @@ Features:
 
 Compatibility:
 - Gas Factory Gauge from Create: Crafted Beginning can now be placed in factory controller.
+- External gauge is now using their UI texture & package model.
 
 ## 1.2.4
 

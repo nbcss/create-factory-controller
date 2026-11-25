@@ -68,7 +68,7 @@ public class CflFluidGaugeBehaviour extends VirtualGaugeBehaviour {
 
         @Override
         public String order() {
-            return "fb";
+            return "ff";
         }
 
         @Override

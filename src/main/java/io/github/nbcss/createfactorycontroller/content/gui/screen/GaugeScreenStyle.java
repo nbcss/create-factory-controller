@@ -5,6 +5,7 @@ import com.simibubi.create.foundation.gui.AllGuiTextures;
 import io.github.nbcss.createfactorycontroller.CreateFactoryController;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.CcbGasGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidGaugeBehaviour;
+import io.github.nbcss.createfactorycontroller.content.component.gauge.FluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import net.minecraft.client.Minecraft;
@@ -68,6 +69,12 @@ public record GaugeScreenStyle(TextureRegion setFilterBg, Recipe recipe, HelpBut
             HelpButton.ColorPalette.LOGISTICS);
 
     private static final Map<String, GaugeScreenStyle> BY_TYPE = Map.of(
+            // Repackaged's own screen keeps Create's box; its fluid actually travels in copper bottles.
+            FluidGaugeBehaviour.TYPE.id(), new GaugeScreenStyle(DEFAULT.setFilterBg,
+                    new Recipe(DEFAULT.recipe.bg, DEFAULT.recipe.arrow, DEFAULT.recipe.intervalArea,
+                            DEFAULT.recipe.intervalRightX, DEFAULT.recipe.intervalY,
+                            ResourceLocation.fromNamespaceAndPath("repackaged", "copper_bottle_8x12")),
+                    DEFAULT.helpPalette),
             CflFluidGaugeBehaviour.TYPE.id(), new GaugeScreenStyle(
                     new TextureRegion(ResourceLocation.fromNamespaceAndPath("fluidlogistics", "textures/gui/requester.png"),
                             16, 160, 256, 256),

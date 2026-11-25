@@ -61,7 +61,7 @@ public class CcbGasGaugeBehaviour extends VirtualGaugeBehaviour {
 
         @Override
         public String order() {
-            return "fc";
+            return "fg";
         }
 
         @Override

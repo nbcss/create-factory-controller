@@ -60,7 +60,7 @@ public class FluidGaugeBehaviour extends VirtualGaugeBehaviour {
 
         @Override
         public String order() {
-            return "fb";
+            return "ff";
         }
 
         @Override

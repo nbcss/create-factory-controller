@@ -8,7 +8,7 @@ import net.minecraft.world.item.Item;
 /** Create's Pulse Extender: follows the input, then stays on for a redstone interval after it drops. */
 public class PulseExtenderBehaviour extends BrassDiodeBehaviour {
 
-    public static final Type TYPE = type("PULSE_EXTENDER", "lg0", AllBlocks.PULSE_EXTENDER.getId(), 0xD8A15B,
+    public static final Type TYPE = type("PULSE_EXTENDER", "lp0", AllBlocks.PULSE_EXTENDER.getId(), 0xD8A15B,
             PulseExtenderBehaviour::new);
 
     public PulseExtenderBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position, Item item) {

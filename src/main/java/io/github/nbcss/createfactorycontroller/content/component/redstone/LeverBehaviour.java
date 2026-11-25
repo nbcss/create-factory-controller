@@ -22,7 +22,7 @@ public class LeverBehaviour extends ManualRedstoneSourceBehaviour {
 
     public static final Type TYPE = new Type() {
         @Override public String id() { return "LEVER"; }
-        @Override public String order() { return "ld"; }
+        @Override public String order() { return "oa1"; }
         @Override public List<ResourceLocation> items() { return List.of(BuiltInRegistries.ITEM.getKey(Items.LEVER)); }
         @Override public int color() { return 0x8F8F8F; }
         @Override public boolean isRequireNetwork() { return false; }

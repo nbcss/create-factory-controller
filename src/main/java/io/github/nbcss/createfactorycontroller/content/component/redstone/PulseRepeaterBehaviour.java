@@ -8,7 +8,7 @@ import net.minecraft.world.item.Item;
 /** Create's Pulse Repeater: one short pulse a redstone interval after each rising input. */
 public class PulseRepeaterBehaviour extends BrassDiodeBehaviour {
 
-    public static final Type TYPE = type("PULSE_REPEATER", "lg1", AllBlocks.PULSE_REPEATER.getId(), 0xD8A15B,
+    public static final Type TYPE = type("PULSE_REPEATER", "lp1", AllBlocks.PULSE_REPEATER.getId(), 0xD8A15B,
             PulseRepeaterBehaviour::new);
 
     public PulseRepeaterBehaviour(FactoryControllerBlockEntity controller, VirtualComponentPosition position, Item item) {
