@@ -29,6 +29,8 @@ import java.util.List;
 public class OrderStatusToast implements Toast {
     private static final ResourceLocation BOX = ResourceLocation.fromNamespaceAndPath(
             CreateFactoryController.MODID, "toast/production_order/box");
+    private static final ResourceLocation BOX_FACE = ResourceLocation.fromNamespaceAndPath(
+            CreateFactoryController.MODID, "toast/production_order/box_face");
     private static final ResourceLocation TAB = ResourceLocation.fromNamespaceAndPath(
             CreateFactoryController.MODID, "toast/production_order/tab");
     private static final ResourceLocation TAG = ResourceLocation.fromNamespaceAndPath(
@@ -73,7 +75,8 @@ public class OrderStatusToast implements Toast {
         int headerWidth = Math.min(MAX_LABEL_WIDTH, font.width(header) + 8);
         int addressWidth = Math.min(MAX_LABEL_WIDTH, font.width(address) + 20);
         TiledSpriteRenderer.create(TAB).render(gfx, 5, 0, headerWidth, 12);
-        gfx.blitSprite(BOX, -1, 11, 162, 32);
+        TiledSpriteRenderer.create(BOX).render(gfx, -1, 11, 162, 32);
+        gfx.blitSprite(BOX_FACE, 75, 38, 10, 2);
         TiledSpriteRenderer.create(TAG).render(gfx, 4, 37, addressWidth, 15);
         gfx.drawString(font, trimToWidth(font, header, headerWidth - 8), 9, 3, headerColor, true);
         gfx.drawString(font, trimToWidth(font, address, addressWidth - 20), 21, 41, 0x444444, false);
