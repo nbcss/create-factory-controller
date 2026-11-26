@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -83,18 +84,18 @@ public abstract class TiledSpriteRenderer {
     public static @NotNull TiledSpriteRenderer create(ResourceLocation spriteLocation) {
         GuiSpriteManager spriteManager = Minecraft.getInstance().getGuiSprites();
         var sprite = spriteManager.getSprite(spriteLocation);
-        var spriteScaling = spriteManager.getSpriteScaling(sprite);
-        return switch (spriteScaling.type()) {
-            case TILE -> new Tile(
-                    sprite.atlasLocation(), sprite.getX(), sprite.getY(), (GuiSpriteScaling.Tile) spriteScaling);
-            case NINE_SLICE -> new NineSlice(
-                    sprite.atlasLocation(), sprite.getX(), sprite.getY(), (GuiSpriteScaling.NineSlice) spriteScaling);
-            default -> throw new UnsupportedOperationException("Only sprites of type tile and nine_slice are supported");
-        };
+        return create(sprite, spriteManager.getSpriteScaling(sprite));
     }
 
     /**
-     * Create a renderer for any texture, provided with offsets and sprite scaling definition.
+     * Create a renderer for any sprite in an atlas. provided with a scaling definition.
+     */
+    public static @NotNull TiledSpriteRenderer create(TextureAtlasSprite sprite, GuiSpriteScaling spriteScaling) {
+        return create(sprite.atlasLocation(), sprite.getX(), sprite.getY(), spriteScaling);
+    }
+
+    /**
+     * Create a renderer for any texture, provided with offsets and a scaling definition.
      * @param uOffset Staring u position of the sprite in pixels.
      * @param vOffset Staring v position of the sprite in pixels.
      */

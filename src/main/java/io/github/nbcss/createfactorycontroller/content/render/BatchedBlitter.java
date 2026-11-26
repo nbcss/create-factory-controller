@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -72,15 +73,18 @@ public class BatchedBlitter {
         return new BatchedBlitter(texture, textureWidth, textureHeight);
     }
 
-    public static BatchedBlitter forSprite(ResourceLocation sprite) {
+    public static BatchedBlitter forSprite(ResourceLocation spriteLocation) {
         GuiSpriteManager spriteManager = Minecraft.getInstance().getGuiSprites();
-        var atlasSprite = spriteManager.getSprite(sprite);
-        int uWidth = atlasSprite.contents().width();
-        int vHeight = atlasSprite.contents().height();
-        int textureWidth = Math.round(uWidth / (atlasSprite.getU1() - atlasSprite.getU0()));
-        int textureHeight = Math.round(vHeight / (atlasSprite.getV1() - atlasSprite.getV0()));
-        return new BatchedBlitter(atlasSprite.atlasLocation(), textureWidth, textureHeight,
-                atlasSprite.getU0(), atlasSprite.getV0(), atlasSprite.getU1(), atlasSprite.getV1());
+        return forSprite(spriteManager.getSprite(spriteLocation));
+    }
+
+    public static BatchedBlitter forSprite(TextureAtlasSprite sprite) {
+        int uWidth = sprite.contents().width();
+        int vHeight = sprite.contents().height();
+        int textureWidth = Math.round(uWidth / (sprite.getU1() - sprite.getU0()));
+        int textureHeight = Math.round(vHeight / (sprite.getV1() - sprite.getV0()));
+        return new BatchedBlitter(sprite.atlasLocation(), textureWidth, textureHeight,
+                sprite.getU0(), sprite.getV0(), sprite.getU1(), sprite.getV1());
     }
 
     public BatchedBlitter setColorRGB(int color) {
