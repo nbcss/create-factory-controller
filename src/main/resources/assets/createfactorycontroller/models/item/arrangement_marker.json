@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "createfactorycontroller:gui/sprites/icons/custom_arrangement"
+    "layer0": "createfactorycontroller:item/arrangement_marker"
   }
 }
