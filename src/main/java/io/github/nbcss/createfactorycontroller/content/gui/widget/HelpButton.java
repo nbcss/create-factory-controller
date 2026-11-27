@@ -14,20 +14,21 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.util.ColorRGBA;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -132,7 +133,16 @@ public class HelpButton extends GraphicButton {
     }
 
     private static final String DOC_URL_BASE = "https://nbcss.github.io/create-factory-controller/manual/";
-    private static final List<String> DOC_LANGUAGES = List.of("en", "zh-hans"); // manually change as supported manual languages changes
+    private static final List<String> DOC_LANGUAGES =
+            Optional.of("/assets/createfactorycontroller/help_button_doc_languages.txt").map(resourcePath -> {
+                try (InputStream input = HelpButton.class.getResourceAsStream(resourcePath)) {
+                    if (input == null) throw new FileNotFoundException();
+                    return List.of(new String(input.readAllBytes(), StandardCharsets.UTF_8).strip().split("\\s*,\\s*"));
+                } catch (IOException ex) {
+                    LogUtils.getLogger().error("Failed to read {}", resourcePath, ex);
+                    return null;
+                }
+            }).orElse(List.of("en"));
 
     private static final LocaleMatcher DOC_LOCALE_MATCHER = LocaleMatcher.builder()
             .setSupportedULocales(DOC_LANGUAGES.stream().map(ULocale::new).toList()).build();

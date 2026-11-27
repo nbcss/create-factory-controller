@@ -315,7 +315,7 @@ dependencies {
     }
 }
 
-// This block of code expands all declared replace properties in the specified resource targets.
+// Expand properties in the resource templates (mod metadata and help-button documentation languages).
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
@@ -328,6 +328,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_license            : mod_license,
             mod_version            : version,
             deployer_version       : deployer_version,
+            help_button_doc_languages: help_button_doc_languages,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
