@@ -75,7 +75,7 @@ public class ButtonBehaviour extends ManualRedstoneSourceBehaviour {
     @Override
     public ResourceLocation getTexture() {
         return ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID,
-                "factory_controller/" + getItemId().getPath());
+                "components/stone_button");
     }
 
     @Override public int getColor() { return TYPE.color(); }
