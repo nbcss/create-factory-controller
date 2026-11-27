@@ -287,7 +287,7 @@ public abstract class BlueprintFormScreen extends AbstractSimiContainerScreen<Fa
         relayout();
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
-                HelpButton.ColorPalette.GENERAL, "blueprint.html");
+                "general", "blueprint.html");
         addWidget(helpButton);
     }
 

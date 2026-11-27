@@ -129,7 +129,7 @@ public class LogicalTubeSettingsScreen extends AbstractSimiContainerScreen<Facto
         addWidget(confirmButton);
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
-                HelpButton.ColorPalette.ROSE, "electron-tube.html");
+                "rose", "electron-tube.html");
         addWidget(helpButton);
 
         addRenderableWidget(new InteractiveAreaWidget(

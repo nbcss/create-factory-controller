@@ -343,7 +343,7 @@ public class FactoryControllerScreen extends AbstractSimiContainerScreen<Factory
 
         if (helpButton != null) removeWidget(helpButton);
         helpButton = new HelpButton(leftPos + imageWidth - HelpButton.WIDTH - 5, topPos + 3,
-                HelpButton.ColorPalette.BRASS, "dashboard.html");
+                "brass", "dashboard.html");
         addWidget(helpButton);
 
         int selectorX = leftPos + CANVAS_SIDE_PADDING + 6;

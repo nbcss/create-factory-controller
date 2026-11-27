@@ -132,7 +132,7 @@ public class ConfigureRedstoneLinkScreen extends AbstractSimiContainerScreen<Fac
         addWidget(confirmButton);
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 13, panelY + 3,
-                HelpButton.ColorPalette.ANDESITE, "redstone-link.html");
+                "andesite", "redstone-link.html");
         addWidget(helpButton);
 
         redArea = addRenderableWidget(new InteractiveAreaWidget(

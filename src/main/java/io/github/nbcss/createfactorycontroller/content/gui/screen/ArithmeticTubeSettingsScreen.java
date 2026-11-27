@@ -607,7 +607,7 @@ public class ArithmeticTubeSettingsScreen extends AbstractSimiContainerScreen<Fa
         addWidget(addConnectionButton);
         addWidget(addConstantButton);
 
-        helpButton = new HelpButton(0, 0, HelpButton.ColorPalette.ARITHMETIC, "arithmetic-tube.html");
+        helpButton = new HelpButton(0, 0, "arithmetic", "arithmetic-tube.html");
         addWidget(helpButton);
 
         recomputeLayout();

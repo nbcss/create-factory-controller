@@ -57,10 +57,10 @@ public class CollapsiblePlayerInventory extends AbstractWidget {
     private static final ResourceLocation FRAME_SPRITE = sprite("factory_controller/inventory/frame");
     private static final ResourceLocation FRAME_POINTER_SPRITE = sprite("factory_controller/inventory/frame_pointer");
     private static final ResourceLocation SLOT_SPRITE = sprite("common/slot");
-    private static final ResourceLocation BUTTON_BASE_SPRITE = sprite("factory_controller/tiny_button/base_general");
-    private static final ResourceLocation EXPAND_SPRITE = sprite("factory_controller/tiny_button/expand");
-    private static final ResourceLocation COLLAPSE_SPRITE = sprite("factory_controller/tiny_button/collapse");
-    private static final ResourceLocation CONTAINER_SPRITE = sprite("factory_controller/tiny_button/container");
+    private static final ResourceLocation BUTTON_BASE_SPRITE = sprite("tiny_button/base_general");
+    private static final ResourceLocation EXPAND_SPRITE = sprite("tiny_button/expand");
+    private static final ResourceLocation COLLAPSE_SPRITE = sprite("tiny_button/collapse");
+    private static final ResourceLocation CONTAINER_SPRITE = sprite("tiny_button/container");
     private static final int BUTTON_GAP = 2;
     private static final int ADJACENT_CONTAINERS_ON = 0x429138;
     private static final ResourceLocation TAB_UNSELECTED = sprite("factory_controller/inventory/tab_unselected");

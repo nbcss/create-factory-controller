@@ -140,7 +140,7 @@ public class BlueprintLibraryScreen extends AbstractSimiContainerScreen<FactoryC
         addRenderableOnly(new InteractiveAreaWidget(importIconX, importIconY, 16, 16, this::importTooltip));
 
         helpButton = new HelpButton(panelX + PANEL_W - HelpButton.WIDTH - 5, panelY + 3,
-                HelpButton.ColorPalette.GENERAL, "blueprint.html");
+                "general", "blueprint.html");
         addWidget(helpButton);
     }
 

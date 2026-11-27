@@ -7,7 +7,6 @@ import io.github.nbcss.createfactorycontroller.content.component.gauge.CcbGasGau
 import io.github.nbcss.createfactorycontroller.content.component.gauge.CflFluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.FluidGaugeBehaviour;
 import io.github.nbcss.createfactorycontroller.content.component.gauge.VirtualGaugeBehaviour;
-import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
@@ -24,7 +23,7 @@ import java.util.Map;
  * Per-gauge-type look of the gauge screens.
  */
 @OnlyIn(Dist.CLIENT)
-public record GaugeScreenStyle(TextureRegion setFilterBg, Recipe recipe, HelpButton.ColorPalette helpPalette) {
+public record GaugeScreenStyle(TextureRegion setFilterBg, Recipe recipe, String helpPalette) {
 
     /** Region at ({@code u},{@code v}) of a {@code sheetW}×{@code sheetH} texture, drawn at the screen's panel size. */
     public record TextureRegion(ResourceLocation texture, int u, int v, int sheetW, int sheetH) {
@@ -66,7 +65,7 @@ public record GaugeScreenStyle(TextureRegion setFilterBg, Recipe recipe, HelpBut
                     new ArrowAnimation(ResourceLocation.fromNamespaceAndPath(CreateFactoryController.MODID,
                             "textures/gui/gauge_arrow_animation.png"), 140, 47, 15, 17, 15),
                     new Rect2i(140, 47, 15, 17), 154, 58, null),
-            HelpButton.ColorPalette.LOGISTICS);
+            "logistics");
 
     private static final Map<String, GaugeScreenStyle> BY_TYPE = Map.of(
             // Repackaged's own screen keeps Create's box; its fluid actually travels in copper bottles.
@@ -85,7 +84,7 @@ public record GaugeScreenStyle(TextureRegion setFilterBg, Recipe recipe, HelpBut
                             DEFAULT.recipe.intervalRightX, DEFAULT.recipe.intervalY,
                             // CFL's own gauge screen shows its fluid package (falls back to Create's box where CFL lacks it)
                             ResourceLocation.fromNamespaceAndPath("fluidlogistics", "fluid_package")),
-                    HelpButton.ColorPalette.FLUID),
+                    "fluid"),
             CcbGasGaugeBehaviour.TYPE.id(), new GaugeScreenStyle(
                     new TextureRegion(ResourceLocation.fromNamespaceAndPath("createcraftedbeginning",
                             "textures/gui/gas_factory_gauge_set_gas.png"), 0, 0, 256, 256),
@@ -97,7 +96,7 @@ public record GaugeScreenStyle(TextureRegion setFilterBg, Recipe recipe, HelpBut
                             new Rect2i(134, 68, 42, 19), 162, 78,
                             // CCB's own gauge screen shows this balloon (BalloonStyles.createDefaultBalloon)
                             ResourceLocation.fromNamespaceAndPath("createcraftedbeginning", "balloon_10x12")),
-                    HelpButton.ColorPalette.GAS));
+                    "gas"));
 
     /** The style for {@code gauge}'s type with uninstalled parts replaced by the default's. */
     public static GaugeScreenStyle of(@Nullable VirtualGaugeBehaviour gauge) {

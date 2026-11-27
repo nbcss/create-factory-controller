@@ -1,0 +1,22 @@
+{
+    "sources": [
+        {
+            "type": "paletted_permutations",
+            "textures": [
+                "createfactorycontroller:tiny_button/base"
+            ],
+            "palette_key": "createfactorycontroller:tiny_button/palettes/key",
+            "permutations": {
+                "general": "createfactorycontroller:tiny_button/palettes/general",
+                "andesite": "createfactorycontroller:tiny_button/palettes/andesite",
+                "brass": "createfactorycontroller:tiny_button/palettes/brass",
+                "logistics": "createfactorycontroller:tiny_button/palettes/logistics",
+                "rose": "createfactorycontroller:tiny_button/palettes/rose",
+                "arithmetic": "createfactorycontroller:tiny_button/palettes/arithmetic",
+                "stock_keeper": "createfactorycontroller:tiny_button/palettes/stock_keeper",
+                "fluid": "createfactorycontroller:tiny_button/palettes/fluid",
+                "gas": "createfactorycontroller:tiny_button/palettes/gas"
+            }
+        }
+    ]
+}

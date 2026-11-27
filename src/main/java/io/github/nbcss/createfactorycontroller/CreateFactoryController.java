@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
 import io.github.nbcss.createfactorycontroller.content.component.ComponentRegistry;
+import io.github.nbcss.createfactorycontroller.content.gui.widget.HelpButton;
 import io.github.nbcss.createfactorycontroller.content.helper.ArrangementUnpackingHandler;
 import io.github.nbcss.createfactorycontroller.content.helper.ConfigDataFixer;
 import io.github.nbcss.createfactorycontroller.content.block.FactoryControllerMenu;
@@ -39,6 +40,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
@@ -150,6 +152,7 @@ public class CreateFactoryController {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
             modEventBus.addListener(this::registerShaders);
+            modEventBus.addListener(this::registerClientReloadListener);
         }
 
         Connection.Type.registerConnections();
@@ -170,5 +173,9 @@ public class CreateFactoryController {
 
     private void registerShaders(RegisterShadersEvent event) {
         TiledSpriteRenderer.registerShaders(event);
+    }
+
+    private void registerClientReloadListener(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(HelpButton::reloadClientResources);
     }
 }

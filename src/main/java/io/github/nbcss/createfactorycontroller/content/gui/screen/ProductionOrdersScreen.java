@@ -135,7 +135,7 @@ public class ProductionOrdersScreen extends AbstractSimiContainerScreen<StockKee
             addWidget(backButton);
         }
         helpButton = new HelpButton(leftPos + WINDOW_W - HelpButton.WIDTH - 13, topPos + 3,
-                HelpButton.ColorPalette.STOCK_KEEPER, "production-orders.html");
+                "stock_keeper", "production-orders.html");
         addWidget(helpButton);
     }
 
